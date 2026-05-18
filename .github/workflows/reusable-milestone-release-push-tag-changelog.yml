@@ -113,7 +113,7 @@ jobs:
             # Replace the date on the just-prepended "# [<tag>] - <date>" line
             # with a markdown link to the component's GitHub release page.
             release_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/releases%2F${tag}%2Fv${version}"
-            sed -i.bak -E "0,/^# \[${tag}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}/s|^# \[${tag}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}|# [${tag}] - [v${version}](${release_url})|" "${TMP_CHANGELOG}"
+            sed -i.bak -E "0,/^## \[${tag}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}/s|^## \[${tag}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}|## [${tag}] - [v${version}](${release_url})|" "${TMP_CHANGELOG}"
             rm -f "${TMP_CHANGELOG}.bak"
           done
 
