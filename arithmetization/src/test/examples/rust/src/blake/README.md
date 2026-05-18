@@ -12,24 +12,12 @@ Each line is:
 0x<213 bytes Blake input><64 bytes expected output>
 ```
 
-## `Makefile`
+## Run
 
-Runs `blake_with_in_bytes.rs` once per line in `blake2f.all`:
-
-```bash
-make
-```
-
-Run only one case:
+Run every line in `blake2f.all` with the examples Makefile:
 
 ```bash
-make SELECTOR=344
-```
-
-Run an inclusive range of cases:
-
-```bash
-make SELECTOR=340-350
+make -f arithmetization/src/test/examples/Makefile blake2f-all
 ```
 
 A case is considered passing only when zkc reports:
@@ -37,5 +25,3 @@ A case is considered passing only when zkc reports:
 ```text
 Program exited successfully (exit with code 0).
 ```
-
-At the end, the Makefile prints either `all cases passed` or the failing case numbers.

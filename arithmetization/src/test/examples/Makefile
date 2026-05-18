@@ -3,14 +3,14 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all linker-script verify-elf
+.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all linker-script verify-elf blake2f-all
 
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # Test to run (with src optional subfolder and extension), mandatory unless clean-all or linker-script are the targets
 # src_optional_subfolder/your_test(.s|.zig|.rs)
-ifeq ($(filter clean-all linker-script,$(MAKECMDGOALS)),)
+ifeq ($(filter clean-all linker-script blake2f-all,$(MAKECMDGOALS)),)
 ifndef TEST
 $(error TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs))
 endif
@@ -126,6 +126,13 @@ zkc-exec:
 
 zkc-debug:
 	zkc debug $(JSON) $(ZKC_MAIN)
+
+blake2f-all:
+	@i=0; while IFS= read -r in_bytes; do \
+		i=$$((i + 1)); \
+		echo "case $$i"; \
+		make -f $(MAKEFILE_DIR)Makefile TEST=blake/blake_with_in_bytes.rs IN_BYTES="$$in_bytes"; \
+	done < $(MAKEFILE_DIR)rust/src/blake/blake2f.all
 
 clean:
 	rm -f $(BIN) $(JSON) $(BIN).objdump $(LINKER_SCRIPT)
