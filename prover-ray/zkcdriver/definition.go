@@ -67,15 +67,43 @@ func (s *schemaScanner) scanColumns() {
 	for _, modDecl := range s.Modules {
 		// Check for special cases
 		if modDecl.IsStatic() {
-			// FIXME: need to add support for static reference tables here.
-			// These are modules defined in the usual way (e.g. with
-			// input/output registers), but which additionally have a fixed
-			// "contents".  You can below in the log message how to access the
-			// contents.
-			log.Fatal("zkcdriver: add support for static reference tables!", modDecl.StaticContents())
-			panic("todo")
-		} else if modDecl.IsNative() {
-			// FIXME: need to add support for native modules.  These correspond
+
+			content := modDecl.StaticContents()
+			moduleName := modDecl.Name().String()
+			moduleWIOP := s.Sys.NewSizedModule(
+				s.Sys.Context.Childf("module-%v", moduleName),
+				len(content),
+				wiop.PaddingDirectionLeft,
+			)
+
+			// This works assuming the [System] appends-only to the list of modules.
+			s.ModulesIDsWiop[moduleName] = len(s.Sys.Modules) - 1
+
+			for i, colDecl := range modDecl.Registers() {
+
+				vec := make([]field.Element, len(content))
+				for j := range content {
+					vec[j] = field.Element(content[j][i])
+				}
+
+				var (
+					colName          = colDecl.Name()
+					colQualifiedName = qualifiedCorsetName(moduleName, colName)
+					col              = moduleWIOP.NewPrecomputedColumn(
+						moduleWIOP.Context.Childf("column-%v", colName),
+						wiop.VisibilityOracle,
+						&wiop.ConcreteVector{Plain: field.VecFromBase(vec)},
+					)
+				)
+
+				s.ColumnIDs[colQualifiedName] = col.Context.ID
+			}
+
+			continue
+		}
+
+		if modDecl.IsNative() {
+			// @david: need to add support for native modules.  These correspond
 			// to ZkC functions declared with the "native" attribute".  The
 			// expectation is that the prover will maintain a list of supported
 			// native modules.  Each of these will have an expected number of
@@ -90,9 +118,9 @@ func (s *schemaScanner) scanColumns() {
 			// issue, care must be taken to ensure it really happens (e.g.
 			// through testing negative cases which should cause constraint
 			// failures).
-			log.Fatal("zkcdriver: add support for native modules!")
-			panic("todo")
+			log.Panic("zkcdriver: add support for native modules!")
 		}
+
 		// moduleName is the name of the module as given by the arithmetization
 		moduleName := modDecl.Name().String()
 		moduleWIOP := s.Sys.NewDynamicModule(
@@ -261,10 +289,23 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 		module.NewVanishing(module.Context.Childf("local-%v", name), wExpr)
 
 	case air.RangeConstraint[koalabear.Element]:
-		// FIXME: go-corset could support range constraints itself if that is
-		// helpful.   Specifically, since we have static reference tables +
-		// lookups, we can implement range constraints in the obvious manner.
-		utils.Panic("RangeConstraint is not yet supported (constraint: %s)", name)
+
+		rc := cs.Unwrap()
+
+		// Sanity check:  If a RangeConstraint ever has more than one source/bitwidth, the second iteration will panic
+		// because the first iteration already registered that QueryID in the CompiledIOP. In practice
+		// the len is always expected to be either 0 (no-op) or 1 (single pass).
+		if len(rc.Bitwidths) > 1 {
+			utils.Panic("multiple bitwidths for range constraints not supported")
+		}
+
+		for i, bitwidth := range rc.Bitwidths {
+			// Determine bound for this range constraint
+			bound := 1 << bitwidth
+			col := s.compColumnByCorsetID(rc.Context, rc.Sources[i].Register())
+			col.Module.NewRangeCheck(col.Context.Childf("range-%v", name), col, bound)
+		}
+
 	case air.Assertion[koalabear.Element]:
 		// Property assertions can be ignored, as they are a debugging tool and
 		// not part of the constraints proper.

@@ -49,8 +49,8 @@ func runTest(t *testing.T, test, input string) {
 		sys,
 		zkcdriver.Settings{},
 		files.MustRead(testfile))
-	// FIXME: not sure how best to instantiate runtime here?
-	driver.AssignWithPreRead(&wiop.Runtime{}, inputs)
+	rt := wiop.NewRuntime(sys)
+	driver.AssignWithPreRead(&rt, inputs)
 	// FIXME: run the prover to complete the test.  For now, I just used
 	// go-corset's internal check to illustrate how this can work (e.g. it might
 	// be useful for debugging). Run go-corset constraint check
@@ -58,6 +58,7 @@ func runTest(t *testing.T, test, input string) {
 }
 
 func runZkcConstraintCheck(t *testing.T, driver *zkcdriver.ZkCDriver, input map[string][]byte) {
+	t.Helper()
 	// trace program with given input
 	tr, errs := driver.BinaryFile.Trace(input, driver.TracingConfig)
 	// sanity check

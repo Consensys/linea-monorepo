@@ -1,6 +1,7 @@
 package zkcdriver
 
 import (
+	"fmt"
 	"unsafe"
 
 	"github.com/consensys/go-corset/pkg/ir/air"
@@ -31,19 +32,18 @@ func AssignFromTrace(run *wiop.Runtime, traces trace.Trace[koalabear.Element], s
 			scMod := schema.Module(modID)
 
 			if scMod.IsStatic() {
-				// FIXME: slightly unclear what will happen here for static
-				// reference tables.  There will be a module for these in
-				// expTraces, but that module should always be empty (feel free
-				// to sanity check this).
-				//
-				// My feeling is that you can just return here without assigning
-				// anything for this module.
-				panic("todo")
+				// @alex: the current version of corset flags modules as being
+				// static or not static. But it may be the case, that a module
+				// has static size, some its column have static content but some
+				// do not have static content.
+				return nil
 			}
 
 			// Iterate each column in module
 			parallel.Execute(int(trMod.Width()), func(start, stop int) {
 				for id := start; id < stop; id++ {
+
+					fmt.Printf("zkcdriver: AssignFromTrace: processing column %d : annotation %v\n", id, run.System.Annotations)
 
 					var (
 						sys         = run.System

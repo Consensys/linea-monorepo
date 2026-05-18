@@ -111,14 +111,6 @@ func (a *ZkCDriver) AssignWithPreRead(run *wiop.Runtime, preRead PreReadInputs) 
 	)
 	logrus.Infof("[bootstrapper] trace available (pre-read): %v", time.Since(assignStart))
 
-	// FIXME: removed compatibility check as its not clear this makes sense to
-	// me in the new model.  Specifically, ZkC inputs are mostly independent of
-	// the generated constraints.  Still, there are some scenarios where a
-	// failure could occur.  In particular, if a ZkC input memory is renamed and
-	// we have e.g. an input file with the old name, and a binary constraints
-	// file with the new name.  However, this generates an error when calling
-	// BinaryFile.Trace() as it checks all inputs are accounted for.
-
 	// Extract commit metadata from both files
 	binfCommit, binfCommitOk := a.Metadata.String("commit")
 
@@ -137,8 +129,7 @@ func (a *ZkCDriver) AssignWithPreRead(run *wiop.Runtime, preRead PreReadInputs) 
 	expandedTrace, errs := a.BinaryFile.Trace(inputs, a.TracingConfig)
 
 	if len(errs) > 0 {
-		// FIXME: should we not do something more here ... like panic?
-		logrus.Warnf("tracing failed: %v", errors.Join(errs...).Error())
+		logrus.Panicf("tracing failed: %v", errors.Join(errs...).Error())
 	}
 	logrus.Infof("[bootstrapper] tracing: %v", time.Since(tracingStart))
 
