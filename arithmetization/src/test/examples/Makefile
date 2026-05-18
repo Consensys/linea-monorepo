@@ -135,6 +135,7 @@ clean-all:
 	rm -rf $(MAKEFILE_DIR)zig/zig-out/
 	rm -rf $(MAKEFILE_DIR)zig/.zig-cache/
 	rm -rf $(MAKEFILE_DIR)rust/target/
+	rm -rf $(MAKEFILE_DIR)act4/bin/
 	rm -f  $(LINKER_SCRIPT)
 
 # Generate the linker script with the specified memory layout
@@ -202,60 +203,55 @@ blake-all:
 		echo "case $$i: $$result_line"; \
 	done < $(MAKEFILE_DIR)rust/src/blake/blake.all
 
+ACT4_CONFIG_DIR ?= $(MAKEFILE_DIR)act4/config
+ACT4_WORK_DIR ?= $(MAKEFILE_DIR)act4/bin/work
+ACT4_IMAGE ?= riscv-act4:latest
+ACT4_EXTENSIONS ?= I,M
+ACT4_JOBS ?= 4
+ACT4_FAST ?= true
+ACT4_DEBUG ?= false
+ACT4_ELF_DIR ?= $(ACT4_WORK_DIR)/linea-rv64im-zicclsm/elfs
+ACT4_LOGS ?= $(MAKEFILE_DIR)act4/bin/logs
+ACT4_RESULTS ?= $(MAKEFILE_DIR)act4/bin/results.txt
+
 # Build the ACT4 self-checking ELFs with the Linea ACT4 config.
 build-act4:
 	@set -u; \
-	work_dir="$${ACT4_WORK_DIR:-$(MAKEFILE_DIR)act4/bin/work}"; \
-	config_dir="$${ACT4_CONFIG_DIR:-$(MAKEFILE_DIR)act4/config}"; \
-	image="$${ACT4_IMAGE:-riscv-act4:latest}"; \
-	extensions="$${ACT4_EXTENSIONS:-I,M}"; \
-	jobs="$${ACT4_JOBS:-4}"; \
-	fast="$${ACT4_FAST:-True}"; \
-	debug="$${ACT4_DEBUG:-}"; \
 	verbosity=""; \
-	if [ "$$debug" = "True" ]; then verbosity="DEBUG=True"; elif [ "$$fast" = "True" ]; then verbosity="FAST=True"; fi; \
-	mkdir -p "$$work_dir"; \
-	work_dir=$$(cd "$$work_dir" && pwd); \
-	[ -d "$$config_dir/linea-rv64im-zicclsm" ] || { echo "error: missing $$config_dir/linea-rv64im-zicclsm"; exit 2; }; \
-	config_dir=$$(cd "$$config_dir" && pwd); \
-	docker image inspect "$$image" >/dev/null 2>&1 || { echo "error: docker image '$$image' not found"; exit 2; }; \
+	if [ "$(ACT4_DEBUG)" = "true" ]; then verbosity="DEBUG=true"; elif [ "$(ACT4_FAST)" = "true" ]; then verbosity="FAST=true"; fi; \
+	mkdir -p "$(ACT4_WORK_DIR)"; \
+	work_dir=$$(cd "$(ACT4_WORK_DIR)" && pwd); \
+	[ -d "$(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm" ] || { echo "error: missing $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm"; exit 2; }; \
+	config_dir=$$(cd "$(ACT4_CONFIG_DIR)" && pwd); \
+	docker image inspect "$(ACT4_IMAGE)" >/dev/null 2>&1 || { echo "error: docker image '$(ACT4_IMAGE)' not found"; exit 2; }; \
 	echo "building ACT4 ELFs in $$work_dir"; \
 	docker run --rm \
 		-v "$$config_dir:/act4/config/cores/linea:ro" \
 		-v "$$work_dir:/act4/work" \
-		"$$image" \
-		bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$$extensions $$verbosity make --jobs $$jobs --keep-going"
+		"$(ACT4_IMAGE)" \
+		bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) $$verbosity make --jobs $(ACT4_JOBS) --keep-going"
 
 # Convert each ACT4 ELF to JSON, run it through zkc, and print PASS/FAIL lines.
 run-act4:
 	@set -u; \
-	work_dir="$${ACT4_WORK_DIR:-$(MAKEFILE_DIR)act4/bin/work}"; \
-	elf_dir="$${ELF_DIR:-$$work_dir/linea-rv64im-zicclsm/elfs}"; \
-	bin_dir="$(MAKEFILE_DIR)act4/bin"; \
-	logs="$${LOGS:-$$bin_dir/logs}"; \
-	results="$${RESULTS:-$$bin_dir/results.txt}"; \
-	elf2json="$${ELF2JSON:-$$bin_dir/elf2json}"; \
-	[ -d "$$elf_dir" ] || { echo "error: missing ELF dir '$$elf_dir'; run make build-act4 first"; exit 2; }; \
-	mkdir -p "$$bin_dir" "$$logs"; \
-	rm -f "$$logs"/*; \
-	> "$$results"; \
-	if [ ! -x "$$elf2json" ]; then \
-		command -v go >/dev/null 2>&1 || { echo "error: go not found"; exit 2; }; \
-		go build -o "$$elf2json" $(GO_MAIN); \
-	fi; \
+	[ -d "$(ACT4_ELF_DIR)" ] || { echo "error: missing ELF dir '$(ACT4_ELF_DIR)'; run make build-act4 first"; exit 2; }; \
+	mkdir -p "$(ACT4_LOGS)"; \
+	rm -f "$(ACT4_LOGS)"/*; \
+	> "$(ACT4_RESULTS)"; \
+	command -v go >/dev/null 2>&1 || { echo "error: go not found"; exit 2; }; \
 	command -v zkc >/dev/null 2>&1 || { echo "error: zkc not found"; exit 2; }; \
 	count=0; pass=0; fail=0; \
-	for elf in $$(find "$$elf_dir" -name '*.elf' | sort); do \
+	for elf in $$(find "$(ACT4_ELF_DIR)" -name '*.elf' | sort); do \
 		name=$$(basename "$$elf" .elf); \
 		count=$$((count + 1)); \
-		json="$$logs/$$name.json"; \
-		out="$$logs/$$name.out"; \
-		full="$$logs/$$name.full"; \
-		"$$elf2json" "$$elf" "$(IN_BYTES)" "$(PROGRAM_OFFSET)" "$(IN_BYTES_OFFSET)" "$(ENTRY_POINT)" > "$$json" 2> "$$logs/$$name.json.err"; \
+		json="$(ACT4_LOGS)/$$name.json"; \
+		out="$(ACT4_LOGS)/$$name.out"; \
+		full="$(ACT4_LOGS)/$$name.full"; \
+		go run $(GO_MAIN) "$$elf" "$(IN_BYTES)" "$(PROGRAM_OFFSET)" "$(IN_BYTES_OFFSET)" "$(ENTRY_POINT)" > "$$json" 2> "$(ACT4_LOGS)/$$name.json.err"; \
 		zkc exec "$$json" $(ZKC_MAIN) 2>&1 | tee "$$full" | grep -E "Program exited successfully|machine panic|exit with code|fail|ERROR" | head -3 > "$$out"; \
 		if grep -q "Program exited successfully" "$$out"; then \
 			echo "PASS  $$name"; \
-			echo "PASS  $$name" >> "$$results"; \
+			echo "PASS  $$name" >> "$(ACT4_RESULTS)"; \
 			pass=$$((pass + 1)); \
 			rm -f "$$full"; \
 		else \
@@ -263,10 +259,10 @@ run-act4:
 			[ -n "$$code" ] || code="?"; \
 			first=$$(head -1 "$$out" | tr -d '\n' | cut -c1-120); \
 			echo "FAIL  $$name  code=$$code  '$$first'"; \
-			echo "FAIL  $$name  code=$$code  '$$first'" >> "$$results"; \
+			echo "FAIL  $$name  code=$$code  '$$first'" >> "$(ACT4_RESULTS)"; \
 			fail=$$((fail + 1)); \
 		fi; \
 	done; \
-	echo "DONE: $$count tests   PASS: $$pass   FAIL: $$fail" | tee -a "$$results"; \
-	echo "results: $$results"; \
-	echo "logs:    $$logs/"
+	echo "DONE: $$count tests   PASS: $$pass   FAIL: $$fail" | tee -a "$(ACT4_RESULTS)"; \
+	echo "results: $(ACT4_RESULTS)"; \
+	echo "logs:    $(ACT4_LOGS)/"

@@ -113,10 +113,10 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 
 ACT4 targets use the Linea config in `act4/config/linea-rv64im-zicclsm/`.
 
-Build the ACT4 docker image once from a `riscv-arch-test` checkout:
+Build the ACT4 docker image once from a `riscv-arch-test` checkout. The `riscv-arch-test` repository should have the same parent directory as `linea-monorepo`:
 
 ```bash
-cd /path/to/riscv-arch-test
+cd ../riscv-arch-test
 docker build -t riscv-act4 .
 ```
 
@@ -142,9 +142,9 @@ zkc exec act4/bin/logs/<test>.json ../../main/riscv/main.zkc
 When overriding paths, use the same variables as `run-act4`:
 
 ```bash
-LOGS=act4/bin/logs
+ACT4_LOGS=act4/bin/logs
 ZKC_MAIN=../../main/riscv/main.zkc
-zkc exec "$LOGS/<test>.json" "$ZKC_MAIN"
+zkc exec "$ACT4_LOGS/<test>.json" "$ZKC_MAIN"
 ```
 
 Disassemble a generated ELF:
@@ -157,7 +157,7 @@ Build a single extension by overriding the build and run inputs:
 
 ```bash
 ACT4_EXTENSIONS=M make build-act4
-ELF_DIR=act4/bin/work/linea-rv64im-zicclsm/elfs/rv64i/M make run-act4
+ACT4_ELF_DIR=act4/bin/work/linea-rv64im-zicclsm/elfs/rv64i/M make run-act4
 ```
 
 Useful overrides:
@@ -166,15 +166,14 @@ Useful overrides:
 |---|---|---|
 | `ACT4_CONFIG_DIR` | `act4/config` | `build-act4` |
 | `ACT4_WORK_DIR` | `act4/bin/work` | both |
-| `ELF_DIR` | derived from `ACT4_WORK_DIR` | `run-act4` |
+| `ACT4_ELF_DIR` | `$(ACT4_WORK_DIR)/linea-rv64im-zicclsm/elfs` | `run-act4` |
 | `ACT4_IMAGE` | `riscv-act4:latest` | `build-act4` |
 | `ACT4_EXTENSIONS` | `I,M` | `build-act4` |
 | `ACT4_JOBS` | `4` | `build-act4` |
-| `ACT4_FAST` | `True` | `build-act4` |
-| `ACT4_DEBUG` | empty | `build-act4` |
-| `ELF2JSON` | `act4/bin/elf2json` | `run-act4` |
-| `LOGS` | `act4/bin/logs` | `run-act4` |
-| `RESULTS` | `act4/bin/results.txt` | `run-act4` |
+| `ACT4_FAST` | `true` | `build-act4` |
+| `ACT4_DEBUG` | `false` | `build-act4` |
+| `ACT4_LOGS` | `act4/bin/logs` | `run-act4` |
+| `ACT4_RESULTS` | `act4/bin/results.txt` | `run-act4` |
 
 ## Options
 
