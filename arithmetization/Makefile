@@ -132,7 +132,6 @@ install-act4-host-deps:
 	fi; \
 	cd "$(ACT4_REPO)" && mise trust .mise.toml && mise install && mise exec -- uv sync; \
 	cd "$(ACT4_REPO)/framework/src/act/data" && BUNDLE_JOBS=1 mise exec -- bundle install; \
-	: "UDB 0.1.9 downloads a Linux libz3.so on macOS, so point it at Homebrew's native Z3 library."; \
 	if [ "$$(uname -s)" = "Darwin" ]; then \
 		udb_cpu=$$(uname -m); \
 		case "$$udb_cpu" in arm64|aarch64) udb_cpu=arm64 ;; x86_64|x64) udb_cpu=x64 ;; *) echo "error: unsupported UDB CPU $$udb_cpu"; exit 1 ;; esac; \
