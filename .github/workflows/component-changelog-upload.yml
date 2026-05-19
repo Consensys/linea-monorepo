@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu-package, linea ]
+        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu, linea ]
         include:
           - component: coordinator
             folder-name: coordinator
@@ -30,7 +30,7 @@ jobs:
           - component: tx-exclusion-api
             folder-name: transaction-exclusion-api
             include-path: transaction-exclusion-api/**
-          - component: linea-besu-package
+          - component: linea-besu
             folder-name: linea-besu/package
             artifact-name: linea-besu-package
             include-path: |

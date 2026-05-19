@@ -64,8 +64,7 @@ jobs:
   release-linea-besu-push-tag-changelog:
     uses: ./.github/workflows/reusable-component-release-push-tag-changelog.yml
     with:
-      # Release tag uses 'linea-besu-package' (e.g. releases/linea-besu-package/v1.2.3)
-      component-name: linea-besu-package
+      component-name: linea-besu
       folder-name: linea-besu/package
       include-path: |
         tracer/**
