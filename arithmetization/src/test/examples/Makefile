@@ -143,10 +143,10 @@ compile: $(SRC) linker-script
 #
 # Note: we use opt-level=2 to remove unused code.
 
-zkc-exec:
+zkc-exec: install-zkc
 	zkc exec $(JSON) $(ZKC_MAIN)
 
-zkc-debug:
+zkc-debug: install-zkc
 	zkc debug $(JSON) $(ZKC_MAIN)
 
 clean:
