@@ -51,6 +51,7 @@ jobs:
           exit 1
 
   compute-linea-besu-release-metadata:
+    needs: [check-branch-and-release-tag-suffix]
     uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
       # Release tag uses 'linea-besu-package' (e.g. releases/linea-besu-package/v1.2.3)
