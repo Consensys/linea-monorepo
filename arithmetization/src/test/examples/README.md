@@ -216,5 +216,5 @@ zkc exec act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
 0x08800000  ──  sp starts here (up to 8 MiB)
 0x08800000  ──  input starts
     ↓  input grows up (up to 1 GiB)
-0x48800000 ──  input ends at most
+0x48800000  ──  input ends at most
 ```

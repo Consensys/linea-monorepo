@@ -56,7 +56,7 @@ IN_BYTES_OFFSET ?= 0x08800000
 # Since program starts from _start, the entry point is the same as the program offset
 ENTRY_POINT     := $(PROGRAM_OFFSET)
 
-# 8 MiB   (0x08000000 -> 0x08800000)
+# 8 MiB   (0x08000000 <- 0x08800000)
 SP              ?= 0x08800000
 
 # Parsed values are just to verify that the generate ELF is correct (lazy evaluation allows to parse the ELF only after it is generated)
