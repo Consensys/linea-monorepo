@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/dist/utils";
-import { AbstractSigner, ContractFactory, JsonRpcProvider, Provider, isAddress, getAddress } from "ethers";
+import { AbstractSigner, ContractFactory, JsonRpcProvider, Provider, getAddress } from "ethers";
 import { ethers, upgrades } from "hardhat";
 import { FactoryOptions, HardhatEthersHelpers } from "hardhat/types";
 
@@ -62,11 +62,11 @@ function pushUiDeployContext(
 
   setUiTransactionContext({
     contractName,
-    constructorArgs: details.constructorArgs,
-    initializerArgs: details.initializerArgs,
-    proxyOptions: details.proxyOptions,
-    notes: details.notes,
-    openZeppelinProxyKind: details.openZeppelinProxyKind,
+    ...(details.constructorArgs === undefined ? {} : { constructorArgs: details.constructorArgs }),
+    ...(details.initializerArgs === undefined ? {} : { initializerArgs: details.initializerArgs }),
+    ...(details.proxyOptions === undefined ? {} : { proxyOptions: details.proxyOptions }),
+    ...(details.notes === undefined ? {} : { notes: details.notes }),
+    ...(details.openZeppelinProxyKind === undefined ? {} : { openZeppelinProxyKind: details.openZeppelinProxyKind }),
   });
 }
 
@@ -159,12 +159,7 @@ function logUpgradableDeploymentComplete(
   );
 }
 
-async function deployFromFactory(
-  contractName: string,
-  runnerOrProvider: RunnerOrProvider = null,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ...args: any[]
-) {
+async function deployFromFactory(contractName: string, runnerOrProvider: RunnerOrProvider = null, ...args: unknown[]) {
   const startTime = performance.now();
   const skipLog = process.env.SKIP_DEPLOY_LOG === "true" || false;
   const runner = await resolveUiRunner(runnerOrProvider);
@@ -174,7 +169,7 @@ async function deployFromFactory(
   }
 
   const factory = await ethers.getContractFactory(contractName, runner);
-  const normalizedArgs = normalizeAddressArgs(args);
+  const normalizedArgs = await normalizeAddressArgs(factory, args);
   pushUiDeployContext(contractName, { constructorArgs: jsonSafeForUi(normalizedArgs) });
   const contract = await factory.deploy(...normalizedArgs);
   if (!skipLog) {
@@ -191,8 +186,7 @@ async function deployFromFactoryWithOpts(
   contractName: string,
   runnerOrProvider: RunnerOrProvider = null,
   factoryOpts: FactoryOptions,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ...args: any[]
+  ...args: unknown[]
 ) {
   const startTime = performance.now();
   const skipLog = process.env.SKIP_DEPLOY_LOG === "true" || false;
@@ -203,7 +197,7 @@ async function deployFromFactoryWithOpts(
   }
 
   const factory = await ethers.getContractFactory(contractName, factoryOpts);
-  const normalizedArgs = normalizeAddressArgs(args);
+  const normalizedArgs = await normalizeAddressArgs(factory, args);
   pushUiDeployContext(contractName, { constructorArgs: jsonSafeForUi(normalizedArgs) });
   const contract = await factory.connect(runner).deploy(...normalizedArgs);
   if (!skipLog) {
@@ -231,10 +225,11 @@ async function deployUpgradableFromFactory(
   const factory = factoryOpts
     ? await ethers.getContractFactory(contractName, factoryOpts)
     : await ethers.getContractFactory(contractName, runner);
+  const proxyOptions = tryStringifyProxyOpts(opts);
   pushUiDeployContext(contractName, {
     initializerArgs: jsonSafeForUi(args ?? []),
     constructorArgs: jsonSafeForUi(opts?.constructorArgs),
-    proxyOptions: tryStringifyProxyOpts(opts),
+    ...(proxyOptions === undefined ? {} : { proxyOptions }),
     openZeppelinProxyKind: openZeppelinProxyKindFromOpts(opts),
   });
   const contract = await withUiReceiptWorkflow(contractName, async () => {
@@ -264,11 +259,12 @@ async function deployUpgradableWithAbiAndByteCode(
     console.log(`Going to deploy upgradable ${contractName}`);
   }
   const factory: ContractFactory = new ContractFactory(abi, byteCode, deployer);
+  const proxyOptions = tryStringifyProxyOpts(opts);
 
   pushUiDeployContext(contractName, {
     initializerArgs: jsonSafeForUi(args ?? []),
     constructorArgs: jsonSafeForUi(opts?.constructorArgs),
-    proxyOptions: tryStringifyProxyOpts(opts),
+    ...(proxyOptions === undefined ? {} : { proxyOptions }),
     openZeppelinProxyKind: openZeppelinProxyKindFromOpts(opts),
   });
   const contract = await withUiReceiptWorkflow(contractName, async () => {
@@ -302,10 +298,11 @@ async function deployUpgradableFromFactoryWithConstructorArgs(
   const factory = factoryOpts
     ? await ethers.getContractFactory(contractName, factoryOpts)
     : await ethers.getContractFactory(contractName, runner);
+  const proxyOptions = tryStringifyProxyOpts(opts);
   pushUiDeployContext(contractName, {
     constructorArgs: jsonSafeForUi(constructorArgs),
     initializerArgs: jsonSafeForUi(initializerArgs),
-    proxyOptions: tryStringifyProxyOpts(opts),
+    ...(proxyOptions === undefined ? {} : { proxyOptions }),
     openZeppelinProxyKind: openZeppelinProxyKindFromOpts(opts),
   });
   const contract = await withUiReceiptWorkflow(contractName, async () => {
@@ -326,21 +323,37 @@ async function deployUpgradableFromFactoryWithConstructorArgs(
 }
 
 /**
- * Recursively checksums any string value that looks like an Ethereum address.
+ * Checksums ABI address constructor args before ethers attempts name resolution.
  * This prevents ethers v6 from attempting ENS resolution via HardhatEthersProvider.resolveName,
  * which is not implemented and throws NotImplementedError.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeAddressArgs(args: any[]): any[] {
-  return args.map((arg) => {
-    if (typeof arg === "string" && isAddress(arg)) {
-      return getAddress(arg);
-    }
-    if (Array.isArray(arg)) {
-      return normalizeAddressArgs(arg);
-    }
-    return arg;
-  });
+async function normalizeAddressArgs(factory: ContractFactory, args: unknown[]): Promise<unknown[]> {
+  const constructorInputs = factory.interface.deploy.inputs;
+  const hasDeployOverrides = args.length === constructorInputs.length + 1;
+  const constructorArgs = hasDeployOverrides ? args.slice(0, constructorInputs.length) : args;
+  const deployOverrides = hasDeployOverrides ? args.slice(constructorInputs.length) : [];
+
+  if (constructorArgs.length !== constructorInputs.length) {
+    return args;
+  }
+
+  const normalizedConstructorArgs = await Promise.all(
+    constructorInputs.map((input, index) =>
+      input.walkAsync(constructorArgs[index], (type, value) => {
+        if (type !== "address" || typeof value !== "string") {
+          return value;
+        }
+
+        try {
+          return getAddress(value);
+        } catch {
+          return value;
+        }
+      }),
+    ),
+  );
+
+  return [...normalizedConstructorArgs, ...deployOverrides];
 }
 
 function requireEnv(name: string): string {
