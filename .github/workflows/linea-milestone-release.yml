@@ -126,7 +126,7 @@ jobs:
       prover: ${{ steps.changelog-outputs.outputs.prover }}
       postman: ${{ steps.changelog-outputs.outputs.postman }}
       tx-exclusion-api: ${{ steps.changelog-outputs.outputs.tx-exclusion-api }}
-      linea-besu: ${{ steps.changelog-outputs.outputs.linea-besu }}
+      linea-besu: ${{ steps.changelog-outputs.outputs.linea-besu-package }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6
@@ -218,10 +218,10 @@ jobs:
 
   build-local-linea-besu:
     needs: [component-release-metadata]
-    if: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed == 'true' }}
+    if: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed == 'true' }}
     uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
     with:
-      release_tag_prefix: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).release_version }}
+      release_tag_prefix: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_version }}
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
     secrets: inherit
 
@@ -239,7 +239,7 @@ jobs:
       (fromJson(needs.component-release-metadata.outputs.postman).tag_changed != 'true' || needs.build-local-postman.result == 'success') &&
       (fromJson(needs.component-release-metadata.outputs.prover).tag_changed != 'true' || needs.build-local-prover.result == 'success') &&
       (fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed != 'true' || needs.build-local-tx-exclusion-api.result == 'success') &&
-      (fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed != 'true' || needs.build-local-linea-besu.result == 'success'))
+      (fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed != 'true' || needs.build-local-linea-besu.result == 'success'))
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     strategy:
       fail-fast: true
@@ -261,12 +261,12 @@ jobs:
       prover: ${{ steps.latest-docker-tag.outputs.prover-latest-docker-tag }}
       postman: ${{ steps.latest-docker-tag.outputs.postman-latest-docker-tag }}
       tx-exclusion-api: ${{ steps.latest-docker-tag.outputs.tx-exclusion-api-latest-docker-tag }}
-      linea-besu: ${{ steps.latest-docker-tag.outputs.linea-besu-latest-docker-tag }}
+      linea-besu: ${{ steps.latest-docker-tag.outputs.linea-besu-package-latest-docker-tag }}
       coordinator-release-version: ${{ steps.latest-docker-tag.outputs.coordinator-latest-release-version }}
       prover-release-version: ${{ steps.latest-docker-tag.outputs.prover-latest-release-version }}
       postman-release-version: ${{ steps.latest-docker-tag.outputs.postman-latest-release-version }}
       tx-exclusion-api-release-version: ${{ steps.latest-docker-tag.outputs.tx-exclusion-api-latest-release-version }}
-      linea-besu-release-version: ${{ steps.latest-docker-tag.outputs.linea-besu-latest-release-version }}
+      linea-besu-release-version: ${{ steps.latest-docker-tag.outputs.linea-besu-package-latest-release-version }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6
@@ -308,7 +308,7 @@ jobs:
       postman_tag: ${{ fromJson(needs.component-release-metadata.outputs.postman).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.postman || '' }}
       prover_tag: ${{ fromJson(needs.component-release-metadata.outputs.prover).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.prover || '' }}
       tx_exclusion_api_tag: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.tx-exclusion-api || '' }}
-      linea_besu_package_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.linea-besu || needs.build-local-linea-besu.outputs.linea_besu_package_tag }}
+      linea_besu_package_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.linea-besu || needs.build-local-linea-besu.outputs.linea_besu_package_tag }}
       e2e-tests-logs-dump: true
       has-changes-requiring-e2e-testing: 'true'
     secrets: inherit
@@ -402,15 +402,15 @@ jobs:
     if: >
       always() && !cancelled() && 
       needs.run-e2e-tests.result == 'success' &&
-      fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed == 'true'
+      fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed == 'true'
     uses: ./.github/workflows/reusable-linea-besu-package-gh-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
       release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: Remove later 
       without_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin }}
-      release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).release_version }}
-      release_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).release_tag }}
-      changelog: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).changelog }}
+      release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_version }}
+      release_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_tag }}
+      changelog: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).changelog }}
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
       upload_changelog: true
@@ -487,7 +487,7 @@ jobs:
       (fromJson(needs.component-release-metadata.outputs.postman).tag_changed != 'true' || needs.postman-gh-release.result == 'success') &&
       (fromJson(needs.component-release-metadata.outputs.prover).tag_changed != 'true' || needs.prover-gh-release.result == 'success') &&
       (fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed != 'true' || needs.tx-exclusion-api-gh-release.result == 'success') &&
-      (fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed != 'true' || needs.linea-besu-gh-release.result == 'success')
+      (fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed != 'true' || needs.linea-besu-gh-release.result == 'success')
     uses: ./.github/workflows/reusable-milestone-release-push-tag-changelog.yml
     with:
       release_version: ${{ needs.check-branch-and-compute-tag.outputs.release_version }}
@@ -496,7 +496,7 @@ jobs:
       postman_release_version: ${{ fromJson(needs.component-release-metadata.outputs.postman).release_version || needs.component-latest-docker-tags.outputs.postman-release-version }}
       prover_release_version: ${{ fromJson(needs.component-release-metadata.outputs.prover).release_version || needs.component-latest-docker-tags.outputs.prover-release-version }}
       tx_exclusion_api_release_version: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).release_version || needs.component-latest-docker-tags.outputs.tx-exclusion-api-release-version }}
-      linea_besu_release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu).release_version || needs.component-latest-docker-tags.outputs.linea-besu-release-version }}
+      linea_besu_release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_version || needs.component-latest-docker-tags.outputs.linea-besu-release-version }}
       create_pull_request: true # TODO: remove this later
     secrets: inherit
 
@@ -537,7 +537,7 @@ jobs:
             postman|linea-postman|${{ fromJson(needs.component-release-metadata.outputs.postman).tag_changed }}|${{ needs.postman-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.postman }}
             prover|linea-prover|${{ fromJson(needs.component-release-metadata.outputs.prover).tag_changed }}|${{ needs.prover-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.prover }}
             tx-exclusion-api|linea-transaction-exclusion-api|${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed }}|${{ needs.tx-exclusion-api-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.tx-exclusion-api }}
-            linea-besu|linea-besu-package|${{ fromJson(needs.component-release-metadata.outputs.linea-besu).tag_changed }}|${{ needs.linea-besu-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.linea-besu }}
+            linea-besu|linea-besu-package|${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed }}|${{ needs.linea-besu-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.linea-besu }}
         run: |
           set -euo pipefail
           mkdir release && cd release
