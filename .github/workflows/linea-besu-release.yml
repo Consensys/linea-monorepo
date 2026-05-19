@@ -91,7 +91,8 @@ jobs:
         tracer/**
         tracer-constraints/**
         linea-besu/plugins/linea-sequencer/**
-        linea-besu/**
+        linea-besu/besu/**
+        linea-besu/package/**
         gradle/libs.versions.toml
       release_tag_suffix: ${{ inputs.release_tag_suffix }}
 
