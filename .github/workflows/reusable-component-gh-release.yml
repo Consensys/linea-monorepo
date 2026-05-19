@@ -164,10 +164,12 @@ jobs:
           echo "To pull the image, use any of the following commands:" >> output.md
           echo "\`\`\`" >> output.md
           printf 'docker pull consensys/linea-%s:%s\n' "$DOCKER_IMAGE_SUFFIX" "$DOCKER_TAG" >> output.md
-          if [ -n "$DOCKER_TAG_WITH_SUFFIX" ] && [ "$DOCKER_TAG_WITH_SUFFIX" != "$DOCKER_TAG" ]; then
-            printf 'docker pull consensys/linea-%s:%s\n' "$DOCKER_IMAGE_SUFFIX" "$DOCKER_TAG_WITH_SUFFIX" >> output.md
-          fi
           echo "\`\`\`" >> output.md
+          if [ -n "$DOCKER_TAG_WITH_SUFFIX" ] && [ "$DOCKER_TAG_WITH_SUFFIX" != "$DOCKER_TAG" ]; then
+            echo "\`\`\`" >> output.md
+            printf 'docker pull consensys/linea-%s:%s\n' "$DOCKER_IMAGE_SUFFIX" "$DOCKER_TAG_WITH_SUFFIX" >> output.md
+            echo "\`\`\`" >> output.md
+          fi
 
       - name: Set capitalized component name
         env:

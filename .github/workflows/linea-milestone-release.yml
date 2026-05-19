@@ -103,7 +103,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component-name: [ coordinator, prover, postman, tx-exclusion-api, linea-besu ]
+        component-name: [ coordinator, prover, postman, tx-exclusion-api, linea-besu-package ]
         include:
           - component-name: coordinator
             include-path: coordinator/**
@@ -147,7 +147,7 @@ jobs:
         with:
           component-name: ${{ matrix.component-name }}
           include-path: ${{ matrix.include-path }}
-          release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: Remove later
+          release_tag_suffix: ${{ inputs.release_tag_suffix }}
           generate-changelog-with-next-tag-version: 'true'
       
       - name: Changelog outputs

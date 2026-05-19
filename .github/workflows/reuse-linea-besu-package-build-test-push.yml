@@ -235,18 +235,22 @@ jobs:
             echo "To pull the image, use any of the following commands:" >> output.md
             echo "\`\`\`" >> output.md
             echo "docker pull consensys/linea-besu-package:${{ steps.build-plugins-and-assemble.outputs.dockertag }}" >> output.md
-            if [[ -n "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]] && [[ "${{ steps.build-plugins-and-assemble.outputs.dockertag }}" != "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]]; then
-              echo "docker pull consensys/linea-besu-package:${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" >> output.md
-            fi
             echo "\`\`\`" >> output.md
+            if [[ -n "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]] && [[ "${{ steps.build-plugins-and-assemble.outputs.dockertag }}" != "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]]; then
+              echo "\`\`\`" >> output.md
+              echo "docker pull consensys/linea-besu-package:${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" >> output.md
+              echo "\`\`\`" >> output.md
+            fi
             if [[ "${{ inputs.with_besu_fleet_plugin }}" == "true" ]]; then
               echo "To pull the image with Besu fleet plugin, use any of the following commands:" >> output.md
               echo "\`\`\`" >> output.md
               echo "docker pull consensys/linea-besu-package-with-fleet:${{ steps.build-plugins-and-assemble.outputs.dockertag }}" >> output.md
-              if [[ -n "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]] && [[ "${{ steps.build-plugins-and-assemble.outputs.dockertag }}" != "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]]; then
-                echo "docker pull consensys/linea-besu-package-with-fleet:${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" >> output.md
-              fi
               echo "\`\`\`" >> output.md
+              if [[ -n "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]] && [[ "${{ steps.build-plugins-and-assemble.outputs.dockertag }}" != "${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" ]]; then
+                echo "\`\`\`" >> output.md
+                echo "docker pull consensys/linea-besu-package-with-fleet:${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}" >> output.md
+                echo "\`\`\`" >> output.md
+              fi
             fi
             echo "" >> output.md
             echo "| Digest | OS | Architecture |" >> output.md
