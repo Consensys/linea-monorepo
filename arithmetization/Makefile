@@ -100,6 +100,12 @@ install-act4-host-deps:
 	if [ -z "$$brew_cmd" ] && [ -x /opt/homebrew/bin/brew ]; then brew_cmd=/opt/homebrew/bin/brew; fi; \
 	if [ -z "$$brew_cmd" ] && [ -x /usr/local/bin/brew ]; then brew_cmd=/usr/local/bin/brew; fi; \
 	if [ -z "$$brew_cmd" ]; then echo "error: brew not found"; exit 1; fi; \
+	if [ "$$(uname -s)" = "Darwin" ] && ! xcode-select -p >/dev/null 2>&1; then \
+		echo "Installing Xcode Command Line Tools..."; \
+		xcode-select --install || true; \
+		echo "Finish the Xcode Command Line Tools installation, then rerun this target."; \
+		exit 1; \
+	fi; \
 	brew_prefix=$$("$$brew_cmd" --prefix); \
 	export PATH="$(ACT4_RISCV_DIR)/bin:$$brew_prefix/bin:$$PATH"; \
 	"$$brew_cmd" install mise riscv64-elf-gcc; \
@@ -124,6 +130,6 @@ install-act4-host-deps:
 		git -C "$(ACT4_REPO)" checkout --detach "$(ACT4_REF)"; \
 	fi; \
 	cd "$(ACT4_REPO)" && mise trust .mise.toml && mise install && mise exec -- uv sync; \
-	cd "$(ACT4_REPO)/framework/src/act/data" && mise exec -- bundle install; \
+	cd "$(ACT4_REPO)/framework/src/act/data" && BUNDLE_JOBS=1 mise exec -- bundle install; \
 	echo "ACT4 host dependencies are ready"; \
 	echo 'Restart your shell or run: export PATH="$(ACT4_RISCV_DIR)/bin:$$PATH"'
