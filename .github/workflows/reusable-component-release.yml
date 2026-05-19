@@ -59,10 +59,10 @@ jobs:
   check-branch-and-release-tag-suffix:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
-      - name: Enforce main branch cannot have custom tag suffix
-        if: github.ref_name == 'main' && inputs.release_tag_suffix != ''
+      - name: Enforce non-main branch must have custom release tag suffix
+        if: github.ref_name != 'main' && inputs.release_tag_suffix == ''
         run: |
-          echo "❌ Main branch cannot have custom tag suffix: ${{ inputs.release_tag_suffix }}"
+          echo "❌ Non-main branch must have non-empty custom tag suffix"
           exit 1
 
   compute-release-metadata:

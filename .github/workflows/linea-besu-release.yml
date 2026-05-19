@@ -1,4 +1,4 @@
-name: "Linea Besu Release (still in testing phase)"
+name: "Linea Besu Release"
 
 permissions:
   actions: read
@@ -16,7 +16,7 @@ on:
         type: string
         default: ''
       release_tag_suffix:
-        description: 'Custom release tag suffix, i.e. release tag would be releases/[component]/v[semver]-[suffix]'
+        description: 'Custom release tag suffix (must need for non-main release), i.e. release tag would be releases/[component]/v[semver]-[suffix]'
         required: false
         type: string
         default: ''
@@ -57,7 +57,7 @@ on:
         type: string
         default: ''
       release_tag_suffix:
-        description: 'Custom release tag suffix, i.e. release tag would be releases/[component]/v[semver]-[suffix]'
+        description: 'Custom release tag suffix (must need for non-main release), i.e. release tag would be releases/[component]/v[semver]-[suffix]'
         required: false
         type: string
         default: ''
@@ -82,6 +82,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check-branch-and-release-tag-suffix:
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    steps:
+      - name: Enforce non-main branch must have custom release tag suffix
+        if: github.ref_name != 'main' && inputs.release_tag_suffix == ''
+        run: |
+          echo "❌ Non-main branch must have non-empty custom tag suffix"
+          exit 1
+
   compute-linea-besu-release-metadata:
     uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
