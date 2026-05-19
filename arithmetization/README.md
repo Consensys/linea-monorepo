@@ -46,4 +46,10 @@ It is also available via **workflow_dispatch** and **workflow_call**.
 
 ### Install ACT4 host dependencies
 
-The `install-act4-host-deps` target install dependencies to build tests from the [RISC-V Architectural Certification Tests (ACTs)](https://github.com/riscv/riscv-arch-test) framework (currently ACT4), which is set of assembly language tests designed to certify that a design faithfully implements the RISC-V specification.
+The `install-act4-host-deps` target installs dependencies to build tests from the [RISC-V Architectural Certification Tests (ACTs)](https://github.com/riscv/riscv-arch-test) framework (currently ACT4).
+
+```bash
+make -C arithmetization install-act4-host-deps
+```
+
+See [src/test/examples/README.md](src/test/examples/README.md) for ACT4 build and run commands.

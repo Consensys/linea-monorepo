@@ -135,11 +135,12 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `IN_BYTES`       | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution           |
 | `PROGRAM_OFFSET` | `0x00000000`                                                                            | Memory address where the program is loaded (up to 128 MiB)                    |
 | `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                    |
-| `SP`             | `0x087fffff`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)       |
+| `SP`             | `0x08800000`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)       |
 | `VERIFY_ELF`     | `false`                                                                                 | Set to `true` to verify offsets, entry point and sp match the ELF ones        |
 | `ACT4_BUILD_MODE`| `host`                                                                                  | Build ACT4 ELFs with `host` or `docker`                                       |
 | `ACT4_REF`       | `9798a554ce4139f472c9ccd3a18c9061d0f7024d`                                              | `riscv-arch-test` tag or commit used to build ACT4 ELFs                       |
 | `ACT4_REPO`      | `../riscv-arch-test`                                                                    | Local `riscv-arch-test` checkout used for ACT4 builds                         |
+| `ACT4_RISCV_DIR` | `~/riscv`                                                                               | Host tool directory used for `sail_riscv_sim` and RISC-V tool aliases         |
 | `ACT4_DEBUG`     | `true`                                                                                  | Set to `false` to skip ACT4 debug artifacts                                   |
 | `ACT4_FAST`      | `false`                                                                                 | Set to `true` to skip ACT4 objdump generation for faster builds               |
 
@@ -182,7 +183,7 @@ parent/
 From `linea-monorepo/arithmetization/src/test/examples`:
 
 ```bash
-make run-act4                         # build on the host and run 
+make run-act4                         # build on the host and run
 make run-act4 ACT4_BUILD_MODE=docker  # build with Docker and run
 ```
 
@@ -210,9 +211,9 @@ zkc exec act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
 0x00000000  ──  program starts
     ↓  program grows up (up to 128 MiB)
 0x07FFFFFF  ──  program ends at most
-0x08000000  --  sp ends here
+0x08000000  --  stack region starts here
     ↑  stack grows downward
-0x087fffff  ──  sp starts here (up to 8 MiB)
+0x08800000  ──  sp starts here (up to 8 MiB)
 0x08800000  ──  input starts
     ↓  input grows up (up to 1 GiB)
 0x48800000 ──  input ends at most
