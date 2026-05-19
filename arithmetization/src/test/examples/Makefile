@@ -221,6 +221,10 @@ blake-all:
 # Build the ACT4 self-checking ELFs with the Linea ACT4 config
 build-act4:
 	@set -u; \
+	if [ -n "$$(find "$(ACT4_ELF_DIR)" -name '*.elf' -print -quit 2>/dev/null)" ]; then \
+		echo "ACT4 ELFs already built in $(ACT4_ELF_DIR)"; \
+		exit 0; \
+	fi; \
 	mkdir -p "$(ACT4_WORK_DIR)"; \
 	work_dir=$$(cd "$(ACT4_WORK_DIR)" && pwd); \
 	[ -d "$(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm" ] || { echo "error: missing $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm"; exit 2; }; \

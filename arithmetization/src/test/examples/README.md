@@ -161,7 +161,7 @@ From `linea-monorepo/arithmetization/src/test/examples`:
 
 ```bash
 make build-act4 # build only
-make run-act4   # build and run
+make run-act4   # build if needed and run
 ```
 
 By default, ACT4 is built with debug artifacts enabled and fast mode disabled.
