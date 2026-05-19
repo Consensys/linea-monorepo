@@ -43,8 +43,8 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
     imm12::rs1::funct3::rd = instruction_parameters
 
     var signext_imm12_64:DoubleWord = sgn_extension_u12_u64(imm12)
-    var rs1_plus_signext_imm12:DoubleWord = signed_sum_of_double_word(registers[rs1], signext_imm12_64)
-    var mem_address:Address = rs1_plus_signext_imm12 as Address
+    // Used as an Address in the LOAD instructions and as a DoubleWord in the OP-IMM and JALR instructions
+    var rs1_plus_signext_imm12:u64 = signed_sum_of_double_word(registers[rs1], signext_imm12_64)
 
     //TODO: this is the default case, we will overwrite it for JALR.
     // We should handle this differently to avoid a potential second row just to overwrite the value of new_pc?
@@ -60,31 +60,31 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
             switch funct3 {
                 case FUNCT3_LB: {
                     printf "LB\n"
-                    registers[rd] = sgn_extension_u8_u64(ram[mem_address])
+                    registers[rd] = sgn_extension_u8_u64(ram[rs1_plus_signext_imm12])
                 }
                 case FUNCT3_LH: {
                     printf "LH\n"
-                    registers[rd] = sgn_extension_u16_u64(read_16(mem_address))
+                    registers[rd] = sgn_extension_u16_u64(read_16(rs1_plus_signext_imm12))
                 }
                 case FUNCT3_LW: {
                     printf "LW\n"
-                    registers[rd] = sgn_extension_u32_u64(read_32(mem_address))
+                    registers[rd] = sgn_extension_u32_u64(read_32(rs1_plus_signext_imm12))
                 }
                 case FUNCT3_LBU: {
                     printf "LBU\n"
-                    registers[rd] = ram[mem_address] as DoubleWord
+                    registers[rd] = ram[rs1_plus_signext_imm12] as DoubleWord
                 }
                 case FUNCT3_LHU: {
                     printf "LHU\n"
-                    registers[rd] = read_16(mem_address) as DoubleWord
+                    registers[rd] = read_16(rs1_plus_signext_imm12) as DoubleWord
                 }
                 case FUNCT3_LWU: {
                     printf "LWU\n"
-                    registers[rd] = read_32(mem_address) as DoubleWord
+                    registers[rd] = read_32(rs1_plus_signext_imm12) as DoubleWord
                 }
                 case FUNCT3_LD: {
                     printf "LD\n"
-                    registers[rd] = read_64(mem_address) as DoubleWord
+                    registers[rd] = read_64(rs1_plus_signext_imm12) as DoubleWord
                 }
                 default: {
                     printf "[ERROR] Unsupported LOAD instruction of I-Type\n"
@@ -178,7 +178,7 @@ fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_paramet
         case JALR: {
             printf "JALR\n"
             // only instruction is JALR, no need to switch over funct3
-            new_pc = mem_address & MASK_64_ERASE_LAST_BIT
+            new_pc = rs1_plus_signext_imm12 & MASK_64_ERASE_LAST_BIT
             registers[rd] = (pc + 4) as DoubleWord
         }
 
