@@ -47,7 +47,6 @@ It is also available via **workflow_dispatch** and **workflow_call**.
 ### Install Sail for ACT4 host builds
 
 The `install-sail` target downloads Sail.
-It does not install package managers, host toolchains, clone ACT4, or edit shell configuration.
 
 ```bash
 make -C arithmetization install-sail
