@@ -1,5 +1,6 @@
-import { ethers, AbstractSigner, Interface, InterfaceAbi, BaseContract, getAddress } from "ethers";
+import { ethers, AbstractSigner, Interface, InterfaceAbi, BaseContract } from "ethers";
 
+import { normalizeAddressArgs } from "./normalize-address-args";
 import { clearSignerUiWorkflowStatus, setSignerUiWorkflowStatus } from "./signerUiWorkflowStatus";
 import {
   contractName as ProxyAdminContractName,
@@ -37,40 +38,6 @@ export interface DeployContractOptions {
 
 function isDeployContractOptions(value: unknown): value is DeployContractOptions {
   return typeof value === "object" && value !== null && "libraries" in value;
-}
-
-/**
- * Checksums ABI address constructor args before ethers attempts name resolution.
- * Prevents ethers v6 from calling HardhatEthersProvider.resolveName (not implemented)
- * when address-typed constructor args are passed as non-checksummed hex strings.
- */
-async function normalizeAddressArgs(factory: ethers.ContractFactory, args: unknown[]): Promise<unknown[]> {
-  const constructorInputs = factory.interface.deploy.inputs;
-  const hasDeployOverrides = args.length === constructorInputs.length + 1;
-  const constructorArgs = hasDeployOverrides ? args.slice(0, constructorInputs.length) : args;
-  const deployOverrides = hasDeployOverrides ? args.slice(constructorInputs.length) : [];
-
-  if (constructorArgs.length !== constructorInputs.length) {
-    return args;
-  }
-
-  const normalizedConstructorArgs = await Promise.all(
-    constructorInputs.map((input, index) =>
-      input.walkAsync(constructorArgs[index], (type, value) => {
-        if (type !== "address" || typeof value !== "string") {
-          return value;
-        }
-
-        try {
-          return getAddress(value);
-        } catch {
-          return value;
-        }
-      }),
-    ),
-  );
-
-  return [...normalizedConstructorArgs, ...deployOverrides];
 }
 
 type DeployArgs<A extends Array<unknown>> = ethers.ContractMethodArgs<A>;
