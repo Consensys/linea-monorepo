@@ -172,6 +172,8 @@ make build-act4 ACT4_DEBUG=false ACT4_FAST=true
 
 The `build/` directory contains ACT4 intermediate and debug artifacts: signature-generating ELFs, signatures, objdumps, traces and trap reports.
 The `elfs/` directory contains the final self-checking ELFs run by `make run-act4`.
+The `logs/` directory contains one JSON input per test, non-empty JSON conversion stderr in `.json.err`, and the filtered ecall output in `.out`.
+The full zkc output is kept as `.full` only for failing tests.
 
 To rerun one generated ACT4 test through zkc:
 
