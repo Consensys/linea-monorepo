@@ -46,7 +46,7 @@ on:
         description: "Release semver associated with the release tag (e.g. 1.2.3), empty if tag_changed is false"
         value: ${{ jobs.compute-linea-besu-release-metadata.release_version }}
       release_tag:
-        description: "Release tag (e.g. releases/linea-besu/v1.2.3), empty if tag_changed is false"
+        description: "Release tag (e.g. releases/linea-besu-package/v1.2.3), empty if tag_changed is false"
         value: ${{ jobs.compute-linea-besu-release-metadata.outputs.release_tag }}
 
   workflow_dispatch:
@@ -85,7 +85,8 @@ jobs:
   compute-linea-besu-release-metadata:
     uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
-      component-name: linea-besu
+      # Release tag uses 'linea-besu-package' (e.g. releases/linea-besu-package/v1.2.3)
+      component-name: linea-besu-package
       include-path: |
         tracer/**
         tracer-constraints/**
