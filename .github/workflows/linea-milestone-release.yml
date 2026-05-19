@@ -154,7 +154,6 @@ jobs:
       folder-name: coordinator
       include-path: coordinator/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: Remove later 
       release_version: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).release_version }}
       release_tag: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).release_tag }}
       changelog: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).changelog }}
@@ -175,7 +174,6 @@ jobs:
       folder-name: prover
       include-path: prover/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: Remove later 
       release_version: ${{ fromJson(needs.component-release-metadata.outputs.prover).release_version }}
       release_tag: ${{ fromJson(needs.component-release-metadata.outputs.prover).release_tag }}
       changelog: ${{ fromJson(needs.component-release-metadata.outputs.prover).changelog }}
@@ -196,7 +194,6 @@ jobs:
       folder-name: postman
       include-path: postman/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: Remove later 
       release_version: ${{ fromJson(needs.component-release-metadata.outputs.postman).release_version }}
       release_tag: ${{ fromJson(needs.component-release-metadata.outputs.postman).release_tag }}
       changelog: ${{ fromJson(needs.component-release-metadata.outputs.postman).changelog }}
@@ -217,7 +214,6 @@ jobs:
       folder-name: transaction-exclusion-api
       include-path: transaction-exclusion-api/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: Remove later 
       release_version: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).release_version }}
       release_tag: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).release_tag }}
       changelog: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).changelog }}
@@ -235,7 +231,6 @@ jobs:
     uses: ./.github/workflows/reusable-linea-besu-package-gh-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: Remove later 
       without_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin }}
       release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_version }}
       release_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_tag }}
@@ -297,7 +292,6 @@ jobs:
       prover_release_version: ${{ fromJson(needs.component-release-metadata.outputs.prover).release_version || needs.component-latest-docker-tags.outputs.prover-release-version }}
       tx_exclusion_api_release_version: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).release_version || needs.component-latest-docker-tags.outputs.tx-exclusion-api-release-version }}
       linea_besu_release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_version || needs.component-latest-docker-tags.outputs.linea-besu-package-release-version }}
-      create_pull_request: true # TODO: remove this later
     secrets: inherit
 
   linea-milestone-gh-release:

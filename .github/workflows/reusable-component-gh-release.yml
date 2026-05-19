@@ -75,7 +75,6 @@ jobs:
       include-path: ${{ inputs.include-path }}
       release_tag_suffix: ${{ inputs.release_tag_suffix }}
       upload_changelog: ${{ inputs.upload_changelog }}
-      create_pull_request: ${{ !inputs.upload_changelog }} # TODO: remove this later
     secrets: inherit
 
   compute-docker-tag:
