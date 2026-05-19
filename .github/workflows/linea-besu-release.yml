@@ -86,7 +86,7 @@ jobs:
     uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
       component-name: linea-besu
-      include-path:
+      include-path: |
         tracer/**
         tracer-constraints/**
         linea-besu/plugins/linea-sequencer/**
