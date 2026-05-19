@@ -1,5 +1,5 @@
 {
-    "_comment": "Blob proof request schema (§2.2). K ≥ 1 EIP-4844 blobs + N execution proofs tiling their combined block range. Emits the 14-field PI tuple defined in §2.4.",
+    "_comment": "Blob proof request schema (§2.2). K ≥ 1 EIP-4844 blobs + N execution proofs tiling their combined block range. Emits the 13-field PI tuple defined in §2.4.",
 
     "proverVersion":      "4.0.0-riscv",
 
@@ -43,7 +43,7 @@
         "endShnarf":      "0x8d0a74047e241998a03664b98064da391c492e8a4ad96160ae46eeaaabdc7b5a"
     },
 
-    "_comment_executionProofs": "N execution proofs tiling the combined block range, in canonical (start..end) order. Each entry inlines everything the blob-proof guest needs for that execution proof: the recursive STARK `proof` bytes, the 15-field `publicInputs` tuple, and the preimages of the three hash-committed PI fields — `L2L1MsgList` (preimage of publicInputs.L2L1MessagesHash), `froms` (preimage of publicInputs.txFromsHash), and `addrs` (preimage of publicInputs.filteredAddressesHash, §6.5).",
+    "_comment_executionProofs": "N execution proofs tiling the combined block range, in canonical (start..end) order. Each entry inlines everything the blob-proof guest needs for that execution proof: the recursive STARK `proof` bytes, the 14-field `publicInputs` tuple, and the preimages of the three hash-committed PI fields — `L2L1MsgList` (preimage of publicInputs.L2L1MessagesHash), `froms` (preimage of publicInputs.txFromsHash), and `addrs` (preimage of publicInputs.filteredAddressesHash, §6.5).",
     "executionProofs": [
         {
             "proof": "0x...",
@@ -51,7 +51,6 @@
                 "parentBlockHash":                          "0x0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 "endBlockHash":                             "0x0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                 "endBlockNumber":                           1000503,
-                "endStateRootHash":                         "0x00c79c9d2af1da310f19e194bae34ac3e5dc58ddca0900dd55760b3ea4a91a75",
                 "L2L1MessagesHash":                         "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "parentL1L2BridgeRollingHash":              "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "parentL1L2BridgeRollingHashMessageNumber": 0,
@@ -70,10 +69,9 @@
         },
         { "_comment": "remaining N-1 entries (covering 1000504-1000510, 1000511-1000515, 1000516-1000520) have the same shape; abbreviated in the fixture" }
     ],
-    "_comment_publicInputs": "The 14-field PI tuple defined in §2.4.",
+    "_comment_publicInputs": "The 13-field PI tuple defined in §2.4.",
     "publicInputs": {
         "endBlockNumber":                      1000520,
-        "endStateRootHash":                      "0x00c79c9d2af1da310f19e194bae34ac3e5dc58ddca0900dd55760b3ea4a91a75",
         "L2L1BridgeTransactionTree":               "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentL1L2BridgeRollingHash":               "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentL1L2BridgeRollingHashMessageNumber":  0,

@@ -1,30 +1,74 @@
+from dataclasses import dataclass
+from typing import List
+
 from ethereum.forks.osaka.fork import (
     BlockChain,
     MAX_RLP_BLOCK_SIZE,
     validate_header,
     get_last_256_block_hashes,
     apply_body,
-
 )
 
-from ethereum_rlp import rlp
 from ethereum.exceptions import InvalidBlock
 from ethereum.forks.osaka import vm
-from ethereum.forks.osaka.blocks import Block
+from ethereum.forks.osaka.blocks import Block, Header
 from ethereum.forks.osaka.bloom import logs_bloom
 from ethereum.forks.osaka.requests import compute_requests_hash
-from ethereum.forks.osaka.state import state_root
-from ethereum.forks.osaka.trie import root
+from ethereum.state import state_root
+from ethereum.merkle_patricia_trie import root
+from ethereum_types.numeric import U64
 
-def state_transition_modified(chain: BlockChain, block: Block) -> vm.BlockOutput:
+@dataclass
+class ExecutionWitness:
     """
-    This function is exactly the same as the 
-    [ethereum.forks.osaka.fork.state_transition] function but returns the 
-    block_output as the above function does not do it. 
+    Logical form of Besu's `debug_executionWitness` payload for one block.
+
+    The binary/JSON schema carries these fields as encoded bytes. The Python
+    reference treats headers as decoded `Header` objects so it can state the
+    parent-header matching rule directly.
     """
-    if len(rlp.encode(block)) > MAX_RLP_BLOCK_SIZE:
+    state: List[bytes]
+    codes: List[bytes]
+    keys: List[bytes]
+    headers: List[Header]
+
+
+def materialize_blockchain_from_execution_witness(
+    chain_id: U64,
+    parent_header: Header,
+    execution_witness: ExecutionWitness,
+) -> BlockChain:
+    """
+    Build the transient execution-spec `BlockChain` adapter from the stateless
+    witness.
+
+    This adapter is not a prover input. The production guest reconstructs the
+    same execution context from `execution_witness.state`, `codes`, `keys`, and
+    `headers`.
+    """
+    raise NotImplementedError("stateless execution witness replay is not implemented in this Python reference")
+
+
+def state_transition_modified(
+    chain_id: U64,
+    parent_header: Header,
+    execution_witness: ExecutionWitness,
+    block: Block,
+    block_rlp: bytes,
+) -> vm.BlockOutput:
+    """
+    This function mirrors [ethereum.forks.osaka.fork.state_transition] but takes
+    the protocol witness shape. It materializes the execution-spec `BlockChain`
+    adapter internally and returns `block_output` so the caller can inspect logs.
+    """
+    if len(block_rlp) > MAX_RLP_BLOCK_SIZE:
         raise InvalidBlock("Block rlp size exceeds MAX_RLP_BLOCK_SIZE")
 
+    chain = materialize_blockchain_from_execution_witness(
+        chain_id,
+        parent_header,
+        execution_witness,
+    )
     validate_header(chain, block.header)
     if block.ommers != ():
         raise InvalidBlock
