@@ -1,0 +1,6 @@
+//error:5:13-14:expected type (u16,u16)
+output out(addr:u16) -> (lhs:u16, rhs:u16)
+
+fn f(x:u16, y:u8) {
+   out[0] = x
+}

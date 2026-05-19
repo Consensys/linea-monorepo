@@ -1,0 +1,4 @@
+//error:3:18-21:expected type u8
+fn f(x:u8) -> (r:u8) {
+    r = x != 0 ? 256 : 0
+}

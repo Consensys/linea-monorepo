@@ -1,0 +1,11 @@
+//error:5:10-17:read/write memory "buffer" not visible here
+memory buffer(addr:u16) -> (bytes:u8)
+
+fn g(addr:u16) -> (byte:u8) {
+  byte = f(addr)
+}
+
+fn f<buffer>(addr:u16) -> (byte:u8) {
+  byte = buffer[addr]
+  return
+}

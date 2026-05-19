@@ -1,0 +1,5 @@
+//error:3:7-8:expected type u8
+fn f(x:u16) -> (r:u8) {
+  r = x
+  return
+}

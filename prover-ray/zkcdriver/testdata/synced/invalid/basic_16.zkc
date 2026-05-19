@@ -1,0 +1,4 @@
+//error:3:15-16:unknown variable
+fn split(word:u32) -> (high:u16,low:u16) {
+   high::low::c = word
+}

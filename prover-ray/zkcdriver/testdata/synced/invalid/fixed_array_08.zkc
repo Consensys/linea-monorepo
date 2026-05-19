@@ -1,0 +1,7 @@
+//error:6:9-18:not a constant expression
+pub input ins_u8(address:u8) -> (bytes:u8)
+
+fn main() {
+  var items:[u8;2]
+  items[ins_u8[0]] = 1
+}

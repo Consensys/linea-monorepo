@@ -1,0 +1,7 @@
+//error:5:20-21:index 2 out of bounds for array of size 2
+fn main() {
+  var items:[u8;2]
+  items[0] = 1
+  var r:u8 = items[2]
+  return
+}

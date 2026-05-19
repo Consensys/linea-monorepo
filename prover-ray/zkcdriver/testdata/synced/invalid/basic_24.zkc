@@ -1,0 +1,12 @@
+//error:13:1-1:unexpected token
+//error:9:4-8:unknown symbol
+// This is a comment
+fn main(x:u16) {
+  return
+}
+
+fn f(x:u16) {
+   g(x)
+}
+
+fn g()

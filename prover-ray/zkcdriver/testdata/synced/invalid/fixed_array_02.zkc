@@ -1,0 +1,6 @@
+//error:3:13-19:unknown symbol
+fn main() {
+  var items:[u8;a]
+  items[0] = 1
+  return
+}

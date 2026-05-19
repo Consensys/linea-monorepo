@@ -1,0 +1,6 @@
+//error:2:12-18:unknown symbol
+type ALIAS=[u8;C]
+
+fn f12345(xs:[u8;4]) -> (ys:ALIAS) {
+   ys = xs
+}

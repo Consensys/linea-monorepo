@@ -1,0 +1,4 @@
+//error:3:15-18:unknown symbol
+fn concat(hi:u16,lo:u8) -> (word:u32) {
+   word = hi::low
+}

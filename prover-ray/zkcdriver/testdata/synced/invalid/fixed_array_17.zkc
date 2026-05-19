@@ -1,0 +1,6 @@
+//error:2:14-15:unknown symbol
+const C:u8=1+x
+
+fn f12345(xs:[u8;C]) -> (r:u8) {
+  r = xs[0]
+}

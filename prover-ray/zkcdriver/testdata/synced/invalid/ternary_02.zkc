@@ -1,0 +1,4 @@
+//error:3:22-23:expected type u8
+fn f(x:u8, y:u16) -> (r:u8) {
+    r = x != 0 ? x : y
+}

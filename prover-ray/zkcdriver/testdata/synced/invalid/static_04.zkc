@@ -1,0 +1,9 @@
+//error:3:4-8:expected type u4
+static mask(address:u16) -> (word:u4) {
+   0x10,0xf,0x3
+}
+
+fn main() {
+  var r:u4 = mask[0]
+  return
+}

@@ -1,0 +1,6 @@
+//error:4:3-11:continue outside loop
+fn f(x:u8) -> (r:u8) {
+  r = 0
+  continue
+  return
+}

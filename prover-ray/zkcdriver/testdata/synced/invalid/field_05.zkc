@@ -1,0 +1,10 @@
+//error:3:13-14:expected field
+fn f(x:𝔽, y:u32) -> (r:u32) {
+    if x == y {
+        r = 0
+    } else {
+        r = 1
+    }
+    //
+    return
+}

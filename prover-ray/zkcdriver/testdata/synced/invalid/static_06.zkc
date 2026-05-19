@@ -1,0 +1,10 @@
+//error:4:3-4:expected type u8
+const C:u16 = 256
+static mask(address:u16) -> (word:u8) {
+  C
+}
+
+fn main() {
+  var r:u8 = mask[0]
+  return
+}

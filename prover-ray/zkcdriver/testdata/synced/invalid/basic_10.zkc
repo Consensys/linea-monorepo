@@ -1,0 +1,5 @@
+//error:3:11-12:expected type u16
+fn f(x:u16, y:u8) -> (r:u16) {
+  r = x + y
+  return
+}

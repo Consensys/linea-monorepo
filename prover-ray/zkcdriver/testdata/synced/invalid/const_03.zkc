@@ -1,0 +1,2 @@
+//error:2:20-25:unknown symbol
+const LARGEPO:u8 = LARGE+1

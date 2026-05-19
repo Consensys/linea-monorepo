@@ -1,0 +1,5 @@
+//error:3:12-16:unknown type alias
+ fn main() -> () {
+    var r:[my_t;2]
+    r[0] = 1
+ }

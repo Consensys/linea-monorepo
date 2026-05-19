@@ -1,0 +1,4 @@
+//error:3:21-30:unknown symbol
+fn f(cond:u8) -> (r:u8) {
+    r = cond != 0 ? valueTrue : 0
+}

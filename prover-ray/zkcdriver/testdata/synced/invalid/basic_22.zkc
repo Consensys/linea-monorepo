@@ -1,0 +1,6 @@
+//error:5:11-17:expected type u32
+const LO:u8 = 0xFF
+
+fn concat(hi:u16) -> (word:u32) {
+   word = hi::LO
+}

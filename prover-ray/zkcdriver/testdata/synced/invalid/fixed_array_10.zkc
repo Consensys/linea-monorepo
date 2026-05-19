@@ -1,0 +1,5 @@
+//error:4:3-8:incorrect number of array access arguments
+fn main() {
+  var items:[u8;2]
+  items[0,0] = 8
+}

@@ -1,0 +1,4 @@
+//error:4:1-11:cyclic definition for a
+type outer = a
+type b = a
+type a = b

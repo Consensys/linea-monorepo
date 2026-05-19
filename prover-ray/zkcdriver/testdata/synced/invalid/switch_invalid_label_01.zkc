@@ -1,0 +1,16 @@
+//error:8:10-14:labels in a switch statement must be constants (named or literal)
+
+fn main() {
+  var x :u8 = 13
+  var y :u1 = 0
+
+  switch x {
+    case f(y): { }
+    default: { }
+  }
+}
+
+fn f(y :u1) -> (res :u8) {
+  res = 128
+  return
+}

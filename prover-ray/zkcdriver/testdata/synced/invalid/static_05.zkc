@@ -1,0 +1,9 @@
+//error:3:3-10:unknown symbol
+static mask(address:u16) -> (word:u8) {
+  UNKNOWN
+}
+
+fn main() {
+  var r:u8 = mask[0]
+  return
+}

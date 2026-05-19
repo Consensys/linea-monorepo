@@ -1,0 +1,5 @@
+//error:2:8-11:unknown type alias
+fn f(x:int) -> (r:u8) {
+  r = 0
+  return
+}

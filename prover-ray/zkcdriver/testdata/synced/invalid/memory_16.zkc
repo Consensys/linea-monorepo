@@ -1,0 +1,6 @@
+//error:5:3-12:unknown symbol
+const dummy:u16 = 1234
+
+fn f(addr:u16) {
+  out[addr] = 1
+}

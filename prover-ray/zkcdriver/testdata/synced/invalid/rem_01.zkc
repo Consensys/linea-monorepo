@@ -1,0 +1,5 @@
+//error:3:13-14:braces required
+fn f(x:u8, y:u8, z:u8) -> (r:u8) {
+  r = x % y + z
+  return
+}

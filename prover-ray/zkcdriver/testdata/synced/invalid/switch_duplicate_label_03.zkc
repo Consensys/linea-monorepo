@@ -1,0 +1,18 @@
+//error:16:13-13:duplicate label in switch statement
+
+// ================
+// duplicate label
+// ================
+
+type exmp = u8
+
+const CASE_MATCH :exmp = 13
+
+fn main() {
+
+  var discr :exmp = CASE_MATCH
+
+  switch discr {
+    case 2, 2: { }
+  }
+}

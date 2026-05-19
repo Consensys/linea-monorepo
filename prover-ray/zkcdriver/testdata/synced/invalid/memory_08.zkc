@@ -1,0 +1,8 @@
+//error:5:13-16:invalid read/write memory
+memory buffer(addr:u16) -> (bytes:u8)
+output out(addr:u16) -> (bytes:u8)
+
+fn f<buffer,out>(addr:u16) -> (byte:u8) {
+  byte = buffer[addr]
+  return
+}

@@ -1,0 +1,4 @@
+//error:3:8-19:expected type u32
+fn test(q:u16) -> (r:u32) {
+   r = (q + 1) * 2
+}

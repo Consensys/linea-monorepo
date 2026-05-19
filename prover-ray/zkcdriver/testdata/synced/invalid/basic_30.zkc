@@ -1,0 +1,9 @@
+//error:7:10-14:too many arguments (expected 0)
+//error:9:1-2:return r possibly undefined
+const X:u32 = 123
+
+fn f(y:u16) -> (r:u32) {
+   if y != 0 {
+     r = X(0)
+   }
+}

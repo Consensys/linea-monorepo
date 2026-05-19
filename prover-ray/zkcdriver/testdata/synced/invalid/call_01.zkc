@@ -1,0 +1,5 @@
+//error:3:7-11:unknown symbol
+fn f(x:u8) -> (r:u8) {
+  r = g(x)
+  return
+}

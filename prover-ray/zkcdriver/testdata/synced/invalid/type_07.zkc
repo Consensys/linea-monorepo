@@ -1,0 +1,5 @@
+//error:4:1-11:cyclic definition for Y
+type outer1 = outer2
+type outer2 = Y
+type Y = Z
+type Z = Y

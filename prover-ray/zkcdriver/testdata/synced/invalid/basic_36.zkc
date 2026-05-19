@@ -1,0 +1,11 @@
+//error:5:13-19:expected type (u16,u16)
+output out(addr:u16) -> (lhs:u16, rhs:u16)
+
+fn f(x:u16, y:u8) {
+   out[0] = g(x,y)
+}
+
+fn g(x:u16, y:u8) -> (a:u16,b:u8) {
+   a = x
+   b = y
+}

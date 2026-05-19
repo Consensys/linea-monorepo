@@ -1,0 +1,8 @@
+//error:7:10-24:invalid formatting
+pub input data(address:u1) -> (char:u8)
+
+fn main() {
+  var char:u8 = data[0]
+  // %c does not accept zero-pad, so this must be rejected.
+  printf "char: %02c\n", char
+}

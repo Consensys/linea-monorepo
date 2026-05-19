@@ -1,0 +1,5 @@
+//error:4:9-10:index 3 out of bounds for array of size 3
+fn main() {
+  var items:[u8;3]
+  items[3] = 1
+}

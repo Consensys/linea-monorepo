@@ -1,0 +1,4 @@
+//error:4:1-2:return r possibly undefined
+fn f(x:u32) -> (r:u32) {
+
+}

@@ -1,0 +1,18 @@
+//error:7:12-16:expected type (u8,[u8;4])
+//error:17:6-7:index 3 out of bounds for array of size 3
+fn f12345(xs:[u8;4]) -> (r:u8) {
+    var ys:[u8;4] = xs
+    var x:u8
+    //
+    x,ys = g(1)
+    //
+    r = ys[0]
+}
+
+fn g(a:u8) -> (r:u8,w:[u8;3]) {
+   r = a
+   w[0] = a
+   w[1] = a
+   w[2] = a
+   w[3] = a
+}

@@ -1,0 +1,4 @@
+//error:3:16-20:expected type u40
+fn split(word:u32) -> (high:u16,low:u24) {
+   high::low = word
+}

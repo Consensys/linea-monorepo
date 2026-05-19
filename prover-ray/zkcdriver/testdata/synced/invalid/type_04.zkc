@@ -1,0 +1,2 @@
+//error:2:12-16:unknown type alias
+const TRUE:bool = 1

@@ -1,0 +1,8 @@
+//error:7:19-20:unexpected token
+pub output res(address:u8) -> (byte:u8)
+fn main() {
+  var items:[u8;2]
+  items[0] = 1
+  items[1] = 1
+  res[0] = items[0,0]
+}

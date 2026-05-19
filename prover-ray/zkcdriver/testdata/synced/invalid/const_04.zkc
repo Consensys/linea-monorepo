@@ -1,0 +1,2 @@
+//error:2:1-17:cyclic definition for LARGE
+const LARGE:u8 = 1 * LARGE

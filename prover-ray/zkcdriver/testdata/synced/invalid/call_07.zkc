@@ -1,0 +1,10 @@
+//error:8:7-19:unknown symbol
+fn f(x:u32) -> (r:u32) {
+  r = g(x)
+  return
+}
+
+fn g(x:u32) -> (r:u32) {
+  r = undefined(x)
+  return
+}

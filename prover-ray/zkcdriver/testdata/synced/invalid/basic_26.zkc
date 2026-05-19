@@ -1,0 +1,5 @@
+//error:2:24-27:unknown type alias
+fn f(w: u64) -> (sign: bit) {
+  var suffix:u63
+  sign::suffix = w
+}

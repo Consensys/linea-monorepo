@@ -1,0 +1,9 @@
+//error:6:7-8:unknown symbol
+pub output res(address:u16) -> (word:u16)
+
+fn test() {
+  // write output
+  res[x] = 42
+  // done
+  return
+}

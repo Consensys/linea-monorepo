@@ -1,0 +1,5 @@
+//error:3:9-10:expected type u32
+fn f(x:𝔽) -> (r:u32) {
+    r = x
+    return
+}

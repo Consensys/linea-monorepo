@@ -1,0 +1,9 @@
+//error:7:3-12:expression unused
+pub input data(address:u16) -> (byte:u8)
+pub output result(address:u16) -> (byte:u8)
+
+fn main(x:u8) -> (r:u8) {
+  r = 0
+  main(x)+1
+  return
+}

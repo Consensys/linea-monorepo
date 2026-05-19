@@ -1,0 +1,5 @@
+//error:2:9-15:unknown type alias
+fn f(w: word_t) -> (sign: u1) {
+  var suffix:u63
+  sign::suffix = w
+}

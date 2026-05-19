@@ -1,0 +1,4 @@
+//error:3:11-17:expected type u32
+fn concat(hi:u8,lo:u16) -> (word:u32) {
+   word = hi::lo
+}

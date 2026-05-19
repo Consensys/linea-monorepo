@@ -1,0 +1,7 @@
+//error:2:15-19:unknown type alias
+type broken = uint
+
+fn f(x:u32) -> (y:broken) {
+  y = x
+  return
+}

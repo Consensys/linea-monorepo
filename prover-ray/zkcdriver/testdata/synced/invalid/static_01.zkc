@@ -1,0 +1,9 @@
+//error:7:3-10:invalid memory write
+static mask(address:u16) -> (word:u16) {
+   0x3456,0xf2f2,0x2299
+}
+
+fn main() {
+  mask[0] = 0x1234
+  return
+}

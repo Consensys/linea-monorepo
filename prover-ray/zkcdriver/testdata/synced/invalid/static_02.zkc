@@ -1,0 +1,9 @@
+//error:7:12-13:expected type u16
+static mask(address:u16) -> (word:u16) {
+   0x3456,0xf2f2,0x2299
+}
+
+fn test(i:u32) -> (r:u16) {
+  r = mask[i]
+  return
+}

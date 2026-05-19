@@ -1,0 +1,12 @@
+//error:11:7-11:too many arguments (expected 0)
+//error:7:11-12:expected type u16
+const X:u32 = 123
+
+fn f(y:u16) -> (r:u32) {
+  //
+  if y != X {
+     fail
+  }
+  //
+  r = X(0)
+}

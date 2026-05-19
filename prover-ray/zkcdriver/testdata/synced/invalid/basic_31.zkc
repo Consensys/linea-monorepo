@@ -1,0 +1,9 @@
+//error:7:10-11:expected type u32
+//error:9:1-2:return r possibly undefined
+const X:u16 = 123
+
+fn f(y:u16) -> (r:u32) {
+   if y != 0 {
+     r = X
+   }
+}

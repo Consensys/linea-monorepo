@@ -1,0 +1,4 @@
+//error:3:9-10:invalid condition
+fn f(x:u8, y:u8, z:u8) -> (r:u8) {
+    r = x ? y : z
+}

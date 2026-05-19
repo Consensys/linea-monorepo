@@ -1,0 +1,6 @@
+//error:6:1-2:empty static memory
+
+const TEST:u16 = 0xffff
+
+static reftable(addr:u16) -> (r:u16) {
+}

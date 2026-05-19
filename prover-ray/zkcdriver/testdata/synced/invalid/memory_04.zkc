@@ -1,0 +1,9 @@
+//error:6:7-12:expected type u16
+pub output res(address:u16) -> (word:u16)
+
+fn test(index:u32) {
+  // write output
+  res[index] = 42
+  // done
+  return
+}

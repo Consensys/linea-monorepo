@@ -1,0 +1,4 @@
+//error:3:17-18:expected closing bracket
+fn main() {
+  var items:[u8;2}
+}

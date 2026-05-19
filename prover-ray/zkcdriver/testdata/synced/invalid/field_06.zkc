@@ -1,0 +1,4 @@
+//error:3:12-22:field overflow
+fn g(x:𝔽) -> (r:𝔽) {
+   r = x + 2130706433
+}

@@ -1,0 +1,8 @@
+//error:7:10-23:invalid formatting
+pub input data(address:u1) -> (char:u8)
+
+fn main() {
+  var char:u8 = data[0]
+  // %c does not accept width, so this must be rejected.
+  printf "char: %2c\n", char
+}

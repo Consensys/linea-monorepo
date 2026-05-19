@@ -1,0 +1,26 @@
+//error:22:5-12:multiple default cases in switch statement
+
+// ============================
+// duplicate default
+//    - nontrivial 2nd default
+// ============================
+
+type exmp = u8
+
+const CASE_A     :exmp = 1
+const CASE_B     :exmp = 2
+const CASE_MATCH :exmp = 13
+
+fn main() {
+
+  var discr :exmp = CASE_MATCH
+  var x :u8 = 0
+
+  switch discr {
+    default: {}
+    case CASE_MATCH: { }
+    default: {
+      x = 13
+    }
+  }
+}

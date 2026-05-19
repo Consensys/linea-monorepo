@@ -1,0 +1,10 @@
+//error:9:24-27:%c expects u8
+pub input data(address:u16) -> (byte:u32)
+
+// %c only accepts a concrete u8 — passing a u32 must be rejected.
+fn main() {
+  var lhs:u32 = data[0]
+  var rhs:u32 = data[1]
+  //
+  printf "char: %c\n", lhs
+}

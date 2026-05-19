@@ -1,0 +1,5 @@
+//error:3:8-14:invalid expression
+fn f(x:u8) -> (r:u8) {
+  r = (x == 1)
+  return
+}

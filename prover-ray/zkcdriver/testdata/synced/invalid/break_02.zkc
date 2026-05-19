@@ -1,0 +1,8 @@
+//error:5:5-10:break outside loop
+fn f(x:u8) -> (r:u8) {
+  r = 0
+  if x == 0 {
+    break
+  }
+  return
+}

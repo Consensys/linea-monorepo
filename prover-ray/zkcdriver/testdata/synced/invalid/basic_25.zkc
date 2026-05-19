@@ -1,0 +1,7 @@
+//error:2:13-17:unknown type alias
+type my_t = uint
+type other_t = my_t
+
+fn f(x:other_t, y:u32) -> (r:u32) {
+  r = x + y
+}

@@ -1,0 +1,10 @@
+//error:3:9-10:expected type u16
+fn f(x:u8) -> (r:u8) {
+  r = g(x)
+  return
+}
+
+fn g(x:u16) -> (z:u8) {
+   z = x as u8
+   return
+}

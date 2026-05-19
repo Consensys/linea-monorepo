@@ -1,0 +1,7 @@
+//error:5:8-13:not an expression
+type myint = u32
+
+fn f(x:u32) -> (r:u32) {
+   r = myint
+   return
+}

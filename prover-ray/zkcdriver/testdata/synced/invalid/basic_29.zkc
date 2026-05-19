@@ -1,0 +1,8 @@
+//error:7:7-11:too many arguments (expected 0)
+//error:4:1-21:cyclic definition for cyclic
+const X:u32 = 123
+type cyclic = cyclic
+
+fn f(y:u16) -> (r:u32) {
+  r = X(0)
+}

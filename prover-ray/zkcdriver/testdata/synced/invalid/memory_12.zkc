@@ -1,0 +1,7 @@
+//error:5:10-16:insufficient arguments (expected 1)
+memory buffer(addr:u16) -> (bytes:u8)
+
+fn f<buffer>(addr:u16) -> (byte:u8) {
+  byte = buffer + 1
+  return
+}

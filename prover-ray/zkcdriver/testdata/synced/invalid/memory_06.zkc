@@ -1,0 +1,7 @@
+//error:5:7-8:unknown symbol
+pub output data(address:u16) -> (byte:u8)
+
+fn main() {
+ data[x] = 1
+ return
+}

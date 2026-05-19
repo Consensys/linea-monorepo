@@ -1,0 +1,10 @@
+//error:4:3-8:arithmetic overflow
+const C:u8 = 255
+static mask(address:u16) -> (word:u8) {
+  C + 1
+}
+
+fn main() {
+  var r:u8 = mask[0]
+  return
+}

@@ -1,0 +1,5 @@
+//error:3:12-13:unexpected token
+fn f(x:u8) -> (r:u8) {
+  r = (x + )
+  return
+}

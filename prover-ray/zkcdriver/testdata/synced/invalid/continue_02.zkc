@@ -1,0 +1,8 @@
+//error:5:5-13:continue outside loop
+fn f(x:u8) -> (r:u8) {
+  r = 0
+  if x == 0 {
+    continue
+  }
+  return
+}

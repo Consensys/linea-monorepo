@@ -1,0 +1,10 @@
+//error:6:7-12:break outside loop
+fn f(x:u8, y:u8) -> (r:u8) {
+  r = 0
+  if x == 0 {
+    if y == 1 {
+      break
+    }
+  }
+  return
+}

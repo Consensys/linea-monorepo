@@ -1,0 +1,11 @@
+//error:8:14-21:expected type (u16,u16,u16)
+memory ram(addr:u16) -> (a:u16, b:u16, c:u16)
+pub input data(address:u16) -> (lhs:u16, rhs:u16)
+
+// write data into ram
+fn main<ram>() {
+    //
+    ram[0] = data[0]
+
+    return
+}

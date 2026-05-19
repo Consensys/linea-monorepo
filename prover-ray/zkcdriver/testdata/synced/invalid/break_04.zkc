@@ -1,0 +1,13 @@
+//error:8:7-12:unreachable
+fn f(x:u8) -> (r:u8) {
+  r = 0
+  var i:u8 = 0
+  while i < x {
+    if i == 0 {
+      break
+      r = 1
+    }
+    i = i + 1
+  }
+  return
+}

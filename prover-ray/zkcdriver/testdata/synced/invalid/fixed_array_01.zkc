@@ -1,0 +1,5 @@
+//error:3:17-18:arrays are restricted to non zero constant value
+fn main() {
+  var items:[u8;0]
+  return
+}

@@ -1,0 +1,10 @@
+//error:9:3-9:not permitted on include declaration
+//error:10:9-30:failed to match anything
+//error:5:7-11:unknown symbol
+fn f(x:u32) -> (r:u32) {
+  r = g(x)
+  return
+}
+
+#[inline]
+include "__nonexistent__.zkc"

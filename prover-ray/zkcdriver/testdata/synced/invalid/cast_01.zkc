@@ -1,0 +1,7 @@
+//error:5:7-12:expected type u16
+pub input in(address:u16) -> (flag:u1, data:u8)
+
+fn f(x:u8) -> (r:u16) {
+  r = in(0) as u16
+  return
+}

@@ -1,0 +1,7 @@
+//error:4:13-19:effect already declared
+memory buffer(addr:u16) -> (bytes:u8)
+
+fn f<buffer,buffer>(addr:u16) -> (byte:u8) {
+  byte = buffer[addr]
+  return
+}
