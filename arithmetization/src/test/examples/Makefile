@@ -5,8 +5,8 @@
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-# Name of the test to run (with extension), mandatory unless clean-all is the target
-ifeq ($(filter clean-all,$(MAKECMDGOALS)),)
+# Name of the test to run (with extension), mandatory unless the target does not use a concrete program source
+ifeq ($(filter clean-all test zig-test zig-fixtures,$(MAKECMDGOALS)),)
 ifndef TEST
 $(error TEST is mandatory. Usage: make TEST=your_test(.s|.zig|.rs))
 endif
@@ -26,6 +26,12 @@ STRIP ?= false
 # Set ZIG_STRIP to strip the ELF when compiling Zig (removing debug symbols and reducing size)
 # Ignored for .s and .rs files
 ZIG_STRIP ?= true
+ZIG ?= zig
+
+# Native Zig unit test defaults
+ZIG_TEST_NAME ?= rollup_zevm_guest
+ZIG_TEST_CACHE_DIR ?= $(MAKEFILE_DIR)zig/.zig-cache
+ZIG_TEST_SUMMARY ?= all
 
 # Paths to go main (to turn bin into json) and zkc main (to execute/debug the json)
 GO_MAIN  := $(MAKEFILE_DIR)main.go
@@ -40,7 +46,17 @@ ENTRY_POINT    ?= 0
 # Default target (make)
 exec: compile zkc-exec
 
+.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all test zig-test zig-fixtures
+
 debug: compile zkc-debug
+
+test: zig-test
+
+zig-test:
+	$(ZIG) build --build-file $(MAKEFILE_DIR)zig/build.zig test -Dname=$(ZIG_TEST_NAME) --cache-dir $(ZIG_TEST_CACHE_DIR) --summary $(ZIG_TEST_SUMMARY)
+
+zig-fixtures:
+	$(ZIG) build --build-file $(MAKEFILE_DIR)zig/build.zig write-fixtures -Dname=$(ZIG_TEST_NAME) --cache-dir $(ZIG_TEST_CACHE_DIR) --summary $(ZIG_TEST_SUMMARY)
 
 compile: $(SRC)
 	@if [ "$(EXT)" = ".s" ]; then \
@@ -49,7 +65,7 @@ compile: $(SRC)
 		riscv64-unknown-elf-as -march=rv64im -o $(BIN) $^; \
 	elif [ "$(EXT)" = ".zig" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
-		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME) -Dstrip=$(ZIG_STRIP); \
+		$(ZIG) build --build-file $(MAKEFILE_DIR)zig/build.zig -Dname=$(NAME) -Dstrip=$(ZIG_STRIP); \
 	elif [ "$(EXT)" = ".rs" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
 		cargo +nightly rustc \

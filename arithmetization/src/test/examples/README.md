@@ -39,8 +39,8 @@ Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 ```bash
 zkc-test() {
     case "$1" in
-        clean-all)
-            make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" clean-all
+        clean-all|test|zig-test|zig-fixtures)
+            make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" "$1"
             ;;
         exec|debug|compile|clean)
             local target="$1"; shift
@@ -66,6 +66,10 @@ zkc-test debug <name>.<ext>
 zkc-test debug <name>.<ext> IN_BYTES="0xAABB"
 # Compile only
 zkc-test compile <name>.<ext>
+# Run native Zig unit tests for the selected Zig guest
+zkc-test test
+# Regenerate native Zig unit test fixtures
+zkc-test zig-fixtures
 # Clean build artifacts for a specific test
 zkc-test clean <name>.<ext>
 # Clean all build artifacts
@@ -81,6 +85,9 @@ zkc-test <name>.zig ZIG_STRIP=false
 | `make TEST=foo.<ext>`         | Compile and execute (default)        |
 | `make debug TEST=foo.<ext>`   | Compile and debug                    |
 | `make compile TEST=foo.<ext>` | Compile only                         |
+| `make test`                   | Run native Zig unit tests            |
+| `make zig-test`               | Run native Zig unit tests            |
+| `make zig-fixtures`           | Regenerate native Zig unit test fixtures |
 | `make clean TEST=foo.<ext>`   | Remove binary and JSON for this test |
 | `make clean-all`              | Remove all build artifacts           |
 
@@ -93,6 +100,10 @@ zkc-test <name>.zig ZIG_STRIP=false
 | `JSON`           | same directory as `BIN`, with `.json` extension                                         | Path to the output JSON file, can be overridden                            |
 | `STRIP`          | `false`                                                                                 | Strip debug symbols from the ELF after compilation                         |
 | `ZIG_STRIP`      | `true`                                                                                  | Strip when compiling Zig (reduces binary size), ignored for `.s` and `.rs` |
+| `ZIG`            | `zig`                                                                                   | Zig executable used for Zig builds and native Zig unit tests                |
+| `ZIG_TEST_NAME`  | `rollup_zevm_guest`                                                                     | Zig program name passed to `zig build test -Dname=`                         |
+| `ZIG_TEST_CACHE_DIR` | `zig/.zig-cache`                                                                    | Cache directory passed to `zig build test --cache-dir`                     |
+| `ZIG_TEST_SUMMARY` | `all`                                                                                 | Build/test summary mode passed to `zig build --summary`                    |
 | `IN_BYTES`        | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution         |
 | `PROGRAM_OFFSET` | `0`                                                                                     | Memory offset where the program is loaded (up to 128 MB)                   |
 | `IN_BYTES_OFFSET` | `0x8000000`                                                                             | Memory offset where input bytes are written (up to 1 GB)                   |
