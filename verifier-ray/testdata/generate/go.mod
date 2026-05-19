@@ -2,7 +2,7 @@ module github.com/consensys/linea-monorepo/verifier-ray/testdata/generate
 
 go 1.25.7
 
-require github.com/consensys/linea-monorepo/prover-ray v0.0.0
+require github.com/consensys/linea-monorepo/prover-ray v0.0.0-20260518154448-1f6880839cd2
 
 require (
 	github.com/bits-and-blooms/bitset v1.24.4 // indirect
@@ -21,5 +21,3 @@ require (
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 )
-
-replace github.com/consensys/linea-monorepo/prover-ray => ../../../prover-ray
