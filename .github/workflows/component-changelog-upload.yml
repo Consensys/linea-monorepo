@@ -58,7 +58,7 @@ jobs:
     name: Generate ${{ matrix.component }} [Unreleased] changelog & next version
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           # git-cliff needs full history + tags to compute changelog/version
           ref: ${{ github.head_ref || github.ref_name }}
@@ -82,7 +82,7 @@ jobs:
 
       - name: Upload CHANGELOG.md artifact
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: unreleased-changelog-${{ matrix.artifact-name || matrix.folder-name }}
           path: ${{ matrix.folder-name }}/CHANGELOG.md

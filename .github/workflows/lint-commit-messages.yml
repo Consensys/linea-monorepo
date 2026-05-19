@@ -17,7 +17,7 @@ jobs:
     name: Lint PR commit messages
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           # Need both PR head and base so we can list commits in the PR.
           fetch-depth: 0
