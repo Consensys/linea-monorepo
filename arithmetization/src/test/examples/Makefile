@@ -69,8 +69,8 @@ VERIFY_ELF               ?= false
 # ACT4 testing framework specific variables
 ACT4_CONFIG_DIR := $(MAKEFILE_DIR)act4/config
 ACT4_WORK_DIR   := $(MAKEFILE_DIR)act4/bin/work
-ACT4_RELEASE    ?= 4.0.0
-ACT4_IMAGE      := riscv-act4:$(ACT4_RELEASE)
+ACT4_REF        ?= 9798a554ce4139f472c9ccd3a18c9061d0f7024d
+ACT4_IMAGE      := riscv-act4:$(ACT4_REF)
 ACT4_EXTENSIONS := I,M
 ACT4_JOBS       := 4
 ACT4_ELF_DIR    := $(ACT4_WORK_DIR)/linea-rv64im-zicclsm/elfs
@@ -239,8 +239,8 @@ build-act4:
 			git clone https://github.com/riscv/riscv-arch-test.git "$$act4_repo"; \
 		fi; \
 		git -C "$$act4_repo" fetch --tags origin; \
-		if [ "$$(git -C "$$act4_repo" rev-parse HEAD)" != "$$(git -C "$$act4_repo" rev-parse "$(ACT4_RELEASE)^{commit}")" ]; then \
-			git -C "$$act4_repo" checkout --detach "$(ACT4_RELEASE)"; \
+		if [ "$$(git -C "$$act4_repo" rev-parse HEAD)" != "$$(git -C "$$act4_repo" rev-parse "$(ACT4_REF)^{commit}")" ]; then \
+			git -C "$$act4_repo" checkout --detach "$(ACT4_REF)"; \
 		fi; \
 		echo "building Docker image $(ACT4_IMAGE) from $$act4_repo"; \
 		docker build -t "$(ACT4_IMAGE)" "$$act4_repo"; \
