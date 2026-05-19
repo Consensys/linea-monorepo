@@ -227,7 +227,7 @@ blake-all:
 # Note: build if needed
 # Note: clone https://github.com/riscv/riscv-arch-test.git if needed
 build-act4:
-	@set -u; \
+	@set -eu; \
 	if [ -n "$$(find "$(ACT4_ELF_DIR)" -name '*.elf' -print -quit 2>/dev/null)" ]; then \
 		echo "ACT4 ELFs already built in $(ACT4_ELF_DIR)"; \
 		exit 0; \

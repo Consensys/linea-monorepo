@@ -109,6 +109,7 @@ install-act4-host-deps:
 	brew_prefix=$$("$$brew_cmd" --prefix); \
 	export PATH="$(ACT4_RISCV_DIR)/bin:$$brew_prefix/bin:$$PATH"; \
 	"$$brew_cmd" install mise riscv64-elf-gcc; \
+	if [ "$$(uname -s)" = "Darwin" ]; then "$$brew_cmd" install z3; fi; \
 	mkdir -p "$(ACT4_RISCV_DIR)/bin"; \
 	if ! "$(ACT4_RISCV_DIR)/bin/sail_riscv_sim" --version 2>/dev/null | grep -qx "$(SAIL_RISCV_VERSION)"; then \
 		echo "Installing sail_riscv_sim $(SAIL_RISCV_VERSION)..."; \
@@ -131,5 +132,14 @@ install-act4-host-deps:
 	fi; \
 	cd "$(ACT4_REPO)" && mise trust .mise.toml && mise install && mise exec -- uv sync; \
 	cd "$(ACT4_REPO)/framework/src/act/data" && BUNDLE_JOBS=1 mise exec -- bundle install; \
+	: "UDB 0.1.9 downloads a Linux libz3.so on macOS, so point it at Homebrew's native Z3 library."; \
+	if [ "$$(uname -s)" = "Darwin" ]; then \
+		udb_cpu=$$(uname -m); \
+		case "$$udb_cpu" in arm64|aarch64) udb_cpu=arm64 ;; x86_64|x64) udb_cpu=x64 ;; *) echo "error: unsupported UDB CPU $$udb_cpu"; exit 1 ;; esac; \
+		udb_z3_version=$$(cd "$(ACT4_REPO)/framework/src/act/data" && mise exec -- ruby -e 'require "udb/dep_versions"; print Udb::Z3_VERSION'); \
+		udb_z3_dir="$${XDG_CACHE_HOME:-$$HOME/.cache}/udb/z3/$$udb_z3_version/$$udb_cpu"; \
+		mkdir -p "$$udb_z3_dir"; \
+		ln -sf "$$brew_prefix/opt/z3/lib/libz3.dylib" "$$udb_z3_dir/libz3.so"; \
+	fi; \
 	echo "ACT4 host dependencies are ready"; \
 	echo "ACT4 host builds will use $(ACT4_RISCV_DIR)/bin automatically"

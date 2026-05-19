@@ -26,6 +26,7 @@ For host builds:
 - `mise` — to install the Python, Ruby and Bundler versions used by `riscv-arch-test`
 - `sail_riscv_sim (0.11)` — RISC-V Sail reference model
 - `riscv64-unknown-elf-gcc (>= 15)` and `riscv64-unknown-elf-objdump` — to compile and inspect ACT4 ELFs
+- `z3` on macOS — used by UDB while validating ACT4 configs
 
 To install and prepare these host-build dependencies on Linux or macOS, from `linea-monorepo/`:
 
