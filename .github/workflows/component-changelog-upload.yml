@@ -47,7 +47,7 @@ jobs:
               - 'linea-besu/package/**'
               - 'gradle/libs.versions.toml'
             linea:
-               - 'coordinator/**'
+              - 'coordinator/**'
               - 'postman/**'
               - 'prover/**'
               - 'transaction-exclusion-api/**'
