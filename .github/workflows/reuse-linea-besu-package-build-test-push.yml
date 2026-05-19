@@ -166,7 +166,7 @@ jobs:
           push: true
           tags: |
             consensys/linea-besu-package-with-fleet:${{ steps.build-plugins-and-assemble.outputs.dockertag }}
-            consensys/linea-besu-package-with-fleet:${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}
+            ${{ inputs.image_tag_suffix != '' && format('consensys/linea-besu-package-with-fleet:{0}', steps.build-plugins-and-assemble.outputs.dockertag_with_suffix) || ''}}
             ${{ github.ref == 'refs/heads/main' && 'consensys/linea-besu-package-with-fleet:develop' || '' }}
             ${{ github.event_name == 'workflow_dispatch' && 'consensys/linea-besu-package-with-fleet:latest' || '' }}
 
@@ -199,7 +199,7 @@ jobs:
           push: true
           tags: |
             consensys/linea-besu-package:${{ steps.build-plugins-and-assemble.outputs.dockertag }}
-            consensys/linea-besu-package:${{ steps.build-plugins-and-assemble.outputs.dockertag_with_suffix }}
+            ${{ inputs.image_tag_suffix != '' && format('consensys/linea-besu-package:{0}', steps.build-plugins-and-assemble.outputs.dockertag_with_suffix) || ''}}
             ${{ github.ref == 'refs/heads/main' && 'consensys/linea-besu-package:develop' || '' }}
             ${{ github.event_name == 'workflow_dispatch' && 'consensys/linea-besu-package:latest' || '' }}
 
