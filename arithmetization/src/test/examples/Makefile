@@ -3,10 +3,11 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-all build-act4 run-act4
+.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-all build-act4 run-act4 install-zkc
 
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
 
 # Test to run (with src optional subfolder and extension), mandatory unless clean-all or linker-script are the targets
 # src_optional_subfolder/your_test(.s|.zig|.rs)
@@ -142,6 +143,9 @@ compile: $(SRC) linker-script
 # if these extensions were explicitly exluded from the target.
 #
 # Note: we use opt-level=2 to remove unused code.
+
+install-zkc:
+	$(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc
 
 zkc-exec: install-zkc
 	zkc exec $(JSON) $(ZKC_MAIN)
