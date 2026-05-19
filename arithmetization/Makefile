@@ -139,7 +139,9 @@ install-act4-host-deps:
 		udb_z3_version=$$(cd "$(ACT4_REPO)/framework/src/act/data" && mise exec -- ruby -e 'require "udb/dep_versions"; print Udb::Z3_VERSION'); \
 		udb_z3_dir="$${XDG_CACHE_HOME:-$$HOME/.cache}/udb/z3/$$udb_z3_version/$$udb_cpu"; \
 		mkdir -p "$$udb_z3_dir"; \
-		ln -sf "$$brew_prefix/opt/z3/lib/libz3.dylib" "$$udb_z3_dir/libz3.so"; \
+		for z3_name in libz3.so.4.8 libz3.so libz3 z3; do \
+			ln -sf "$$brew_prefix/opt/z3/lib/libz3.dylib" "$$udb_z3_dir/$$z3_name"; \
+		done; \
 	fi; \
 	echo "ACT4 host dependencies are ready"; \
 	echo "ACT4 host builds will use $(ACT4_RISCV_DIR)/bin automatically"
