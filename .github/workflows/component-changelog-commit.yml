@@ -74,7 +74,7 @@ jobs:
             echo "No CHANGELOG.md changes to commit."
             exit 0
           fi
-          git add '*/CHANGELOG.md' '*/*/CHANGELOG.md'
+          git add 'CHANGELOG.md' '**/CHANGELOG.md'
           git commit -m "chore(misc): update CHANGELOG.md unreleased section of each updated component [skip ci]"
 
           # Rebase on top of any commits that landed on the branch between
