@@ -70,16 +70,16 @@ VERIFY_ELF               ?= false
 ACT4_CONFIG_DIR := $(MAKEFILE_DIR)act4/config
 ACT4_WORK_DIR   := $(MAKEFILE_DIR)act4/bin/work
 ACT4_CONFIG     := $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm/test_config.yaml
+# The 3 parameters below must be consistent with the ones provided to arithmetization/Makefile
+ACT4_REF        ?= 9798a554ce4139f472c9ccd3a18c9061d0f7024d
+ACT4_REPO       ?= $(abspath $(shell git -C $(MAKEFILE_DIR) rev-parse --show-toplevel)/../riscv-arch-test)
+ACT4_RISCV_DIR  ?= $(HOME)/riscv
 ACT4_IMAGE      := riscv-act4:$(ACT4_REF)
 ACT4_EXTENSIONS := I,M
 ACT4_JOBS       := 4
 ACT4_ELF_DIR    := $(ACT4_WORK_DIR)/linea-rv64im-zicclsm/elfs
 ACT4_LOGS       := $(MAKEFILE_DIR)act4/bin/logs
 ACT4_RESULTS    := $(MAKEFILE_DIR)act4/bin/results.txt
-# The 3 parameters below must be consistent with the ones provided to arithmetization/Makefile
-ACT4_REF        ?= 9798a554ce4139f472c9ccd3a18c9061d0f7024d
-ACT4_REPO       ?= $(abspath $(shell git -C $(MAKEFILE_DIR) rev-parse --show-toplevel)/../riscv-arch-test)
-ACT4_RISCV_DIR  ?= $(HOME)/riscv
 # ACT4_BUILD_MODE = (host|docker)
 ACT4_BUILD_MODE ?= host
 # Parameters passed to https://github.com/riscv/riscv-arch-test/blob/act4/Makefile:
