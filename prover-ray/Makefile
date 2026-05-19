@@ -1,5 +1,5 @@
 # The version of go-corset as presented in the go.mod
-GO_CORSET_VERSION := $(shell grep 'go-corset' go.mod | sed 's/.* //')
+GO_CORSET_VERSION := $(shell grep 'go-corset' go.mod | awk '/go-corset/{print $$2}')
 # The go-corset module name
 GO_CORSET_MOD := github.com/consensys/go-corset
 # The go path, usually $HOME/go
@@ -56,5 +56,5 @@ download-zkc-testdata: go-install-zkc-compiler
 	rm -rf $(ZKC_TESTDATA_SYNC_DST_DIR)/unit/fixed_array_11.zkc
 	rm -rf $(ZKC_TESTDATA_SYNC_DST_DIR)/unit/fixed_array_12.zkc
 	find $(ZKC_TESTDATA_SYNC_DST_DIR) -name "*.zkc" | while read f; do \
-		$(ZKC_BIN) compile --wir -o $${f%.zkc}.bin $$f &> /dev/null || echo "error compiling $$f"; \
+		$(ZKC_BIN) compile --wir -o $${f%.zkc}.bin $$f > /dev/null 2>&1 || echo "error compiling $$f"; \
 	done
