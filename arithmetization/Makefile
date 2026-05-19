@@ -48,7 +48,7 @@ checkout-go-corset:
 install-zkc: checkout-go-corset
 	cd "$(GO_CORSET)" && go install ./cmd/zkc
 
-# Install the tools needed to build ACT4 ELFs directly on the host.
+# Install the tools needed to build ACT4 ELFs directly on the host
 install-act4-host-deps:
 	@set -eu; \
 	if ! command -v brew >/dev/null 2>&1; then \
