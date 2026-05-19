@@ -240,8 +240,6 @@ run-act4: build-act4
 	mkdir -p "$(ACT4_LOGS)"; \
 	rm -f "$(ACT4_LOGS)"/*; \
 	> "$(ACT4_RESULTS)"; \
-	command -v go >/dev/null 2>&1 || { echo "error: go not found"; exit 2; }; \
-	command -v zkc >/dev/null 2>&1 || { echo "error: zkc not found"; exit 2; }; \
 	count=0; pass=0; fail=0; \
 	for elf in $$(find "$(ACT4_ELF_DIR)" -name '*.elf' | sort); do \
 		name=$$(basename "$$elf" .elf); \
