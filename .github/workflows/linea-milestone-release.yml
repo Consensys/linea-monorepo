@@ -126,7 +126,7 @@ jobs:
       prover: ${{ steps.changelog-outputs.outputs.prover }}
       postman: ${{ steps.changelog-outputs.outputs.postman }}
       tx-exclusion-api: ${{ steps.changelog-outputs.outputs.tx-exclusion-api }}
-      linea-besu: ${{ steps.changelog-outputs.outputs.linea-besu-package }}
+      linea-besu-package: ${{ steps.changelog-outputs.outputs.linea-besu-package }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6
