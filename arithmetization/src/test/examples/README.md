@@ -35,11 +35,13 @@ For macOS host builds, install these prerequisites with your package manager of 
 - `riscv64-unknown-elf-gcc (>= 15)` and `riscv64-unknown-elf-objdump` — to compile and inspect ACT4 ELFs
 - native `z3`/`libz3` — used by UDB while validating ACT4 configs
 
-To install Sail and checkout the pinned ACT4 framework, from `linea-monorepo/`:
+To checkout the pinned ACT4 framework and install Sail , from `linea-monorepo/`:
 
 ```bash
 make -C arithmetization install-act4-host-deps
 ```
+
+#### Note for MacOS
 
 If your `mise` setup does not auto-trust project configuration, run `mise trust .mise.toml` in the `riscv-arch-test` checkout once.
 
