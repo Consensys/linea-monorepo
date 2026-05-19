@@ -11,7 +11,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  filter-commit-changes:
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    name: Filter commit changes
+    outputs:
+      coordinator: ${{ steps.filter.outputs.coordinator }}
+      postman: ${{ steps.filter.outputs.postman }}
+      prover: ${{ steps.filter.outputs.prover }}
+      tx-exclusion-api: ${{ steps.filter.outputs.tx-exclusion-api }}
+      linea-besu-package: ${{ steps.filter.outputs.linea-besu-package }}
+      linea: ${{ steps.filter.outputs.linea }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Filter commit changes
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 #v3.0.2
+        id: filter
+        with:
+          base: ${{ github.ref }}
+          list-files: "json"
+          filters: |
+            coordinator:
+              - 'coordinator/**'
+            postman:
+              - 'postman/**'
+            prover:
+              - 'prover/**'
+            tx-exclusion-api:
+              - 'transaction-exclusion-api/**'
+            linea-besu-package:
+              - 'tracer/**'
+              - 'tracer-constraints/**'
+              - 'linea-besu/plugins/linea-sequencer/**'
+              - 'linea-besu/besu/**'
+              - 'linea-besu/package/**'
+              - 'gradle/libs.versions.toml'
+            linea:
+               - 'coordinator/**'
+              - 'postman/**'
+              - 'prover/**'
+              - 'transaction-exclusion-api/**'
+              - 'tracer/**'
+              - 'tracer-constraints/**'
+              - 'linea-besu/plugins/linea-sequencer/**'
+              - 'linea-besu/besu/**'
+              - 'linea-besu/package/**'
+              - 'gradle/libs.versions.toml'
+
   upload-component-changelog:
+    needs: [filter-commit-changes]
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     strategy:
       fail-fast: false
@@ -58,6 +106,7 @@ jobs:
     name: Generate ${{ matrix.component }} [Unreleased] changelog & next version
     steps:
       - name: Checkout
+        if: needs.filter-commit-changes.outputs[matrix.component] == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           # git-cliff needs full history + tags to compute changelog/version
@@ -67,11 +116,13 @@ jobs:
           submodules: false
 
       - name: Install git-cliff
+        if: needs.filter-commit-changes.outputs[matrix.component] == 'true'
         uses: taiki-e/install-action@5f57d6cb7cd20b14a8a27f522884c4bc8a187458 #(v2.75.19)
         with:
           tool: git-cliff
 
       - name: Update [Unreleased] section in ${{ matrix.folder-name }}/CHANGELOG.md
+        if: needs.filter-commit-changes.outputs[matrix.component] == 'true'
         id: changelog
         uses: ./.github/actions/run-git-cliff-commands
         with:
@@ -81,14 +132,14 @@ jobs:
           prepend-changelog: 'true'
 
       - name: Upload CHANGELOG.md artifact
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && needs.filter-commit-changes.outputs[matrix.component] == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: unreleased-changelog-${{ matrix.artifact-name || matrix.folder-name }}
           path: ${{ matrix.folder-name }}/CHANGELOG.md
 
       - name: Capitalize component name
-        if: github.ref != 'refs/heads/main' && steps.changelog.outputs.tag_changed == 'true'
+        if: github.ref != 'refs/heads/main' && needs.filter-commit-changes.outputs[matrix.component] == 'true' && steps.changelog.outputs.tag_changed == 'true'
         id: component-cap
         env:
           COMPONENT: ${{ matrix.component }}
@@ -96,7 +147,7 @@ jobs:
         shell: bash
 
       - name: Post/update ${{ matrix.component }} changelog preview comment on PR
-        if: github.ref != 'refs/heads/main' && steps.changelog.outputs.tag_changed == 'true'
+        if: github.ref != 'refs/heads/main' && needs.filter-commit-changes.outputs[matrix.component] == 'true' && steps.changelog.outputs.tag_changed == 'true'
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 #(v3.0.4)
         with:
           header: ${{ matrix.component }}-changelog-preview
