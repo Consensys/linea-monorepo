@@ -103,7 +103,7 @@ jobs:
               linea-besu/package/**
               gradle/libs.versions.toml
 
-    name: Generate ${{ matrix.component }} [Unreleased] changelog & next version
+    name: Generate ${{ matrix.component }} [Unreleased] changelog
     steps:
       - name: Checkout
         if: needs.filter-commit-changes.outputs[matrix.component] == 'true'
