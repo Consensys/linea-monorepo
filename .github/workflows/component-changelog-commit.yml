@@ -94,14 +94,20 @@ jobs:
           done
           echo "Failed to push CHANGELOG.md changes after 3 attempts." >&2
           exit 1
-      
+
+      - name: Set timestamp
+        id: timestamp
+        shell: bash
+        run: |
+          echo "TIMESTAMP=$(date -u +%Y%m%d)" >> $GITHUB_OUTPUT
+
       - name: Create pull request
         if: ${{ inputs.create_pull_request }}
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0
         with:
           token: ${{ steps.app-token.outputs.token }}
           commit-message: "chore(misc): update CHANGELOG.md unreleased section of each updated component [skip ci]"
-          branch: ci/chore-linea-unrelease-changelog-$(date -u +%Y%m%d%H%M%S)
+          branch: ci/chore-linea-unrelease-changelog-${{ steps.timestamp.outputs.TIMESTAMP }}
           base: main
           title: "chore(misc): update CHANGELOG.md unreleased section of each updated component"
           add-paths: |
