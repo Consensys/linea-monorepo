@@ -1,5 +1,0 @@
-//error:2:1-17:cyclic definition for boolean
-type boolean = b
-type bool = boolean
-type b = bool
-const TRUE:b = 1

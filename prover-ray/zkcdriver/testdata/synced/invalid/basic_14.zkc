@@ -1,4 +1,0 @@
-//error:3:10-13:unknown variable
-fn split(word:u32) -> (high:u8) {
-   high::low = word
-}

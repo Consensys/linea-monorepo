@@ -67,8 +67,6 @@ func parseTestCase(scenario zkcTestCase) (
 	err error,
 ) {
 
-	fmt.Printf("%v\n", scenario.InputStr)
-
 	// Create a system
 	sys = wiop.NewSystemf("zkc-test/%s", scenario.BinFilePath)
 	sys.NewRound()

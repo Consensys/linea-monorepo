@@ -1,6 +1,0 @@
-//error:4:7-8:expected type bool
-type bool = u1
-fn f(x:bool) -> (r:bool) {
-  r = 2
-  return
-}

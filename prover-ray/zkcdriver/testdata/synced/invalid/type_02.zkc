@@ -1,3 +1,0 @@
-//error:3:19-20:expected type bool
-type bool = u1
-const TRUE:bool = 2

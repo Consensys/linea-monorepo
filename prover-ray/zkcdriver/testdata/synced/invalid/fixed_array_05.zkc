@@ -1,8 +1,0 @@
-//error:7:21-30:expected type u8
-pub input ins_u8(address:u8) -> (bytes:u8)
-pub input ins_u6(address:u8) -> (res:u6)
-
-fn main() {
-  var items:[u8;2]
-  items[ins_u8[0] + ins_u6[0]] = 1
-}

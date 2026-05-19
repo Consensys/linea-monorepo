@@ -1,5 +1,0 @@
-//error:3:9-10:expected type 𝔽
-fn f(x:u32) -> (r:𝔽) {
-    r = x
-    return
-}

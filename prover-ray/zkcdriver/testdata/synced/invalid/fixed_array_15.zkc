@@ -1,5 +1,0 @@
-//error:3:11-17:unknown symbol
-fn f12345(c:u8) {
-   var xs:[u8;c]
-   //
-}

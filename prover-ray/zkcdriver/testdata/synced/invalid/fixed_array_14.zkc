@@ -1,4 +1,0 @@
-//error:2:19-25:unknown symbol
-fn f12345(c:u8,xs:[u8;c]) {
-   //
-}

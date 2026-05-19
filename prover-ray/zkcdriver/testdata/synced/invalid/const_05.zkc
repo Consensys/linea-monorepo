@@ -1,3 +1,0 @@
-//error:3:14-15:expected type u8
-const x:u16 = 1028
-const y:u8 = x

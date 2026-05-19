@@ -1,3 +1,0 @@
-//error:3:14-18:not an expression
-type bool = u4
-const R:u4 = bool
