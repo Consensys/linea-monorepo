@@ -70,6 +70,9 @@ VERIFY_ELF               ?= false
 ACT4_CONFIG_DIR := $(MAKEFILE_DIR)act4/config
 ACT4_WORK_DIR   := $(MAKEFILE_DIR)act4/bin/work
 ACT4_REF        ?= 9798a554ce4139f472c9ccd3a18c9061d0f7024d
+ACT4_REPO       ?= $(abspath $(shell git -C $(MAKEFILE_DIR) rev-parse --show-toplevel)/../riscv-arch-test)
+ACT4_CONFIG     := $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm/test_config.yaml
+ACT4_BUILD_MODE ?= docker
 ACT4_IMAGE      := riscv-act4:$(ACT4_REF)
 ACT4_EXTENSIONS := I,M
 ACT4_JOBS       := 4
@@ -231,26 +234,43 @@ build-act4:
 	mkdir -p "$(ACT4_WORK_DIR)"; \
 	work_dir=$$(cd "$(ACT4_WORK_DIR)" && pwd); \
 	[ -d "$(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm" ] || { echo "error: missing $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm"; exit 2; }; \
-	config_dir=$$(cd "$(ACT4_CONFIG_DIR)" && pwd); \
-	if ! docker image inspect "$(ACT4_IMAGE)" >/dev/null 2>&1; then \
-		repo_root=$$(git -C "$(MAKEFILE_DIR)" rev-parse --show-toplevel); \
-		act4_repo=$$(dirname "$$repo_root")/riscv-arch-test; \
-		if [ ! -d "$$act4_repo" ]; then \
-			git clone https://github.com/riscv/riscv-arch-test.git "$$act4_repo"; \
+	ensure_act4_repo() { \
+		if [ ! -d "$(ACT4_REPO)" ]; then \
+			git clone https://github.com/riscv/riscv-arch-test.git "$(ACT4_REPO)"; \
 		fi; \
-		git -C "$$act4_repo" fetch --tags origin; \
-		if [ "$$(git -C "$$act4_repo" rev-parse HEAD)" != "$$(git -C "$$act4_repo" rev-parse "$(ACT4_REF)^{commit}")" ]; then \
-			git -C "$$act4_repo" checkout --detach "$(ACT4_REF)"; \
+		if ! git -C "$(ACT4_REPO)" rev-parse "$(ACT4_REF)^{commit}" >/dev/null 2>&1; then \
+			git -C "$(ACT4_REPO)" fetch --tags origin; \
 		fi; \
-		echo "building Docker image $(ACT4_IMAGE) from $$act4_repo"; \
-		docker build -t "$(ACT4_IMAGE)" "$$act4_repo"; \
-	fi; \
-	echo "building ACT4 ELFs in $$work_dir"; \
-	docker run --rm \
-		-v "$$config_dir:/act4/config/cores/linea:ro" \
-		-v "$$work_dir:/act4/work" \
-		"$(ACT4_IMAGE)" \
-		bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) $(if $(filter true,$(ACT4_DEBUG)),DEBUG=true) $(if $(filter true,$(ACT4_FAST)),FAST=true) make --jobs $(ACT4_JOBS) --keep-going"
+		if [ "$$(git -C "$(ACT4_REPO)" rev-parse HEAD)" != "$$(git -C "$(ACT4_REPO)" rev-parse "$(ACT4_REF)^{commit}")" ]; then \
+			git -C "$(ACT4_REPO)" checkout --detach "$(ACT4_REF)"; \
+		fi; \
+	}; \
+	if [ "$(ACT4_BUILD_MODE)" = "docker" ]; then \
+		config_dir=$$(cd "$(ACT4_CONFIG_DIR)" && pwd); \
+		if ! docker image inspect "$(ACT4_IMAGE)" >/dev/null 2>&1; then \
+			ensure_act4_repo; \
+			echo "building Docker image $(ACT4_IMAGE) from $(ACT4_REPO)"; \
+			docker build -t "$(ACT4_IMAGE)" "$(ACT4_REPO)"; \
+		fi; \
+		echo "building ACT4 ELFs in $$work_dir with Docker"; \
+		docker run --rm \
+			-v "$$config_dir:/act4/config/cores/linea:ro" \
+			-v "$$work_dir:/act4/work" \
+			"$(ACT4_IMAGE)" \
+			bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) $(if $(filter true,$(ACT4_DEBUG)),DEBUG=true) $(if $(filter true,$(ACT4_FAST)),FAST=true) make --jobs $(ACT4_JOBS) --keep-going"; \
+	elif [ "$(ACT4_BUILD_MODE)" = "host" ]; then \
+		ensure_act4_repo; \
+		echo "building ACT4 ELFs in $$work_dir on host"; \
+		$(MAKE) --jobs $(ACT4_JOBS) --keep-going -C "$(ACT4_REPO)" \
+			CONFIG_FILES="$(ACT4_CONFIG)" \
+			WORKDIR="$$work_dir" \
+			EXTENSIONS="$(ACT4_EXTENSIONS)" \
+			$(if $(filter true,$(ACT4_DEBUG)),DEBUG=true) \
+			$(if $(filter true,$(ACT4_FAST)),FAST=true); \
+	else \
+		echo "error: ACT4_BUILD_MODE must be docker or host"; \
+		exit 2; \
+	fi
 
 # Build and run the ACT4 self-checking ELFs with the Linea ACT4 config
 run-act4: build-act4
