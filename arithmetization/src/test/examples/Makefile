@@ -79,7 +79,8 @@ ACT4_JOBS       := 4
 ACT4_ELF_DIR    := $(ACT4_WORK_DIR)/linea-rv64im-zicclsm/elfs
 ACT4_LOGS       := $(MAKEFILE_DIR)act4/bin/logs
 ACT4_RESULTS    := $(MAKEFILE_DIR)act4/bin/results.txt
-ACT4_BUILD_MODE ?= docker
+# ACT4_BUILD_MODE = (host|docker)
+ACT4_BUILD_MODE ?= host
 # Parameters passed to https://github.com/riscv/riscv-arch-test/blob/act4/Makefile:
 # If true, disables objdump generation for faster builds
 ACT4_FAST       ?= false

@@ -137,7 +137,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                    |
 | `SP`             | `0x087fffff`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)       |
 | `VERIFY_ELF`     | `false`                                                                                 | Set to `true` to verify offsets, entry point and sp match the ELF ones        |
-| `ACT4_BUILD_MODE`| `docker`                                                                                | Build ACT4 ELFs with `docker` or `host`                                       |
+| `ACT4_BUILD_MODE`| `host`                                                                                  | Build ACT4 ELFs with `host` or `docker`                                       |
 | `ACT4_REF`       | `9798a554ce4139f472c9ccd3a18c9061d0f7024d`                                              | `riscv-arch-test` tag or commit used to build ACT4 ELFs                       |
 | `ACT4_REPO`      | `../riscv-arch-test`                                                                    | Local `riscv-arch-test` checkout used for ACT4 builds                         |
 | `ACT4_DEBUG`     | `true`                                                                                  | Set to `false` to skip ACT4 debug artifacts                                   |
@@ -182,8 +182,8 @@ parent/
 From `linea-monorepo/arithmetization/src/test/examples`:
 
 ```bash
-make run-act4                         # build with Docker and run
-make run-act4 ACT4_BUILD_MODE=host    # build on the host and run
+make run-act4                         # build on the host and run 
+make run-act4 ACT4_BUILD_MODE=docker  # build with Docker and run
 ```
 
 By default, ACT4 is built with debug artifacts enabled and fast mode disabled.

@@ -43,3 +43,7 @@ It runs on **push** and **pull_request** to `main` when relevant paths change, i
 - `.github/workflows/arithmetization-*.yml`
 
 It is also available via **workflow_dispatch** and **workflow_call**.
+
+### Install ACT4 host dependencies
+
+The `install-act4-host-deps` target install dependencies to build tests from the [RISC-V Architectural Certification Tests (ACTs)](https://github.com/riscv/riscv-arch-test) framework (currently ACT4), which is set of assembly language tests designed to certify that a design faithfully implements the RISC-V specification.

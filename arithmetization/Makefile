@@ -88,7 +88,7 @@ install-go-corset:
 		go install github.com/consensys/go-corset/cmd/go-corset@$(GO_CORSET_VERSION); \
 	fi
 
-# Install the tools needed to build ACT4 ELFs directly on the host
+# Install the tools needed to build ACT4 ELFs directly on the host for Linux and macOS
 install-act4-host-deps:
 	@set -eu; \
 	if ! command -v brew >/dev/null 2>&1; then \
