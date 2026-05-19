@@ -21,17 +21,39 @@ For Docker builds:
 
 - `docker` — to build and run the ACT4 container
 
-For host builds:
+For Linux host builds, install these prerequisites with your package manager of choice:
 
-- `mise` — to install the Python, Ruby and Bundler versions used by `riscv-arch-test`
-- `sail_riscv_sim (0.11)` — RISC-V Sail reference model
+- `git`, `curl`, `tar`, `make`
+- `mise` — to provide the Python, Ruby and Bundler versions used by `riscv-arch-test`
 - `riscv64-unknown-elf-gcc (>= 15)` and `riscv64-unknown-elf-objdump` — to compile and inspect ACT4 ELFs
-- `z3` on macOS — used by UDB while validating ACT4 configs
 
-To install and prepare these host-build dependencies on Linux or macOS, from `linea-monorepo/`:
+For macOS host builds, install these prerequisites with your package manager of choice:
+
+- Xcode Command Line Tools or equivalent compiler tools
+- `git`, `curl`, `tar`, `make`
+- `mise` — to provide the Python, Ruby and Bundler versions used by `riscv-arch-test`
+- `riscv64-unknown-elf-gcc (>= 15)` and `riscv64-unknown-elf-objdump` — to compile and inspect ACT4 ELFs
+- native `z3`/`libz3` — used by UDB while validating ACT4 configs
+
+To install Sail and checkout the pinned ACT4 framework, from `linea-monorepo/`:
 
 ```bash
 make -C arithmetization install-act4-host-deps
+```
+
+If your `mise` setup does not auto-trust project configuration, run `mise trust .mise.toml` in the `riscv-arch-test` checkout once.
+
+On macOS, UDB `0.1.9` may cache a Linux `libz3.so`. If ACT4 config validation fails with `slice is not valid mach-o file`, point UDB's cache to your native `libz3.dylib`.
+Set `Z3_LIB` to the library path from your Z3 installation:
+
+```bash
+udb_cpu="$(uname -m)"
+case "$udb_cpu" in arm64|aarch64) udb_cpu=arm64 ;; x86_64|x64) udb_cpu=x64 ;; esac
+udb_z3_dir="${XDG_CACHE_HOME:-$HOME/.cache}/udb/z3/z3-4.16.0/$udb_cpu"
+mkdir -p "$udb_z3_dir"
+for name in libz3.so.4.8 libz3.so libz3 z3; do
+  ln -sf "$Z3_LIB" "$udb_z3_dir/$name"
+done
 ```
 
 ## Usage
@@ -140,7 +162,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `ACT4_BUILD_MODE`| `host`                                                                                  | Build ACT4 ELFs with `host` or `docker`                                       |
 | `ACT4_REF`       | `9798a554ce4139f472c9ccd3a18c9061d0f7024d`                                              | `riscv-arch-test` tag or commit used to build ACT4 ELFs                       |
 | `ACT4_REPO`      | `../riscv-arch-test`                                                                    | Local `riscv-arch-test` checkout used for ACT4 builds                         |
-| `ACT4_RISCV_DIR` | `~/riscv`                                                                               | Host tool directory used for `sail_riscv_sim` and RISC-V tool aliases         |
+| `ACT4_RISCV_DIR` | `~/riscv`                                                                               | Directory where `install-act4-host-deps` installs `sail_riscv_sim`            |
 | `ACT4_DEBUG`     | `true`                                                                                  | Set to `false` to skip ACT4 debug artifacts                                   |
 | `ACT4_FAST`      | `false`                                                                                 | Set to `true` to skip ACT4 objdump generation for faster builds               |
 

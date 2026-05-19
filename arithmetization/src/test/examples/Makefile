@@ -228,23 +228,22 @@ blake-all:
 # Note: build if needed
 # Note: clone https://github.com/riscv/riscv-arch-test.git if needed
 build-act4:
-	@set -eu; \
-	if [ -n "$$(find "$(ACT4_ELF_DIR)" -name '*.elf' -print -quit 2>/dev/null)" ]; then \
+	@if [ -n "$$(find "$(ACT4_ELF_DIR)" -name '*.elf' -print -quit 2>/dev/null)" ]; then \
 		echo "ACT4 ELFs already built in $(ACT4_ELF_DIR)"; \
 		exit 0; \
 	fi; \
-	mkdir -p "$(ACT4_WORK_DIR)"; \
-	work_dir=$$(cd "$(ACT4_WORK_DIR)" && pwd); \
+	mkdir -p "$(ACT4_WORK_DIR)" || exit $$?; \
+	work_dir=$$(cd "$(ACT4_WORK_DIR)" && pwd) || exit $$?; \
 	[ -d "$(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm" ] || { echo "error: missing $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm"; exit 2; }; \
 	ensure_act4_repo() { \
 		if [ ! -d "$(ACT4_REPO)" ]; then \
-			git clone https://github.com/riscv/riscv-arch-test.git "$(ACT4_REPO)"; \
+			git clone https://github.com/riscv/riscv-arch-test.git "$(ACT4_REPO)" || exit $$?; \
 		fi; \
 		if ! git -C "$(ACT4_REPO)" rev-parse "$(ACT4_REF)^{commit}" >/dev/null 2>&1; then \
-			git -C "$(ACT4_REPO)" fetch --tags origin; \
+			git -C "$(ACT4_REPO)" fetch --tags origin || exit $$?; \
 		fi; \
 		if [ "$$(git -C "$(ACT4_REPO)" rev-parse HEAD)" != "$$(git -C "$(ACT4_REPO)" rev-parse "$(ACT4_REF)^{commit}")" ]; then \
-			git -C "$(ACT4_REPO)" checkout --detach "$(ACT4_REF)"; \
+			git -C "$(ACT4_REPO)" checkout --detach "$(ACT4_REF)" || exit $$?; \
 		fi; \
 	}; \
 	if [ "$(ACT4_BUILD_MODE)" = "docker" ]; then \
@@ -252,7 +251,7 @@ build-act4:
 		if ! docker image inspect "$(ACT4_IMAGE)" >/dev/null 2>&1; then \
 			ensure_act4_repo; \
 			echo "building Docker image $(ACT4_IMAGE) from $(ACT4_REPO)"; \
-			docker build -t "$(ACT4_IMAGE)" "$(ACT4_REPO)"; \
+			docker build -t "$(ACT4_IMAGE)" "$(ACT4_REPO)" || exit $$?; \
 		fi; \
 		echo "building ACT4 ELFs in $$work_dir with Docker"; \
 		docker run --rm \
@@ -277,8 +276,7 @@ build-act4:
 
 # Build and run the ACT4 self-checking ELFs with the Linea ACT4 config
 run-act4: build-act4
-	@set -u; \
-	rm -f "$(ACT4_LOGS)"/*; \
+	@rm -f "$(ACT4_LOGS)"/*; \
 	mkdir -p "$(ACT4_LOGS)"; \
 	> "$(ACT4_RESULTS)"; \
 	count=0; pass=0; fail=0; \
