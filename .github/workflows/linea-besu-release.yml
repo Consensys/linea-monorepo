@@ -44,7 +44,7 @@ on:
         value: ${{ jobs.build-linea-besu-docker-image-and-gh-release.outputs.linea_besu_package_tag }}
       release_version:
         description: "Release semver associated with the release tag (e.g. 1.2.3), empty if tag_changed is false"
-        value: ${{ jobs.compute-linea-besu-release-metadata.release_version }}
+        value: ${{ jobs.compute-linea-besu-release-metadata.outputs.release_version }}
       release_tag:
         description: "Release tag (e.g. releases/linea-besu-package/v1.2.3), empty if tag_changed is false"
         value: ${{ jobs.compute-linea-besu-release-metadata.outputs.release_tag }}

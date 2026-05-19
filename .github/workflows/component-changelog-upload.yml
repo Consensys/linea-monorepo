@@ -45,7 +45,7 @@ jobs:
             artifact-name: linea
             include-path: |
               coordinator/**
-              prover/**
+              postman/**
               prover/**
               transaction-exclusion-api/**
               tracer/**
