@@ -245,8 +245,8 @@ build-act4:
 # ACT4 writes messages and exits via ecall, so keep the line after each ecall marker.
 run-act4: build-act4
 	@set -u; \
-	mkdir -p "$(ACT4_LOGS)"; \
 	rm -f "$(ACT4_LOGS)"/*; \
+	mkdir -p "$(ACT4_LOGS)"; \
 	> "$(ACT4_RESULTS)"; \
 	count=0; pass=0; fail=0; \
 	for elf in $$(find "$(ACT4_ELF_DIR)" -name '*.elf' | sort); do \
