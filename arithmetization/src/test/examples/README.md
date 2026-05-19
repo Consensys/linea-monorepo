@@ -94,20 +94,20 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 
 ## Targets
 
-| Target                           | Description                                                                  |
-|----------------------------------|------------------------------------------------------------------------------|
-| `make TEST=foo.<ext>`            | Compile and execute (default)                                                |
-| `make debug TEST=foo.<ext>`      | Compile and debug                                                            |
-| `make compile TEST=foo.<ext>`    | Compile only                                                                 |
-| `make zkc-exec TEST=foo.<ext>`   | Execute without recompiling                                                  |
-| `make zkc-debug TEST=foo.<ext>`  | Debug without recompiling                                                    |
-| `make clean TEST=foo.<ext>`      | Remove binary and JSON for this test                                         |
-| `make clean-all`                 | Remove all build artifacts                                                   |
-| `make linker-script`             | Generate the linker script with the memory layout                            |
-| `make verify-elf TEST=foo.<ext>` | Verify ELF offsets, entry point and sp match the ones in the Makefile        |
-| `make blake-all`                 | Run all blake test vectors in `rust/src/blake/blake.all`                     |
-| `make build-act4`                | Build ACT4 ELFs with the Linea ACT4 config                                   |
-| `make run-act4`                  | Build and run ACT4 ELFs through zkc and write results/logs under `act4/bin/` |
+| Target                           | Description                                                                            |
+|----------------------------------|----------------------------------------------------------------------------------------|
+| `make TEST=foo.<ext>`            | Compile and execute (default)                                                          |
+| `make debug TEST=foo.<ext>`      | Compile and debug                                                                      |
+| `make compile TEST=foo.<ext>`    | Compile only                                                                           |
+| `make zkc-exec TEST=foo.<ext>`   | Execute without recompiling                                                            |
+| `make zkc-debug TEST=foo.<ext>`  | Debug without recompiling                                                              |
+| `make clean TEST=foo.<ext>`      | Remove binary and JSON for this test                                                   |
+| `make clean-all`                 | Remove all build artifacts                                                             |
+| `make linker-script`             | Generate the linker script with the memory layout                                      |
+| `make verify-elf TEST=foo.<ext>` | Verify ELF offsets, entry point and sp match the ones in the Makefile                  |
+| `make blake-all`                 | Run all blake test vectors in `rust/src/blake/blake.all`                               |
+| `make build-act4`                | Build ACT4 ELFs with the Linea ACT4 config                                             |
+| `make run-act4`                  | Build and run ACT4 ELFs through zkc and write results/logs under `act4/bin/`           |
 
 ## Options
 
@@ -160,8 +160,7 @@ parent/
 From `linea-monorepo/arithmetization/src/test/examples`:
 
 ```bash
-make build-act4 # build only
-make run-act4   # build if needed and run
+make run-act4   # build and run
 ```
 
 By default, ACT4 is built with debug artifacts enabled and fast mode disabled.

@@ -218,7 +218,9 @@ blake-all:
 		echo "case $$i: $$result_line"; \
 	done < $(MAKEFILE_DIR)rust/src/blake/blake.all
 
-# Build the ACT4 self-checking ELFs with the Linea ACT4 config
+# Build the ACT4 self-checking ELFs with the Linea ACT4 config 
+# Note: build if needed
+# Note: clone https://github.com/riscv/riscv-arch-test.git if needed
 build-act4:
 	@set -u; \
 	if [ -n "$$(find "$(ACT4_ELF_DIR)" -name '*.elf' -print -quit 2>/dev/null)" ]; then \
@@ -245,8 +247,7 @@ build-act4:
 		"$(ACT4_IMAGE)" \
 		bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) $(if $(filter true,$(ACT4_DEBUG)),DEBUG=true) $(if $(filter true,$(ACT4_FAST)),FAST=true) make --jobs $(ACT4_JOBS) --keep-going"
 
-# Convert each ACT4 ELF to JSON, run it through zkc, and print PASS/FAIL lines.
-# ACT4 writes messages and exits via ecall, so keep the line after each ecall marker.
+# Build and run the ACT4 self-checking ELFs with the Linea ACT4 config
 run-act4: build-act4
 	@set -u; \
 	rm -f "$(ACT4_LOGS)"/*; \
