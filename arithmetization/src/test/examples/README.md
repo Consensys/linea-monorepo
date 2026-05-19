@@ -118,6 +118,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                    |
 | `SP`             | `0x087fffff`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)       |
 | `VERIFY_ELF`     | `false`                                                                                 | Set to `true` to verify offsets, entry point and sp match the ELF ones        |
+| `ACT4_RELEASE`   | `4.0.0`                                                                                 | `riscv-arch-test` release used to build the ACT4 Docker image                 |
 | `ACT4_DEBUG`     | `true`                                                                                  | Set to `false` to skip ACT4 debug artifacts                                   |
 | `ACT4_FAST`      | `false`                                                                                 | Set to `true` to skip ACT4 objdump generation for faster builds               |
 
@@ -139,7 +140,7 @@ https://github.com/riscv/riscv-arch-test/tree/act4/tests/rv64i/M
 ```
 
 ACT4 uses the configuration in `act4/config/linea-rv64im-zicclsm/`.
-If the Docker image is missing, `make build-act4` clones `riscv-arch-test` next to `linea-monorepo` and builds it.
+If the Docker image is missing, `make build-act4` clones `riscv-arch-test` next to `linea-monorepo`, checks out `ACT4_RELEASE`, and builds it.
 The folder structure is the following:
 
 ```text
