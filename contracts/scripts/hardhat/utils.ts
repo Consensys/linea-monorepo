@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/dist/utils";
-import { AbstractSigner, ContractFactory, JsonRpcProvider, Provider } from "ethers";
+import { AbstractSigner, ContractFactory, JsonRpcProvider, Provider, isAddress, getAddress } from "ethers";
 import { ethers, upgrades } from "hardhat";
 import { FactoryOptions, HardhatEthersHelpers } from "hardhat/types";
 
@@ -174,8 +174,9 @@ async function deployFromFactory(
   }
 
   const factory = await ethers.getContractFactory(contractName, runner);
-  pushUiDeployContext(contractName, { constructorArgs: jsonSafeForUi(args) });
-  const contract = await factory.deploy(...args);
+  const normalizedArgs = normalizeAddressArgs(args);
+  pushUiDeployContext(contractName, { constructorArgs: jsonSafeForUi(normalizedArgs) });
+  const contract = await factory.deploy(...normalizedArgs);
   if (!skipLog) {
     logStandardDeploymentTx(contractName, contract.deploymentTransaction());
   }
@@ -202,8 +203,9 @@ async function deployFromFactoryWithOpts(
   }
 
   const factory = await ethers.getContractFactory(contractName, factoryOpts);
-  pushUiDeployContext(contractName, { constructorArgs: jsonSafeForUi(args) });
-  const contract = await factory.connect(runner).deploy(...args);
+  const normalizedArgs = normalizeAddressArgs(args);
+  pushUiDeployContext(contractName, { constructorArgs: jsonSafeForUi(normalizedArgs) });
+  const contract = await factory.connect(runner).deploy(...normalizedArgs);
   if (!skipLog) {
     logStandardDeploymentTx(contractName, contract.deploymentTransaction());
   }
@@ -321,6 +323,24 @@ async function deployUpgradableFromFactoryWithConstructorArgs(
     logUpgradableDeploymentComplete(contractName, startTime, contract);
   }
   return contract;
+}
+
+/**
+ * Recursively checksums any string value that looks like an Ethereum address.
+ * This prevents ethers v6 from attempting ENS resolution via HardhatEthersProvider.resolveName,
+ * which is not implemented and throws NotImplementedError.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeAddressArgs(args: any[]): any[] {
+  return args.map((arg) => {
+    if (typeof arg === "string" && isAddress(arg)) {
+      return getAddress(arg);
+    }
+    if (Array.isArray(arg)) {
+      return normalizeAddressArgs(arg);
+    }
+    return arg;
+  });
 }
 
 function requireEnv(name: string): string {
