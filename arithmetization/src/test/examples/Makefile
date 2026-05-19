@@ -225,7 +225,15 @@ build-act4:
 	work_dir=$$(cd "$(ACT4_WORK_DIR)" && pwd); \
 	[ -d "$(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm" ] || { echo "error: missing $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm"; exit 2; }; \
 	config_dir=$$(cd "$(ACT4_CONFIG_DIR)" && pwd); \
-	docker image inspect "$(ACT4_IMAGE)" >/dev/null 2>&1 || { echo "error: docker image '$(ACT4_IMAGE)' not found"; exit 2; }; \
+	if ! docker image inspect "$(ACT4_IMAGE)" >/dev/null 2>&1; then \
+		repo_root=$$(git -C "$(MAKEFILE_DIR)" rev-parse --show-toplevel); \
+		act4_repo=$$(dirname "$$repo_root")/riscv-arch-test; \
+		if [ ! -d "$$act4_repo" ]; then \
+			git clone -b act4 https://github.com/riscv/riscv-arch-test.git "$$act4_repo"; \
+		fi; \
+		echo "building Docker image $(ACT4_IMAGE) from $$act4_repo"; \
+		docker build -t "$(ACT4_IMAGE)" "$$act4_repo"; \
+	fi; \
 	echo "building ACT4 ELFs in $$work_dir"; \
 	docker run --rm \
 		-v "$$config_dir:/act4/config/cores/linea:ro" \

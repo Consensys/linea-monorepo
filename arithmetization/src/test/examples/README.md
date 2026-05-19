@@ -130,7 +130,8 @@ Moreover, ABI being `LP64` (soft-float) is relevant only for float numbers, whic
 ## ACT4
 
 The `Makefile` in this folder allows running tests from the [ACT4 framework](https://github.com/riscv/riscv-arch-test). It uses the configuration in `act4/config/linea-rv64im-zicclsm/`.
-The `riscv-arch-test` repository should have the same parent directory as `linea-monorepo`. The folder structure is the following:
+If the Docker image is missing, `make build-act4` clones `riscv-arch-test` next to `linea-monorepo` and builds it.
+The folder structure is the following:
 
 ```text
 parent/
@@ -147,19 +148,11 @@ parent/
 └── riscv-arch-test/                            # ACT4 framework checkout
 ```
 
-First of all, Docker container must be built:
-
-```bash
-git clone -b act4 https://github.com/riscv/riscv-arch-test.git
-cd riscv-arch-test
-docker build -t riscv-act4 .
-```
-
-Then, from `linea-monorepo/arithmetization/src/test/examples`:
+From `linea-monorepo/arithmetization/src/test/examples`:
 
 ```bash
 make build-act4 # build only
-make run-act4   # run and build
+make run-act4   # build and run
 ```
 
 By default, ACT4 is built with debug artifacts enabled and fast mode disabled.
