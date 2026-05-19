@@ -52,6 +52,9 @@ download-zkc-testdata: go-install-zkc-compiler
 	cp -rf $(ZKC_TESTDATA_SYNC_SRC_DIR)/* $(ZKC_TESTDATA_SYNC_DST_DIR)
 	chmod -R u+w $(ZKC_TESTDATA_SYNC_DST_DIR)
 	rm -rf $(ZKC_TESTDATA_SYNC_DST_DIR)/invalid
+	rm -rf $(ZKC_TESTDATA_SYNC_DST_DIR)/unit/fixed_array_10.zkc
+	rm -rf $(ZKC_TESTDATA_SYNC_DST_DIR)/unit/fixed_array_11.zkc
+	rm -rf $(ZKC_TESTDATA_SYNC_DST_DIR)/unit/fixed_array_12.zkc
 	find $(ZKC_TESTDATA_SYNC_DST_DIR) -name "*.zkc" | while read f; do \
-		$(ZKC_BIN) compile --wir -o $${f%.zkc}.bin $$f &> /dev/null || true; \
+		$(ZKC_BIN) compile --wir -o $${f%.zkc}.bin $$f &> /dev/null || echo "error compiling $$f"; \
 	done
