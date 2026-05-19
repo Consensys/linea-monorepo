@@ -123,8 +123,6 @@ func checkZKCConstraints(
 		return fmt.Errorf("could not read the binary file: %w", errBin)
 	}
 
-	fmt.Printf("input = %v\n", input)
-
 	// trace program with given input
 	tr, errs := binFile.Trace(input, tracingCfg)
 	if len(errs) > 0 {
