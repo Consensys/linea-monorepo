@@ -113,7 +113,7 @@ jobs:
             include-path: postman/**
           - component-name: tx-exclusion-api
             include-path: transaction-exclusion-api/**
-          - component-name: linea-besu
+          - component-name: linea-besu-package
             include-path: |
               tracer/**
               tracer-constraints/**
@@ -244,7 +244,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu ]
+        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu-package ]
         include:
           - component: coordinator
             image-name: linea-coordinator
@@ -254,7 +254,7 @@ jobs:
             image-name: linea-postman
           - component: tx-exclusion-api
             image-name: linea-transaction-exclusion-api
-          - component: linea-besu
+          - component: linea-besu-package
             image-name: linea-besu-package
     outputs:
       coordinator: ${{ steps.latest-docker-tag.outputs.coordinator-latest-docker-tag }}
@@ -428,7 +428,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu ]
+        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu-package ]
         include:
           - component: coordinator
             image-name: linea-coordinator
@@ -438,7 +438,7 @@ jobs:
             image-name: linea-postman
           - component: tx-exclusion-api
             image-name: linea-transaction-exclusion-api
-          - component: linea-besu
+          - component: linea-besu-package
             image-name: linea-besu-package
     steps:
       - name: Login to Docker Hub

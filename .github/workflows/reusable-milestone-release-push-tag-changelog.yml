@@ -128,7 +128,7 @@ jobs:
             "postman|${POSTMAN_VERSION}|[\"postman/**\"]"
             "prover|${PROVER_VERSION}|[\"prover/**\"]"
             "tx-exclusion-api|${TX_EXCLUSION_API_VERSION}|[\"transaction-exclusion-api/**\"]"
-            "linea-besu|${LINEA_BESU_VERSION}|[\"tracer/**\",\"tracer-constraints/**\",\"linea-besu/plugins/linea-sequencer/**\",\"linea-besu/**\",\"gradle/libs.versions.toml\"]"
+            "linea-besu-package|${LINEA_BESU_VERSION}|[\"tracer/**\",\"tracer-constraints/**\",\"linea-besu/plugins/linea-sequencer/**\",\"linea-besu/**\",\"gradle/libs.versions.toml\"]"
           )
 
           for (( i=${#components[@]}-1; i>=0; i-- )); do
