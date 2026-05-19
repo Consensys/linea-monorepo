@@ -211,7 +211,7 @@ zkc exec act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
 0x00000000  ──  program starts
     ↓  program grows up (up to 128 MiB)
 0x07FFFFFF  ──  program ends at most
-0x08000000  --  stack region starts here
+0x08000000  --  sp ends here
     ↑  stack grows downward
 0x08800000  ──  sp starts here (up to 8 MiB)
 0x08800000  ──  input starts
