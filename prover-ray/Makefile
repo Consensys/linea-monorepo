@@ -40,7 +40,7 @@ go-install-zkc-compiler:
 ## Check that the committed zkc testdata is up to date (for CI)
 ##
 check-zkc-testdata: download-zkc-testdata
-	git diff --exit-code zkcdriver/testdata/synced/
+	git diff --exit-code $(ZKC_TESTDATA_SYNC_DST_DIR)/
 
 ##
 ## Download the zkc testdata
@@ -48,13 +48,10 @@ check-zkc-testdata: download-zkc-testdata
 download-zkc-testdata: go-install-zkc-compiler
 	rm -rf $(ZKC_TESTDATA_SYNC_DST_DIR)/*
 	mkdir -p $(ZKC_TESTDATA_SYNC_DST_DIR)
-	go get github.com/consensys/go-corset@$(GO_CORSET_VERSION)
+	go get $(GO_CORSET_MOD)@$(GO_CORSET_VERSION)
 	cp -rf $(ZKC_TESTDATA_SYNC_SRC_DIR)/* $(ZKC_TESTDATA_SYNC_DST_DIR)
 	chmod -R u+w $(ZKC_TESTDATA_SYNC_DST_DIR)
 	rm -rf $(ZKC_TESTDATA_SYNC_DST_DIR)/invalid
 	find $(ZKC_TESTDATA_SYNC_DST_DIR) -name "*.zkc" | while read f; do \
 		$(ZKC_BIN) compile --wir -o $${f%.zkc}.bin $$f &> /dev/null || true; \
 	done
-
-
-
