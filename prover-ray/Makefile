@@ -14,7 +14,9 @@ ZKC_BIN := $(GOPATH)/bin/zkc
 .PHONY: \
 	test \
 	ci-lint \
-	download-zkc-testdata
+	download-zkc-testdata \
+	go-install-zkc-compiler \
+	check-zkc-testdata
 
 ##
 ## Run all the unit-tests
@@ -33,6 +35,12 @@ ci-lint:
 ##
 go-install-zkc-compiler:
 	go install $(GO_CORSET_MOD)/cmd/zkc@$(GO_CORSET_VERSION)
+
+##
+## Check that the committed zkc testdata is up to date (for CI)
+##
+check-zkc-testdata: download-zkc-testdata
+	git diff --exit-code zkcdriver/testdata/synced/
 
 ##
 ## Download the zkc testdata
