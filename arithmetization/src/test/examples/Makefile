@@ -235,9 +235,8 @@ build-act4:
 
 # Convert each ACT4 ELF to JSON, run it through zkc, and print PASS/FAIL lines.
 # ACT4 writes messages and exits via ecall, so keep the line after each ecall marker.
-run-act4:
+run-act4: build-act4
 	@set -u; \
-	[ -d "$(ACT4_ELF_DIR)" ] || { echo "error: missing ELF dir '$(ACT4_ELF_DIR)'; run make build-act4 first"; exit 2; }; \
 	mkdir -p "$(ACT4_LOGS)"; \
 	rm -f "$(ACT4_LOGS)"/*; \
 	> "$(ACT4_RESULTS)"; \
