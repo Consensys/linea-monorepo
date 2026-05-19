@@ -40,137 +40,17 @@ concurrency:
 
 jobs:
   check-branch-and-compute-tag:
-    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
-    outputs:
-      release_version: ${{ steps.compute-release-tag.outputs.next_version }}
-      release_tag: ${{ steps.compute-release-tag.outputs.next_tag }}
-      tag_changed: ${{ steps.compute-release-tag.outputs.tag_changed }}
-    steps: #TODO: set exit back to 1
-      - name: Enforce main branch
-        if: github.ref_name != 'main'
-        run: |
-          echo "❌ This workflow can only be run on main (current: ${{ github.ref_name }})"
-          exit 0
-
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
-          fetch-depth: 0
-          fetch-tags: true
-          submodules: false
-
-      - name: Install git-cliff
-        uses: taiki-e/install-action@5f57d6cb7cd20b14a8a27f522884c4bc8a187458 #(v2.75.19)
-        with:
-          tool: git-cliff
-
-      - name: Compute Linea milestone next release tag
-        id: compute-release-tag
-        uses: ./.github/actions/run-git-cliff-commands
-        with:
-          component-name: linea
-          include-path: |
-            coordinator/**
-            postman/**
-            prover/**
-            transaction-exclusion-api/**
-            tracer/**
-            tracer-constraints/**
-            linea-besu/plugins/linea-sequencer/**
-            linea-besu/besu/**
-            linea-besu/package/**
-            gradle/libs.versions.toml
-          release_tag_suffix: ${{ inputs.release_tag_suffix }}
-
-      - name: Check if the next release tag already existed
-        env:
-          TAG: ${{ steps.compute-release-tag.outputs.next_tag }}
-        run: |
-          set -euo pipefail
-          if [ -z "${TAG}" ]; then
-            echo "No next tag computed; aborting."
-            exit 1
-          fi
-          if git rev-parse -q --verify "refs/tags/${TAG}" > /dev/null; then
-            echo "Tag ${TAG} already exists; exit now."
-            exit 1
-          fi
+    uses: ./.github/workflows/reusable-milestone-check-branch-and-compute-tag.yml
+    with:
+      release_tag_suffix: ${{ inputs.release_tag_suffix }}
+    secrets: inherit
 
   component-release-metadata:
     needs: [check-branch-and-compute-tag]
-    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
-    strategy:
-      fail-fast: false
-      matrix:
-        component-name: [ coordinator, prover, postman, tx-exclusion-api, linea-besu-package ]
-        include:
-          - component-name: coordinator
-            include-path: coordinator/**
-          - component-name: prover
-            include-path: prover/**
-          - component-name: postman
-            include-path: postman/**
-          - component-name: tx-exclusion-api
-            include-path: transaction-exclusion-api/**
-          - component-name: linea-besu-package
-            include-path: |
-              tracer/**
-              tracer-constraints/**
-              linea-besu/plugins/linea-sequencer/**
-              linea-besu/besu/**
-              linea-besu/package/**
-              gradle/libs.versions.toml
-    outputs:
-      coordinator: ${{ steps.changelog-outputs.outputs.coordinator }}
-      prover: ${{ steps.changelog-outputs.outputs.prover }}
-      postman: ${{ steps.changelog-outputs.outputs.postman }}
-      tx-exclusion-api: ${{ steps.changelog-outputs.outputs.tx-exclusion-api }}
-      linea-besu-package: ${{ steps.changelog-outputs.outputs.linea-besu-package }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
-          fetch-depth: 0
-          fetch-tags: true
-          submodules: false
-
-      - name: Install git-cliff
-        uses: taiki-e/install-action@5f57d6cb7cd20b14a8a27f522884c4bc8a187458 #(v2.75.19)
-        with:
-          tool: git-cliff
-
-      - name: Generate ${{ matrix.component-name }} latest changelog
-        id: changelog
-        uses: ./.github/actions/run-git-cliff-commands
-        with:
-          component-name: ${{ matrix.component-name }}
-          include-path: ${{ matrix.include-path }}
-          release_tag_suffix: ${{ inputs.release_tag_suffix }}
-          generate-changelog-with-next-tag-version: 'true'
-      
-      - name: Changelog outputs
-        id: changelog-outputs
-        env:
-          COMPONENT_NAME: ${{ matrix.component-name }}
-          CHANGELOG_CONTENT: ${{ steps.changelog.outputs.changelog_content }}
-          NEXT_VERSION: ${{ steps.changelog.outputs.next_version }}
-          NEXT_TAG: ${{ steps.changelog.outputs.next_tag }}
-          TAG_CHANGED: ${{ steps.changelog.outputs.tag_changed }}
-        run: |
-          set -euo pipefail
-          JSON_OUTPUTS=$(jq -c -n \
-            --arg changelog_content "$CHANGELOG_CONTENT" \
-            --arg next_version      "$NEXT_VERSION" \
-            --arg next_tag          "$NEXT_TAG" \
-            --arg tag_changed       "$TAG_CHANGED" \
-            '{changelog: $changelog_content, release_version: $next_version, release_tag: $next_tag, tag_changed: $tag_changed}')
-          {
-            echo "${COMPONENT_NAME}<<__JSON_EOF__"
-            printf '%s\n' "$JSON_OUTPUTS"
-            echo "__JSON_EOF__"
-          } >> "$GITHUB_OUTPUT"
+    uses: ./.github/workflows/reusable-milestone-component-release-metadata.yml
+    with:
+      release_tag_suffix: ${{ inputs.release_tag_suffix }}
+    secrets: inherit
 
   build-local-coordinator:
     needs: [component-release-metadata]
@@ -216,7 +96,7 @@ jobs:
       push_image: false
     secrets: inherit
 
-  build-local-linea-besu:
+  build-local-linea-besu-package:
     needs: [component-release-metadata]
     if: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed == 'true' }}
     uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
@@ -232,74 +112,28 @@ jobs:
       - build-local-postman
       - build-local-prover
       - build-local-tx-exclusion-api
-      - build-local-linea-besu
+      - build-local-linea-besu-package
     if: >
       always() && !cancelled() &&
       ((fromJson(needs.component-release-metadata.outputs.coordinator).tag_changed != 'true' || needs.build-local-coordinator.result == 'success') &&
       (fromJson(needs.component-release-metadata.outputs.postman).tag_changed != 'true' || needs.build-local-postman.result == 'success') &&
       (fromJson(needs.component-release-metadata.outputs.prover).tag_changed != 'true' || needs.build-local-prover.result == 'success') &&
       (fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed != 'true' || needs.build-local-tx-exclusion-api.result == 'success') &&
-      (fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed != 'true' || needs.build-local-linea-besu.result == 'success'))
-    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
-    strategy:
-      fail-fast: true
-      matrix:
-        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu-package ]
-        include:
-          - component: coordinator
-            image-name: linea-coordinator
-          - component: prover
-            image-name: linea-prover
-          - component: postman
-            image-name: linea-postman
-          - component: tx-exclusion-api
-            image-name: linea-transaction-exclusion-api
-          - component: linea-besu-package
-            image-name: linea-besu-package
-    outputs:
-      coordinator: ${{ steps.latest-docker-tag.outputs.coordinator-latest-docker-tag }}
-      prover: ${{ steps.latest-docker-tag.outputs.prover-latest-docker-tag }}
-      postman: ${{ steps.latest-docker-tag.outputs.postman-latest-docker-tag }}
-      tx-exclusion-api: ${{ steps.latest-docker-tag.outputs.tx-exclusion-api-latest-docker-tag }}
-      linea-besu: ${{ steps.latest-docker-tag.outputs.linea-besu-package-latest-docker-tag }}
-      coordinator-release-version: ${{ steps.latest-release-version.outputs.coordinator-latest-release-version }}
-      prover-release-version: ${{ steps.latest-release-version.outputs.prover-latest-release-version }}
-      postman-release-version: ${{ steps.latest-release-version.outputs.postman-latest-release-version }}
-      tx-exclusion-api-release-version: ${{ steps.latest-release-version.outputs.tx-exclusion-api-latest-release-version }}
-      linea-besu-release-version: ${{ steps.latest-release-version.outputs.linea-besu-package-latest-release-version }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6
-        if: fromJson(needs.component-release-metadata.outputs[matrix.component]).tag_changed != 'true'
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
-          fetch-depth: 0
-
-      - name: Component latest docker tag
-        id: get-latest-docker-tag
-        uses: ./.github/actions/get-latest-release-image-tag
-        if: fromJson(needs.component-release-metadata.outputs[matrix.component]).tag_changed != 'true'
-        with:
-          component-name: ${{ matrix.component }}
-          image-name: ${{ matrix.image-name }}
-      
-      - name: Output latest docker tags
-        id: latest-docker-tag
-        if: fromJson(needs.component-release-metadata.outputs[matrix.component]).tag_changed != 'true'
-        run: |
-          echo "${{ matrix.component }}-latest-docker-tag=${{ steps.get-latest-docker-tag.outputs.image_tag }}" >> $GITHUB_OUTPUT
-
-      - name: Output latest release version
-        id: latest-release-version
-        if: fromJson(needs.component-release-metadata.outputs[matrix.component]).tag_changed != 'true'
-        run: |
-          echo "${{ matrix.component }}-latest-release-version=${{ steps.get-latest-docker-tag.outputs.release_version }}" >> $GITHUB_OUTPUT
+      (fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed != 'true' || needs.build-local-linea-besu-package.result == 'success'))
+    uses: ./.github/workflows/reusable-milestone-component-latest-docker-tags.yml
+    with:
+      coordinator_metadata: ${{ needs.component-release-metadata.outputs.coordinator }}
+      prover_metadata: ${{ needs.component-release-metadata.outputs.prover }}
+      postman_metadata: ${{ needs.component-release-metadata.outputs.postman }}
+      tx_exclusion_api_metadata: ${{ needs.component-release-metadata.outputs.tx-exclusion-api }}
+      linea_besu_package_metadata: ${{ needs.component-release-metadata.outputs.linea-besu-package }}
+    secrets: inherit
 
   run-e2e-tests:
     needs: 
       - component-release-metadata
       - component-latest-docker-tags
-      - build-local-linea-besu
+      - build-local-linea-besu-package
     if: always() && !cancelled() && needs.component-latest-docker-tags.result == 'success'
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
@@ -308,7 +142,7 @@ jobs:
       postman_tag: ${{ fromJson(needs.component-release-metadata.outputs.postman).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.postman || '' }}
       prover_tag: ${{ fromJson(needs.component-release-metadata.outputs.prover).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.prover || '' }}
       tx_exclusion_api_tag: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.tx-exclusion-api || '' }}
-      linea_besu_package_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.linea-besu || needs.build-local-linea-besu.outputs.linea_besu_package_tag }}
+      linea_besu_package_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.linea-besu-package || needs.build-local-linea-besu-package.outputs.linea_besu_package_tag }}
       e2e-tests-logs-dump: true
       has-changes-requiring-e2e-testing: 'true'
     secrets: inherit
@@ -424,49 +258,20 @@ jobs:
       inputs.image_tag_suffix != '' &&
       needs.run-e2e-tests.result == 'success' &&
       needs.component-latest-docker-tags.result == 'success'
-    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
-    strategy:
-      fail-fast: true
-      matrix:
-        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu-package ]
-        include:
-          - component: coordinator
-            image-name: linea-coordinator
-          - component: prover
-            image-name: linea-prover
-          - component: postman
-            image-name: linea-postman
-          - component: tx-exclusion-api
-            image-name: linea-transaction-exclusion-api
-          - component: linea-besu-package
-            image-name: linea-besu-package
-    steps:
-      - name: Login to Docker Hub
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
-      
-      - name: Retag latest docker tag
-        id: retag-latest-docker-tag
-        if: fromJson(needs.component-release-metadata.outputs[matrix.component]).tag_changed != 'true'
-        shell: bash
-        env:
-          IMAGE_NAME: ${{ matrix.image-name }}
-          IMAGE_TAG: ${{ needs.component-latest-docker-tags.outputs[matrix.component] }}
-          IMAGE_TAG_SUFFIX: ${{ inputs.image_tag_suffix }}
-        run: |
-          SOURCE_IMAGE="consensys/${IMAGE_NAME}:${IMAGE_TAG}"
-          TARGET_IMAGE="consensys/${IMAGE_NAME}:${IMAGE_TAG}-${IMAGE_TAG_SUFFIX}"
-
-          docker buildx imagetools create --tag "${TARGET_IMAGE}" "${SOURCE_IMAGE}"
-
-          # docker pull "${SOURCE_IMAGE}"
-          # docker tag "${SOURCE_IMAGE}" "${TARGET_IMAGE}"
-          # docker push "${TARGET_IMAGE}"
+    uses: ./.github/workflows/reusable-milestone-retag-latest-docker-tags.yml
+    with:
+      image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      coordinator_metadata: ${{ needs.component-release-metadata.outputs.coordinator }}
+      prover_metadata: ${{ needs.component-release-metadata.outputs.prover }}
+      postman_metadata: ${{ needs.component-release-metadata.outputs.postman }}
+      tx_exclusion_api_metadata: ${{ needs.component-release-metadata.outputs.tx-exclusion-api }}
+      linea_besu_package_metadata: ${{ needs.component-release-metadata.outputs.linea-besu-package }}
+      coordinator_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.coordinator }}
+      prover_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.prover }}
+      postman_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.postman }}
+      tx_exclusion_api_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.tx-exclusion-api }}
+      linea_besu_package_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.linea-besu-package }}
+    secrets: inherit
 
   # prepend CHANGELOG for each component for linea release (and then create PR)
   linea-milestone-changelog-update:
@@ -496,12 +301,12 @@ jobs:
       postman_release_version: ${{ fromJson(needs.component-release-metadata.outputs.postman).release_version || needs.component-latest-docker-tags.outputs.postman-release-version }}
       prover_release_version: ${{ fromJson(needs.component-release-metadata.outputs.prover).release_version || needs.component-latest-docker-tags.outputs.prover-release-version }}
       tx_exclusion_api_release_version: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).release_version || needs.component-latest-docker-tags.outputs.tx-exclusion-api-release-version }}
-      linea_besu_release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_version || needs.component-latest-docker-tags.outputs.linea-besu-release-version }}
+      linea_besu_release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_version || needs.component-latest-docker-tags.outputs.linea-besu-package-release-version }}
       create_pull_request: true # TODO: remove this later
     secrets: inherit
 
   linea-milestone-gh-release:
-    needs: 
+    needs:
       - check-branch-and-compute-tag
       - component-release-metadata
       - component-latest-docker-tags
@@ -514,63 +319,27 @@ jobs:
     if: >
       always() && !cancelled() &&
       needs.linea-milestone-changelog-update.result == 'success'
-    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Append Changelog Action to release note
-        id: append_change_log
-        shell: bash
-        env:
-          # Pass via env to avoid shell injection: changelog content is derived
-          # from commit messages (via git-cliff) and may contain backticks, $(...), etc.
-          CHANGELOG: ${{ needs.linea-milestone-changelog-update.outputs.changelog }}
-          IMAGE_TAG_SUFFIX: ${{ inputs.image_tag_suffix }}
-          # One row per component: name|image|tag_changed|released_tag|latest_tag
-          # released_tag : docker tag produced by this run's component gh-release
-          #                (with suffix already baked in, when applicable)
-          # latest_tag   : most recent docker tag previously published for the
-          #                component, used as a fallback when nothing changed
-          COMPONENT_ROWS: |
-            coordinator|linea-coordinator|${{ fromJson(needs.component-release-metadata.outputs.coordinator).tag_changed }}|${{ needs.coordinator-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.coordinator }}
-            postman|linea-postman|${{ fromJson(needs.component-release-metadata.outputs.postman).tag_changed }}|${{ needs.postman-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.postman }}
-            prover|linea-prover|${{ fromJson(needs.component-release-metadata.outputs.prover).tag_changed }}|${{ needs.prover-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.prover }}
-            tx-exclusion-api|linea-transaction-exclusion-api|${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).tag_changed }}|${{ needs.tx-exclusion-api-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.tx-exclusion-api }}
-            linea-besu|linea-besu-package|${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed }}|${{ needs.linea-besu-gh-release.outputs.docker_tag_with_suffix }}|${{ needs.component-latest-docker-tags.outputs.linea-besu }}
-        run: |
-          set -euo pipefail
-          mkdir release && cd release
-          printf '%s\n' "$CHANGELOG" >> output.md
-          echo "### Docker Image Details" >> output.md
-          echo "" >> output.md
-
-          while IFS='|' read -r name image tag_changed released_tag latest_tag; do
-            # Skip blank/whitespace-only rows (e.g. trailing newline of the literal).
-            trimmed="$(echo "$name" | tr -d '[:space:]')"
-            [ -z "$trimmed" ] && continue
-
-            echo "To pull the **${name}** image:" >> output.md
-            echo "\`\`\`" >> output.md
-            if [ "$tag_changed" = "true" ]; then
-              printf 'docker pull consensys/%s:%s\n' "$image" "$released_tag" >> output.md
-            elif [ -n "$IMAGE_TAG_SUFFIX" ]; then
-              printf 'docker pull consensys/%s:%s-%s\n' "$image" "$latest_tag" "$IMAGE_TAG_SUFFIX" >> output.md
-            else
-              printf 'docker pull consensys/%s:%s\n' "$image" "$latest_tag" >> output.md
-            fi
-            echo "\`\`\`" >> output.md
-            echo "" >> output.md
-          done <<< "$COMPONENT_ROWS"
-
-      - name: gh-release
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
-        with:
-          name: Linea Milestone v${{ needs.check-branch-and-compute-tag.outputs.release_version }}
-          tag_name: ${{ needs.check-branch-and-compute-tag.outputs.release_tag }}
-          body_path: release/output.md
-          draft: ${{ inputs.draft_release }}
-          prerelease: ${{ inputs.pre_release }}
-          generate_release_notes: false
-          target_commitish: ${{ github.sha }}
-          fail_on_unmatched_files: true
+    uses: ./.github/workflows/reusable-milestone-gh-release.yml
+    with:
+      release_version: ${{ needs.check-branch-and-compute-tag.outputs.release_version }}
+      release_tag: ${{ needs.check-branch-and-compute-tag.outputs.release_tag }}
+      changelog: ${{ needs.linea-milestone-changelog-update.outputs.changelog }}
+      image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      draft_release: ${{ inputs.draft_release }}
+      pre_release: ${{ inputs.pre_release }}
+      coordinator_metadata: ${{ needs.component-release-metadata.outputs.coordinator }}
+      prover_metadata: ${{ needs.component-release-metadata.outputs.prover }}
+      postman_metadata: ${{ needs.component-release-metadata.outputs.postman }}
+      tx_exclusion_api_metadata: ${{ needs.component-release-metadata.outputs.tx-exclusion-api }}
+      linea_besu_package_metadata: ${{ needs.component-release-metadata.outputs.linea-besu-package }}
+      coordinator_docker_tag_with_suffix: ${{ needs.coordinator-gh-release.outputs.docker_tag_with_suffix }}
+      prover_docker_tag_with_suffix: ${{ needs.prover-gh-release.outputs.docker_tag_with_suffix }}
+      postman_docker_tag_with_suffix: ${{ needs.postman-gh-release.outputs.docker_tag_with_suffix }}
+      tx_exclusion_api_docker_tag_with_suffix: ${{ needs.tx-exclusion-api-gh-release.outputs.docker_tag_with_suffix }}
+      linea_besu_package_docker_tag_with_suffix: ${{ needs.linea-besu-gh-release.outputs.docker_tag_with_suffix }}
+      coordinator_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.coordinator }}
+      prover_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.prover }}
+      postman_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.postman }}
+      tx_exclusion_api_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.tx-exclusion-api }}
+      linea_besu_package_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.linea-besu-package }}
+    secrets: inherit
