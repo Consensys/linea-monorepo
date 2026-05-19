@@ -106,7 +106,9 @@ install-act4-host-deps:
 	mkdir -p "$(ACT4_RISCV_DIR)/bin"; \
 	if ! "$(ACT4_RISCV_DIR)/bin/sail_riscv_sim" --version 2>/dev/null | grep -qx "$(SAIL_RISCV_VERSION)"; then \
 		echo "Installing sail_riscv_sim $(SAIL_RISCV_VERSION)..."; \
-		curl --location "https://github.com/riscv/sail-riscv/releases/download/$(SAIL_RISCV_VERSION)/sail-riscv-$$(uname -s)-$$(uname -m).tar.gz" \
+		sail_os=$$(uname -s); \
+		if [ "$$sail_os" = "Darwin" ]; then sail_os=Mac; fi; \
+		curl --fail --location "https://github.com/riscv/sail-riscv/releases/download/$(SAIL_RISCV_VERSION)/sail-riscv-$$sail_os-$$(uname -m).tar.gz" \
 			| tar xz --directory="$(ACT4_RISCV_DIR)" --strip-components=1; \
 	fi; \
 	ln -sf "$$brew_prefix/bin/riscv64-elf-gcc" "$(ACT4_RISCV_DIR)/bin/riscv64-unknown-elf-gcc"; \
@@ -125,4 +127,3 @@ install-act4-host-deps:
 	cd "$(ACT4_REPO)/framework/src/act/data" && mise exec -- bundle install; \
 	echo "ACT4 host dependencies are ready"; \
 	echo 'Restart your shell or run: export PATH="$(ACT4_RISCV_DIR)/bin:$$PATH"'
-
