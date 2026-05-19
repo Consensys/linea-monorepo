@@ -129,7 +129,16 @@ Moreover, ABI being `LP64` (soft-float) is relevant only for float numbers, whic
 
 ## ACT4
 
-The `Makefile` in this folder allows running tests from the [ACT4 framework](https://github.com/riscv/riscv-arch-test). It uses the configuration in `act4/config/linea-rv64im-zicclsm/`.
+The `Makefile` in this folder allows running tests from the [RISC-V Architectural Certification Tests (ACTs)](https://github.com/riscv/riscv-arch-test) framework (currently ACT4), which is set of assembly language tests designed to certify that a design faithfully implements the RISC-V specification.
+
+Tests can be inspected by looking at:
+
+```
+https://github.com/riscv/riscv-arch-test/tree/act4/tests/rv64i/I
+https://github.com/riscv/riscv-arch-test/tree/act4/tests/rv64i/M
+```
+
+ACT4 uses the configuration in `act4/config/linea-rv64im-zicclsm/`.
 If the Docker image is missing, `make build-act4` clones `riscv-arch-test` next to `linea-monorepo` and builds it.
 The folder structure is the following:
 
