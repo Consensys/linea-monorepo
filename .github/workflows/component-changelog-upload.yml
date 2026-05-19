@@ -154,6 +154,8 @@ jobs:
           message: |
             ## ${{ steps.component-cap.outputs.name }} Changelog Preview (informational)
 
+            ### Next proposed version: **${{ steps.changelog.outputs.next_version }}**
+
             <details>
             <summary><strong>[Unreleased] diff</strong> (commits touching <code>${{ matrix.component }}/**</code> since latest <code>releases/${{ matrix.component }}/v*</code> tag)</summary>
 
