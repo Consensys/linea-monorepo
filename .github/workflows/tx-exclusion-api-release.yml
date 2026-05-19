@@ -7,43 +7,6 @@ permissions:
   pull-requests: write
 
 on:
-  workflow_call:
-    inputs:
-      image_tag_suffix:
-        description: 'Custom docker image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDD]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDD]-[commit]'
-        required: false
-        type: string
-        default: ''
-      release_tag_suffix:
-        description: 'Custom release tag suffix (must need for non-main release), i.e. release tag would be releases/[component]/v[semver]-[suffix]'
-        required: false
-        type: string
-        default: ''
-      draft_release:
-        description: 'Draft Release'
-        required: false
-        default: false
-        type: boolean
-      pre_release:
-        description: 'Pre Release'
-        required: false
-        default: false
-        type: boolean
-
-    outputs:
-      tag_changed:
-        description: "Indicate whether the release tag of the component has changed"
-        value: ${{ jobs.component-release.outputs.tag_changed }}
-      docker_tag:
-        description: "Docker image tag associated with the release tag, empty if tag_changed is false"
-        value: ${{ jobs.component-release.outputs.docker_tag }}
-      release_version:
-        description: "Release semver associated with the release tag (e.g. 1.2.3), empty if tag_changed is false"
-        value: ${{ jobs.component-release.outputs.release_version }}
-      release_tag:
-        description: "Release tag (e.g. releases/coordinator/v1.2.3), empty if tag_changed is false"
-        value: ${{ jobs.component-release.outputs.release_tag }}
-
   workflow_dispatch:
     inputs:
       image_tag_suffix:

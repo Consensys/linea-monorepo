@@ -262,11 +262,11 @@ jobs:
       postman: ${{ steps.latest-docker-tag.outputs.postman-latest-docker-tag }}
       tx-exclusion-api: ${{ steps.latest-docker-tag.outputs.tx-exclusion-api-latest-docker-tag }}
       linea-besu: ${{ steps.latest-docker-tag.outputs.linea-besu-package-latest-docker-tag }}
-      coordinator-release-version: ${{ steps.latest-docker-tag.outputs.coordinator-latest-release-version }}
-      prover-release-version: ${{ steps.latest-docker-tag.outputs.prover-latest-release-version }}
-      postman-release-version: ${{ steps.latest-docker-tag.outputs.postman-latest-release-version }}
-      tx-exclusion-api-release-version: ${{ steps.latest-docker-tag.outputs.tx-exclusion-api-latest-release-version }}
-      linea-besu-release-version: ${{ steps.latest-docker-tag.outputs.linea-besu-package-latest-release-version }}
+      coordinator-release-version: ${{ steps.latest-release-version.outputs.coordinator-latest-release-version }}
+      prover-release-version: ${{ steps.latest-release-version.outputs.prover-latest-release-version }}
+      postman-release-version: ${{ steps.latest-release-version.outputs.postman-latest-release-version }}
+      tx-exclusion-api-release-version: ${{ steps.latest-release-version.outputs.tx-exclusion-api-latest-release-version }}
+      linea-besu-release-version: ${{ steps.latest-release-version.outputs.linea-besu-package-latest-release-version }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6

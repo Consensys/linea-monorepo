@@ -8,47 +8,6 @@ permissions:
   pull-requests: write
 
 on:
-  workflow_call:
-    inputs:
-      image_tag_suffix:
-        description: 'Custom docker image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDD]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDD]-[commit]'
-        required: false
-        type: string
-        default: ''
-      release_tag_suffix:
-        description: 'Custom release tag suffix (must need for non-main release), i.e. release tag would be releases/[component]/v[semver]-[suffix]'
-        required: false
-        type: string
-        default: ''
-      without_besu_fleet_plugin:
-        description: 'Type "true" to exclude besu-fleet-plugin in the release'
-        required: false
-        type: string
-        default: ''
-      draft_release:
-        description: 'Draft Release'
-        required: false
-        default: false
-        type: boolean
-      pre_release:
-        description: 'Pre Release'
-        required: false
-        default: false
-        type: boolean
-    outputs:
-      tag_changed:
-        description: "Indicate whether the release tag of the component has changed"
-        value: ${{ jobs.compute-linea-besu-release-metadata.outputs.tag_changed }}
-      docker_tag:
-        description: "Docker image tag associated with the release tag, empty if tag_changed is false"
-        value: ${{ jobs.build-linea-besu-docker-image-and-gh-release.outputs.linea_besu_package_tag }}
-      release_version:
-        description: "Release semver associated with the release tag (e.g. 1.2.3), empty if tag_changed is false"
-        value: ${{ jobs.compute-linea-besu-release-metadata.outputs.release_version }}
-      release_tag:
-        description: "Release tag (e.g. releases/linea-besu-package/v1.2.3), empty if tag_changed is false"
-        value: ${{ jobs.compute-linea-besu-release-metadata.outputs.release_tag }}
-
   workflow_dispatch:
     inputs:
       image_tag_suffix:
