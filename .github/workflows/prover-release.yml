@@ -20,13 +20,8 @@ on:
         required: false
         type: string
         default: ''
-      draft_release:
-        description: 'Draft Release'
-        required: false
-        default: false
-        type: boolean
       pre_release:
-        description: 'Pre Release'
+        description: 'Pre Release if checked; Draft release otherwise'
         required: false
         default: false
         type: boolean
@@ -44,6 +39,6 @@ jobs:
       include-path: prover/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
       release_tag_suffix: ${{ inputs.release_tag_suffix }}
-      draft_release: ${{ inputs.draft_release }}
+      draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
     secrets: inherit

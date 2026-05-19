@@ -25,13 +25,8 @@ on:
         required: false
         type: string
         default: ''
-      draft_release:
-        description: 'Draft Release'
-        required: false
-        default: false
-        type: boolean
       pre_release:
-        description: 'Pre Release'
+        description: 'Pre Release if checked; Draft release otherwise'
         required: false
         default: false
         type: boolean
@@ -105,6 +100,6 @@ jobs:
       release_version: ${{ needs.compute-linea-besu-release-metadata.outputs.release_version }}
       release_tag: ${{ needs.compute-linea-besu-release-metadata.outputs.release_tag }}
       changelog: ${{ needs.compute-linea-besu-release-metadata.outputs.changelog }}
-      draft_release: ${{ inputs.draft_release }}
+      draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
     secrets: inherit
