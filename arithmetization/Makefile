@@ -16,9 +16,7 @@ GO_CORSET_REF_FOR_ZKC ?=
 # Used to install go-corset
 GO_CORSET_VERSION ?= v1.2.17
 
-# Used to prepare host builds for ACT4 tests.
-ACT4_REF ?= 9798a554ce4139f472c9ccd3a18c9061d0f7024d
-ACT4_REPO ?= $(REPO_ROOT)/../riscv-arch-test
+# Used to install Sail for ACT4 host builds.
 ACT4_RISCV_DIR ?= $(HOME)/riscv
 SAIL_RISCV_VERSION ?= 0.11
 
@@ -28,7 +26,7 @@ ZKC_BINDIR ?= $(MAKEFILE_DIR)bin
 ZKC_BINARY ?= riscv.bin
 ZKC_INPUT ?= input.json
 
-.PHONY: checkout-go-corset install-go-corset install-zkc install-act4-host-deps zkc-compile zkc-check zkc-compile-and-check check
+.PHONY: checkout-go-corset install-go-corset install-zkc install-sail zkc-compile zkc-check zkc-compile-and-check check
 
 # Fetch go-corset if missing (no-op when CI already checked it out into GO_CORSET).
 checkout-go-corset:
@@ -88,14 +86,9 @@ install-go-corset:
 		go install github.com/consensys/go-corset/cmd/go-corset@$(GO_CORSET_VERSION); \
 	fi
 
-# Install Sail and checkout the ACT4 framework. Other host tools are prerequisites.
-install-act4-host-deps:
-	@if [ ! -d "$(ACT4_REPO)" ]; then git clone https://github.com/riscv/riscv-arch-test.git "$(ACT4_REPO)" || exit $$?; fi; \
-	if ! git -C "$(ACT4_REPO)" rev-parse "$(ACT4_REF)^{commit}" >/dev/null 2>&1; then git -C "$(ACT4_REPO)" fetch --tags origin || exit $$?; fi; \
-	if [ "$$(git -C "$(ACT4_REPO)" rev-parse HEAD)" != "$$(git -C "$(ACT4_REPO)" rev-parse "$(ACT4_REF)^{commit}")" ]; then \
-		git -C "$(ACT4_REPO)" checkout --detach "$(ACT4_REF)" || exit $$?; \
-	fi; \
-	mkdir -p "$(ACT4_RISCV_DIR)/bin" || exit $$?; \
+# Install Sail for ACT4 host builds. Other host tools are prerequisites.
+install-sail:
+	@mkdir -p "$(ACT4_RISCV_DIR)/bin" || exit $$?; \
 	if ! "$(ACT4_RISCV_DIR)/bin/sail_riscv_sim" --version 2>/dev/null | grep -qx "$(SAIL_RISCV_VERSION)"; then \
 		echo "Installing sail_riscv_sim $(SAIL_RISCV_VERSION)..."; \
 		sail_os=$$(uname -s); \
@@ -105,5 +98,4 @@ install-act4-host-deps:
 		tar xzf "$$sail_archive" -C "$(ACT4_RISCV_DIR)" --strip-components=1 || exit $$?; \
 		rm -f "$$sail_archive"; \
 	fi; \
-	echo "ACT4 framework is ready at $(ACT4_REPO)"; \
 	echo "sail_riscv_sim is ready at $(ACT4_RISCV_DIR)/bin/sail_riscv_sim"

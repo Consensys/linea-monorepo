@@ -35,10 +35,10 @@ For macOS host builds, install these prerequisites with your package manager of 
 - `riscv64-unknown-elf-gcc (>= 15)` and `riscv64-unknown-elf-objdump` — to compile and inspect ACT4 ELFs
 - native `z3`/`libz3` — used by UDB while validating ACT4 configs
 
-To checkout the pinned ACT4 framework and install Sail , from `linea-monorepo/`:
+To install Sail for ACT4 host builds, from `linea-monorepo/`:
 
 ```bash
-make -C arithmetization install-act4-host-deps
+make -C arithmetization install-sail
 ```
 
 #### Note for MacOS
@@ -164,7 +164,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `ACT4_BUILD_MODE`| `host`                                                                                  | Build ACT4 ELFs with `host` or `docker`                                       |
 | `ACT4_REF`       | `9798a554ce4139f472c9ccd3a18c9061d0f7024d`                                              | `riscv-arch-test` tag or commit used to build ACT4 ELFs                       |
 | `ACT4_REPO`      | `../riscv-arch-test`                                                                    | Local `riscv-arch-test` checkout used for ACT4 builds                         |
-| `ACT4_RISCV_DIR` | `~/riscv`                                                                               | Directory where `install-act4-host-deps` installs `sail_riscv_sim`            |
+| `ACT4_RISCV_DIR` | `~/riscv`                                                                               | Directory where `install-sail` installs `sail_riscv_sim`                      |
 | `ACT4_DEBUG`     | `true`                                                                                  | Set to `false` to skip ACT4 debug artifacts                                   |
 | `ACT4_FAST`      | `false`                                                                                 | Set to `true` to skip ACT4 objdump generation for faster builds               |
 
