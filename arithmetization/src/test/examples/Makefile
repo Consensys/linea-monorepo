@@ -72,6 +72,7 @@ ACT4_WORK_DIR   := $(MAKEFILE_DIR)act4/bin/work
 ACT4_REF        ?= 9798a554ce4139f472c9ccd3a18c9061d0f7024d
 ACT4_REPO       ?= $(abspath $(shell git -C $(MAKEFILE_DIR) rev-parse --show-toplevel)/../riscv-arch-test)
 ACT4_CONFIG     := $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm/test_config.yaml
+ACT4_RISCV_DIR  ?= $(HOME)/riscv
 ACT4_IMAGE      := riscv-act4:$(ACT4_REF)
 ACT4_EXTENSIONS := I,M
 ACT4_JOBS       := 4
@@ -261,6 +262,7 @@ build-act4:
 	elif [ "$(ACT4_BUILD_MODE)" = "host" ]; then \
 		ensure_act4_repo; \
 		echo "building ACT4 ELFs in $$work_dir on host"; \
+		export PATH="$(ACT4_RISCV_DIR)/bin:$$PATH"; \
 		$(MAKE) --jobs $(ACT4_JOBS) --keep-going -C "$(ACT4_REPO)" \
 			CONFIG_FILES="$(ACT4_CONFIG)" \
 			WORKDIR="$$work_dir" \

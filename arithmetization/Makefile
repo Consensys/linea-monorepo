@@ -132,4 +132,4 @@ install-act4-host-deps:
 	cd "$(ACT4_REPO)" && mise trust .mise.toml && mise install && mise exec -- uv sync; \
 	cd "$(ACT4_REPO)/framework/src/act/data" && BUNDLE_JOBS=1 mise exec -- bundle install; \
 	echo "ACT4 host dependencies are ready"; \
-	echo 'Restart your shell or run: export PATH="$(ACT4_RISCV_DIR)/bin:$$PATH"'
+	echo "ACT4 host builds will use $(ACT4_RISCV_DIR)/bin automatically"
