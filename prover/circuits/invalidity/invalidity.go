@@ -12,6 +12,8 @@ import (
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	wizardk "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	wizard "github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/ethereum/go-ethereum/common"
@@ -226,17 +228,25 @@ func (b *builder) Compile() (constraint.ConstraintSystem, error) {
 }
 
 type limitlessBuilder struct {
-	congWIOP *wizard.CompiledIOP
+	congWIOP     *wizard.CompiledIOP
+	vkMerkleRoot field.Octuplet
 }
 
-func NewBuilderLimitless(congWIOP *wizard.CompiledIOP) *limitlessBuilder {
-	return &limitlessBuilder{congWIOP: congWIOP}
+func NewBuilderLimitless(congWIOP *wizard.CompiledIOP, vkMerkleRoot field.Octuplet) *limitlessBuilder {
+	return &limitlessBuilder{congWIOP: congWIOP, vkMerkleRoot: vkMerkleRoot}
 }
 
 func (b *limitlessBuilder) Compile() (constraint.ConstraintSystem, error) {
+	vk0 := b.congWIOP.ExtraData[distributed.VerifyingKeyPublicInput].(field.Octuplet)
+	vk1 := b.congWIOP.ExtraData[distributed.VerifyingKey2PublicInput].(field.Octuplet)
+
 	circuit := &CircuitInvalidity{
 		SubCircuit: &BadPrecompileCircuit{
-			ExecutionCtx: ExecutionCtx{LimitlessMode: true},
+			ExecutionCtx: ExecutionCtx{
+				LimitlessMode: true,
+				CongloVK:      [2]field.Octuplet{vk0, vk1},
+				VKMerkleRoot:  b.vkMerkleRoot,
+			},
 		},
 	}
 	circuit.Allocate(Config{ZkEvmComp: b.congWIOP})

@@ -372,7 +372,12 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 			// buf is intentionally not released: zero-copy deserialization means conglo
 			// points into the mmap region, which must stay mapped until Compile() finishes.
 			// For a one-shot setup process this is safe — the OS reclaims it at exit.
-			return invalidity.NewBuilderLimitless(conglo.RecursionCompBLS), extraFlags, nil
+			vkTree, err := zkevm.LoadVerificationKeyMerkleTree(cfg)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to load VK merkle tree for invalidity limitless: %w", err)
+			}
+			vkMerkleRoot := vkTree.GetRoot()
+			return invalidity.NewBuilderLimitless(conglo.RecursionCompBLS, vkMerkleRoot), extraFlags, nil
 		}
 
 		logrus.Info("execution-limitless assets not found; generating them now for invalidity limitless setup")
@@ -383,10 +388,11 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 			return nil, nil, fmt.Errorf("failed to write limitless invalidity prover assets: %w", err)
 		}
 		compCong := asset.DistWizard.CompiledConglomeration
+		vkMerkleRoot := asset.DistWizard.VerificationKeyMerkleTree.GetRoot()
 		asset = nil
 		runtime.GC()
 
-		return invalidity.NewBuilderLimitless(compCong.RecursionCompBLS), extraFlags, nil
+		return invalidity.NewBuilderLimitless(compCong.RecursionCompBLS, vkMerkleRoot), extraFlags, nil
 	case circuits.InvalidityFilteredAddressCircuitID:
 		keccakComp := invalidity.MakeKeccakCompiledIOP(cfg.Invalidity.MaxRlpByteSize, keccak.WizardCompilationParameters()...)
 		return invalidity.NewBuilder(
