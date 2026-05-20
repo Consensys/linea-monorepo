@@ -200,7 +200,7 @@ T+1:00  sequencer healthy
 T+1:30  maru + l2-node-besu + shomei healthy
 T+2:00  deploy-contracts begins
         ├─ pre-flight (waits for Sepolia + Shomei reachable)
-        ├─ pnpm install + Foundry install (cold ~3 min, warm ~30s)
+        ├─ Docker-scoped pnpm + Hardhat cache warmup (cold ~3 min, warm no-op)
         ├─ Step 1: deploy L1 LineaRollupV8 (~30s on Sepolia)
         ├─ Step 2: deploy L2 MessageService
         ├─ Step 3-4: deploy TokenBridge L1 + L2
@@ -497,7 +497,7 @@ Optional one-shot local checks:
 ## 7. Tearing down
 
 ```bash
-# Stop, keep volumes — chaindata + addresses persist; next `up` is faster
+# Stop, keep volumes — chaindata, addresses, deploy tooling deps, and Hardhat artifacts persist; next `up` is faster
 docker compose --env-file versions.env --env-file .env --profile stack-partial-prover down
 
 # Wipe everything — REQUIRED if you change L1_RPC_URL or L1_DEPLOYER_PRIVATE_KEY
@@ -609,6 +609,7 @@ and `fork-timestamp.txt` live in Docker volume `linea-stack-l2-genesis`.
 |---------|--------------|-----|
 | `account-setup` exits with "L1 RPC not reachable" | `L1_RPC_URL` rate-limited or wrong | Try a different Sepolia RPC; check the URL with `cast chain-id --rpc-url $L1_RPC_URL` |
 | `account-setup` exits with "could not extract deployers.l1" | malformed JSON output (Foundry version mismatch?) | See [bringup-notes.md](./bringup-notes.md) — `cast wallet address` flag drift is one possibility |
+| deploy-contracts dies with `Cannot find module '@chainsafe/blst-linux-...'` | stale deploy tooling volume or an older checkout reused host `node_modules` inside Linux | On current checkouts, retry once; deploy-contracts uses Docker-scoped Linux `node_modules`. If the stale volume survives, run `docker compose --env-file versions.env --env-file .env --profile stack-partial-prover down -v` and retry |
 | deploy-contracts step 1 fails with "insufficient funds" | deployer's Sepolia balance too low | Top up via faucet; Sepolia gas spikes can blow through 0.5 ETH |
 | deploy-contracts dies with `ADDRESS MISMATCH` | LineaRollupV8 or L2MessageService no longer lands at the boot-critical precomputed address | Usually means the deploy script changed and `account-setup.sh` needs a corresponding nonce/precompute update |
 | Coordinator retries `linea_generateConflatedTracesToFileV2` with `Conflation not finished` on old block ranges | L2 ran far ahead while coordinator was down, beyond Besu's retained Bonsai history | Start over with `docker compose --env-file versions.env --env-file .env --profile stack-partial-prover down -v --remove-orphans`; this quickstart keeps a larger `bonsai-historical-block-limit` to make delayed first boots recoverable |
@@ -772,6 +773,12 @@ docs/getting-started/linea-stack/
 - `linea-stack-rendered-config` — written by `config-render` (full render of 5
   templates) and `deploy-contracts` (in-place patch of coord-config); read by
   sequencer, maru, l2-node-besu, coordinator, prover
+- `linea-stack-contracts-pnpm-store`, `linea-stack-contracts-root-node-modules`,
+  `linea-stack-contracts-package-node-modules`, and
+  `linea-stack-eslint-config-node-modules` — Docker-scoped Linux dependency
+  cache for deploy-contracts
+- `linea-stack-contracts-artifacts` and `linea-stack-contracts-cache` —
+  Docker-scoped Hardhat artifacts and incremental compile cache
 - `linea-stack-local-dev` — chaindata + prover state
 - `linea-stack-logs` — shared log-output volume
 - per-service postgres volumes

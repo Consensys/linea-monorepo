@@ -44,6 +44,18 @@ volumes:
   blockscout-l2-pg-data:
   linea-rendered-config:
     name: "linea-stack-rendered-config"  # coordinator + maru TOMLs rendered with $L1_RPC_URL
+  linea-contracts-pnpm-store:
+    name: "linea-stack-contracts-pnpm-store"
+  linea-contracts-root-node-modules:
+    name: "linea-stack-contracts-root-node-modules"
+  linea-contracts-package-node-modules:
+    name: "linea-stack-contracts-package-node-modules"
+  linea-eslint-config-node-modules:
+    name: "linea-stack-eslint-config-node-modules"
+  linea-contracts-artifacts:
+    name: "linea-stack-contracts-artifacts"
+  linea-contracts-cache:
+    name: "linea-stack-contracts-cache"
 
 services:
 
@@ -614,9 +626,17 @@ services:
       # Mount the whole linea-monorepo at /workspace because contracts/ is a
       # pnpm workspace member that depends on pnpm-workspace.yaml + pnpm-lock.yaml
       # at the repo root. Mounting just contracts/ breaks pnpm catalog resolution.
-      # Side effect: a full `pnpm install` will materialise node_modules at the
-      # repo root on the host. v0 is monorepo-internal by design.
       - ../../..:/workspace
+      # Keep deploy tooling dependencies Linux-native and Docker-scoped. The
+      # source tree still comes from the host bind mount, but node_modules,
+      # pnpm's store, and Hardhat compile output stay in Docker volumes so a
+      # macOS/Windows/Linux host install cannot poison the deploy container.
+      - linea-contracts-pnpm-store:/workspace/.pnpm-store
+      - linea-contracts-root-node-modules:/workspace/node_modules
+      - linea-contracts-package-node-modules:/workspace/contracts/node_modules
+      - linea-eslint-config-node-modules:/workspace/ts-libs/eslint-config/node_modules
+      - linea-contracts-artifacts:/workspace/contracts/artifacts
+      - linea-contracts-cache:/workspace/contracts/cache
       - ./scripts:/scripts:ro
       # Forked deploy script — bind-mounted OVER the upstream path. Fixes the
       # stale ORDERED_NONCE_POST_LINEAROLLUP=7 offset (step 1 actually consumes

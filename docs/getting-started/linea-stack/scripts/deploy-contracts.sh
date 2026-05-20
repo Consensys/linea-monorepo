@@ -283,15 +283,64 @@ export L1_CHAIN_ID L1_DEPLOYER_ADDRESS L2_GENESIS_STATE_ROOT L2_GENESIS_SHNARF
 
 step "pnpm install + hardhat compile"
 
+check_linux_native_optional_deps() {
+  node --input-type=module <<'NODE'
+import fs from "node:fs";
+import process from "node:process";
+
+if (process.platform !== "linux" || !["arm64", "x64"].includes(process.arch)) {
+  process.exit(0);
+}
+
+const report = process.report?.getReport?.();
+const libc = report?.header?.glibcVersionRuntime ? "gnu" : "musl";
+const pnpmRoot = "/workspace/node_modules/.pnpm";
+const packages = [
+  `@chainsafe/blst-linux-${process.arch}-${libc}`,
+  `@chainsafe/hashtree-linux-${process.arch}-${libc}`,
+];
+
+const entries = fs.existsSync(pnpmRoot) ? fs.readdirSync(pnpmRoot) : [];
+const missing = packages.filter((pkg) => {
+  const encoded = pkg.replace("/", "+");
+  return !entries.some((entry) => entry.startsWith(`${encoded}@`));
+});
+
+if (missing.length > 0) {
+  console.log(`workspace node_modules is missing Linux native optional dependencies: ${missing.join(", ")}`);
+  process.exit(1);
+}
+NODE
+}
+
+pnpm_install_reason=""
+pnpm_install_force=false
 if [[ ! -d /workspace/node_modules ]]; then
-  log "Installing workspace dependencies (pnpm install --no-frozen-lockfile)"
-  ( cd /workspace && pnpm install --no-frozen-lockfile )
+  pnpm_install_reason="workspace node_modules is missing"
+elif [[ ! -d /workspace/node_modules/.pnpm ]]; then
+  pnpm_install_reason="workspace node_modules virtual store is missing"
+elif [[ ! -x /workspace/node_modules/.bin/ts-node || ! -x /workspace/contracts/node_modules/.bin/hardhat ]]; then
+  pnpm_install_reason="workspace node_modules is missing deploy tooling bins"
+else
+  if ! pnpm_install_reason="$(check_linux_native_optional_deps)"; then
+    [[ -n "$pnpm_install_reason" ]] || pnpm_install_reason="Linux native optional dependency check failed"
+    pnpm_install_force=true
+  else
+    pnpm_install_reason=""
+  fi
 fi
 
-if [[ ! -d artifacts ]]; then
-  log "Compiling contracts (pnpm exec hardhat compile)"
-  pnpm exec hardhat compile
+if [[ -n "$pnpm_install_reason" ]]; then
+  pnpm_install_args=(install --filter linea-monorepo --filter contracts... --no-frozen-lockfile --prefer-offline)
+  if [[ "$pnpm_install_force" == "true" ]]; then
+    pnpm_install_args+=(--force)
+  fi
+  log "Installing workspace dependencies (pnpm ${pnpm_install_args[*]}; reason: $pnpm_install_reason)"
+  ( cd /workspace && HUSKY=0 CI=true pnpm "${pnpm_install_args[@]}" )
 fi
+
+log "Checking contract compilation cache (pnpm exec hardhat compile)"
+pnpm exec hardhat compile
 
 DEFAULT_L1_OPERATOR_ADDRESSES="$L1_DEPLOYER_ADDRESS,$PRECOMPUTED_L1_BLOB_SUBMITTER,$PRECOMPUTED_L1_FINALIZATION_SUBMITTER"
 L1_ROLE_MIN_BALANCE_WEI="${L1_ROLE_MIN_BALANCE_WEI:-100000000000000000}"       # 0.10 ETH

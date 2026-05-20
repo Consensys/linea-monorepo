@@ -313,6 +313,7 @@ check_partial_prover_guardrails() {
 }
 
 check_reuse_guardrails() {
+  compose="$STACK/docker-compose.yml"
   deploy_contracts="$STACK/scripts/deploy-contracts.sh"
   status_script="$STACK/scripts/status.sh"
   logging_lib="$STACK/scripts/lib/logging.sh"
@@ -326,6 +327,22 @@ check_reuse_guardrails() {
     pass "deploy-contracts verifies L2 code before trusting prior deploy logs"
   else
     fail "deploy-contracts must verify L2 on-chain code before skipping from prior deploy logs"
+  fi
+
+  if grep -q 'check_linux_native_optional_deps' "$deploy_contracts" \
+    && grep -q '@chainsafe/blst-linux-' "$deploy_contracts" \
+    && grep -q '@chainsafe/hashtree-linux-' "$deploy_contracts" \
+    && grep -q -- '--filter linea-monorepo' "$deploy_contracts" \
+    && grep -q -- '--filter contracts...' "$deploy_contracts" \
+    && grep -q 'linea-contracts-pnpm-store:/workspace/.pnpm-store' "$compose" \
+    && grep -q 'linea-contracts-root-node-modules:/workspace/node_modules' "$compose" \
+    && grep -q 'linea-contracts-package-node-modules:/workspace/contracts/node_modules' "$compose" \
+    && grep -q 'linea-eslint-config-node-modules:/workspace/ts-libs/eslint-config/node_modules' "$compose" \
+    && grep -q 'linea-contracts-artifacts:/workspace/contracts/artifacts' "$compose" \
+    && grep -q 'linea-contracts-cache:/workspace/contracts/cache' "$compose"; then
+    pass "deploy-contracts keeps Linux dependency and Hardhat caches in Docker volumes"
+  else
+    fail "deploy-contracts must not reuse host node_modules or throw away the Hardhat cache"
   fi
 
   if grep -q 'l2 rpc latest block' "$status_script" \
