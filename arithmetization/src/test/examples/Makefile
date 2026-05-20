@@ -248,7 +248,7 @@ build-act4:
 		fi; \
 	}; \
 	if [ "$(ACT4_BUILD_MODE)" = "docker" ]; then \
-		config_dir=$$(cd "$(ACT4_CONFIG_DIR)" && pwd); \
+		config_dir=$$(cd "$(ACT4_CONFIG_DIR)" && pwd) || exit $$?; \
 		if ! docker image inspect "$(ACT4_IMAGE)" >/dev/null 2>&1; then \
 			ensure_act4_repo; \
 			echo "building Docker image $(ACT4_IMAGE) from $(ACT4_REPO)"; \
@@ -259,7 +259,7 @@ build-act4:
 			-v "$$config_dir:/act4/config/cores/linea:ro" \
 			-v "$$work_dir:/act4/work" \
 			"$(ACT4_IMAGE)" \
-			bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) $(if $(filter true,$(ACT4_DEBUG)),DEBUG=true) $(if $(filter true,$(ACT4_FAST)),FAST=true) make --jobs $(ACT4_JOBS) --keep-going"; \
+			bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) $(if $(filter true,$(ACT4_DEBUG)),DEBUG=true) $(if $(filter true,$(ACT4_FAST)),FAST=true) make --jobs $(ACT4_JOBS) --keep-going" || exit $$?; \
 	elif [ "$(ACT4_BUILD_MODE)" = "host" ]; then \
 		ensure_act4_repo; \
 		echo "building ACT4 ELFs in $$work_dir on host"; \
@@ -269,7 +269,7 @@ build-act4:
 			WORKDIR="$$work_dir" \
 			EXTENSIONS="$(ACT4_EXTENSIONS)" \
 			$(if $(filter true,$(ACT4_DEBUG)),DEBUG=true) \
-			$(if $(filter true,$(ACT4_FAST)),FAST=true); \
+			$(if $(filter true,$(ACT4_FAST)),FAST=true) || exit $$?; \
 	else \
 		echo "error: ACT4_BUILD_MODE must be docker or host"; \
 		exit 2; \
