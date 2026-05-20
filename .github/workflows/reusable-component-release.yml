@@ -66,6 +66,7 @@ jobs:
           exit 1
 
   compute-commit-tag:
+    needs: [check-branch-and-release-tag-suffix]
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     outputs:
        commit_tag: ${{ steps.compute-version-tags.outputs.commit_tag }}
@@ -78,7 +79,7 @@ jobs:
         uses: ./.github/actions/compute-version-tags
 
   compute-release-metadata:
-    needs: [check-branch-and-release-tag-suffix, compute-commit-tag]
+    needs: [compute-commit-tag]
     uses: ./.github/workflows/reusable-component-release-metadata.yml
     with:
       component-name: ${{ inputs.component-name }}
