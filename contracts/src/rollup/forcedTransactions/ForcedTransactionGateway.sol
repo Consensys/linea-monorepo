@@ -42,8 +42,11 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   /// @notice Contains the maximum calldata length allowed for a forced transaction.
   uint256 public immutable MAX_INPUT_LENGTH_LIMIT;
 
+  /// @notice Contains the maximum typed unsigned RLP encoded transaction length allowed for a forced transaction.
+  uint256 public immutable MAX_UNSIGNED_RLP_ENCODED_LENGTH;
+
   /// @notice Contains the buffer for the block number deadline if it is too low.
-  /// @dev This is to accomodate the scenario where the next block deadline is lower than the previous one,
+  /// @dev This is to accommodate the scenario where the next block deadline is lower than the previous one,
   ///      around the time of finalization.
   uint256 public immutable BLOCK_NUMBER_DEADLINE_BUFFER;
 
@@ -62,6 +65,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     uint256 _l2BlockBuffer,
     uint256 _maxGasLimit,
     uint256 _maxInputLengthBuffer,
+    uint256 _maxUnsignedRlpEncodedLength,
     address _defaultAdmin,
     address _addressFilter,
     uint256 _l2BlockDurationSeconds,
@@ -72,6 +76,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     require(_l2BlockBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_maxGasLimit != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_maxInputLengthBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_maxUnsignedRlpEncodedLength != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_defaultAdmin != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_l2BlockDurationSeconds != 0, IGenericErrors.ZeroValueNotAllowed());
@@ -82,6 +87,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     L2_BLOCK_BUFFER = _l2BlockBuffer;
     MAX_GAS_LIMIT = _maxGasLimit;
     MAX_INPUT_LENGTH_LIMIT = _maxInputLengthBuffer;
+    MAX_UNSIGNED_RLP_ENCODED_LENGTH = _maxUnsignedRlpEncodedLength;
     ADDRESS_FILTER = IAddressFilter(_addressFilter);
     L2_BLOCK_DURATION_SECONDS = _l2BlockDurationSeconds;
     BLOCK_NUMBER_DEADLINE_BUFFER = _blockNumberDeadlineBuffer;
@@ -162,7 +168,13 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.input);
     transactionFieldList = LibRLP.p(transactionFieldList, _buildAccessList(_forcedTransaction.accessList));
 
-    bytes32 hashedPayload = keccak256(abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList)));
+    bytes memory typedRlpEncodedUnsignedTransaction = abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList));
+    require(
+      typedRlpEncodedUnsignedTransaction.length <= MAX_UNSIGNED_RLP_ENCODED_LENGTH,
+      UnsignedTxRlpLengthExceeded()
+    );
+
+    bytes32 hashedPayload = keccak256(typedRlpEncodedUnsignedTransaction);
 
     address signer;
     unchecked {

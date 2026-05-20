@@ -30,6 +30,7 @@ sequenceDiagram
     Rollup-->>Gateway: currentState, prevRollingHash, blockNumber, feeAmount
     Gateway->>Gateway: Verify msg.value == feeAmount
     Gateway->>Gateway: Verify lastFinalizedState hash matches currentState
+    Gateway->>Gateway: Check typed unsigned RLP max length
     Gateway->>Gateway: Recover signer from signature (ecrecover)
     Gateway->>Filter: addressIsFiltered(signer)?
     Filter-->>Gateway: false

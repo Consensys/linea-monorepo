@@ -7,6 +7,7 @@ import {
   PRECOMPILES_ADDRESSES,
 } from "contracts/common/constants";
 import { ForcedTransactionGateway, AddressFilter, Mimc, TestLineaRollup } from "contracts/typechain-types";
+import { AccessListish, Transaction } from "ethers";
 import { ethers } from "hardhat";
 
 import {
@@ -31,6 +32,7 @@ import {
   LINEA_MAINNET_CHAIN_ID,
   MAX_GAS_LIMIT,
   MAX_INPUT_LENGTH_LIMIT,
+  MAX_UNSIGNED_RLP_ENCODED_LENGTH,
   THREE_DAYS_IN_SECONDS,
   DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
   FORCED_TRANSACTION_FEE,
@@ -45,7 +47,7 @@ import {
   expectRevertWithReason,
   generateRandomBytes,
 } from "../../common/helpers";
-import { LastFinalizedState } from "../../common/types";
+import { Eip1559Transaction, LastFinalizedState } from "../../common/types";
 
 describe("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
@@ -62,6 +64,31 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     forcedTransactionNumber: 0n,
     forcedTransactionRollingHash: HASH_ZERO,
     timestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
+  };
+
+  const getTypedUnsignedRlpEncodedLength = (
+    _forcedTransaction: Eip1559Transaction,
+    _chainId: bigint = LINEA_MAINNET_CHAIN_ID,
+  ): bigint => {
+    const unsignedTransaction = Transaction.from({
+      type: 2,
+      chainId: _chainId,
+      nonce: Number(_forcedTransaction.nonce),
+      maxPriorityFeePerGas: _forcedTransaction.maxPriorityFeePerGas,
+      maxFeePerGas: _forcedTransaction.maxFeePerGas,
+      gasLimit: _forcedTransaction.gasLimit,
+      to: _forcedTransaction.to === ADDRESS_ZERO ? null : _forcedTransaction.to,
+      value: _forcedTransaction.value,
+      data: _forcedTransaction.input,
+      accessList: _forcedTransaction.accessList.map((_accessList) => [
+        _accessList.contractAddress,
+        _accessList.storageKeys,
+      ]) as AccessListish,
+    });
+
+    // unsignedSerialized = "0x" + "02" + <rlp-bytes-hex>, and the contract checks the
+    // typed unsigned payload length including the "02" EIP-1559 type prefix.
+    return BigInt(unsignedTransaction.unsignedSerialized.slice(2).length / 2);
   };
 
   before(async () => {
@@ -102,6 +129,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       blockBuffer: bigint | number;
       maxGasLimit: bigint | number;
       maxInputLengthLimit: bigint | number;
+      maxUnsignedRlpEncodedLength: bigint | number;
       securityCouncilAddr: string;
       addressFilterAddr: string;
       l2BlockDurationSeconds: bigint | number;
@@ -117,6 +145,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       bigint | number,
       bigint | number,
       bigint | number,
+      bigint | number,
       string,
       string,
       bigint | number,
@@ -127,6 +156,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       config.blockBuffer,
       config.maxGasLimit,
       config.maxInputLengthLimit,
+      config.maxUnsignedRlpEncodedLength,
       config.securityCouncilAddr,
       config.addressFilterAddr,
       config.l2BlockDurationSeconds,
@@ -165,6 +195,11 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         expectedError: "ZeroValueNotAllowed",
       },
       {
+        description: "max unsigned RLP encoded length is set to zero",
+        override: { maxUnsignedRlpEncodedLength: 0 },
+        expectedError: "ZeroValueNotAllowed",
+      },
+      {
         description: "default admin is the zero address",
         override: { securityCouncilAddr: ADDRESS_ZERO },
         expectedError: "ZeroAddressNotAllowed",
@@ -198,6 +233,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           blockBuffer: THREE_DAYS_IN_SECONDS,
           maxGasLimit: MAX_GAS_LIMIT,
           maxInputLengthLimit: MAX_INPUT_LENGTH_LIMIT,
+          maxUnsignedRlpEncodedLength: MAX_UNSIGNED_RLP_ENCODED_LENGTH,
           securityCouncilAddr: securityCouncil.address,
           addressFilterAddr: await addressFilter.getAddress(),
           l2BlockDurationSeconds: L2_BLOCK_DURATION_SECONDS,
@@ -214,6 +250,12 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       });
     });
 
+    it("Should set the max unsigned RLP encoded length", async () => {
+      expect(await forcedTransactionGateway.MAX_UNSIGNED_RLP_ENCODED_LENGTH()).to.equal(
+        MAX_UNSIGNED_RLP_ENCODED_LENGTH,
+      );
+    });
+
     it("Should fail if the l2 block time is set to zero", async () => {
       const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
         libraries: { Mimc: mimcLibraryAddress },
@@ -227,6 +269,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           THREE_DAYS_IN_SECONDS,
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
+          MAX_UNSIGNED_RLP_ENCODED_LENGTH,
           securityCouncil.address,
           await addressFilter.getAddress(),
           0n,
@@ -249,6 +292,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           THREE_DAYS_IN_SECONDS,
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
+          MAX_UNSIGNED_RLP_ENCODED_LENGTH,
           securityCouncil.address,
           await addressFilter.getAddress(),
           L2_BLOCK_DURATION_SECONDS,
@@ -393,6 +437,67 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
         "CalldataInputLengthLimitExceeded",
       );
+    });
+
+    it("Should submit if the calldata input length is equal to the configured limit", async () => {
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+      forcedTransaction.input = generateRandomBytes(Number(MAX_INPUT_LENGTH_LIMIT));
+
+      await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
+    });
+
+    it("Should fail if the typed unsigned RLP encoded transaction is too long", async () => {
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+      const maxUnsignedRlpEncodedLength = getTypedUnsignedRlpEncodedLength(forcedTransaction) - 1n;
+
+      const factory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+      const gateway = (await factory.deploy(
+        await lineaRollup.getAddress(),
+        LINEA_MAINNET_CHAIN_ID,
+        THREE_DAYS_IN_SECONDS,
+        MAX_GAS_LIMIT,
+        MAX_INPUT_LENGTH_LIMIT,
+        maxUnsignedRlpEncodedLength,
+        securityCouncil.address,
+        await addressFilter.getAddress(),
+        L2_BLOCK_DURATION_SECONDS,
+        BLOCK_NUMBER_DEADLINE_BUFFER,
+      )) as unknown as ForcedTransactionGateway;
+      await gateway.waitForDeployment();
+      await lineaRollup.connect(securityCouncil).grantRole(FORCED_TRANSACTION_SENDER_ROLE, await gateway.getAddress());
+
+      await expectRevertWithCustomError(
+        gateway,
+        gateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
+        "UnsignedTxRlpLengthExceeded",
+      );
+    });
+
+    it("Should submit if the typed unsigned RLP encoded transaction is equal to the configured limit", async () => {
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+      const maxUnsignedRlpEncodedLength = getTypedUnsignedRlpEncodedLength(forcedTransaction);
+
+      const factory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+      const gateway = (await factory.deploy(
+        await lineaRollup.getAddress(),
+        LINEA_MAINNET_CHAIN_ID,
+        THREE_DAYS_IN_SECONDS,
+        MAX_GAS_LIMIT,
+        MAX_INPUT_LENGTH_LIMIT,
+        maxUnsignedRlpEncodedLength,
+        securityCouncil.address,
+        await addressFilter.getAddress(),
+        L2_BLOCK_DURATION_SECONDS,
+        BLOCK_NUMBER_DEADLINE_BUFFER,
+      )) as unknown as ForcedTransactionGateway;
+      await gateway.waitForDeployment();
+      await lineaRollup.connect(securityCouncil).grantRole(FORCED_TRANSACTION_SENDER_ROLE, await gateway.getAddress());
+
+      await gateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
     });
 
     it("Should fail if the maxPriorityFeePerGas is zero", async () => {
@@ -733,6 +838,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           THREE_DAYS_IN_SECONDS,
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
+          MAX_UNSIGNED_RLP_ENCODED_LENGTH,
           securityCouncil.address,
           await addressFilter.getAddress(),
           l2BlockTimeSeconds,
@@ -800,6 +906,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           THREE_DAYS_IN_SECONDS,
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
+          MAX_UNSIGNED_RLP_ENCODED_LENGTH,
           securityCouncil.address,
           await addressFilter.getAddress(),
           l2BlockDurationSeconds,

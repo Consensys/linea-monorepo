@@ -12,6 +12,7 @@ Forced transactions provide a censorship-resistance mechanism: users submit tran
 
 | Component | Path | Role |
 |-----------|------|------|
+| ForcedTransactionGateway | `contracts/src/rollup/forcedTransactions/` | L1 entrypoint that validates gas, calldata, typed unsigned RLP length, fee, signer, and filtering rules |
 | ForcedTransactionsApp | `coordinator/ethereum/forced-transactions/` | L1 event fetching, L2 injection orchestration |
 | ForcedTransactionsL1EventsFetcher | `coordinator/ethereum/forced-transactions/` | Subscribes to L1 `ForcedTransactionAddedEvent` logs |
 | ForcedTransactionsSenderForExecution | `coordinator/ethereum/forced-transactions/` | Polls unprocessed forced txs, calls `linea_sendForcedRawTransaction` |
@@ -46,6 +47,7 @@ The `ForcedTransactionsSafeBlockNumberManager` adjusts the safe block number use
 ## Related Source
 
 - `coordinator/ethereum/forced-transactions/src/main/kotlin/` — Full implementation
+- `contracts/src/rollup/forcedTransactions/` — L1 gateway, address filter, and interfaces
 - `coordinator/clients/forced-transactions/` — Client interfaces
 - `coordinator/persistence/` — DAO for forced transaction records
 

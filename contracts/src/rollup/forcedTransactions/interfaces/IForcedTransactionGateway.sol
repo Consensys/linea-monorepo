@@ -88,6 +88,11 @@ interface IForcedTransactionGateway {
   error CalldataInputLengthLimitExceeded();
 
   /**
+   * @dev Thrown when the typed unsigned RLP encoded transaction is too long.
+   */
+  error UnsignedTxRlpLengthExceeded();
+
+  /**
    * @dev Thrown when one of the gas fee parameters are zero.
    */
   error GasFeeParametersContainZero(uint256 maxFeePerGas, uint256 maxPriorityFeePerGas);

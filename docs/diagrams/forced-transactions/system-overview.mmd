@@ -32,7 +32,7 @@ graph TB
     User --> |2. Query finalized state|L1Events
     L1Events --> |Get components|User
     User --> |3. Submit forced tx|Gateway
-    Gateway --> |4. Validate & store|Rollup
+    Gateway --> |4. Validate payload limits & store|Rollup
     Gateway --> |Check addresses|Filter
     Rollup --> |5. Emit ForcedTransactionAdded|Coordinator
     Coordinator --> |6. Submit tx to sequencer|Sequencer

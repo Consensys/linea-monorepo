@@ -122,6 +122,7 @@ The **Sequencer** is responsible for block production:
   │   - BLOCK_NUMBER_DEADLINE_BUFFER     │
   │   - MAX_GAS_LIMIT                    │
   │   - MAX_INPUT_LENGTH_LIMIT           │
+  │   - MAX_UNSIGNED_RLP_ENCODED_LENGTH  │
   │   - ADDRESS_FILTER                   │
   │   ────────────────────────────────── │
   │   + submitForcedTransaction          │
@@ -190,6 +191,7 @@ The user-facing contract that validates and submits forced transactions.
 | `BLOCK_NUMBER_DEADLINE_BUFFER` | Buffer added when deadline would not be strictly increasing (ensures monotonic deadlines) |
 | `MAX_GAS_LIMIT` | Maximum allowed gas limit per forced tx |
 | `MAX_INPUT_LENGTH_LIMIT` | Maximum calldata length |
+| `MAX_UNSIGNED_RLP_ENCODED_LENGTH` | Maximum typed RLP encoded length for the unsigned EIP-1559 transaction payload, including the `0x02` type prefix |
 | `ADDRESS_FILTER` | Contract for address filtering |
 
 ### 2. LineaRollup
@@ -275,6 +277,7 @@ PHASE 3: VALIDATION (in Gateway)
   ├─ One-tx-per-block check (block.number > lastSubmissionBlock)
   ├─ msg.value == forcedTransactionFeeInWei
   ├─ LastFinalizedState hash matches currentFinalizedState
+  ├─ Typed unsigned RLP length check (0x02 prefix + unsigned payload <= MAX_UNSIGNED_RLP_ENCODED_LENGTH)
   ├─ Signature recovery (ECDSA.recover) succeeds
   └─ Address filter checks pass for both sender and recipient (if enabled)
 
@@ -705,6 +708,7 @@ The system maintains a list of filtered addresses that cannot participate in for
 | Duplicate tx in same L1 block | `ForcedTransactionAlreadySubmittedInBlock` | Rate limiting |
 | `msg.value != forcedTransactionFee` | `ForcedTransactionFeeNotMet` | Correct fee |
 | State hash mismatch | `FinalizationStateIncorrect` | Fresh state |
+| Typed unsigned RLP length `> MAX_UNSIGNED_RLP_ENCODED_LENGTH` | `UnsignedTxRlpLengthExceeded` | Prevent DoS from oversized access lists or payload overhead |
 | Invalid signature recovery | `ECDSAInvalidSignature` (OpenZeppelin) | Valid signature |
 | Sender or recipient filtered | `AddressIsFiltered` | Address filtering |
 

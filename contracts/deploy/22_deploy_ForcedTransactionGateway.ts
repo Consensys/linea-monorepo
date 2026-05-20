@@ -16,6 +16,7 @@ const func: DeployFunction = withSignerUiSession(
     const l2BlockBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_L2_BLOCK_BUFFER");
     const maxGasLimit = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_GAS_LIMIT");
     const maxInputLengthBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_INPUT_LENGTH_BUFFER");
+    const maxUnsignedRlpEncodedLength = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_UNSIGNED_RLP_ENCODED_LENGTH");
     const defaultAdmin = ethers.getAddress(getRequiredEnvVar("L1_SECURITY_COUNCIL"));
     const addressFilter = ethers.getAddress(getRequiredEnvVar("FORCED_TRANSACTION_ADDRESS_FILTER"));
     const mimcLibraryAddress = ethers.getAddress(getRequiredEnvVar("MIMC_LIBRARY_ADDRESS"));
@@ -34,6 +35,7 @@ const func: DeployFunction = withSignerUiSession(
         l2BlockBuffer,
         maxGasLimit,
         maxInputLengthBuffer,
+        maxUnsignedRlpEncodedLength,
         defaultAdmin,
         addressFilter,
         l2BlockDurationSeconds,
@@ -49,6 +51,7 @@ const func: DeployFunction = withSignerUiSession(
       l2BlockBuffer,
       maxGasLimit,
       maxInputLengthBuffer,
+      maxUnsignedRlpEncodedLength,
       defaultAdmin,
       addressFilter,
       l2BlockDurationSeconds,

@@ -81,6 +81,7 @@ async function main() {
   const l2BlockBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_L2_BLOCK_BUFFER");
   const maxGasLimit = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_GAS_LIMIT");
   const maxInputLengthBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_INPUT_LENGTH_BUFFER");
+  const maxUnsignedRlpEncodedLength = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_UNSIGNED_RLP_ENCODED_LENGTH");
 
   const l2BlockDurationSeconds = getRequiredEnvVar("FORCED_TRANSACTION_L2_BLOCK_DURATION_SECONDS");
   const blockNumberDeadlineBuffer = getRequiredEnvVar("FORCED_TRANSACTION_BLOCK_NUMBER_DEADLINE_BUFFER");
@@ -205,6 +206,7 @@ async function main() {
     l2BlockBuffer,
     maxGasLimit,
     maxInputLengthBuffer,
+    maxUnsignedRlpEncodedLength,
     lineaRollupSecurityCouncil,
     addressFilterAddress,
     l2BlockDurationSeconds,

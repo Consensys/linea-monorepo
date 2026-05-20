@@ -27,6 +27,11 @@
           "type": "uint256"
         },
         {
+          "internalType": "uint256",
+          "name": "_maxUnsignedRlpEncodedLength",
+          "type": "uint256"
+        },
+        {
           "internalType": "address",
           "name": "_defaultAdmin",
           "type": "address"
@@ -154,6 +159,11 @@
         }
       ],
       "name": "MaxPriorityFeePerGasHigherThanMaxFee",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "UnsignedTxRlpLengthExceeded",
       "type": "error"
     },
     {
@@ -372,6 +382,19 @@
     {
       "inputs": [],
       "name": "MAX_INPUT_LENGTH_LIMIT",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "MAX_UNSIGNED_RLP_ENCODED_LENGTH",
       "outputs": [
         {
           "internalType": "uint256",

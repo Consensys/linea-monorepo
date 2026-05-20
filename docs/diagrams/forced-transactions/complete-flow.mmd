@@ -24,7 +24,7 @@ sequenceDiagram
     
     Note over Gateway,Rollup: Phase 3: L1 Submission
     User->>Gateway: submitForcedTransaction + ETH fee
-    Gateway->>Gateway: Validate all parameters
+    Gateway->>Gateway: Validate parameters and typed unsigned RLP length
     Gateway->>Rollup: storeForcedTransaction
     Rollup-->>User: ForcedTransactionAdded event
     
