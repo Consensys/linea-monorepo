@@ -162,7 +162,8 @@ jobs:
             env_var="LINEA_$(echo "${service}" | tr '[:lower:]-' '[:upper:]_')_TAG"
             if [ -f "$artifact_path" ]; then
               echo "${env_var}=${{ inputs.image_tag }}" >> "$GITHUB_ENV"
-            else
+            elif [ -z "${!env_var:-}" ]; then
+              # Fall back to "develop" only when the job-level env var is unset or empty.
               echo "${env_var}=develop" >> "$GITHUB_ENV"
             fi
           done
