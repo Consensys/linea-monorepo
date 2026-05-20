@@ -172,6 +172,9 @@ func (m *Module) NewPrecomputedColumn(ctx *ContextFrame, vis Visibility, assignm
 	if ctx.ID != 0 {
 		panic(fmt.Sprintf("wiop: ContextFrame %q is already registered (id=%d)", ctx.Path(), ctx.ID))
 	}
+	if assignment.promise != nil {
+		panic("wiop: Module.NewPrecomputedColumn requires a non-promised assignment")
+	}
 	ctx.ID = newColumnID(m.index, len(m.Columns))
 	pr := m.system.PrecomputedRound
 	col := &Column{
@@ -182,6 +185,7 @@ func (m *Module) NewPrecomputedColumn(ctx *ContextFrame, vis Visibility, assignm
 		Module:      m,
 		round:       &pr.Round,
 	}
+	assignment.promise = col.View()
 	m.Columns = append(m.Columns, col)
 	pr.addPrecomputedColumn(col, assignment)
 	return col
@@ -226,6 +230,10 @@ func (c *Column) Degree() int {
 	}
 	return c.Module.Size() - 1
 }
+
+// DegreeFactor implements [Expression]. Returns 1: a column's degree is
+// 1 * (n - 1) where n is the module size.
+func (c *Column) DegreeFactor() int { return 1 }
 
 // ColumnView is a column derived from a parent [Column] by applying a
 // cyclic shift of ShiftingOffset positions. For a positive offset, the i-th
@@ -296,6 +304,10 @@ func (cv *ColumnView) Degree() int {
 	}
 	return cv.Column.Module.Size() - 1
 }
+
+// DegreeFactor implements [Expression]. Returns 1: a column view's degree is
+// 1 * (n - 1) where n is the module size.
+func (cv *ColumnView) DegreeFactor() int { return 1 }
 
 // EvaluateVector implements [Expression]. Returns a full-sized concrete vector
 // (length == module size) where logical row i holds the column value at
@@ -374,6 +386,10 @@ func (cp *ColumnPosition) IsExtension() bool { return cp.Column.IsExtension }
 // Degree implements [Expression]. Always returns 0: a scalar evaluation is a
 // degree-0 constant.
 func (cp *ColumnPosition) Degree() int { return 0 }
+
+// DegreeFactor implements [Expression]. Always returns 0: a column position is
+// a scalar constant.
+func (cp *ColumnPosition) DegreeFactor() int { return 0 }
 
 // Round returns the round of the parent column.
 func (cp *ColumnPosition) Round() *Round { return cp.Column.round }
