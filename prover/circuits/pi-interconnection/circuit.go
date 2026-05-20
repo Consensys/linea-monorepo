@@ -555,7 +555,7 @@ func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitTyp
 // koalabear modulus.
 func isActuallyKoalaHash(api frontend.API, hash [2]frontend.Variable) frontend.Variable {
 
-	// The cmpRes is computed by adding the result of Cmp for each (allegedly)
+	// The cmpRes is computed by adding the result of Cmp for each (alleged)
 	// koalabear element. If the limbs are koalabear, the result of cmp will
 	// be -1. Thus, at the end of the function cmpRes would be equal to 0 and
 	// to some positive value if any of the cmpRes is NOT -1. Thus, it is
@@ -563,7 +563,7 @@ func isActuallyKoalaHash(api frontend.API, hash [2]frontend.Variable) frontend.V
 	cmpRes := frontend.Variable(8)
 
 	for i := range hash {
-		// The decomposition is done by splitting in bits, and then recombining
+		// The decomposition is done by splitting into bits, and then recombining
 		// them in 4 uint32s.
 		bitsOfHalf := api.ToBinary(hash[i], 128)
 		for k := range 4 {
