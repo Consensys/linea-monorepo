@@ -34,8 +34,8 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-arithmetization-riscv
 
-      - name: Install ACT4 host dependencies
-        run: make -C arithmetization install-act4-host-deps
+      - name: Install Sail, a ACT4 host dependencies
+        run: make -C arithmetization install-sail
 
       - name: Run ACT4 tests
         run: make -C arithmetization/src/test/examples run-act4

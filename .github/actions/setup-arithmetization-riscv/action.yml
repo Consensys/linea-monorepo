@@ -24,10 +24,6 @@ runs:
         with:
           version: '0.17.0-dev.251+0db721ec2'
 
-      - name: Install riscv64-unknown-elf-as
-        shell: bash
-        run: sudo apt-get update && sudo apt-get install -y binutils-riscv64-unknown-elf
-
       - name: Install Rust nightly
         shell: bash
         run: |
@@ -35,4 +31,39 @@ runs:
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           . "$HOME/.cargo/env"
           rustup component add rust-src --toolchain nightly
+
+      - name: Install riscv64-unknown-elf toolchain
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install -y binutils-riscv64-unknown-elf gcc-riscv64-unknown-elf
+
+      - name: Install ACT4 host dependencies
+        shell: bash
+        run: |
+          ACT4_RISCV_DIR="${HOME}/riscv"
+          ACT4_REF="9798a554ce4139f472c9ccd3a18c9061d0f7024d"
+          SAIL_RISCV_VERSION="0.11"
+          ACT4_REPO="$(dirname "${GITHUB_WORKSPACE}")/riscv-arch-test"
+
+          curl https://mise.run | sh
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+          echo "${HOME}/.local/share/mise/shims" >> "${GITHUB_PATH}"
+          export PATH="${HOME}/.local/bin:${HOME}/.local/share/mise/shims:${PATH}"
+
+          mkdir -p "${ACT4_RISCV_DIR}/bin"
+          curl --fail --location "https://github.com/riscv/sail-riscv/releases/download/${SAIL_RISCV_VERSION}/sail-riscv-Linux-$(uname -m).tar.gz" \
+            | tar xz --directory="${ACT4_RISCV_DIR}" --strip-components=1
+          echo "${ACT4_RISCV_DIR}/bin" >> "${GITHUB_PATH}"
+
+          if [ ! -d "${ACT4_REPO}/.git" ]; then
+            git clone https://github.com/riscv/riscv-arch-test.git "${ACT4_REPO}"
+          fi
+          git -C "${ACT4_REPO}" fetch --tags origin
+          git -C "${ACT4_REPO}" checkout --detach "${ACT4_REF}"
+          cd "${ACT4_REPO}"
+          mise trust .mise.toml
+          mise install
+          mise exec -- uv sync
+          cd framework/src/act/data
+          BUNDLE_JOBS=1 mise exec -- bundle install
+
 
