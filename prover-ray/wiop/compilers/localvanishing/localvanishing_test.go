@@ -244,17 +244,32 @@ func TestCompile_SharesLagrangeColumnsByAnchor(t *testing.T) {
 		"both vanishings share anchor 0, so only one Lagrange column should be created")
 }
 
-// TestCompile_BaseCellLeaf_RoundTrip exercises the base-cell support added to
-// evalExprOnCoset: a local constraint that asserts col[0] − c == 0 must
-// accept an honest witness where col[0] equals the cell value, and reject one
-// where they differ.
+// elementFromUint64 converts a literal uint64 into a koalabear field.Element.
+func elementFromUint64(v uint64) field.Element {
+	var e field.Element
+	e.SetUint64(v)
+	return e
+}
+
+// extOf lifts a base-field uint64 into an extension-field [field.Gen] (with
+// the isBase tag set to false so downstream arithmetic stays in the
+// extension path).
+func extOf(v uint64) field.Gen {
+	var ext field.Ext
+	ext = field.Lift(elementFromUint64(v))
+	return field.ElemFromExt(ext)
+}
+
+// TestCompile_BaseCellLeaf_RoundTrip exercises base-cell support: a local
+// constraint that asserts col[0] − c == 0 must accept matching values and
+// reject mismatched ones.
 func TestCompile_BaseCellLeaf_RoundTrip(t *testing.T) {
 	build := func() (*wiop.System, *wiop.Column, *wiop.Cell) {
 		sys := wiop.NewSystemf("lv-basecell")
 		r0 := sys.NewRound()
 		mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
 		col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
-		cell := r0.NewCell(sys.Context.Childf("c"), false) // base-field cell
+		cell := r0.NewCell(sys.Context.Childf("c"), false)
 		mod.NewLocalConstraint(
 			sys.Context.Childf("lc"),
 			wiop.Sub(col.View(), cell),
@@ -279,26 +294,129 @@ func TestCompile_BaseCellLeaf_RoundTrip(t *testing.T) {
 		global.Compile(sys)
 		rt := wiop.NewRuntime(sys)
 		rt.AssignColumn(col, makeVec(5, 9, 9, 9))
-		rt.AssignCell(cell, field.ElemFromBase(elementFromUint64(7))) // 5 ≠ 7
+		rt.AssignCell(cell, field.ElemFromBase(elementFromUint64(7)))
 		assert.Error(t, runAndVerify(&rt))
 	})
 }
 
-// elementFromUint64 is a tiny helper to convert a literal value into a
-// koalabear field.Element so the test stays focused on what's being verified.
-func elementFromUint64(v uint64) field.Element {
-	var e field.Element
-	e.SetUint64(v)
-	return e
+// TestCompile_ExtensionCellLeaf_RoundTrip exercises the Gen-widened
+// evalExprOnCoset: the cell is declared extension and assigned via
+// ElemFromExt, forcing pTimesC into the extension branch of the prover-side
+// multiplication chain.
+func TestCompile_ExtensionCellLeaf_RoundTrip(t *testing.T) {
+	build := func() (*wiop.System, *wiop.Column, *wiop.Cell) {
+		sys := wiop.NewSystemf("lv-extcell")
+		r0 := sys.NewRound()
+		mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
+		col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
+		cell := r0.NewCell(sys.Context.Childf("c"), true) // extension cell
+		mod.NewLocalConstraint(
+			sys.Context.Childf("lc"),
+			wiop.Sub(col.View(), cell),
+			0,
+		)
+		return sys, col, cell
+	}
+
+	t.Run("honest", func(t *testing.T) {
+		sys, col, cell := build()
+		localvanishing.Compile(sys)
+		global.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(col, makeVec(5, 9, 9, 9))
+		rt.AssignCell(cell, extOf(5))
+		require.NoError(t, runAndVerify(&rt))
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		sys, col, cell := build()
+		localvanishing.Compile(sys)
+		global.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(col, makeVec(5, 9, 9, 9))
+		rt.AssignCell(cell, extOf(7))
+		assert.Error(t, runAndVerify(&rt))
+	})
 }
 
-func TestCompile_PanicsOnExtensionCellLeaf(t *testing.T) {
-	sys := wiop.NewSystemf("lv-extcell")
-	r0 := sys.NewRound()
-	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
-	cell := r0.NewCell(sys.Context.Childf("c"), true) // extension cell — not yet supported
-	mod.NewLocalConstraint(sys.Context.Childf("lc"), cell, 0)
+// TestCompile_CoinLeaf_RoundTrip exercises CoinField (always extension)
+// support: the constraint coin · (col[0] − 5) = 0 is satisfied when col[0]
+// equals 5 (regardless of the coin) and rejected otherwise (almost surely,
+// since the coin is a random non-zero extension element).
+func TestCompile_CoinLeaf_RoundTrip(t *testing.T) {
+	build := func() (*wiop.System, *wiop.Column) {
+		sys := wiop.NewSystemf("lv-coin")
+		r0 := sys.NewRound()
+		r1 := sys.NewRound()
+		mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
+		col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
+		coin := r1.NewCoinField(sys.Context.Childf("coin"))
+		five := wiop.NewConstantField(elementFromUint64(5))
+		mod.NewLocalConstraint(
+			sys.Context.Childf("lc"),
+			wiop.Mul(coin, wiop.Sub(col.View(), five)),
+			0,
+		)
+		return sys, col
+	}
 
-	assert.Panics(t, func() { localvanishing.Compile(sys) },
-		"extension-field *Cell leaves are not yet supported")
+	t.Run("honest", func(t *testing.T) {
+		sys, col := build()
+		localvanishing.Compile(sys)
+		global.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(col, makeVec(5, 9, 9, 9))
+		require.NoError(t, runAndVerify(&rt))
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		sys, col := build()
+		localvanishing.Compile(sys)
+		global.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(col, makeVec(7, 9, 9, 9))
+		assert.Error(t, runAndVerify(&rt))
+	})
+}
+
+// TestCompile_ExtensionCellAndCoin_RoundTrip is the headline test for the
+// Gen widening: the constraint coin · (col[0] − cExt) = 0 simultaneously
+// exercises an extension cell and an extension coin inside a single lifted
+// vanishing expression.
+func TestCompile_ExtensionCellAndCoin_RoundTrip(t *testing.T) {
+	build := func() (*wiop.System, *wiop.Column, *wiop.Cell) {
+		sys := wiop.NewSystemf("lv-extcell-coin")
+		r0 := sys.NewRound()
+		r1 := sys.NewRound()
+		mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
+		col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
+		cell := r0.NewCell(sys.Context.Childf("cExt"), true)
+		coin := r1.NewCoinField(sys.Context.Childf("coin"))
+		mod.NewLocalConstraint(
+			sys.Context.Childf("lc"),
+			wiop.Mul(coin, wiop.Sub(col.View(), cell)),
+			0,
+		)
+		return sys, col, cell
+	}
+
+	t.Run("honest", func(t *testing.T) {
+		sys, col, cell := build()
+		localvanishing.Compile(sys)
+		global.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(col, makeVec(5, 9, 9, 9))
+		rt.AssignCell(cell, extOf(5))
+		require.NoError(t, runAndVerify(&rt))
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		sys, col, cell := build()
+		localvanishing.Compile(sys)
+		global.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(col, makeVec(5, 9, 9, 9))
+		rt.AssignCell(cell, extOf(7))
+		assert.Error(t, runAndVerify(&rt))
+	})
 }

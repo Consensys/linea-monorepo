@@ -444,19 +444,10 @@ func (a *QuotientProverAction) Run(rt wiop.Runtime) {
 		if bkt.entries != nil {
 			// Static module: use precomputed cancellation cosets.
 			for _, entry := range bkt.entries {
-				for j := 0; j < N; j++ {
-					pVal := evalExprOnCoset(rt, entry.v.Expression, cosetEvals, j, ratio, N)
-					var pTimesC field.Element
-					if entry.cancellationCoset != nil {
-						pTimesC.Mul(&pVal, &entry.cancellationCoset[j])
-					} else {
-						pTimesC = pVal
-					}
-					// aggregate[j] += coinPow * pTimesC
-					var term field.Ext
-					term.MulByElement(&coinPow, &pTimesC)
-					aggregate[j].Add(&aggregate[j], &term)
-				}
+				accumulateOnCoset(
+					rt, entry.v.Expression, cosetEvals,
+					entry.cancellationCoset, &coinPow, aggregate, ratio, N,
+				)
 				// advance coinPow: coinPow *= coinExt
 				coinPow.Mul(&coinPow, &coinExt)
 			}
@@ -464,18 +455,10 @@ func (a *QuotientProverAction) Run(rt wiop.Runtime) {
 			// Dynamic module: compute cancellation cosets at runtime.
 			for _, v := range bkt.vanishings {
 				cancellationCoset := computeCancellationCoset(v.CancelledPositions, n, N)
-				for j := 0; j < N; j++ {
-					pVal := evalExprOnCoset(rt, v.Expression, cosetEvals, j, ratio, N)
-					var pTimesC field.Element
-					if cancellationCoset != nil {
-						pTimesC.Mul(&pVal, &cancellationCoset[j])
-					} else {
-						pTimesC = pVal
-					}
-					var term field.Ext
-					term.MulByElement(&coinPow, &pTimesC)
-					aggregate[j].Add(&aggregate[j], &term)
-				}
+				accumulateOnCoset(
+					rt, v.Expression, cosetEvals,
+					cancellationCoset, &coinPow, aggregate, ratio, N,
+				)
 				coinPow.Mul(&coinPow, &coinExt)
 			}
 		}
@@ -732,16 +715,95 @@ func evalExprAtPoint(
 	}
 }
 
-// evalExprOnCoset evaluates a base-field vanishing expression at coset point j.
+// accumulateOnCoset adds the contribution of one Vanishing expression to the
+// per-coset-point aggregate accumulator. It classifies the expression once
+// via [isBaseExpr] and then runs a specialised inner loop that stays
+// entirely in the base or extension field — avoiding the field.Gen
+// dispatch overhead that would otherwise be paid on every operation across
+// all N coset points.
+//
+//   - For a base-only expression: the j-loop multiplies pVal·cancellation in
+//     base, then promotes once into Ext via [field.Ext.MulByElement].
+//   - For an extension expression: the j-loop multiplies pVal·cancellation
+//     in extension (the cancellation is base, so MulByElement is used), then
+//     [field.Ext.Mul] accumulates into the aggregate.
+//
+// cancellationCoset may be nil, in which case the cancellation factor is
+// implicitly 1 and skipped.
+func accumulateOnCoset(
+	rt wiop.Runtime,
+	expr wiop.Expression,
+	cosetEvals map[wiop.ObjectID][]field.Element,
+	cancellationCoset []field.Element,
+	coinPow *field.Ext,
+	aggregate []field.Ext,
+	ratio, N int,
+) {
+	if isBaseExpr(expr) {
+		for j := 0; j < N; j++ {
+			pVal := evalExprOnCoset(rt, expr, cosetEvals, j, ratio, N)
+			var pTimesC field.Element
+			if cancellationCoset != nil {
+				pTimesC.Mul(&pVal, &cancellationCoset[j])
+			} else {
+				pTimesC = pVal
+			}
+			var term field.Ext
+			term.MulByElement(coinPow, &pTimesC)
+			aggregate[j].Add(&aggregate[j], &term)
+		}
+		return
+	}
+	for j := 0; j < N; j++ {
+		pVal := evalExprOnCosetExt(rt, expr, cosetEvals, j, ratio, N)
+		var pTimesC field.Ext
+		if cancellationCoset != nil {
+			pTimesC.MulByElement(&pVal, &cancellationCoset[j])
+		} else {
+			pTimesC = pVal
+		}
+		var term field.Ext
+		term.Mul(coinPow, &pTimesC)
+		aggregate[j].Add(&aggregate[j], &term)
+	}
+}
+
+// isBaseExpr reports whether expr evaluates to a base-field element at every
+// coset point. Extension-field cells and CoinField leaves (always extension)
+// make the result extension; everything else is base. The check is purely
+// structural, so it is computed once per Vanishing expression and reused
+// across all N coset points.
+func isBaseExpr(expr wiop.Expression) bool {
+	switch e := expr.(type) {
+	case *wiop.ColumnView, *wiop.Constant:
+		return true
+	case *wiop.Cell:
+		return !e.IsExtension()
+	case *wiop.CoinField:
+		return false
+	case *wiop.ArithmeticOperation:
+		for _, op := range e.Operands {
+			if !isBaseExpr(op) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+// evalExprOnCoset evaluates a base-field vanishing expression at coset point j
+// and returns a base-field element. The caller must guarantee that the
+// expression is base — i.e. [isBaseExpr] returned true — otherwise the
+// Cell case will panic on an extension-typed leaf and CoinField will panic
+// unconditionally.
+//
 // cosetEvals maps each root column ID to its N-length coset evaluation array.
 // For a ColumnView with shift k, the coset index is (j + k·ratio) mod N.
 //
-// Base-field *Cell leaves are supported and treated as scalars constant across
-// the coset: their runtime value is broadcast at every coset point.
-// Extension-field cells and CoinField leaves (always extension) are not
-// supported here because the surrounding quotient pipeline carries base-field
-// values; promoting expression evaluation to field.Gen would require widening
-// the multiplication chain in QuotientProverAction.Run.
+// For expressions containing extension-typed leaves, use [evalExprOnCosetExt]
+// instead.
 func evalExprOnCoset(
 	rt wiop.Runtime,
 	expr wiop.Expression,
@@ -756,7 +818,7 @@ func evalExprOnCoset(
 	case *wiop.Cell:
 		if e.IsExtension() {
 			panic(fmt.Sprintf(
-				"wiop/compilers: extension-field cell %q in vanishing expression is not supported by base-field coset evaluation",
+				"wiop/compilers: extension-field cell %q reached the base-field coset evaluator; the caller must dispatch on isBaseExpr",
 				e.Context.Path(),
 			))
 		}
@@ -768,6 +830,8 @@ func evalExprOnCoset(
 			))
 		}
 		return v.AsBase()
+	case *wiop.Constant:
+		return e.Value
 	case *wiop.ArithmeticOperation:
 		eval := func(i int) field.Element {
 			return evalExprOnCoset(rt, e.Operands[i], cosetEvals, j, ratio, N)
@@ -801,12 +865,75 @@ func evalExprOnCoset(
 			panic(fmt.Sprintf("wiop/compilers: unknown ArithmeticOperator %v", e.Operator))
 		}
 		return res
-	case *wiop.Constant:
-		return e.Value
 	case *wiop.CoinField:
-		panic("wiop/compilers: CoinField in vanishing expression coset evaluation is not supported (coins are always extension-field)")
+		panic("wiop/compilers: CoinField reached the base-field coset evaluator; the caller must dispatch on isBaseExpr")
 	default:
 		panic(fmt.Sprintf("wiop/compilers: unsupported expression type %T in evalExprOnCoset", expr))
+	}
+}
+
+// evalExprOnCosetExt is the extension-field counterpart of [evalExprOnCoset].
+// It accepts any leaf type, lifting base-field values (column samples,
+// constants, base cells) into the extension field, and is used when the
+// expression contains at least one extension-typed leaf (extension cell or
+// any coin).
+//
+// All arithmetic runs in the extension field — including for sub-expressions
+// that happen to be pure base — so this path is slower per operation than
+// [evalExprOnCoset]. Callers should dispatch on [isBaseExpr] to use the
+// base-field fast path whenever possible.
+func evalExprOnCosetExt(
+	rt wiop.Runtime,
+	expr wiop.Expression,
+	cosetEvals map[wiop.ObjectID][]field.Element,
+	j, ratio, N int,
+) field.Ext {
+	switch e := expr.(type) {
+	case *wiop.ColumnView:
+		k := e.ShiftingOffset
+		idx := ((j+k*ratio)%N + N) % N
+		return field.Lift(cosetEvals[e.Column.Context.ID][idx])
+	case *wiop.Cell:
+		return rt.GetCellValue(e).AsExt()
+	case *wiop.CoinField:
+		return rt.GetCoinValue(e).AsExt()
+	case *wiop.Constant:
+		return field.Lift(e.Value)
+	case *wiop.ArithmeticOperation:
+		eval := func(i int) field.Ext {
+			return evalExprOnCosetExt(rt, e.Operands[i], cosetEvals, j, ratio, N)
+		}
+		a0 := eval(0)
+		var res field.Ext
+		switch e.Operator {
+		case wiop.ArithmeticOperatorAdd:
+			a1 := eval(1)
+			res.Add(&a0, &a1)
+		case wiop.ArithmeticOperatorSub:
+			a1 := eval(1)
+			res.Sub(&a0, &a1)
+		case wiop.ArithmeticOperatorMul:
+			a1 := eval(1)
+			res.Mul(&a0, &a1)
+		case wiop.ArithmeticOperatorDiv:
+			a1 := eval(1)
+			var inv field.Ext
+			inv.Inverse(&a1)
+			res.Mul(&a0, &inv)
+		case wiop.ArithmeticOperatorDouble:
+			res.Double(&a0)
+		case wiop.ArithmeticOperatorSquare:
+			res.Square(&a0)
+		case wiop.ArithmeticOperatorNegate:
+			res.Neg(&a0)
+		case wiop.ArithmeticOperatorInverse:
+			res.Inverse(&a0)
+		default:
+			panic(fmt.Sprintf("wiop/compilers: unknown ArithmeticOperator %v", e.Operator))
+		}
+		return res
+	default:
+		panic(fmt.Sprintf("wiop/compilers: unsupported expression type %T in evalExprOnCosetExt", expr))
 	}
 }
 

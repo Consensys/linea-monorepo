@@ -38,16 +38,14 @@
 //
 // Limitations:
 //
-//   - Base-field [wiop.Cell] leaves are supported: the global compiler
-//     broadcasts their runtime value as a constant scalar across the coset.
-//     Extension-field cells and [wiop.CoinField] leaves (always extension)
-//     are not yet supported — the prover-side quotient pipeline carries
-//     base-field values, so promoting expression evaluation to a base/
-//     extension union would require widening the multiplication chain in
-//     QuotientProverAction.Run. Compile panics on such leaves.
 //   - Vanishings whose expression has no column references at all are
 //     rejected — there is no anchor row to multiply a Lagrange indicator
 //     against.
+//
+// [wiop.Cell] and [wiop.CoinField] leaves (both base and extension) are
+// fully supported: the global compiler broadcasts their runtime value as a
+// constant scalar across the coset and handles the resulting base/extension
+// arithmetic uniformly.
 package localvanishing
 
 import (
@@ -146,14 +144,9 @@ func reduce(
 }
 
 // collectColumnPositions returns every position appearing in a ColumnPosition
-// leaf of expr.
-//
-// Base-field *Cell leaves are allowed and pass through unchanged into the
-// lifted expression — the global compiler now broadcasts them as constants
-// across the coset. Extension-field cells and *CoinField leaves (always
-// extension) still panic: the prover-side quotient pipeline carries
-// base-field values, so extension scalars in vanishing expressions are not
-// yet supported.
+// leaf of expr. *Cell and *CoinField leaves are allowed and pass through
+// unchanged into the lifted expression: the global compiler broadcasts them
+// (base or extension) as constants across the coset.
 func collectColumnPositions(expr wiop.Expression, v *wiop.Vanishing, ctx *wiop.ContextFrame) []int {
 	var positions []int
 	var walk func(e wiop.Expression)
@@ -161,23 +154,11 @@ func collectColumnPositions(expr wiop.Expression, v *wiop.Vanishing, ctx *wiop.C
 		switch t := e.(type) {
 		case *wiop.ColumnPosition:
 			positions = append(positions, t.Position)
-		case *wiop.Cell:
-			if t.IsExtension() {
-				panic(fmt.Sprintf(
-					"wiop/compilers/localvanishing: %s: extension-field *Cell leaves are not yet supported (the global quotient pipeline carries base-field values)",
-					v.Context().Path(),
-				))
-			}
-			// Base cells are scalar constants across the coset; allowed.
-		case *wiop.CoinField:
-			panic(fmt.Sprintf(
-				"wiop/compilers/localvanishing: %s: *CoinField leaves are not yet supported (coins are always extension-field)",
-				v.Context().Path(),
-			))
 		case *wiop.ArithmeticOperation:
 			for _, op := range t.Operands {
 				walk(op)
 			}
+			// *Cell, *CoinField, *Constant leaves carry no positional info.
 		}
 	}
 	walk(expr)
