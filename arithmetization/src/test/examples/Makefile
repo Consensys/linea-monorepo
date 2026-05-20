@@ -90,9 +90,9 @@ ACT4_FAST       ?= false
 ACT4_DEBUG      ?= true
 
 # Default target (make)
-exec: install-zkc compile zkc-exec
+exec: compile zkc-exec
 
-debug: install-zkc compile zkc-debug
+debug: compile zkc-debug
 
 compile: $(SRC) linker-script
 # Print all variables for debugging purposes
@@ -229,12 +229,21 @@ blake-all:
 		exit $$compile_status; \
 	fi; \
 	go build -o $(MAKEFILE_DIR)rust/target/blake_elf2json $(GO_MAIN) || exit $$?; \
+	pass=0; fail=0; \
 	i=0; while IFS= read -r in_bytes; do \
 		i=$$((i + 1)); \
 		$(MAKEFILE_DIR)rust/target/blake_elf2json $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes "$$in_bytes" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json || exit $$?; \
 		result_line=$$(zkc exec $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json $(ZKC_MAIN) 2>&1 | awk '{ previous = current; current = $$0 } END { print previous }'); \
-		echo "case $$i: $$result_line"; \
-	done < $(MAKEFILE_DIR)rust/src/blake/blake.all
+		if [ "$$result_line" = "Program exited successfully (exit with code 0)." ]; then \
+			echo "PASS  case $$i"; \
+			pass=$$((pass + 1)); \
+		else \
+			echo "FAIL  case $$i: $$result_line" >&2; \
+			fail=$$((fail + 1)); \
+		fi; \
+	done < $(MAKEFILE_DIR)rust/src/blake/blake.all; \
+	echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
+	if [ "$$fail" -ne 0 ]; then echo "error: $$fail blake vector(s) failed" >&2; exit 1; fi
 
 # Build the ACT4 self-checking ELFs with the Linea ACT4 config 
 # Note: build if needed
