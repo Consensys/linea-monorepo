@@ -310,8 +310,8 @@ class ForcedTransactionsAppTest {
     await()
       .atMost(5.seconds.toJavaDuration())
       .untilAsserted {
-        assertThat(meterRegistry.find("forced.transaction.events.accepted").counter()?.count()).isEqualTo(2.0)
-        assertThat(meterRegistry.find("forced.transaction.latest.number").gauge()?.value()).isEqualTo(12.0)
+        assertThat(meterRegistry.find("forced.transaction.events.consumed").counter()?.count()).isEqualTo(2.0)
+        assertThat(meterRegistry.find("forced.transaction.events.highest").gauge()?.value()).isEqualTo(12.0)
       }
     app.stop().get()
   }

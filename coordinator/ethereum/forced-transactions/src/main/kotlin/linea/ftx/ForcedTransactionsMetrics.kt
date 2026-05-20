@@ -16,14 +16,14 @@ internal class ForcedTransactionsMetricsRecorder(
   private val latestForcedTransactionNumber = AtomicLong(initialLatestForcedTransactionNumber.toLong())
   private val acceptedEventsCounter: Counter = metricsFacade.createCounter(
     category = LineaMetricsCategory.FORCED_TRANSACTION,
-    name = "events.accepted",
-    description = "Number of ForcedTransactionAdded L1 events accepted by the coordinator",
+    name = "events.consumed",
+    description = "Number of ForcedTransactionAdded L1 events consumed by the coordinator",
   )
 
   init {
     metricsFacade.createGauge(
       category = LineaMetricsCategory.FORCED_TRANSACTION,
-      name = "latest.number",
+      name = "events.highest",
       description = "Latest ForcedTransactionAdded forced transaction number observed by the coordinator",
       measurementSupplier = { latestForcedTransactionNumber.get() },
     )
