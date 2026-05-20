@@ -218,10 +218,17 @@ verify-elf: $(BIN)
 
 # Run all blake test vectors in `rust/src/blake/blake.all`
 blake-all:
+	@compile_output=$$($(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=blake/blake_with_in_bytes.rs 2>&1); \
+	compile_status=$$?; \
+	if [ $$compile_status -ne 0 ]; then \
+		printf '%s\n' "$$compile_output"; \
+		exit $$compile_status; \
+	fi
 	@i=0; while IFS= read -r in_bytes; do \
 		i=$$((i + 1)); \
-		output=$$(make -f $(MAKEFILE_DIR)Makefile TEST=blake/blake_with_in_bytes.rs IN_BYTES="$$in_bytes" 2>&1); \
-		result_line=$$(printf '%s\n' "$$output" | sed '/^[[:space:]]*$$/d' | tail -n 2 | head -n 1); \
+		go run $(GO_MAIN) $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes "$$in_bytes" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json || exit $$?; \
+		output=$$(zkc exec $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json $(ZKC_MAIN) 2>&1); \
+		result_line=$$(printf '%s\n' "$$output" | tail -n 2 | head -n 1); \
 		echo "case $$i: $$result_line"; \
 	done < $(MAKEFILE_DIR)rust/src/blake/blake.all
 
