@@ -8,6 +8,7 @@ const fiat_shamir = verifier_ray.crypto.fiat_shamir;
 const poseidon2 = verifier_ray.crypto.poseidon2;
 const lagrange = verifier_ray.pcs.lagrange;
 const polynomial = verifier_ray.pcs.polynomial;
+const runtime = verifier_ray.runtime;
 
 test "koalabear base field matches prover-ray golden cases" {
     for (vectors.field_cases) |case| {
@@ -176,6 +177,35 @@ test "fiat-shamir transcript matches prover-ray golden cases" {
     }
 }
 
+test "runtime round coin derivation matches prover-ray scripted protocol" {
+    for (vectors.runtime_trace_cases) |case| {
+        var rt = runtime.Runtime.initWithRoundCount(case.rounds.len);
+        var coins: [max_trace_coins]ext.Ext = undefined;
+
+        for (case.rounds[0 .. case.rounds.len - 1], 0..) |round_case, round_index| {
+            var backing = TraceRoundBacking{};
+            const message = try backing.fill(round_case, false);
+            const got = try rt.advanceRoundWithMessage(round_index, message, &coins);
+            try std.testing.expectEqual(round_case.expected_coins.len, got.len);
+            for (got, round_case.expected_coins) |actual, expected| {
+                try expectExt(actual, uintsToExt(expected));
+            }
+        }
+    }
+}
+
+test "runtime downstream coin diverges after tampered absorb" {
+    const case = vectors.runtime_trace_cases[0];
+    var rt = runtime.Runtime.initWithRoundCount(case.rounds.len);
+    var backing = TraceRoundBacking{};
+    const message = try backing.fill(case.rounds[0], true);
+    var coins: [max_trace_coins]ext.Ext = undefined;
+
+    const got = try rt.advanceRoundWithMessage(0, message, &coins);
+    try std.testing.expect(got.len > 0);
+    try std.testing.expect(!got[0].eql(uintsToExt(case.rounds[0].expected_coins[0])));
+}
+
 fn elem(value: u32) field.Element {
     return field.Element.init(value);
 }
@@ -216,4 +246,69 @@ fn expectDigest(actual: poseidon2.Digest, expected: [8]u32) !void {
     for (actual, expected) |actual_limb, expected_limb| {
         try expectElem(actual_limb, expected_limb);
     }
+}
+
+const max_trace_columns = 8;
+const max_trace_values = 8;
+const max_trace_cells = 8;
+const max_trace_coins = 8;
+
+const TraceRoundBacking = struct {
+    columns: [max_trace_columns]runtime.ColumnAssignment = undefined,
+    cells: [max_trace_cells]?runtime.Scalar = undefined,
+    base_values: [max_trace_columns][max_trace_values]field.Element = undefined,
+    ext_values: [max_trace_columns][max_trace_values]ext.Ext = undefined,
+
+    fn fill(self: *TraceRoundBacking, round_case: anytype, tamper_first_absorb: bool) !runtime.RoundMessage {
+        try std.testing.expect(round_case.columns.len <= max_trace_columns);
+        try std.testing.expect(round_case.cells.len <= max_trace_cells);
+
+        var tampered = false;
+        for (round_case.columns, 0..) |column_case, i| {
+            var assignment: ?runtime.Vector = null;
+            if (column_case.is_assigned) {
+                if (column_case.is_ext) {
+                    try std.testing.expect(column_case.ext_values.len <= max_trace_values);
+                    fillExts(&self.ext_values[i], column_case.ext_values);
+                    assignment = .{ .ext = self.ext_values[i][0..column_case.ext_values.len] };
+                } else {
+                    try std.testing.expect(column_case.base_values.len <= max_trace_values);
+                    fillElems(&self.base_values[i], column_case.base_values);
+                    if (tamper_first_absorb and !tampered and column_case.base_values.len != 0) {
+                        self.base_values[i][0] = field.Element.init(self.base_values[i][0].value ^ 1);
+                        tampered = true;
+                    }
+                    assignment = .{ .base = self.base_values[i][0..column_case.base_values.len] };
+                }
+            }
+            self.columns[i] = .{
+                .visibility = try visibility(column_case.visibility),
+                .assignment = assignment,
+            };
+        }
+
+        for (round_case.cells, 0..) |cell_case, i| {
+            self.cells[i] = if (!cell_case.is_assigned)
+                null
+            else if (cell_case.is_ext)
+                .{ .ext = uintsToExt(cell_case.ext_value) }
+            else
+                .{ .base = elem(cell_case.base_value) };
+        }
+
+        return .{
+            .columns = self.columns[0..round_case.columns.len],
+            .cells = self.cells[0..round_case.cells.len],
+            .next_round_coin_count = round_case.expected_coins.len,
+        };
+    }
+};
+
+fn visibility(value: u8) !runtime.Visibility {
+    return switch (value) {
+        0 => .internal,
+        1 => .oracle,
+        2 => .public,
+        else => error.InvalidVisibility,
+    };
 }
