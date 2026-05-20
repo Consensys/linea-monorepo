@@ -43,6 +43,13 @@ To install Sail for ACT4 host builds, from `linea-monorepo/`:
 make -C arithmetization install-sail
 ```
 
+Then build the ACT4 ELFs on the host:
+
+```bash
+cd arithmetization/src/test/examples
+make build-act4
+```
+
 #### Note for MacOS
 
 If your `mise` setup does not auto-trust project configuration, run `mise trust .mise.toml` in the `riscv-arch-test` checkout once.
