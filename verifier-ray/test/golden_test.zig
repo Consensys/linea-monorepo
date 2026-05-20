@@ -128,10 +128,10 @@ test "lagrange evaluation returns domain value at roots of unity" {
         elem(1),
     };
     const ext_values = [_]ext.Ext{
-        extElem(.{ 3, 1, 4, 1 }),
-        extElem(.{ 5, 9, 2, 6 }),
-        extElem(.{ 5, 3, 5, 8 }),
-        extElem(.{ 9, 7, 9, 3 }),
+        extElem(.{ 3, 1, 4, 1, 5, 9 }),
+        extElem(.{ 5, 9, 2, 6, 5, 3 }),
+        extElem(.{ 5, 3, 5, 8, 9, 7 }),
+        extElem(.{ 9, 7, 9, 3, 2, 3 }),
     };
 
     const omega = try field.rootOfUnityBy(base_values.len);
@@ -140,6 +140,8 @@ test "lagrange evaluation returns domain value at roots of unity" {
         try expectElem(try lagrange.evaluateBaseAtBase(&base_values, domain_point), base_value.value);
         try expectExt(try lagrange.evaluateBaseAtExt(&base_values, ext.Ext.lift(domain_point)), .{
             base_value.value,
+            0,
+            0,
             0,
             0,
             0,
@@ -185,12 +187,14 @@ fn elem(value: u32) field.Element {
     return field.Element.init(value);
 }
 
-fn extElem(limbs: [4]u32) ext.Ext {
+fn extElem(limbs: [6]u32) ext.Ext {
     return .{ .limbs = .{
         elem(limbs[0]),
         elem(limbs[1]),
         elem(limbs[2]),
         elem(limbs[3]),
+        elem(limbs[4]),
+        elem(limbs[5]),
     } };
 }
 
@@ -208,7 +212,7 @@ fn fillElems(out: []field.Element, values: []const u32) void {
     }
 }
 
-fn fillExts(out: []ext.Ext, values: []const [4]u32) void {
+fn fillExts(out: []ext.Ext, values: []const [6]u32) void {
     for (values, 0..) |value, i| {
         out[i] = extElem(value);
     }
@@ -218,18 +222,20 @@ fn expectElem(actual: field.Element, expected: u32) !void {
     try std.testing.expectEqual(expected, actual.value);
 }
 
-fn expectExt(actual: ext.Ext, expected: [4]u32) !void {
+fn expectExt(actual: ext.Ext, expected: [6]u32) !void {
     for (actual.limbs, expected) |actual_limb, expected_limb| {
         try expectElem(actual_limb, expected_limb);
     }
 }
 
-fn extValues(value: ext.Ext) [4]u32 {
+fn extValues(value: ext.Ext) [6]u32 {
     return .{
         value.limbs[0].value,
         value.limbs[1].value,
         value.limbs[2].value,
         value.limbs[3].value,
+        value.limbs[4].value,
+        value.limbs[5].value,
     };
 }
 
