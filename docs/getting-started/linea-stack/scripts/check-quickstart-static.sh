@@ -328,6 +328,15 @@ check_reuse_guardrails() {
     fail "deploy-contracts must verify L2 on-chain code before skipping from prior deploy logs"
   fi
 
+  if grep -q 'ensure_forced_transaction_gateway_role' "$deploy_contracts" \
+    && grep -q 'FORCED_TRANSACTION_SENDER_ROLE already granted' "$deploy_contracts" \
+    && grep -q 'FORCED_TRANSACTION_SENDER_ROLE already granted' "$ROOT/contracts/local-deployments-artifacts/deployPlonkVerifierAndLineaRollupV8.ts" \
+    && grep -q 'Timed out waiting for FORCED_TRANSACTION_SENDER_ROLE grant transaction receipt' "$ROOT/contracts/local-deployments-artifacts/deployPlonkVerifierAndLineaRollupV8.ts"; then
+    pass "deploy-contracts completes or repairs the ForcedTransactionGateway role grant"
+  else
+    fail "deploy-contracts must not treat Step 1 as complete before the ForcedTransactionGateway role grant"
+  fi
+
   if grep -q 'l2 rpc latest block' "$status_script" \
     && grep -q 'rollup finalized block is ahead of local L2 latest block' "$status_script" \
     && grep -q 'local chain state does not match the preserved L1 rollup state' "$status_script" \
