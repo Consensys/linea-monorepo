@@ -80,6 +80,14 @@ runs:
         RELEASE_TAG_SUFFIX: ${{ inputs.release_tag_suffix }}
       run: |
         set -euo pipefail
+
+        # Get the latest tag matching the release pattern (newest by semver).
+        latest_tag=$(git tag --list "releases/${COMPONENT}/v*" \
+          | grep -E "^releases/${COMPONENT}/v[0-9]+\.[0-9]+\.[0-9]+$" \
+          | sort -V \
+          | tail -n 1 \
+          || true)
+
         mapfile -t paths <<< "${{ steps.paths.outputs.include_paths }}"
         cliff_args=(--config "${CLIFF_CONFIG}" --bumped-version)
         for p in "${paths[@]}"; do
@@ -91,9 +99,14 @@ runs:
         stderr_file=$(mktemp)
         trap 'rm -f "${stderr_file}"' EXIT
         next_tag=$(git cliff "${cliff_args[@]}" 2> "${stderr_file}")
+        # Re-emit stderr so it's visible in logs
         cat "${stderr_file}" >&2
+
         changed=true
+        # Check if git cliff warned "nothing to bump"
         if grep -q "There is nothing to bump" "${stderr_file}"; then
+          changed=false
+        elif [ "${next_tag}" = "${latest_tag}" ]; then
           changed=false
         fi
         if [ -z "${next_tag}" ] || [ "${changed}" = "false" ]; then
@@ -111,12 +124,6 @@ runs:
           next_semver="${next_semver}-${RELEASE_TAG_SUFFIX}"
         fi
 
-        # Get the latest tag matching the release pattern (newest by semver).
-        latest_tag=$(git tag --list "releases/${COMPONENT}/v*" \
-          | grep -E "^releases/${COMPONENT}/v[0-9]+\.[0-9]+\.[0-9]+$" \
-          | sort -V \
-          | tail -n 1 \
-          || true)
         echo "latest ${COMPONENT} tag:  ${latest_tag}"
         echo "next ${COMPONENT} tag:    ${next_tag}"
         echo "next ${COMPONENT} semver: ${next_semver}"
