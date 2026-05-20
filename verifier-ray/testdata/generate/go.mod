@@ -4,6 +4,8 @@ go 1.25.7
 
 require github.com/consensys/linea-monorepo/prover-ray v0.0.0-20260519010204-24a53941da53
 
+replace github.com/consensys/linea-monorepo/prover-ray => ../../../prover-ray
+
 require (
 	github.com/bits-and-blooms/bitset v1.24.4 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
