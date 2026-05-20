@@ -11,6 +11,8 @@ import (
 )
 
 const (
+	WRITE_SECTIONS_FILE = true
+
 	RISCV_PROGRAM        = "riscV_program"
 	IN_BYTES             = "in_bytes"
 	RISCV_PROGRAM_OFFSET = "riscV_program_offset"
@@ -67,6 +69,22 @@ func main() {
 	}
 	// extract loadable program segments
 	var program = extractProgramBytes(elfFile.Progs, programOffset)
+	if WRITE_SECTIONS_FILE {
+		sectionsFile, err := os.Create(strings.TrimSuffix(os.Args[1], ".elf") + ".sections")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error creating ELF sections file: %v\n", err)
+			os.Exit(1)
+		}
+		for _, s := range elfFile.Sections {
+			if s.Name != "" && s.Size > 0 && s.Flags&elf.SHF_ALLOC != 0 {
+				fmt.Fprintln(sectionsFile, s.Name)
+			}
+		}
+		if err := sectionsFile.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "error writing ELF sections file: %v\n", err)
+			os.Exit(1)
+		}
+	}
 	printJson(program, inBytes, programOffset, inputsOffset, entryPoint)
 }
 
