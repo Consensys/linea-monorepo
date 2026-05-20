@@ -1,3 +1,8 @@
+## [0.1.2-mrc1] - 2026-05-20
+
+### ⚙️ Miscellaneous Tasks
+
+- *(coordinator)* For manual release testing
 ## [0.1.1] - 2026-05-20
 ### for testing
 
