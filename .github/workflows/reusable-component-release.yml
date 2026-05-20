@@ -135,7 +135,7 @@ jobs:
     secrets: inherit
 
   push-tag-update-changelog-and-gh-release:
-    needs: [compute-release-metadata, run-e2e-tests]
+    needs: [run-e2e-tests]
     if: always() && !cancelled() && needs.run-e2e-tests.result == 'success'
     uses: ./.github/workflows/reusable-component-gh-release.yml
     with:
@@ -144,9 +144,6 @@ jobs:
       include-path: ${{ inputs.include-path }}
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
       release_tag_suffix: ${{ inputs.release_tag_suffix }}
-      release_version: ${{ needs.compute-release-metadata.outputs.release_version }}
-      release_tag: ${{ needs.compute-release-metadata.outputs.release_tag }}
-      changelog: ${{ needs.compute-release-metadata.outputs.changelog }}
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
     secrets: inherit

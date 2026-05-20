@@ -15,11 +15,6 @@ on:
         description: 'newline-separated string to represent the "git-cliff --include-path filter"'
         required: true
         type: string
-      cliff-config:
-        description: "Path to the cliff.toml config file"
-        required: false
-        type: string
-        default: "cliff.toml"
       release_tag_suffix:
         description: "Custom tag release tag suffix, i.e. releases/[component]/v[semver]-[suffix]"
         required: false
@@ -35,19 +30,28 @@ on:
         required: false
         type: boolean
         default: false
-      runner:
-        description: "Runner label"
-        required: false
-        type: string
-        default: "gha-runner-scale-set-ubuntu-24-amd64-med"
+    outputs:
+      release_tag:
+        description: "Full release tag (e.g. releases/coordinator/v0.2.0)"
+        value: ${{ jobs.release-component.outputs.release_tag }}
+      release_version:
+        description: "Bare semver (e.g. 0.2.0)"
+        value: ${{ jobs.release-component.outputs.release_version }}
+      changelog:
+        description: "Latest changelog section content"
+        value: ${{ jobs.release-component.outputs.changelog }}
 
 jobs:
   release-component:
-    runs-on: ${{ inputs.runner }}
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     permissions:
       contents: write
       pull-requests: write
     name: Release ${{ inputs.component-name }} (push changelog + tag)
+    outputs:
+      release_tag: ${{ steps.prepend-changelog.outputs.next_tag }}
+      release_version: ${{ steps.prepend-changelog.outputs.next_version }}
+      changelog: ${{ steps.prepend-changelog.outputs.changelog_content }}
     steps:
       # Mint a short-lived token either for the release bot GitHub App to commit the changelog changes 
       # directly bypassin the branch-protection or for PR bot GitHub App to create PR with the changelog changes.

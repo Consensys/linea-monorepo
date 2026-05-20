@@ -44,7 +44,7 @@ jobs:
     needs: [check-branch-and-compute-tag]
     uses: ./.github/workflows/reusable-milestone-component-release-metadata.yml
     with:
-      release_tag_suffix: ${{ inputs.release_tag_suffix }}
+      release_tag_suffix: '' # no release tag suffix allowed for milestone component release 
     secrets: inherit
 
   build-local-coordinator:
@@ -154,9 +154,7 @@ jobs:
       folder-name: coordinator
       include-path: coordinator/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_version: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).release_version }}
-      release_tag: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).release_tag }}
-      changelog: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).changelog }}
+      release_tag_suffix: '' # no release tag suffix allowed for milestone component release 
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
       upload_changelog: true
@@ -174,9 +172,7 @@ jobs:
       folder-name: prover
       include-path: prover/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_version: ${{ fromJson(needs.component-release-metadata.outputs.prover).release_version }}
-      release_tag: ${{ fromJson(needs.component-release-metadata.outputs.prover).release_tag }}
-      changelog: ${{ fromJson(needs.component-release-metadata.outputs.prover).changelog }}
+      release_tag_suffix: '' # no release tag suffix allowed for milestone component release 
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
       upload_changelog: true
@@ -194,9 +190,7 @@ jobs:
       folder-name: postman
       include-path: postman/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_version: ${{ fromJson(needs.component-release-metadata.outputs.postman).release_version }}
-      release_tag: ${{ fromJson(needs.component-release-metadata.outputs.postman).release_tag }}
-      changelog: ${{ fromJson(needs.component-release-metadata.outputs.postman).changelog }}
+      release_tag_suffix: '' # no release tag suffix allowed for milestone component release 
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
       upload_changelog: true
@@ -214,9 +208,7 @@ jobs:
       folder-name: transaction-exclusion-api
       include-path: transaction-exclusion-api/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_version: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).release_version }}
-      release_tag: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).release_tag }}
-      changelog: ${{ fromJson(needs.component-release-metadata.outputs.tx-exclusion-api).changelog }}
+      release_tag_suffix: '' # no release tag suffix allowed for milestone component release 
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
       upload_changelog: true
@@ -231,10 +223,8 @@ jobs:
     uses: ./.github/workflows/reusable-linea-besu-package-gh-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      release_tag_suffix: '' # no release tag suffix allowed for milestone component release 
       without_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin }}
-      release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_version }}
-      release_tag: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_tag }}
-      changelog: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).changelog }}
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
       upload_changelog: true
@@ -264,7 +254,7 @@ jobs:
     secrets: inherit
 
   # prepend CHANGELOG for each component for linea release (and then create PR)
-  linea-milestone-changelog-update:
+  linea-milestone-push-tag-changelog-update:
     needs:
       - check-branch-and-compute-tag
       - component-release-metadata
@@ -299,7 +289,7 @@ jobs:
       - check-branch-and-compute-tag
       - component-release-metadata
       - component-latest-docker-tags
-      - linea-milestone-changelog-update
+      - linea-milestone-push-tag-changelog-update
       - coordinator-gh-release
       - postman-gh-release
       - prover-gh-release
@@ -307,12 +297,12 @@ jobs:
       - linea-besu-gh-release
     if: >
       always() && !cancelled() &&
-      needs.linea-milestone-changelog-update.result == 'success'
+      needs.linea-milestone-push-tag-changelog-update.result == 'success'
     uses: ./.github/workflows/reusable-milestone-gh-release.yml
     with:
       release_version: ${{ needs.check-branch-and-compute-tag.outputs.release_version }}
       release_tag: ${{ needs.check-branch-and-compute-tag.outputs.release_tag }}
-      changelog: ${{ needs.linea-milestone-changelog-update.outputs.changelog }}
+      changelog: ${{ needs.linea-milestone-push-tag-changelog-update.outputs.changelog }}
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}

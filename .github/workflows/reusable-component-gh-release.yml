@@ -31,18 +31,6 @@ on:
         required: false
         type: string
         default: ''
-      release_version:
-        description: "Release semver associated with the release tag (e.g. 1.2.3)"
-        required: true
-        type: string
-      release_tag:
-        description: "Release tag (e.g. releases/coordinator/v1.2.3)"
-        required: true
-        type: string
-      changelog:
-        description: "Release changelog section content"
-        required: true
-        type: string
       draft_release:
         description: 'Draft Release'
         required: false
@@ -81,7 +69,7 @@ jobs:
     needs: [release-push-tag-changelog]
     uses: ./.github/workflows/reusable-component-docker-tag.yml
     with:
-      version-prefix: ${{ inputs.release_version }}
+      version-prefix: ${{ needs.release-push-tag-changelog.outputs.release_version }}
       image-tag-suffix: ${{ inputs.image_tag_suffix }}
 
   build-and-publish-image-coordinator:
@@ -133,7 +121,7 @@ jobs:
     secrets: inherit
 
   gh-release:
-    needs: [compute-docker-tag, build-and-publish-image-coordinator, build-and-publish-image-postman, build-and-publish-image-prover, build-and-publish-image-tx-exclusion-api]
+    needs: [release-push-tag-changelog, compute-docker-tag, build-and-publish-image-coordinator, build-and-publish-image-postman, build-and-publish-image-prover, build-and-publish-image-tx-exclusion-api]
     if: >
       always() && !cancelled() &&
       (needs.build-and-publish-image-coordinator.result   == 'success' ||
@@ -151,7 +139,7 @@ jobs:
         env:
           # Pass via env to avoid shell injection: changelog content is derived
           # from commit messages (via git-cliff) and may contain backticks, $(...), etc.
-          CHANGELOG: ${{ inputs.changelog }}
+          CHANGELOG: ${{ needs.release-push-tag-changelog.outputs.changelog }}
           DOCKER_TAG: ${{ needs.compute-docker-tag.outputs.docker_tag }}
           DOCKER_TAG_WITH_SUFFIX: ${{ needs.compute-docker-tag.outputs.docker_tag_with_suffix }}
           DOCKER_IMAGE_SUFFIX: ${{ inputs.folder-name }}
@@ -179,8 +167,8 @@ jobs:
       - name: gh-release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
         with:
-          name: ${{ env.COMPONENT_CAP }} v${{ inputs.release_version }}
-          tag_name: ${{ inputs.release_tag }}
+          name: ${{ env.COMPONENT_CAP }} v${{ needs.release-push-tag-changelog.outputs.release_version }}
+          tag_name: ${{ needs.release-push-tag-changelog.outputs.release_tag }}
           body_path: release/output.md
           draft: ${{ inputs.draft_release }}
           prerelease: ${{ inputs.pre_release }}

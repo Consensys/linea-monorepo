@@ -25,18 +25,6 @@ on:
         required: false
         type: string
         default: ''
-      release_version:
-        description: "Release semver associated with the release tag (e.g. 1.2.3)"
-        required: true
-        type: string
-      release_tag:
-        description: "Release tag (e.g. releases/coordinator/v1.2.3)"
-        required: true
-        type: string
-      changelog:
-        description: "Release changelog section content"
-        required: true
-        type: string
       draft_release:
         description: 'Draft Release'
         required: false
@@ -82,7 +70,7 @@ jobs:
     needs: [release-linea-besu-push-tag-changelog]
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
-      release_tag_prefix: ${{ inputs.release_version }}
+      release_tag_prefix: ${{ needs.release-linea-besu-push-tag-changelog.outputs.release_version }}
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
       run_test: false
       run_e2e_test: false
@@ -90,7 +78,7 @@ jobs:
       draft_release: ${{ inputs.draft_release }}
       pre_release: ${{ inputs.pre_release }}
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
-      changelog: ${{ inputs.changelog }}
-      release_tag: ${{ inputs.release_tag }}
-      release_version: ${{ inputs.release_version }}
+      changelog: ${{ needs.release-linea-besu-push-tag-changelog.outputs.changelog }}
+      release_tag: ${{ needs.release-linea-besu-push-tag-changelog.outputs.release_tag }}
+      release_version: ${{ needs.release-linea-besu-push-tag-changelog.outputs.release_version}}
     secrets: inherit
