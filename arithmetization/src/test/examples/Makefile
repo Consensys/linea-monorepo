@@ -287,7 +287,7 @@ build-act4:
 	fi
 
 # Build and run the ACT4 self-checking ELFs with the Linea ACT4 config
-run-act4: build-act4
+run-act4: install-zkc build-act4
 	@rm -f "$(ACT4_LOGS)"/*; \
 	mkdir -p "$(ACT4_LOGS)"; \
 	> "$(ACT4_RESULTS)"; \
