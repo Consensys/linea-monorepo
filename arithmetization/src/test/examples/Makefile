@@ -224,12 +224,10 @@ blake-all:
 		printf '%s\n' "$$compile_output"; \
 		exit $$compile_status; \
 	fi; \
-	elf2json=$$(mktemp) || exit $$?; \
-	trap 'rm -f "$$elf2json"' EXIT; \
-	go build -o "$$elf2json" $(GO_MAIN) || exit $$?; \
+	go build -o $(MAKEFILE_DIR)rust/target/blake_elf2json $(GO_MAIN) || exit $$?; \
 	i=0; while IFS= read -r in_bytes; do \
 		i=$$((i + 1)); \
-		"$$elf2json" $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes "$$in_bytes" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json || exit $$?; \
+		$(MAKEFILE_DIR)rust/target/blake_elf2json $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes "$$in_bytes" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json || exit $$?; \
 		result_line=$$(zkc exec $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json $(ZKC_MAIN) 2>&1 | awk '{ previous = current; current = $$0 } END { print previous }'); \
 		echo "case $$i: $$result_line"; \
 	done < $(MAKEFILE_DIR)rust/src/blake/blake.all
