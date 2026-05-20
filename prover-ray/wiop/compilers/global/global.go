@@ -125,9 +125,15 @@ func compileModule(
 	// --- Step 1: bucket vanishing constraints by ratio ---
 	// Ratio is computed from DegreeFactor() which doesn't require knowing the
 	// module size, allowing compilation to proceed for dynamic-size modules.
+	// Vanishings already consumed by an earlier pass (e.g. localvanishing, which
+	// marks the scalar input it lifts as reduced and registers a fresh
+	// multi-valued replacement) are skipped here.
 	ratioToEntries := make(map[int][]*wiop.Vanishing)
 	var ratioOrder []int
 	for _, v := range m.Vanishings {
+		if v.IsReduced() {
+			continue
+		}
 		r := computeRatio(v)
 		if _, exists := ratioToEntries[r]; !exists {
 			ratioOrder = append(ratioOrder, r)
@@ -439,7 +445,7 @@ func (a *QuotientProverAction) Run(rt wiop.Runtime) {
 			// Static module: use precomputed cancellation cosets.
 			for _, entry := range bkt.entries {
 				for j := 0; j < N; j++ {
-					pVal := evalExprOnCoset(entry.v.Expression, cosetEvals, j, ratio, N)
+					pVal := evalExprOnCoset(rt, entry.v.Expression, cosetEvals, j, ratio, N)
 					var pTimesC field.Element
 					if entry.cancellationCoset != nil {
 						pTimesC.Mul(&pVal, &entry.cancellationCoset[j])
@@ -459,7 +465,7 @@ func (a *QuotientProverAction) Run(rt wiop.Runtime) {
 			for _, v := range bkt.vanishings {
 				cancellationCoset := computeCancellationCoset(v.CancelledPositions, n, N)
 				for j := 0; j < N; j++ {
-					pVal := evalExprOnCoset(v.Expression, cosetEvals, j, ratio, N)
+					pVal := evalExprOnCoset(rt, v.Expression, cosetEvals, j, ratio, N)
 					var pTimesC field.Element
 					if cancellationCoset != nil {
 						pTimesC.Mul(&pVal, &cancellationCoset[j])
@@ -729,9 +735,15 @@ func evalExprAtPoint(
 // evalExprOnCoset evaluates a base-field vanishing expression at coset point j.
 // cosetEvals maps each root column ID to its N-length coset evaluation array.
 // For a ColumnView with shift k, the coset index is (j + k·ratio) mod N.
-// Panics if the expression contains a CoinField or Cell (not supported for
-// base-field coset evaluation).
+//
+// Base-field *Cell leaves are supported and treated as scalars constant across
+// the coset: their runtime value is broadcast at every coset point.
+// Extension-field cells and CoinField leaves (always extension) are not
+// supported here because the surrounding quotient pipeline carries base-field
+// values; promoting expression evaluation to field.Gen would require widening
+// the multiplication chain in QuotientProverAction.Run.
 func evalExprOnCoset(
+	rt wiop.Runtime,
 	expr wiop.Expression,
 	cosetEvals map[wiop.ObjectID][]field.Element,
 	j, ratio, N int,
@@ -741,9 +753,24 @@ func evalExprOnCoset(
 		k := e.ShiftingOffset
 		idx := ((j+k*ratio)%N + N) % N
 		return cosetEvals[e.Column.Context.ID][idx]
+	case *wiop.Cell:
+		if e.IsExtension() {
+			panic(fmt.Sprintf(
+				"wiop/compilers: extension-field cell %q in vanishing expression is not supported by base-field coset evaluation",
+				e.Context.Path(),
+			))
+		}
+		v := rt.GetCellValue(e)
+		if !v.IsBase() {
+			panic(fmt.Sprintf(
+				"wiop/compilers: cell %q declared as base but holds an extension-field value",
+				e.Context.Path(),
+			))
+		}
+		return v.AsBase()
 	case *wiop.ArithmeticOperation:
 		eval := func(i int) field.Element {
-			return evalExprOnCoset(e.Operands[i], cosetEvals, j, ratio, N)
+			return evalExprOnCoset(rt, e.Operands[i], cosetEvals, j, ratio, N)
 		}
 		a0 := eval(0)
 		var res field.Element
@@ -776,8 +803,8 @@ func evalExprOnCoset(
 		return res
 	case *wiop.Constant:
 		return e.Value
-	case *wiop.CoinField, *wiop.Cell:
-		panic("wiop/compilers: CoinField and Cell in vanishing expression coset evaluation are not supported")
+	case *wiop.CoinField:
+		panic("wiop/compilers: CoinField in vanishing expression coset evaluation is not supported (coins are always extension-field)")
 	default:
 		panic(fmt.Sprintf("wiop/compilers: unsupported expression type %T in evalExprOnCoset", expr))
 	}
