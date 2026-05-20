@@ -23,7 +23,7 @@ permissions:
   actions: read
 
 jobs:
-  build:
+  act4-reference-tests:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
       - name: Checkout repository
