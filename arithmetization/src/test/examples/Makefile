@@ -221,7 +221,7 @@ verify-elf: $(BIN)
 	@echo "All values match\n"
 
 # Run all blake test vectors in `rust/src/blake/blake.all` (blake_with_in_bytes.rs and main.go are compiled just once)
-blake-all:
+blake-all: install-zkc
 	@compile_output=$$($(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=blake/blake_with_in_bytes.rs 2>&1); \
 	compile_status=$$?; \
 	if [ $$compile_status -ne 0 ]; then \
