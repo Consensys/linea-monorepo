@@ -18,10 +18,10 @@ import (
 )
 
 const (
-	NbAggregationFPI = 18 // hardcoded constant , the number of functional public inputs used in the keccak hash.
+	NbAggregationFPI = 18 // hardcoded constant, the number of functional public inputs used in the keccak hash.
 )
 
-// Aggregation collects all the field that are used to construct the public
+// Aggregation collects all the fields that are used to construct the public
 // input of the finalization proof.
 type Aggregation struct {
 	FinalShnarf                             string
