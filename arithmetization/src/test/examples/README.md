@@ -24,14 +24,16 @@ For Docker builds:
 For Linux host builds, install these prerequisites with your package manager of choice:
 
 - `git`, `curl`, `tar`, `make`
-- `mise` — to provide the Python, Ruby and Bundler versions used by `riscv-arch-test`
+- `mise` — recommended by `riscv-arch-test` to provide `uv`, Python, Ruby and Bundler
+- Without `mise`: `uv` or a Python 3.10+ virtualenv with the ACT4 Python packages installed, plus Ruby and Bundler
 - `riscv64-unknown-elf-gcc (>= 15)` and `riscv64-unknown-elf-objdump` — to compile and inspect ACT4 ELFs
 
 For macOS host builds, install these prerequisites with your package manager of choice:
 
 - Xcode Command Line Tools or equivalent compiler tools
 - `git`, `curl`, `tar`, `make`
-- `mise` — to provide the Python, Ruby and Bundler versions used by `riscv-arch-test`
+- `mise` — recommended by `riscv-arch-test` to provide `uv`, Python, Ruby and Bundler
+- Without `mise`: `uv` or a Python 3.10+ virtualenv with the ACT4 Python packages installed, plus Ruby and Bundler
 - `riscv64-unknown-elf-gcc (>= 15)` and `riscv64-unknown-elf-objdump` — to compile and inspect ACT4 ELFs
 - native `z3`/`libz3` — used by UDB while validating ACT4 configs
 
