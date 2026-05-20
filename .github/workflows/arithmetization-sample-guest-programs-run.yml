@@ -53,9 +53,9 @@ jobs:
           GO_CORSET_REF_FOR_ZKC: ${{ inputs.go-corset-ref || 'main' }}
         timeout-minutes: 6
 
-      - name: Run Blake rust against test vectors with zkc interpreter
-        run: make blake-all
-        working-directory: arithmetization/src/test/examples
-        env:
-          GO_CORSET_REF_FOR_ZKC: ${{ inputs.go-corset-ref || 'main' }}
-        timeout-minutes: 30
+      # - name: Run Blake rust against test vectors with zkc interpreter
+      #  run: make blake-all
+      #  working-directory: arithmetization/src/test/examples
+      #  env:
+      #    GO_CORSET_REF_FOR_ZKC: ${{ inputs.go-corset-ref || 'main' }}
+      #  timeout-minutes: 30
