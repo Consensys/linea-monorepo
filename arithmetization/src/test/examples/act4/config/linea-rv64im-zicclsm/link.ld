@@ -8,7 +8,6 @@ SECTIONS
   .text.rvtest  : { *(.text.rvtest) *(.text.rvtest.*) }
   . = ALIGN(0x4000);
   .data         : { *(.data) }
-  .data.string  : { *(.data.string) }
   . = ALIGN(0x1000);
   .text.rvmodel : { *(.text.rvmodel) *(.text.rvmodel.*) *(.text) *(.text.*) }
   . = ALIGN(0x1000);

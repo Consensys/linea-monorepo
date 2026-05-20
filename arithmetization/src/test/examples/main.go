@@ -94,7 +94,7 @@ func main() {
 //
 // Our own tests contain .text, .rodata, .data and .bss sections.
 // ACT4 tests contain .text.init, .text.rvtest, .text.rvmodel, .data,
-// .data.string and .tohost sections. We do not filter by section names here:
+// and .tohost sections. We do not filter by section names here:
 // PT_LOAD segments are what the ELF loader actually maps into memory.
 func extractProgramBytes(progs []*elf.Prog, programOffset uint64) []byte {
 	var maxAddr uint64 = 0
