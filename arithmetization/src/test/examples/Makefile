@@ -11,7 +11,7 @@ ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
 
 # Test to run (with src optional subfolder and extension), mandatory unless clean-all or linker-script are the targets
 # src_optional_subfolder/your_test(.s|.zig|.rs)
-ifeq ($(filter clean-all linker-script blake-all build-act4 run-act4,$(MAKECMDGOALS)),)
+ifeq ($(filter clean-all linker-script blake-all build-act4 run-act4 install-zkc,$(MAKECMDGOALS)),)
 ifndef TEST
 $(error TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs))
 endif
@@ -90,9 +90,9 @@ ACT4_FAST       ?= false
 ACT4_DEBUG      ?= true
 
 # Default target (make)
-exec: compile zkc-exec
+exec: install-zkc compile zkc-exec
 
-debug: compile zkc-debug
+debug: install-zkc compile zkc-debug
 
 compile: $(SRC) linker-script
 # Print all variables for debugging purposes
@@ -318,4 +318,6 @@ run-act4: build-act4
 	done; \
 	echo "DONE: $$count tests   PASS: $$pass   FAIL: $$fail" | tee -a "$(ACT4_RESULTS)"; \
 	echo "results: $(ACT4_RESULTS)"; \
-	echo "logs:    $(ACT4_LOGS)/"
+	echo "logs:    $(ACT4_LOGS)/"; \
+	if [ "$$count" -eq 0 ]; then echo "error: no ACT4 ELFs found in $(ACT4_ELF_DIR)" >&2; exit 1; fi; \
+	if [ "$$fail" -ne 0 ]; then echo "error: $$fail of $$count ACT4 test(s) failed" >&2; exit 1; fi
