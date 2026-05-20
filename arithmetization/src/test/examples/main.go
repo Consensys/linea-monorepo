@@ -18,7 +18,7 @@ const (
 	ENTRY_POINT          = "entry_point"
 	RISCV_PROGRAM_LENGTH = "riscV_program_length"
 	IN_BYTES_LENGTH      = "in_bytes_length"
-	WRITE_SECTIONS_FILE  = false // Set to true to addtionally write a file containing the names of the sections of the ELF that are copied into the JSON (which can be seen also via objdump)
+	WRITE_SECTIONS_FILE  = false // Set to true to addtionally write a file containing the names of the sections of the ELF that are copied into the JSON (which can be seen also via objdump) for debugging purposes
 )
 
 // The purpose of this program is simply to generate a suitable ZkC json input
