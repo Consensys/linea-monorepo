@@ -23,6 +23,7 @@ const func: DeployFunction = withSignerUiSession(
     const baseFee = getRequiredEnvVar("VERIFIER_BASE_FEE");
     const coinbase = getRequiredEnvVar("VERIFIER_COINBASE");
     const l2MessageServiceAddress = getRequiredEnvVar("L2_MESSAGE_SERVICE_ADDRESS");
+    const isAllowedCircuitId = getRequiredEnvVar("VERIFIER_IS_ALLOWED_CIRCUIT_ID");
 
     const optionalMimcAddress = getOptionalEnvVar("VERIFIER_MIMC_ADDRESS")?.trim();
     let mimcAddress: string;
@@ -61,6 +62,10 @@ const func: DeployFunction = withSignerUiSession(
         {
           value: toBeHex(l2MessageServiceAddress, 32),
           name: "l2MessageServiceAddress",
+        },
+        {
+          value: toBeHex(isAllowedCircuitId, 32),
+          name: "isAllowedCircuitId",
         },
       ],
     ];
