@@ -22,8 +22,6 @@ jobs:
   component-changelog-upload:
     if: github.ref == 'refs/heads/main'
     needs: [lint-latest-commit-messages]
-    permissions:
-      pull-requests: write
     uses: ./.github/workflows/component-changelog-upload.yml
   
   component-changelog-commit:
