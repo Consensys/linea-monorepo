@@ -73,8 +73,9 @@ func main() {
 // Extract loadable ELF segments and assemble them into a contiguous byte slice
 // starting at programOffset. The JSON format has a single riscV_program blob for
 // now; supporting very sparse ELFs properly would require multiple memory blobs.
-// Our own tests usually contain .text, .rodata, .data and .bss sections. ACT4
-// tests usually contain .text.init, .text.rvtest, .text.rvmodel, .data,
+//
+// Our own tests contain .text, .rodata, .data and .bss sections.
+// ACT4 tests contain .text.init, .text.rvtest, .text.rvmodel, .data,
 // .data.string and .tohost sections. We do not filter by section names here:
 // PT_LOAD segments are what the ELF loader actually maps into memory.
 func extractProgramBytes(progs []*elf.Prog, programOffset uint64) []byte {
