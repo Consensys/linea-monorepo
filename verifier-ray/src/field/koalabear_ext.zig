@@ -96,7 +96,7 @@ pub const Ext = struct {
         return self.mul(rhs.inverse());
     }
 
-    pub fn pow(self: Ext, exponent: u64) Ext {
+    pub fn pow(self: Ext, exponent: u256) Ext {
         var result = Ext.one();
         var b = self;
         var exp = exponent;
@@ -133,12 +133,13 @@ pub const Ext = struct {
             },
         };
     }
+
+    pub fn fromUints(v1: u32, v2: u32, v3: u32, v4: u32, v5: u32, v6: u32) Ext {
+        return .{
+            .B0 = .{ .a0 = base.Element.init(v1), .a1 = base.Element.init(v2) },
+            .B1 = .{ .a0 = base.Element.init(v3), .a1 = base.Element.init(v4) },
+            .B2 = .{ .a0 = base.Element.init(v5), .a1 = base.Element.init(v6) },
+        };
+    }
 };
 
-pub fn zero() Ext {
-    return Ext.zero();
-}
-
-pub fn one() Ext {
-    return Ext.one();
-}

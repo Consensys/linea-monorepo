@@ -46,5 +46,4 @@ pub const Transcript = struct {
         self.hasher.setState(digest);
     }
 
-    pub const challengeExt = randomExt;
 };
