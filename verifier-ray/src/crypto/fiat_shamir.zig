@@ -45,5 +45,4 @@ pub const Transcript = struct {
     pub fn setState(self: *Transcript, digest: poseidon2.Digest) void {
         self.hasher.setState(digest);
     }
-
 };
