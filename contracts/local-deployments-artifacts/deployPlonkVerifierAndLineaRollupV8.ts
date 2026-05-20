@@ -66,6 +66,21 @@ function findContractArtifacts(
   return parsedContent;
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeout: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
+}
+
 async function main() {
   const verifierName = getRequiredEnvVar("VERIFIER_CONTRACT_NAME");
   const lineaRollupInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
@@ -177,27 +192,34 @@ async function main() {
     "0xB7De4A2cf9E1c6a0B5f8d3e7a9C4B1a2e6d0f5C8",
   ]);
 
-  const [lineaRollupContract, mimc] = await Promise.all([
-    deployContractFromArtifacts(
-      lineaRollupName,
-      TransparentUpgradeableProxyAbi,
-      TransparentUpgradeableProxyBytecode,
-      wallet,
-      lineaRollupImplementationAddress,
-      proxyAdminAddress,
-      initializer,
-      {
-        nonce: walletNonce + 4,
-        gasPrice,
-      },
-    ),
-    deployContractFromArtifacts(MimcAddressContractName, MimcAddressAbi, MimcAddressFilterBytecode, wallet, {
+  const lineaRollupContract = await deployContractFromArtifacts(
+    lineaRollupName,
+    TransparentUpgradeableProxyAbi,
+    TransparentUpgradeableProxyBytecode,
+    wallet,
+    lineaRollupImplementationAddress,
+    proxyAdminAddress,
+    initializer,
+    {
+      nonce: walletNonce + 4,
+      gasPrice,
+    },
+  );
+
+  const lineaRollupAddress = await lineaRollupContract.getAddress();
+
+  const mimc = await deployContractFromArtifacts(
+    MimcAddressContractName,
+    MimcAddressAbi,
+    MimcAddressFilterBytecode,
+    wallet,
+    {
       nonce: walletNonce + 5,
       gasPrice,
-    }),
-  ]);
+    },
+  );
 
-  const [lineaRollupAddress, mimcAddress] = await Promise.all([lineaRollupContract.getAddress(), mimc.getAddress()]);
+  const mimcAddress = await mimc.getAddress();
 
   const args = [
     lineaRollupAddress,
@@ -228,13 +250,45 @@ async function main() {
   const securityCouncilWallet = new ethers.Wallet(securityCouncilPrivateKey, provider);
   const lineaRollup = new ethers.Contract(lineaRollupAddress, LineaRollupV8Abi, securityCouncilWallet);
 
+  if (await lineaRollup.hasRole(FORCED_TRANSACTION_SENDER_ROLE, forcedTransactionGatewayAddress)) {
+    console.log("FORCED_TRANSACTION_SENDER_ROLE already granted to ForcedTransactionGateway");
+    return;
+  }
+
   console.log(
     `Granting FORCED_TRANSACTION_SENDER_ROLE to ForcedTransactionGateway at ${forcedTransactionGatewayAddress}...`,
   );
-  const grantRoleTx = await lineaRollup.grantRole(FORCED_TRANSACTION_SENDER_ROLE, forcedTransactionGatewayAddress, {
-    gasPrice,
-  });
-  await grantRoleTx.wait();
+
+  const sameSecurityCouncilAndDeployer =
+    securityCouncilPrivateKey.toLowerCase() === process.env.DEPLOYER_PRIVATE_KEY?.toLowerCase();
+  const securityCouncilNonce = sameSecurityCouncilAndDeployer
+    ? walletNonce + 7
+    : await provider.getTransactionCount(await securityCouncilWallet.getAddress(), "pending");
+
+  const grantRoleData = lineaRollup.interface.encodeFunctionData("grantRole", [
+    FORCED_TRANSACTION_SENDER_ROLE,
+    forcedTransactionGatewayAddress,
+  ]);
+  const grantRoleRequest = {
+    to: lineaRollupAddress,
+    data: grantRoleData,
+    gasLimit: 200_000n,
+    nonce: securityCouncilNonce,
+    ...(gasPrice !== undefined ? { gasPrice } : {}),
+  };
+  const grantRoleTx = await withTimeout(
+    securityCouncilWallet.sendTransaction(grantRoleRequest),
+    60_000,
+    "Timed out sending FORCED_TRANSACTION_SENDER_ROLE grant transaction",
+  );
+  const grantRoleReceipt = await withTimeout(
+    grantRoleTx.wait(),
+    300_000,
+    "Timed out waiting for FORCED_TRANSACTION_SENDER_ROLE grant transaction receipt",
+  );
+  if (!grantRoleReceipt || grantRoleReceipt.status !== 1) {
+    throw new Error("FORCED_TRANSACTION_SENDER_ROLE grant transaction failed");
+  }
   console.log(`FORCED_TRANSACTION_SENDER_ROLE granted to ForcedTransactionGateway`);
 }
 

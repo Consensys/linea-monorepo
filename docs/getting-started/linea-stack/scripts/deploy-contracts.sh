@@ -404,6 +404,76 @@ step_already_done_with_code() {
   return 1
 }
 
+ensure_forced_transaction_gateway_role() {
+  local logfile="$1" gateway_address
+  gateway_address="$(extract_address "$logfile" "ForcedTransactionGateway")" || return 0
+  [[ "$LINEA_ROLLUP_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]] || die "LINEA_ROLLUP_ADDRESS missing before role check"
+
+  FORCED_TRANSACTION_GATEWAY_ADDRESS="$gateway_address" node --input-type=module <<'NODE'
+import { ethers } from "ethers";
+
+const required = (name) => {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is required`);
+  }
+  return value;
+};
+
+const withTimeout = async (promise, timeoutMs, message) => {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const provider = new ethers.JsonRpcProvider(required("L1_RPC_URL"));
+const wallet = new ethers.Wallet(required("L1_DEPLOYER_PRIVATE_KEY"), provider);
+const rollupAddress = required("LINEA_ROLLUP_ADDRESS");
+const gatewayAddress = required("FORCED_TRANSACTION_GATEWAY_ADDRESS");
+const role = ethers.id("FORCED_TRANSACTION_SENDER_ROLE");
+const abi = [
+  "function hasRole(bytes32 role, address account) view returns (bool)",
+  "function grantRole(bytes32 role, address account)",
+];
+const rollup = new ethers.Contract(rollupAddress, abi, wallet);
+
+if (await rollup.hasRole(role, gatewayAddress)) {
+  console.log("[deploy-contracts] FORCED_TRANSACTION_SENDER_ROLE already granted to ForcedTransactionGateway");
+  process.exit(0);
+}
+
+const feeData = await provider.getFeeData();
+const data = rollup.interface.encodeFunctionData("grantRole", [role, gatewayAddress]);
+const tx = await withTimeout(
+  wallet.sendTransaction({
+    to: rollupAddress,
+    data,
+    gasLimit: 200_000n,
+    gasPrice: feeData.gasPrice ?? undefined,
+    nonce: await provider.getTransactionCount(wallet.address, "pending"),
+  }),
+  60_000,
+  "Timed out sending FORCED_TRANSACTION_SENDER_ROLE grant transaction",
+);
+console.log(`[deploy-contracts] Sent FORCED_TRANSACTION_SENDER_ROLE grant transaction: ${tx.hash}`);
+const receipt = await withTimeout(
+  tx.wait(),
+  300_000,
+  "Timed out waiting for FORCED_TRANSACTION_SENDER_ROLE grant transaction receipt",
+);
+if (!receipt || receipt.status !== 1) {
+  throw new Error("FORCED_TRANSACTION_SENDER_ROLE grant transaction failed");
+}
+console.log("[deploy-contracts] FORCED_TRANSACTION_SENDER_ROLE granted to ForcedTransactionGateway");
+NODE
+}
+
 # Step 1 — deploy-linea-rollup-v$L1_CONTRACT_VERSION (or deploy-validium-v2)
 step1_l1_rollup() {
   step "Step 1: deploy L1 Verifier + LineaRollup (or Validium)"
@@ -423,6 +493,9 @@ step1_l1_rollup() {
     log "Step 1: $logfile present — skipping deploy, re-using prior addresses"
     LINEA_ROLLUP_ADDRESS="$(require_address "$logfile" "$primary_contract")"
     export LINEA_ROLLUP_ADDRESS
+    if [[ "$LINEA_COORDINATOR_DATA_AVAILABILITY" != "VALIDIUM" ]]; then
+      ensure_forced_transaction_gateway_role "$logfile"
+    fi
     log "Forwarding LINEA_ROLLUP_ADDRESS=$LINEA_ROLLUP_ADDRESS"
     return 0
   fi
