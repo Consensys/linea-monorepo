@@ -40,6 +40,8 @@ runs:
             dest_folder="${artifact_name#${PREFIX}}"
             if [ "${dest_folder}" = "linea-besu-package" ]; then
               dest_folder="linea-besu/package"
+            elif [ "${dest_folder}" = "tx-exclusion-api" ]; then
+              dest_folder="transaction-exclusion-api"
             elif [ "${dest_folder}" = "linea" ]; then
               dest_folder="."
             fi
