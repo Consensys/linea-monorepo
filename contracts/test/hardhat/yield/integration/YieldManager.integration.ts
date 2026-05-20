@@ -18,7 +18,7 @@ import {
 import { ethers } from "hardhat";
 
 import { encodeSendMessage } from "../../../../common/helpers/encoding";
-import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE, CONNECT_DEPOSIT } from "../../common/constants";
+import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE, CONNECT_DEPOSIT, OperationType } from "../../common/constants";
 import { expectRevertWithCustomError, expectEvent, getAccountsFixture } from "../../common/helpers";
 import {
   decrementBalance,
@@ -155,6 +155,25 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       await expect(claimCall).to.not.be.reverted;
       expect(await getBalance(lineaRollup)).eq(reserveBalanceBefore - transferAmount);
       expect(await getBalance(yieldManager)).eq(yieldManagerBalanceBefore + transferAmount);
+    });
+
+    it("Should block Lido provider funding when withdrawal reserve is above minimum but below target", async () => {
+      // Arrange - Keep the withdrawal reserve healthy but below target after transferring funds to the YieldManager.
+      const fundAmount = ONE_ETHER;
+      await setWithdrawalReserveToMinimum(yieldManager);
+      await incrementBalance(l1MessageServiceAddress, fundAmount);
+      await lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(fundAmount);
+      expect(await yieldManager.getTargetReserveDeficit()).to.be.gt(0n);
+
+      // Act
+      const call = yieldManager.connect(nativeYieldOperator).fundYieldProvider(yieldProviderAddress, fundAmount);
+
+      // Assert
+      await expectRevertWithCustomError(yieldProvider, call, "OperationNotSupportedDuringStakingPause", [
+        OperationType.FUND_YIELD_PROVIDER,
+      ]);
+      expect(await getBalance(yieldManager)).eq(fundAmount);
+      expect(await yieldManager.isStakingPaused(yieldProviderAddress)).eq(false);
     });
   });
 
