@@ -44,6 +44,8 @@ func Prove(cfg *config.Config, req *backendInvalidity.Request) (*backendInvalidi
 		return nil, fmt.Errorf("could not decode the RlpEncodedTx: %w", err)
 	}
 
+	backendInvalidity.SanityCheckInvalidityChainConfig(cfg, tx)
+
 	funcInput := backendInvalidity.FuncInput(req, cfg)
 
 	// Build the zkEVM witness for the simulated execution
