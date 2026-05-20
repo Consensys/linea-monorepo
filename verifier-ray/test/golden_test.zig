@@ -188,14 +188,11 @@ fn elem(value: u32) field.Element {
 }
 
 fn extElem(limbs: [6]u32) ext.Ext {
-    return .{ .limbs = .{
-        elem(limbs[0]),
-        elem(limbs[1]),
-        elem(limbs[2]),
-        elem(limbs[3]),
-        elem(limbs[4]),
-        elem(limbs[5]),
-    } };
+    return .{
+        .B0 = .{ .a0 = elem(limbs[0]), .a1 = elem(limbs[1]) },
+        .B1 = .{ .a0 = elem(limbs[2]), .a1 = elem(limbs[3]) },
+        .B2 = .{ .a0 = elem(limbs[4]), .a1 = elem(limbs[5]) },
+    };
 }
 
 fn digest(values: [8]u32) poseidon2.Digest {
@@ -223,19 +220,22 @@ fn expectElem(actual: field.Element, expected: u32) !void {
 }
 
 fn expectExt(actual: ext.Ext, expected: [6]u32) !void {
-    for (actual.limbs, expected) |actual_limb, expected_limb| {
-        try expectElem(actual_limb, expected_limb);
-    }
+    try expectElem(actual.B0.a0, expected[0]);
+    try expectElem(actual.B0.a1, expected[1]);
+    try expectElem(actual.B1.a0, expected[2]);
+    try expectElem(actual.B1.a1, expected[3]);
+    try expectElem(actual.B2.a0, expected[4]);
+    try expectElem(actual.B2.a1, expected[5]);
 }
 
 fn extValues(value: ext.Ext) [6]u32 {
     return .{
-        value.limbs[0].value,
-        value.limbs[1].value,
-        value.limbs[2].value,
-        value.limbs[3].value,
-        value.limbs[4].value,
-        value.limbs[5].value,
+        value.B0.a0.value,
+        value.B0.a1.value,
+        value.B1.a0.value,
+        value.B1.a1.value,
+        value.B2.a0.value,
+        value.B2.a1.value,
     };
 }
 

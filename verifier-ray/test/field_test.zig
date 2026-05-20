@@ -17,8 +17,8 @@ test "koalabear element multiplication uses the field modulus" {
 
 test "extension lift stores base element in the first limb" {
     const lifted = ext.Ext.lift(field.Element.init(17));
-    try std.testing.expect(lifted.limbs[0].eql(field.Element.init(17)));
-    try std.testing.expect(lifted.limbs[1].isZero());
-    try std.testing.expect(lifted.limbs[2].isZero());
-    try std.testing.expect(lifted.limbs[3].isZero());
+    try std.testing.expect(lifted.B0.a0.eql(field.Element.init(17)));
+    try std.testing.expect(lifted.B0.a1.isZero());
+    try std.testing.expect(lifted.B1.isZero());
+    try std.testing.expect(lifted.B2.isZero());
 }

@@ -4,6 +4,7 @@ pub const verifier = @import("verifier.zig");
 
 pub const field = struct {
     pub const koalabear = @import("field/koalabear.zig");
+    pub const koalabear_e2 = @import("field/koalabear_e2.zig");
     pub const koalabear_ext = @import("field/koalabear_ext.zig");
     pub const vec = @import("field/vec.zig");
 };
