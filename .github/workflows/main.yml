@@ -20,12 +20,14 @@ jobs:
     uses: ./.github/workflows/lint-commit-messages.yml
 
   component-changelog-upload:
+    if: github.ref == 'refs/heads/main'
     needs: [lint-latest-commit-messages]
     permissions:
       pull-requests: write
     uses: ./.github/workflows/component-changelog-upload.yml
   
   component-changelog-commit:
+    if: github.ref == 'refs/heads/main'
     needs: [component-changelog-upload]
     permissions:
       contents: write

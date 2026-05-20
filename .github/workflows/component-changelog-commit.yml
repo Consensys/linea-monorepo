@@ -19,7 +19,6 @@ concurrency:
 
 jobs:
   push-component-changelog:
-    if: github.ref == 'refs/heads/main'
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
       # Mint a short-lived token either for the release bot GitHub App to commit the changelog changes 
