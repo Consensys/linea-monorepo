@@ -67,18 +67,25 @@ func main() {
 	}
 	// extract loadable program segments
 	var program = extractProgramBytes(elfFile.Progs, programOffset)
-	sectionsFile, err := os.Create(strings.TrimSuffix(os.Args[1], ".elf") + ".sections")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating ELF sections file: %v\n", err)
-		os.Exit(1)
-	}
-	for _, s := range elfFile.Sections {
-		if s.Name != "" && s.Size > 0 && s.Flags&elf.SHF_ALLOC != 0 {
-			fmt.Fprintln(sectionsFile, s.Name)
+	switch writeSections := os.Getenv("ELF2JSON_WRITE_SECTIONS"); writeSections {
+	case "", "false":
+	case "true":
+		sectionsFile, err := os.Create(strings.TrimSuffix(os.Args[1], ".elf") + ".sections")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error creating ELF sections file: %v\n", err)
+			os.Exit(1)
 		}
-	}
-	if err := sectionsFile.Close(); err != nil {
-		fmt.Fprintf(os.Stderr, "error writing ELF sections file: %v\n", err)
+		for _, s := range elfFile.Sections {
+			if s.Name != "" && s.Size > 0 && s.Flags&elf.SHF_ALLOC != 0 {
+				fmt.Fprintln(sectionsFile, s.Name)
+			}
+		}
+		if err := sectionsFile.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "error writing ELF sections file: %v\n", err)
+			os.Exit(1)
+		}
+	default:
+		fmt.Fprintf(os.Stderr, "ELF2JSON_WRITE_SECTIONS must be true or false, got %q\n", writeSections)
 		os.Exit(1)
 	}
 	printJson(program, inBytes, programOffset, inputsOffset, entryPoint)
