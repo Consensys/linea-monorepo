@@ -34,9 +34,13 @@ EXT          := $(suffix $(TEST))
 
 # Paths below are determined by the extension
 SRC  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm,$(if $(filter .zig,$(EXT)),zig,rust))/src/$(TEST)
-BIN  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME)
-JSON ?= $(BIN).json
+BIN  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME)
+JSON := $(BIN).json
 # Note: in the future the JSON file will be removed and main.zkc will receive directly the ELF file
+
+# Paths used by exec-elf and elf-to-json to run an already compiled external ELF
+BIN_EXT  ?=
+JSON_EXT ?= $(BIN_EXT).json
 
 # Paths to go main (to turn BIN into JSON), zkc main (to execute/debug the json) and linker script
 GO_MAIN       := $(MAKEFILE_DIR)main.go
@@ -92,12 +96,13 @@ ACT4_DEBUG      ?= true
 # String to determine if a program is exiiting with exit code 0
 EXIT_SUCCESS_STRING := "EXIT CODE = 0"
 
-# Support function to generate JSON from ELF, checking if BIN exists and JSON is set
+# Generate JSON from an ELF path, checking that input and output paths are set
 define ELF_TO_JSON
-	@[ -f "$(BIN)" ] || { echo "BIN must point to an existing ELF"; exit 1; }
-	@[ -n "$(JSON)" ] || { echo "JSON is mandatory"; exit 1; }
-	@echo "\nGenerating $(JSON) from $(BIN)"
-	@go run $(GO_MAIN) "$(BIN)" "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > "$(JSON)"
+	@[ -n "$(1)" ] || { echo "BIN[_EXT] is mandatory"; exit 1; }
+	@[ -f "$(1)" ] || { echo "BIN[_EXT] must point to an existing ELF"; exit 1; }
+	@[ -n "$(2)" ] || { echo "JSON[_EXT] is mandatory"; exit 1; }
+	@echo "\nGenerating $(2) from $(1)"
+	@go run $(GO_MAIN) "$(1)" "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > "$(2)"
 endef
 
 # Default target (make)
@@ -146,7 +151,7 @@ compile: $(SRC) linker-script
 		$(MAKE) -f $(MAKEFILE_DIR)Makefile verify-elf TEST=$(TEST); \
 	fi
 # Generate JSON from ELF
-	$(ELF_TO_JSON)
+	$(call ELF_TO_JSON,$(BIN),$(JSON))
 
 # Note: compiled Rust libraries may contain instructions from excluded extensions. For instance, the core library is compiled
 # for the IMAC extension, and contains COMPRESSED instructions. The output ELF may thus contain such instructions, too, even
@@ -155,12 +160,12 @@ compile: $(SRC) linker-script
 # Note: we use opt-level=2 to remove unused code.
 
 exec-elf: elf-to-json
-	zkc exec $(JSON) $(ZKC_MAIN)
+	zkc exec "$(JSON_EXT)" $(ZKC_MAIN)
 
-# Note: BIN and JSON have a default value but they can be set to arbitrary values
+# Convert an already compiled external ELF to a JSON input file
 elf-to-json:
 # Generate JSON from ELF
-	$(ELF_TO_JSON)
+	$(call ELF_TO_JSON,$(BIN_EXT),$(JSON_EXT))
 
 install-zkc:
 	$(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc

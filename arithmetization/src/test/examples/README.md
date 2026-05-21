@@ -118,6 +118,10 @@ riscv-test debug <name>.<ext> IN_BYTES="0xAABB"
 riscv-test <name>.<ext> IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x08800008
 # Compile only
 riscv-test compile <name>.<ext>
+# Convert an already compiled ELF to JSON
+riscv-test elf-to-json BIN_EXT=asm/bin/test
+# Execute an already compiled ELF
+riscv-test exec-elf BIN_EXT=asm/bin/test
 # Clean build artifacts for a specific test
 riscv-test clean <name>.<ext>
 # Clean all build artifacts
@@ -149,6 +153,8 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `make TEST=foo.<ext>`            | Compile and execute (default)                                                          |
 | `make debug TEST=foo.<ext>`      | Compile and debug                                                                      |
 | `make compile TEST=foo.<ext>`    | Compile only                                                                           |
+| `make elf-to-json BIN_EXT=foo`   | Convert an already compiled ELF to JSON                                                |
+| `make exec-elf BIN_EXT=foo`      | Convert and execute an already compiled ELF                                            |
 | `make zkc-exec TEST=foo.<ext>`   | Execute without recompiling                                                            |
 | `make zkc-debug TEST=foo.<ext>`  | Debug without recompiling                                                              |
 | `make clean TEST=foo.<ext>`      | Remove binary and JSON for this test                                                   |
@@ -164,6 +170,8 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | Variable         | Default                                                                                 | Description                                                                   |
 |------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
 | `IN_BYTES`       | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution           |
+| `BIN_EXT`        | `""`                                                                                    | Already compiled ELF used by `elf-to-json` and `exec-elf`                    |
+| `JSON_EXT`       | `$(BIN_EXT).json`                                                                       | JSON output path used by `elf-to-json` and `exec-elf`                         |
 | `PROGRAM_OFFSET` | `0x00000000`                                                                            | Memory address where the program is loaded (up to 128 MiB)                    |
 | `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                    |
 | `SP`             | `0x08800000`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)       |
@@ -250,4 +258,3 @@ zkc exec act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
     ↓  input grows up (up to 1 GiB)
 0x48800000  ──  input ends at most
 ```
-
