@@ -9,13 +9,22 @@
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
 
+# Assembly, Zig, or Rust test file to execute with exec target (TEST=src_optional_subfolder/your_test(.s|.zig|.rs)
+TEST ?=
+
+# Already compiled binary to execute with exec-elf target (BIN_EXT=path/to/your_bin)
+BIN_EXT  ?=
+JSON_EXT ?= $(BIN_EXT).json
+
 # Support functions to check that mandatory variables are set
 define REQUIRE_TEST
 	@[ -n "$(TEST)" ] || { echo "TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs)"; exit 1; }
+	@[ -i $(TEST) ] || { echo "TEST file not found: $(TEST)"; exit 1; }
 endef
 
 define REQUIRE_BIN_EXT
 	@[ -n "$(BIN_EXT)" ] || { echo "BIN_EXT is mandatory. Usage: make BIN_EXT=path/to/your_bin"; exit 1; }
+	@[ -i $(BIN_EXT) ] || { echo "BIN_EXT file not found: $(BIN_EXT)"; exit 1; }
 endef
 
 BASENAME     := $(basename $(TEST))
@@ -37,10 +46,6 @@ SRC  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm,$(if $(filter .zig,$(EXT)),z
 BIN  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME)
 JSON := $(BIN).json
 # Note: in the future the JSON file will be removed and main.zkc will receive directly the ELF file
-
-# Paths used by exec-elf and elf-to-json to run an already compiled external ELF
-BIN_EXT  ?=
-JSON_EXT ?= $(BIN_EXT).json
 
 # Paths to go main (to turn BIN into JSON), zkc main (to execute/debug the json) and linker script
 GO_MAIN       := $(MAKEFILE_DIR)main.go
@@ -96,7 +101,7 @@ ACT4_DEBUG      ?= true
 # String to determine if a program is exiiting with exit code 0
 EXIT_SUCCESS_STRING := "EXIT CODE = 0"
 
-# Generate JSON from an ELF path, checking that input and output paths are set
+# Support function to generate JSON from an ELF
 define ELF_TO_JSON
 	@echo "\nGenerating $(2) from $(1)"
 	@go run $(GO_MAIN) "$(1)" "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > "$(2)"
