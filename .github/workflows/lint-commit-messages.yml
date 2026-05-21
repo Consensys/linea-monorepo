@@ -20,6 +20,8 @@ jobs:
   lint-commit-messages:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: Lint PR title and commit messages
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
         if: github.event_name == 'pull_request'
