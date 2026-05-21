@@ -236,12 +236,14 @@ blake-all: install-zkc
 	i=0; while IFS= read -r in_bytes; do \
 		i=$$((i + 1)); \
 		$(MAKEFILE_DIR)rust/target/blake_elf2json $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes "$$in_bytes" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json || exit $$?; \
-		exit_line=$$(zkc exec $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json $(ZKC_MAIN) 2>&1 | awk '{ previous = current; current = $$0 } END { print previous }'); \
+		exit_line=$$(zkc exec $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
 		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
 			echo "PASS  case $$i"; \
+			echo "  $$exit_line"; \
 			pass=$$((pass + 1)); \
 		else \
-			echo "FAIL  case $$i: $$exit_line" >&2; \
+			echo "FAIL  case $$i"; \
+			echo "  $$exit_line"; \
 			fail=$$((fail + 1)); \
 		fi; \
 	done < $(MAKEFILE_DIR)rust/src/blake/blake.all; \
