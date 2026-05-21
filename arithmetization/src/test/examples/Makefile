@@ -3,7 +3,7 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-rust-exec build-act4 run-act4 install-zkc
+.PHONY: exec debug compile exec-elf elf-to-json zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-rust-exec build-act4 run-act4 install-zkc
 
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -92,6 +92,13 @@ ACT4_DEBUG      ?= true
 # String to determine if a program is exiiting with exit code 0
 EXIT_SUCCESS_STRING := "EXIT CODE = 0"
 
+define ELF_TO_JSON
+	@[ -f "$(BIN)" ] || { echo "BIN must point to an existing ELF"; exit 1; }
+	@[ -n "$(JSON)" ] || { echo "JSON is mandatory"; exit 1; }
+	@echo "\nGenerating $(JSON) from $(BIN)"
+	@go run $(GO_MAIN) "$(BIN)" "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > "$(JSON)"
+endef
+
 # Default target (make)
 exec: compile zkc-exec
 
@@ -138,8 +145,7 @@ compile: $(SRC) linker-script
 		$(MAKE) -f $(MAKEFILE_DIR)Makefile verify-elf TEST=$(TEST); \
 	fi
 # Generate JSON from ELF
-	@echo "\nGenerating $(JSON) from $(BIN)"
-	@go run $(GO_MAIN) $(BIN) "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
+	$(ELF_TO_JSON)
 
 # Note: compiled Rust libraries may contain instructions from excluded extensions. For instance, the core library is compiled
 # for the IMAC extension, and contains COMPRESSED instructions. The output ELF may thus contain such instructions, too, even
@@ -147,13 +153,13 @@ compile: $(SRC) linker-script
 #
 # Note: we use opt-level=2 to remove unused code.
 
-exec-elf: elf-to-json zkc-exec 
+exec-elf: install-zkc elf-to-json
+	zkc exec $(JSON) $(ZKC_MAIN)
 
 # Note: BIN and JSON have a default value but they can be set to arbitrary values
-elf-to-json: $(BIN)
+elf-to-json:
 # Generate JSON from ELF
-	@echo "\nGenerating $(JSON) from $(BIN)"
-	@go run $(GO_MAIN) $(BIN) "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
+	$(ELF_TO_JSON)
 
 install-zkc:
 	$(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc
