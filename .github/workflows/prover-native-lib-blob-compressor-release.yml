@@ -25,7 +25,21 @@ on:
 
 jobs:
 
+  validate:
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    steps:
+      - name: Validate version
+        id: validate_version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if ! [[ "$INPUT_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: version must be 'vMAJOR.MINOR.PATCH' (e.g. v1.2.3), got: '$INPUT_VERSION'" >&2
+            exit 1
+          fi
+
   build-linux:
+    needs: [validate]
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     steps:
       - name: Checkout code
@@ -60,6 +74,7 @@ jobs:
           path: ./prover/target
 
   build-linux-arm64:
+    needs: [validate]
     runs-on: gha-runner-scale-set-ubuntu-24-arm64-med
     steps:
       - name: Checkout code
@@ -94,6 +109,7 @@ jobs:
           path: ./prover/target
 
   build-mac-os:
+    needs: [validate]
     runs-on: macos-latest
     steps:
       - name: Checkout code
@@ -131,19 +147,11 @@ jobs:
 
   release_artefacts:
     name: Release artefacts
-    needs: [ build-linux, build-linux-arm64, build-mac-os]
+    needs: [validate, build-linux, build-linux-arm64, build-mac-os]
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
+    env:
+      VERSION: ${{ github.event.inputs.version }}
     steps:
-      - name: Validate version
-        env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
-        run: |
-          if ! [[ "$INPUT_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Error: version must be 'vMAJOR.MINOR.PATCH' (e.g. v1.2.3), got: '$INPUT_VERSION'" >&2
-            exit 1
-          fi
-          echo "VERSION=${INPUT_VERSION}" >> "$GITHUB_ENV"
-
       - name: Load cached binaries
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
