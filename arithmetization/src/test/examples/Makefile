@@ -89,6 +89,9 @@ ACT4_FAST       ?= false
 # If true, enables debug output (signature objdump, trace files, and trap report)
 ACT4_DEBUG      ?= true
 
+# String to determine if a program is exiiting with exit code 0
+EXIT_SUCCESS_STRING := "EXIT CODE = 0"
+
 # Default target (make)
 exec: compile zkc-exec
 
@@ -233,12 +236,12 @@ blake-all: install-zkc
 	i=0; while IFS= read -r in_bytes; do \
 		i=$$((i + 1)); \
 		$(MAKEFILE_DIR)rust/target/blake_elf2json $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes "$$in_bytes" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json || exit $$?; \
-		result_line=$$(zkc exec $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json $(ZKC_MAIN) 2>&1 | awk '{ previous = current; current = $$0 } END { print previous }'); \
-		if [ "$$result_line" = "Program exited successfully (exit with code 0)." ]; then \
+		exit_line=$$(zkc exec $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json $(ZKC_MAIN) 2>&1 | awk '{ previous = current; current = $$0 } END { print previous }'); \
+		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
 			echo "PASS  case $$i"; \
 			pass=$$((pass + 1)); \
 		else \
-			echo "FAIL  case $$i: $$result_line" >&2; \
+			echo "FAIL  case $$i: $$exit_line" >&2; \
 			fail=$$((fail + 1)); \
 		fi; \
 	done < $(MAKEFILE_DIR)rust/src/blake/blake.all; \
@@ -310,7 +313,7 @@ run-act4: install-zkc build-act4
 		zkc exec "$$base.json" $(ZKC_MAIN) > "$$base.full" 2>&1; \
 		awk 'previous == "ECALL for write" || previous == "ECALL for exit" { print } { previous = $$0 }' "$$base.full" > "$$base.out"; \
 		exit_line=$$(awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }' "$$base.full"); \
-		if [ "$$exit_line" = "Program exited successfully (exit with code 0)." ]; then \
+		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
 			echo "PASS  $$name"; \
 			echo "PASS  $$name" >> "$(ACT4_RESULTS)"; \
 			awk '{ print "  " $$0 }' "$$base.out"; \
