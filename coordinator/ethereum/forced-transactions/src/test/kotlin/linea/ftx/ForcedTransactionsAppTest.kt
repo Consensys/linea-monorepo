@@ -1,19 +1,23 @@
 package linea.ftx
 
-import build.linea.clients.StateManagerAccountProofClient
-import build.linea.clients.StateManagerClientV1
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.clients.InvalidityProverClientV1
+import linea.clients.StateManagerAccountProofClient
+import linea.clients.StateManagerClientV1
 import linea.clients.TracesConflationVirtualBlockClientV1
 import linea.conflation.FixedLaggingHeadSafeBlockProvider
 import linea.conflation.calculators.CalculatorsFactory
+import linea.conflation.calculators.ConflationTriggerCalculator
 import linea.contract.events.FactoryForcedTransactionAddedEvent
 import linea.contract.events.FinalizedStateUpdatedEvent
 import linea.contract.events.ForcedTransactionAddedEvent
 import linea.contract.l1.FakeLineaRollupSmartContractClient
 import linea.contract.l1.LineaRollupContractVersion
 import linea.contract.l1.LineaRollupFinalizedState
+import linea.coordination.blob.FakeBlobCompressor
+import linea.coordinator.clients.FakeTracesConflationVirtualBlockClientV1
 import linea.domain.BlobCounters
 import linea.domain.BlockCounters
 import linea.domain.BlockInterval
@@ -34,10 +38,9 @@ import linea.persistence.ftx.FakeForcedTransactionsDao
 import linea.timer.VertxTimerFactory
 import net.consensys.FakeFixedClock
 import net.consensys.linea.metrics.MetricsFacade
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.traces.TracesCountersV5
 import net.consensys.linea.traces.TracingModuleV5
-import net.consensys.zkevm.coordinator.clients.FakeTracesConflationVirtualBlockClientV1
-import net.consensys.zkevm.ethereum.coordination.blob.FakeBlobCompressor
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -118,6 +121,7 @@ class ForcedTransactionsAppTest {
     ftxProcessingDelay: Duration = Duration.ZERO,
     fakeForcedTransactionsClientErrorRatio: Double = 0.5,
     safeBlockTracker: SafeBlockTracker? = null,
+    metricsFacade: MetricsFacade = MicrometerMetricsFacade(registry = SimpleMeterRegistry()),
   ): ForcedTransactionsAppImpl {
     val config = ForcedTransactionsApp.Config(
       l1PollingInterval = l1PollingInterval,
@@ -143,6 +147,7 @@ class ForcedTransactionsAppTest {
       accountProofClient = this.accountProofClient,
       tracesClient = this.tracesClient,
       clock = fakeClock,
+      metricsFacade = metricsFacade,
       safeBlockNumberProvider = ForcedTransactionConflationSafeBlockNumberProvider(listener = safeBlockTracker),
     )
   }
@@ -256,6 +261,57 @@ class ForcedTransactionsAppTest {
       .atMost(5.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
+      }
+    app.stop().get()
+  }
+
+  @Test
+  fun `should export accepted forced transaction event metrics`() {
+    val meterRegistry = SimpleMeterRegistry()
+    val metricsFacade: MetricsFacade = MicrometerMetricsFacade(registry = meterRegistry)
+    val ftxAddedEvents = listOf(
+      createFtxAddedEvent(
+        l1BlockNumber = 990UL,
+        ftxNumber = 10UL,
+        l2DeadLine = 100UL,
+      ),
+      createFtxAddedEvent(
+        l1BlockNumber = 1_100UL,
+        ftxNumber = 11UL,
+        l2DeadLine = 200UL,
+      ),
+      createFtxAddedEvent(
+        l1BlockNumber = 1_200UL,
+        ftxNumber = 12UL,
+        l2DeadLine = 220UL,
+      ),
+    )
+    this.l1Client.setLogs(ftxAddedEvents)
+    this.fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
+      blockNumber = 100UL,
+      blockTimestamp = Clock.System.now(),
+      messageNumber = 0UL,
+      forcedTransactionNumber = 10UL,
+    )
+
+    val app = createApp(
+      l1PollingInterval = 10.milliseconds,
+      l1EventSearchBlockChunk = 100u,
+      fakeForcedTransactionsClientErrorRatio = 0.0,
+      metricsFacade = metricsFacade,
+    )
+    this.l1Client.setFinalizedBlockTag(5_000UL)
+    this.l1Client.setLatestBlockTag(10_000UL)
+    this.l2Client.setLatestBlockTag(2_000UL)
+    this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
+
+    app.start().get()
+
+    await()
+      .atMost(5.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(meterRegistry.find("forced.transaction.events.consumed").counter()?.count()).isEqualTo(2.0)
+        assertThat(meterRegistry.find("forced.transaction.events.highest").gauge()?.value()).isEqualTo(12.0)
       }
     app.stop().get()
   }
@@ -906,6 +962,154 @@ class ForcedTransactionsAppTest {
       .isEqualTo(150UL)
     app.stop().get()
   }
+
+  @Test
+  fun `should rehydrate sequencer-processed FTXs above L1 finalized number into the conflation calculator on start`() {
+    // FTX#3 was processed by the sequencer pre-restart and persisted to the DAO,
+    // but the in-memory conflationFtxQueue was reset by the restart. Rehydration must
+    // replay it so the conflation calculator cuts at its execution block.
+    fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
+      blockNumber = 0UL,
+      blockTimestamp = Clock.System.now(),
+      messageNumber = 0UL,
+      forcedTransactionNumber = 2UL,
+    )
+    fxtDao.save(processedFtxRecord(ftxNumber = 3UL, simulatedExecutionBlockNumber = 20UL)).get()
+    seedL1ForFtxNumbers(listOf(3UL))
+
+    val app = createApp()
+    app.start().get()
+
+    assertThat(app.conflationCalculator.checkOverflow(blockCounters(blockNumber = 20UL)))
+      .isEqualTo(ftxOverflowTrigger)
+    app.stop().get()
+  }
+
+  @Test
+  fun `should not rehydrate FTXs at or below L1 finalized number on start`() {
+    // FTX#3 is at the L1 finalized boundary: it has already been finalised, so no
+    // trigger should be replayed for it.
+    fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
+      blockNumber = 0UL,
+      blockTimestamp = Clock.System.now(),
+      messageNumber = 0UL,
+      forcedTransactionNumber = 3UL,
+    )
+    fxtDao.save(processedFtxRecord(ftxNumber = 3UL, simulatedExecutionBlockNumber = 20UL)).get()
+    seedL1ForFtxNumbers(listOf(3UL))
+
+    val app = createApp()
+    app.start().get()
+
+    assertThat(app.conflationCalculator.checkOverflow(blockCounters(blockNumber = 20UL))).isNull()
+    app.stop().get()
+  }
+
+  @Test
+  fun `regression - replays in-flight FTXs after restart so each execution block triggers a conflation cut`() {
+    // FTX#1..4 were sequencer-processed before a restart
+    // (status updates persisted to the DAO), but the in-memory conflation queue was
+    // dropped. Without rehydration, the conflation calculator would no longer cut at any
+    // FTX-execution block and the resulting aggregation would later revert on L1 with
+    // FinalizationStateIncorrect.
+    fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
+      blockNumber = 0UL,
+      blockTimestamp = Clock.System.now(),
+      messageNumber = 0UL,
+      forcedTransactionNumber = 0UL,
+    )
+    val ftxs = listOf(
+      Triple(1UL, 13UL, ForcedTransactionInclusionResult.Included),
+      Triple(2UL, 19UL, ForcedTransactionInclusionResult.TooManyLogs),
+      Triple(3UL, 20UL, ForcedTransactionInclusionResult.BadNonce),
+      Triple(4UL, 21UL, ForcedTransactionInclusionResult.BadPrecompile),
+    )
+    ftxs.forEach { (ftxNumber, block, result) ->
+      fxtDao.save(
+        processedFtxRecord(
+          ftxNumber = ftxNumber,
+          simulatedExecutionBlockNumber = block,
+          inclusionResult = result,
+        ),
+      ).get()
+    }
+    seedL1ForFtxNumbers(ftxs.map { it.first })
+
+    val app = createApp()
+    app.start().get()
+
+    listOf(13UL, 19UL, 20UL, 21UL).forEach { blockNumber ->
+      assertThat(app.conflationCalculator.checkOverflow(blockCounters(blockNumber)))
+        .describedAs("FTX-execution block $blockNumber should trigger a conflation cut")
+        .isEqualTo(ftxOverflowTrigger)
+    }
+    // A non-FTX block in between does not.
+    assertThat(app.conflationCalculator.checkOverflow(blockCounters(blockNumber = 14UL))).isNull()
+    app.stop().get()
+  }
+
+  @Test
+  fun `should be a no-op when the DAO is empty`() {
+    fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
+      blockNumber = 0UL,
+      blockTimestamp = Clock.System.now(),
+      messageNumber = 0UL,
+      forcedTransactionNumber = 0UL,
+    )
+
+    val app = createApp()
+    app.start().get()
+
+    assertThat(app.conflationCalculator.checkOverflow(blockCounters(blockNumber = 1UL))).isNull()
+    assertThat(app.conflationCalculator.checkOverflow(blockCounters(blockNumber = 100UL))).isNull()
+    app.stop().get()
+  }
+
+  private val ftxOverflowTrigger = ConflationTriggerCalculator.OverflowTrigger(
+    trigger = ConflationTrigger.FORCED_TRANSACTION,
+    singleBlockOverSized = false,
+  )
+
+  private fun processedFtxRecord(
+    ftxNumber: ULong,
+    simulatedExecutionBlockNumber: ULong,
+    inclusionResult: ForcedTransactionInclusionResult = ForcedTransactionInclusionResult.BadNonce,
+  ): ForcedTransactionRecord = ForcedTransactionRecord(
+    ftxNumber = ftxNumber,
+    inclusionResult = inclusionResult,
+    simulatedExecutionBlockNumber = simulatedExecutionBlockNumber,
+    simulatedExecutionBlockTimestamp = Clock.System.now(),
+    ftxBlockNumberDeadline = 1_000UL,
+    ftxRollingHash = ByteArray(0),
+    ftxRlp = ByteArray(0),
+    proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
+  )
+
+  /**
+   * Seed the fake L1 client with `ForcedTransactionAdded` events so that
+   * [ForcedTransactionsL1EventsFetcher.start] can locate the resume-point log for the highest
+   * already-processed FTX. Each FTX is placed at l1Block = 100 + ftxNumber.
+   */
+  private fun seedL1ForFtxNumbers(ftxNumbers: List<ULong>) {
+    if (ftxNumbers.isEmpty()) return
+    l1Client.setLogs(
+      ftxNumbers.map { ftxNumber ->
+        createFtxAddedEvent(
+          l1BlockNumber = 100UL + ftxNumber,
+          ftxNumber = ftxNumber,
+          l2DeadLine = 1_000UL,
+        )
+      },
+    )
+    l1Client.setLatestBlockTag(10_000UL)
+  }
+
+  private fun blockCounters(blockNumber: ULong): BlockCounters = BlockCounters(
+    blockNumber = blockNumber,
+    blockTimestamp = Clock.System.now(),
+    tracesCounters = TracesCountersV5.EMPTY_TRACES_COUNT,
+    blockRLPEncoded = ByteArray(0),
+  )
 
   private fun EthApiBlockClient.blockTimestamp(blockParameter: BlockParameter): Instant =
     this.ethGetBlockByNumberTxHashes(blockParameter)

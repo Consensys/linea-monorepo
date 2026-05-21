@@ -130,7 +130,7 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 
 		// Advance currRow to the next ECRECOVER segment without pushing zeros.
 		// The ecrecover data is packed contiguously in the antichamber columns,
-		// so we only need to skip non-ecrecover rows in the source — not mirror
+		// so we only need to skip non-ecrecover rows in the source, not mirror
 		// them. The projection constraint uses filters, so layout alignment with
 		// the source is not required.
 		for ; currRow < sourceCsEcRecover.Len(); currRow++ {

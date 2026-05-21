@@ -14,12 +14,19 @@ GO_CORSET_REPO ?= https://github.com/consensys/go-corset.git
 GO_CORSET_REF_FOR_ZKC ?=
 
 # Used to install go-corset
-GO_CORSET_VERSION ?= v1.2.11
+GO_CORSET_VERSION ?= v1.2.17
 
-ZKC_FILES := $(shell find $(MAKEFILE_DIR)src/main/riscv/* -name "*.zkc")
-ZKC_MAIN := $(MAKEFILE_DIR)src/main/riscv/main.zkc
+# Used to install Sail for ACT4 host builds.
+ACT4_RISCV_DIR ?= $(HOME)/riscv
+SAIL_RISCV_VERSION ?= 0.11
 
-.PHONY: checkout-go-corset install-go-corset install-zkc zkc-compile check
+ZKC_FILES ?= $(shell find $(MAKEFILE_DIR)src/main/riscv/* -name "*.zkc")
+ZKC_MAIN ?= $(MAKEFILE_DIR)src/main/riscv/main.zkc
+ZKC_BINDIR ?= $(MAKEFILE_DIR)bin
+ZKC_BINARY ?= riscv.bin
+ZKC_INPUT ?= input.json
+
+.PHONY: checkout-go-corset install-go-corset install-zkc install-sail zkc-compile zkc-check zkc-compile-and-check check
 
 # Fetch go-corset if missing (no-op when CI already checked it out into GO_CORSET).
 checkout-go-corset:
@@ -32,15 +39,32 @@ checkout-go-corset:
 	@if [ -n "$(GO_CORSET_REF_FOR_ZKC)" ]; then \
 		git -C "$(GO_CORSET)" fetch origin "$(GO_CORSET_REF_FOR_ZKC)" || true; \
 		git -C "$(GO_CORSET)" checkout "$(GO_CORSET_REF_FOR_ZKC)"; \
+		git -C "$(GO_CORSET)" pull --ff-only origin "$(GO_CORSET_REF_FOR_ZKC)" 2>/dev/null || true; \
 	fi
 
 # Install the zkc CLI from the go-corset repository.
-install-zkc: checkout-go-corset
+# - When GO_CORSET_REF_FOR_ZKC is set: always checkout the pinned ref and reinstall.
+# - When GO_CORSET_REF_FOR_ZKC is empty: skip if zkc is already on PATH.
+install-zkc:
+	@set -eu; \
+	if [ -z "$(GO_CORSET_REF_FOR_ZKC)" ] && command -v zkc >/dev/null 2>&1; then \
+		exit 0; \
+	fi; \
+	$(MAKE) checkout-go-corset; \
+	echo "Installing zkc from $(GO_CORSET)..."; \
 	cd "$(GO_CORSET)" && go install ./cmd/zkc
 
-# Compile the main RISC-V ZKC program.
+# Compile zkc program in a binary file
 zkc-compile: $(ZKC_FILES)
-	zkc compile $(ZKC_MAIN)
+	mkdir -p $(ZKC_BINDIR)
+	zkc compile -o $(ZKC_BINDIR)/$(ZKC_BINARY) --wir $(ZKC_MAIN)
+
+# Check execution of the compiled zkc binary against an input JSON
+# Only works for small zkc programs for now
+zkc-check:
+	zkc exec --check $(ZKC_INPUT) $(ZKC_BINDIR)/$(ZKC_BINARY)
+
+zkc-compile-and-check: install-zkc zkc-compile zkc-check
 
 zkc-lint:
 	zkc format --check $(ZKC_FILES)
@@ -48,6 +72,7 @@ zkc-lint:
 zkc-lint-apply:
 	zkc format $(ZKC_FILES)
 
+# Compile the main RISC-V zkc program in a binary file
 riscv-check-compilation: install-zkc zkc-compile
 
 riscv-check-lint: install-zkc zkc-lint
@@ -68,3 +93,17 @@ install-go-corset:
 		echo "Installing go-corset@$(GO_CORSET_VERSION)..."; \
 		go install github.com/consensys/go-corset/cmd/go-corset@$(GO_CORSET_VERSION); \
 	fi
+
+# Install Sail for ACT4 host builds. Other host tools are prerequisites.
+install-sail:
+	@mkdir -p "$(ACT4_RISCV_DIR)/bin" || exit $$?; \
+	if ! "$(ACT4_RISCV_DIR)/bin/sail_riscv_sim" --version 2>/dev/null | grep -qx "$(SAIL_RISCV_VERSION)"; then \
+		echo "Installing sail_riscv_sim $(SAIL_RISCV_VERSION)..."; \
+		sail_os=$$(uname -s); \
+		if [ "$$sail_os" = "Darwin" ]; then sail_os=Mac; fi; \
+		sail_archive="$$(mktemp)" || exit $$?; \
+		curl --fail --location --output "$$sail_archive" "https://github.com/riscv/sail-riscv/releases/download/$(SAIL_RISCV_VERSION)/sail-riscv-$$sail_os-$$(uname -m).tar.gz" || exit $$?; \
+		tar xzf "$$sail_archive" -C "$(ACT4_RISCV_DIR)" --strip-components=1 || exit $$?; \
+		rm -f "$$sail_archive"; \
+	fi; \
+	echo "sail_riscv_sim is ready at $(ACT4_RISCV_DIR)/bin/sail_riscv_sim"

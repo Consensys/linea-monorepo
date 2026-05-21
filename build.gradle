@@ -7,6 +7,12 @@ import java.time.Duration
 plugins {
   alias(libs.plugins.spotless)
   alias(libs.plugins.docker)
+  // Loaded on the root plugin classpath so maru subprojects can apply it
+  // via `alias(libs.plugins.dependencyManagement)` in their own plugins{}
+  // block. Maru continues to use io.spring.dependency-management for its
+  // BOM-driven version resolution until maru/gradle/versions.gradle is
+  // folded into the catalog (follow-up commit).
+  alias(libs.plugins.dependencyManagement) apply false
 }
 
 tasks.register("compileAll") {
@@ -321,6 +327,33 @@ dockerCompose {
     noRecreate = true
     projectName = "docker"
   }
+}
+
+// Pull only the images required by `startedServices` of the `localStack` compose stack.
+// Useful in CI to retry the (sometimes flaky) Docker Hub pull in isolation, without
+// rerunning the integration test.
+tasks.register("composePullLocalStackStartedImages", Exec) {
+  group = 'docker'
+  description = "Pull only the startedServices images for the 'localStack' compose stack."
+  workingDir rootDir
+  doFirst {
+    def settings = dockerCompose.localStack
+    def fileArgs = settings.useComposeFiles.get().collectMany { ['-f', it.toString()] }
+    def additionalArgs = settings.composeAdditionalArgs.get()
+    def services = settings.startedServices.get()
+    commandLine(['docker', 'compose'] + fileArgs + additionalArgs + ['pull'] + services)
+  }
+}
+
+// Seed the gitignored runtime deny-list before any compose-up so the sequencer's
+// bind-mount finds a regular file (not an auto-created directory) on fresh checkouts.
+// Delegates to the Makefile target so Make and Gradle stay in lockstep.
+def seedSequencerDenyList = tasks.register("seedSequencerDenyList", Exec) {
+  workingDir rootDir
+  commandLine 'make', 'seed-deny-list'
+}
+tasks.matching { it.name.endsWith("ComposeUp") }.configureEach {
+  dependsOn(seedSequencerDenyList)
 }
 
 static Boolean hasKotlinPlugin(Project proj) {
