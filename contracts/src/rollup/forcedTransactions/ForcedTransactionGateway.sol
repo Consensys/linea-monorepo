@@ -108,6 +108,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     require(_l2BlockBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_minGasLimit != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_maxGasLimit != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_maxGasLimit > _minGasLimit, MaxGasLimitLessThanOrEqualToMinGasLimit(_minGasLimit, _maxGasLimit));
     require(_maxInputLengthBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_defaultAdmin != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());

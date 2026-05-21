@@ -174,6 +174,16 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         expectedError: "ZeroValueNotAllowed",
       },
       {
+        description: "max gas limit is equal to the min gas limit",
+        override: { maxGasLimit: MIN_FORCED_TRANSACTION_GAS_LIMIT },
+        expectedError: "MaxGasLimitLessThanOrEqualToMinGasLimit",
+      },
+      {
+        description: "max gas limit is lower than the min gas limit",
+        override: { maxGasLimit: MIN_FORCED_TRANSACTION_GAS_LIMIT - 1n },
+        expectedError: "MaxGasLimitLessThanOrEqualToMinGasLimit",
+      },
+      {
         description: "max input limit is set to zero",
         override: { maxInputLengthLimit: 0 },
         expectedError: "ZeroValueNotAllowed",
