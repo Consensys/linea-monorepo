@@ -14,6 +14,31 @@ ENTRY_POINT ?= $(PROGRAM_OFFSET)
 
 ci: fmt build test zkc-verify
 
+help:
+	@printf '%s\n' \
+		'Usage: make <target>' \
+		'' \
+		'Common targets:' \
+		'  help                  Show this help message' \
+		'  ci                    Run fmt, native build, tests, and zkc verifier smoke test' \
+		'  fmt                   Run Zig and Go formatting checks' \
+		'  build                 Build verifier-ray natively' \
+		'  build-release         Build verifier-ray natively with ReleaseSmall and stripped symbols' \
+		'  build-r5              Build verifier-ray for the Linea R5 zkVM target' \
+		'  run                   Run verifier-ray natively' \
+		'  test                  Run Zig tests and Go codegen tests' \
+		'  test-zig              Generate/verify testdata and run Zig tests' \
+		'  test-codegen          Run Go codegen tests' \
+		'  zkc-build             Build the R5 ELF and generate the zkc JSON input' \
+		'  zkc-verify            Run verifier-ray through the zkc RISC-V interpreter' \
+		'  clean                 Remove Zig build artifacts' \
+		'' \
+		'zkc variables:' \
+		'  IN_BYTES              Input bytes copied into the interpreter input region' \
+		'  PROGRAM_OFFSET        Program load address, default 0x00000000' \
+		'  IN_BYTES_OFFSET       Input bytes address, default 0x08800000' \
+		'  ENTRY_POINT           Entry point, default PROGRAM_OFFSET'
+
 fmt: fmt-zig fmt-codegen fmt-testdata-generate
 
 fmt-zig:
