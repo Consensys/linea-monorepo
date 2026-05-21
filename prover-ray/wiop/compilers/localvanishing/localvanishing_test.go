@@ -245,6 +245,35 @@ func TestCompile_SharesLagrangeColumnsByAnchor(t *testing.T) {
 		"both vanishings share anchor 0, so only one Lagrange column should be created")
 }
 
+// TestCompile_PanicsOnOutOfRangePosition ensures the Lagrange-column constructor
+// rejects an out-of-range anchor with a localised panic instead of an opaque
+// "index out of range" crash deep inside the runtime. The expression
+// hand-constructs a *ColumnPosition with a negative Position via Column.At,
+// bypassing the normalisation that NewLocalConstraint would otherwise apply.
+func TestCompile_PanicsOnOutOfRangePosition(t *testing.T) {
+	sys := wiop.NewSystemf("lv-oob")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
+	col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
+
+	// Hand-built ColumnPosition with Position = -1; Column.At does no
+	// validation, so this slips past the lowerToRow normalisation that
+	// NewLocalConstraint normally applies.
+	badExpr := col.At(-1)
+	mod.NewLocalConstraint(sys.Context.Childf("lc"), badExpr, 0)
+
+	assert.PanicsWithValue(t, true, func() {
+		defer func() {
+			if r := recover(); r != nil {
+				msg, _ := r.(string)
+				assert.Contains(t, msg, "Lagrange anchor -1 out of range")
+				panic(true) // re-raise so PanicsWithValue sees a panic
+			}
+		}()
+		localvanishing.Compile(sys)
+	}, "out-of-range anchor must trigger the explicit precondition message")
+}
+
 // elementFromUint64 converts a literal uint64 into a koalabear field.Element.
 func elementFromUint64(v uint64) field.Element {
 	var e field.Element

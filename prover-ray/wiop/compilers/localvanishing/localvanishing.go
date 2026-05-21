@@ -170,8 +170,23 @@ func collectColumnPositions(expr wiop.Expression) []int {
 // newLagrangeColumn creates a precomputed base-field column of length
 // m.Size() whose value is 1 at row anchor and 0 elsewhere — the Lagrange-basis
 // indicator polynomial at the anchor row.
+//
+// Precondition: anchor must lie in [0, m.Size()). Callers obtain it from
+// [collectColumnPositions], which sources positions from *ColumnPosition.Position
+// leaves; for ColumnPositions produced by [wiop.Module.NewLocalConstraint],
+// [wiop.columnViewAtRow] normalises positions to [0, n). Hand-constructed
+// ColumnPositions (via [wiop.Column.At]) skip that normalisation, so an
+// explicit bounds check here turns the resulting "index out of range" runtime
+// crash into a localised message that names the offender.
 func newLagrangeColumn(ctx *wiop.ContextFrame, m *wiop.Module, anchor int) *wiop.Column {
 	n := m.Size()
+	if anchor < 0 || anchor >= n {
+		panic(fmt.Sprintf(
+			"wiop/compilers/localvanishing: Lagrange anchor %d out of range [0, %d) for module %q; "+
+				"all *ColumnPosition.Position leaves must be normalised to the domain",
+			anchor, n, m.Context.Path(),
+		))
+	}
 	elems := make([]field.Element, n)
 	elems[anchor].SetOne()
 	cv := &wiop.ConcreteVector{Plain: field.VecFromBase(elems)}
