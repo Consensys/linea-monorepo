@@ -3,19 +3,16 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile exec-elf elf-to-json zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-rust-exec build-act4 run-act4 install-zkc
+.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-rust-exec build-act4 run-act4
 
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
 
-# Test to run (with src optional subfolder and extension), mandatory unless clean-all or linker-script are the targets
-# src_optional_subfolder/your_test(.s|.zig|.rs)
-ifeq ($(filter clean-all linker-script blake-rust-exec build-act4 run-act4 install-zkc exec-elf elf-to-json,$(MAKECMDGOALS)),)
-ifndef TEST
-$(error TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs))
-endif
-endif
+# Targets invoking REQUIRE_TEST must provide the TEST variable
+define REQUIRE_TEST
+	@[ -n "$(TEST)" ] || { echo "TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs)"; exit 1; }
+endef
 
 # src_optionaL_subfolder/your_test
 BASENAME     := $(basename $(TEST))
@@ -110,7 +107,8 @@ exec: compile zkc-exec
 
 debug: compile zkc-debug
 
-compile: $(SRC) linker-script
+compile: linker-script
+	$(REQUIRE_TEST)
 # Print all variables for debugging purposes
 	@echo "TEST:      $(TEST)"
 	@echo "BASENAME:  $(BASENAME)"
@@ -171,12 +169,15 @@ install-zkc:
 	$(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc
 
 zkc-exec: install-zkc
+	$(REQUIRE_TEST)
 	zkc exec $(JSON) $(ZKC_MAIN)
 
 zkc-debug: install-zkc
+	$(REQUIRE_TEST)
 	zkc debug $(JSON) $(ZKC_MAIN)
 
 clean:
+	$(REQUIRE_TEST)
 	rm -f $(BIN) $(JSON) $(BIN).objdump $(LINKER_SCRIPT)
 
 clean-all:
@@ -228,6 +229,7 @@ linker-script:
 
 # Verify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values
 verify-elf: $(BIN)
+	$(REQUIRE_TEST)
 	@echo "\nVerify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values"
 	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET))))" ] || \
 		(echo "ERROR: PROGRAM_OFFSET mismatch: expected $(PROGRAM_OFFSET), got $(PROGRAM_OFFSET_FROM_ELF)" && exit 1)
