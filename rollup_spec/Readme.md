@@ -29,20 +29,11 @@ The system is organized around three concurrent, independent streams that conver
 **Stream 2 — Proving (Execution & Blob).** Two leaf-level proof types are produced independently and in parallel:
 
 - **Execution proofs** — for each contiguous range of L2 blocks (a *conflation*), a prover generates an execution proof attesting to the EVM state transition. Multiple execution proofs can be produced in parallel across different block ranges.
-<<<<<<< HEAD
 - **Blob proofs** — for one or more EIP-4844 blobs, a single blob proof attests to: (a) compression equality (the witnessed truncated blocks LZ4-compress to the KZG-bound blob bytes) for each blob, (b) the chained shnarf transition across the blobs, and (c) recursive verification of the N execution proofs whose ranges tile the combined block range of those blobs. The blob proof is the smallest unit of aggregation: it folds multiple execution proofs into one and exposes the unified 14-field public-input tuple. A single blob proof generalizes across `K ≥ 1` blobs.
 
 **Stream 3 — Aggregation.** Once all blob proofs for a target finalization range are available, they are assembled, aggregated, and wrapped for L1 by one aggregation prover request:
 
 - **Aggregation + emulation** — a single aggregation prover request runs one guest invocation that recursively verifies all `M` blob proofs, asserts inter-blob-proof continuity in software, outputs the same 14-field tuple over the full range, and then performs the STARK-to-SNARK emulation wrap (Groth16/Plonk) for L1 submission. The aggregation topology is flat across the `M` blob proofs (hierarchical / k-ary aggregation is a future option — see §2.5). There is no separate emulation prover invocation.
-=======
-- **Blob proofs** — for one or more EIP-4844 blobs, a single blob proof attests to: (a) correct decompression and KZG polynomial binding for each blob, (b) the chained shnarf transition across the blobs, and (c) recursive verification of the N execution proofs whose ranges tile the combined block range of those blobs. The blob proof is the smallest unit of aggregation: it folds multiple execution proofs into one and exposes the unified 14-field public-input tuple. A single blob proof generalises across `K ≥ 1` blobs.
-
-**Stream 3 — Aggregation.** Once all blob proofs for a target finalisation range are available, they are assembled and wrapped for L1:
-
-1. **Aggregation proof** — a single guest invocation that recursively verifies all `M` blob proofs, asserts inter-blob-proof continuity in software, and outputs the same 14-field tuple over the full range. Flat across the `M` blob proofs (hierarchical / k-ary aggregation is a future option — see §2.5).
-2. **Emulation** — the aggregation proof is wrapped in a STARK-to-SNARK step (Groth16/Plonk) and submitted to the L1 contract with the 14 public values, triggering finalisation. Performed inside the same aggregation prover request — there is no separate emulation prover invocation.
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
 ```
 Exec₁ ┐
@@ -50,11 +41,7 @@ Exec₂ ┤
 Exec₃ ┤
 blob₁ ┼─→ Blob Proof₁ ─┐
 blob₂ ┘                │
-<<<<<<< HEAD
                        ├─→ Aggregation Proof + Emulation ─→ L1 Finalization
-=======
-                       ├─→ Aggregation Proof ─→ Emulation ─→ L1 Finalisation
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 Exec₄ ┐                │
 Exec₅ ┤                │
 Exec₆ ┤                │
@@ -92,21 +79,13 @@ declared outcome is one of the allowed outcomes in §6.5.
 | `parentBlockHash` | Block hash at the start of this range |
 | `endBlockHash` | Block hash at the end of this range |
 | `endBlockNumber` | Block number at the end of this range; required for the L1 contract to update `currentL2BlockNumber` and support liveness checks |
-<<<<<<< HEAD
 | `endBlockTimestamp` | UNIX timestamp of the last block in this range. Bubbled up unchanged through the blob and aggregation proofs (§2.2, §2.3) and stored on L1 as `currentL2BlockTimestamp` at finalization, so L1 consumers can read the finalized L2 "wall clock". |
-=======
-| `endStateRootHash` | Explicitly exposed to avoid L1 calldata hashing overhead for withdrawal resolution; the guest enforces it belongs to the header of `endBlockHash` |
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 | `L2L1MessagesHash` | keccak256 of the ordered list of L2→L1 withdrawal message hashes emitted in this range; the number of messages is bounded per execution proof |
 | `parentL1L2BridgeRollingHash` | Accumulated L1→L2 deposit rolling hash at the start of this range; enables chaining across execution proofs and L1 continuity verification |
 | `parentL1L2BridgeRollingHashMessageNumber` | Message number corresponding to `parentL1L2BridgeRollingHash` |
 | `endL1L2BridgeRollingHash` | Accumulated L1→L2 deposit rolling hash at the end of this range |
 | `endL1L2BridgeRollingHashMessageNumber` | Message number corresponding to `endL1L2BridgeRollingHash` |
-<<<<<<< HEAD
 | `dynamicChainConfigHash` | `keccak256(uint256_be(chainID) ‖ coinBase ‖ L2MessageServiceContract ‖ uint256_be(baseFee))`, where integer fields are 32-byte big-endian values and addresses are canonical 20-byte values. `baseFee` is part of the dynamic chain configuration; a base-fee update is therefore a configuration update and a proof-range boundary. |
-=======
-| `dynamicChainConfigHash` | Hash of the L2 `chainID`, `coinBase`, `L2MessageServiceContract`, and `baseFee`. The first three are static configuration; `baseFee` is taken by the guest from any block's header (asserted constant across the range) and folded into the same hash. |
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 | `parentFtxRollingHash` | Forced-transaction rolling hash at the start of this range |
 | `endFtxRollingHash` | Forced-transaction rolling hash at the end of this range |
 | `lastProcessedFtxNumber` | Sequence number of the last forced transaction handled in this range |
@@ -116,25 +95,15 @@ declared outcome is one of the allowed outcomes in §6.5.
 **Private Inputs (Witness)**
 
 - The complete set of L2 blocks in canonical RLP encoding (header + transaction list [+ withdrawals]); EIP-2718 typed transactions in full signed form. The guest recovers each transaction's sender via `secp256k1` and commits to the recovered list via `txFromsHash`.
-<<<<<<< HEAD
 - The stateless execution witness per block, as produced by Besu's `debug_executionWitness` (`state`, `keys`, `codes`, `headers`); the parent header within `headers` carries the state root that anchors `parentBlockHash`. The `state` MPT node pool must additionally include proof paths for: (a) the L2MessageService's `L1L2RollingHash` and `L1L2RollingHashMessageNumber` slots at both the parent and end state roots — read at proof-range boundaries even when no block in the range writes them; (b) the sender account of any FTX whose declared outcome is *Invalid* (§6.5), at the parent state root of the block where that FTX would have been included.
 - The static chain config: `L2MessageServiceContract`, `coinBase`, `chainID`. `baseFee` — the fourth input to `dynamicChainConfigHash` — is NOT part of this struct; the guest reads it from the first block's header and asserts every subsequent block in the range carries the same value.
-=======
-- The stateless execution witness per block, as produced by Besu's `debug_executionWitness` (`state`, `keys`, `codes`, `headers`); the parent header within `headers` carries the state root that anchors `parentBlockHash`
-- The set of L1→L2 deposit messages consumed in this range, with their message numbers and the rolling hash chain anchored at the previous finalized state
-- The static chain config: `L2MessageServiceContract`, `coinBase`, `chainID`. `baseFee` is the fourth input to `dynamicChainConfigHash` but is sourced from the block header rather than this struct — see §3.2
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 - The forced-transaction witnesses for FTXs in the range — see §6
 
 **What it proves:**
 
 * **Validates the EVM state transition**: validating the state-root hash transition.
 
-<<<<<<< HEAD
 * **Enforce sequencer consensus rules**: strictly monotonic timestamps across the range, constant `baseFee` (sourced from the first block header and asserted equal in every subsequent header), `coinbase` matching the chain configuration, and a contiguous parent-hash chain anchored at `parentBlockHash`. Standard Ethereum header validation (`validate_header`) is delegated to the state-transition primitive.
-=======
-* **Enforce sequencer consensus rules**: timestamp sequentiality, base-fee, coin-base and , enforces Ethereum consensus rules (fork-choice, timestamps),
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
 * **Extract the canonical L2L1Message** hashes from the block receipt and compute their flat-hash using keccak256.
 
@@ -146,15 +115,9 @@ declared outcome is one of the allowed outcomes in §6.5.
 
 ### 2.2 Blob Proof
 
-<<<<<<< HEAD
 The blob proof covers `K ≥ 1` consecutive EIP-4844 blobs and proves that, for each, the KZG polynomial binding holds and `lz4_compress(serialize(truncatedBlocks)) == blobContent` (compression equality). It is also the leaf aggregator: it recursively verifies the `N` execution proofs whose ranges tile the combined block range of the `K` blobs and chains them with software `assert_eq!` continuity checks. Its public-input tuple is identical in shape to the aggregation proof's (§2.4), so the upstream aggregation step can consume blob proofs directly.
 
 `K = 1` is the simplest case (one blob per blob proof). `K > 1` lets the coordinator amortize recursion overhead by folding several blobs into a single proof — directly analogous to the existing M-block conflation inside an execution proof.
-=======
-The blob proof covers `K ≥ 1` consecutive EIP-4844 blobs and proves that, for each, the content correctly decompresses to the declared block data and satisfies the KZG polynomial binding. It is also the leaf aggregator: it recursively verifies the `N` execution proofs whose ranges tile the combined block range of the `K` blobs and chains them with software `assert_eq!` continuity checks. Its public-input tuple is identical in shape to the aggregation proof's (§2.4), so the upstream aggregation step can consume blob proofs directly.
-
-`K = 1` is the simplest case (one blob per blob proof). `K > 1` lets the coordinator amortise recursion overhead by folding several blobs into a single proof — directly analogous to the existing M-block conflation inside an execution proof.
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
 > *Notation used below:* a subscript `_b` indexes blobs `1..K`; a subscript `_e` indexes execution proofs `1..N`; `m_b` is the block count of blob `b`.
 
@@ -171,11 +134,7 @@ The **execution proof's 15-field PI** is *input* to this guest (private witness,
 | `L2L1MessagesHash` | **Dropped** — per-execution flat hash consumed in step 8 to build `L2L1BridgeTransactionTree`, then discarded |
 | `txFromsHash` | **Dropped** — consumed in step 5 to cross-check `froms_e` against blob `blockData.froms`; not propagated |
 | `endBlockNumber` | Carried over from `PI_Eₙ` |
-<<<<<<< HEAD
 | `endBlockTimestamp` | Carried over from `PI_Eₙ` |
-=======
-| `endStateRootHash` | Carried over from `PI_Eₙ` |
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 | `parentL1L2BridgeRollingHash` | Carried over from `PI_E₁` |
 | `parentL1L2BridgeRollingHashMessageNumber` | Carried over from `PI_E₁` |
 | `endL1L2BridgeRollingHash` | Carried over from `PI_Eₙ` |
@@ -195,20 +154,14 @@ Plus three **new** blob-level fields: `parentShnarf` (input), `endShnarf` (compu
 | `blobContent_b` | Raw compressed blob bytes (4096 × 32-byte EIP-4844 payload) for blob `b ∈ [1, K]` |
 | `blobHash_b` | The blob's versioned hash as submitted on L1 |
 | `KzgProof_b` | KZG proof for blob `b` |
-<<<<<<< HEAD
 | `blockRange_b` | The `(startBlockNumber, endBlockNumber)` pair for the blocks contained in blob `b` |
 | `blockRlps_b` | The ordered list of canonical full block RLPs for blob `b` (`m_b` entries) — same canonical shape the execution proof receives (header + tx list [+ withdrawals], EIP-2718 typed transactions in full signed form). Truncation per §3.2 happens *inside* the guest; there is no separately witnessed truncated form. |
-=======
-| `KzgY_b` | KZG evaluation claim for blob `b` |
-| `blockRange_b` | The `(startBlockNumber, endBlockNumber)` pair for blob `b`'s decompression range |
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 | `E₁ … Eₙ` | The execution proofs, ordered by block range, tiling the combined range of all K blobs |
 | `PI_E₁ … PI_Eₙ` | The public-input tuple for each execution proof |
 | `L2L1MsgList_e` | Per-execution-proof L2→L1 message hash list, for `e ∈ [1, N]` |
 | `froms_e` | Per-execution-proof sender address list (block-then-transaction order) — preimage of `PI_E_e.txFromsHash` |
 | `addrs_e` | Per-execution-proof refused-FTX address list (§6.5) — preimage of `PI_E_e.filteredAddressesHash` |
 
-<<<<<<< HEAD
 The proven statement is **compression of the canonical truncated RLP**: the guest applies the §3.2 truncation rule to each `blockRlps_b[i]` internally, RLP-encodes the truncated form, and attests that `lz4_compress(rlp_encode(truncate(blockRlps_b))) == blobContent_b`. The intermediate truncated blocks are computed by the guest, not witnessed; their downstream consumers (block-hash boundary checks in step 6, sender-list cross-checks in step 4) read them from the in-guest computation. Authenticity of the full block RLPs is anchored by the same downstream checks — every block hash is bound to an execution-proof boundary, every `froms` list to the execution proof's `txFromsHash` — so the guest cannot diverge from what was actually executed.
 
 **Statement (RISC-V Guest)**
@@ -218,23 +171,11 @@ For each blob `b ∈ [1, K]` in order, perform the per-blob block (steps 1–3);
 1. **Schwartz–Zippel evaluation (per blob).** Derive evaluation point `X_b = keccak256(blobContent_b ‖ blobHash_b)`. Compute `KzgY_b = P_b(X_b)` directly from `blobContent_b`, then check the KZG proof using `blobHash_b`, `X_b`, computed `KzgY_b`, and `KzgProof_b`. `KzgY_b` is not supplied as a witness.
 
 2. **Verify compression (per blob).** Take the per-blob list `blockRlps_b` of `m_b` canonical full block RLPs as a private witness. For each entry: decode it, apply the §3.2 truncation rule to produce a `TruncatedEthereumBlock` (`blob.py::TruncatedEthereumBlock`: `{timestamp, blockHash, prevRandao, transactions, froms}`) — `blockHash` is computed as `keccak256(headerRlp)` from the decoded header, `transactions` are the signature-stripped tx bytes, and `froms` are the per-tx recovered senders. RLP-encode the resulting truncated-block list in canonical order, LZ4-compress it, and assert the result equals `blobContent_b` byte-for-byte. The statement is **compression of the truncated RLP**, not decompression: the full block RLPs are the input, the truncated form is an internal intermediate, compression equality anchors them to the KZG-bound blob. Also assert `m_b == blockRange_b.endBlockNumber - blockRange_b.startBlockNumber + 1`.
-=======
-The decompressed truncated blocks (`blockData_{b,1} … blockData_{b,m_b}`) are **computed** inside the proof by step 2, not provided as a separate witness. The proven statement is decompression: the guest attests that running `decompress_lz4` on `blobContent_b` yields the truncated blocks it then uses downstream.
-
-**Statement (RISC-V Guest)**
-
-For each blob `b ∈ [1, K]` in order, perform the per-blob block (steps 1–3); then perform the cross-blob recursion block (steps 4–10) once over the combined range.
-
-1. **Schwartz–Zippel evaluation (per blob).** Derive evaluation point `X_b` from `blobHash_b` and `blobContent_b`. Check the KZG proof using `blobHash_b`, `X_b` and `KzgProof_b`. In parallel, directly check `P_b(X_b) = KzgY_b` using `blobContent_b`.
-
-2. **Decompress and parse (per blob).** Run `decompress_lz4(blobContent_b)` and parse the result into `m_b` `TruncatedEthereumBlock` entries (`blob.py::TruncatedEthereumBlock`: `{timestamp, blockHash, prevRandao, transactions, froms}`). Assert that `m_b == blockRange_b.endBlockNumber - blockRange_b.startBlockNumber + 1`. These decompressed blocks are used directly by the steps below — there is no separate witnessed `blockData`.
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
 3. **Chain the shnarf (per blob).** Recompute:
    ```
    shnarf_b = Hash(shnarf_{b-1}, lastBlockHash_b, blobHash_b)
    ```
-<<<<<<< HEAD
    where `shnarf_0 = parentShnarf` (public input) and `lastBlockHash_b` is the `blockHash` field of the last `TruncatedEthereumBlock` of blob `b` (from step 2). After all K blobs, assert `shnarf_K == endShnarf`.
 
 4. **Verify sender addresses.** For each execution proof `Eᵢ`, assert:
@@ -250,25 +191,6 @@ For each blob `b ∈ [1, K]` in order, perform the per-blob block (steps 1–3);
 7. **Build the L2→L1 Merkle trees.** For each `e ∈ [1, N]`, receive the message hash list as a private witness and assert `keccak256(L2L1MsgList_e) == PI_E_e.L2L1MessagesHash`. Concatenate all N lists in order. Partition the combined list into consecutive chunks of `2^D` leaves (where D is the fixed protocol-level tree depth, currently 5). Pad the final chunk with zero-value (0x00…00) leaves to fill it. Each leaf is a 32-byte message hash; internal nodes are `keccak256(left ‖ right)`. Compute the root of each full tree and collect them into an ordered array `[root_1, …, root_T]`. Output `L2L1BridgeTransactionTree = keccak256(root_1 ‖ … ‖ root_T)` as a commitment to this ordered root list. The tree depth D is a protocol constant and is not included in the public output.
 
 8. **Chain the execution proofs.** For each consecutive pair `(Eᵢ, Eᵢ₊₁)` assert:
-=======
-   where `shnarf_0 = parentShnarf` (public input) and `lastBlockHash_b` is the `blockHash` field of the last decompressed `TruncatedEthereumBlock` of blob `b` (from step 2). After all K blobs, assert `shnarf_K == endShnarf`.
-
-4. **Recompute the combined block-hash sequence.** Concatenate the decompressed truncated-block lists across all K blobs in canonical order and walk them, asserting parent-hash continuity at each step (the truncated form does not carry parent pointers directly; alignment is enforced via the execution-proof block-hash chain in step 7 + step 9). The first entry's hash must match the chain that descends from `parentBlockHash`; the final entry's hash must equal `lastBlockHash_K` chained into the shnarf in step 3.
-
-5. **Verify sender addresses.** For each execution proof `Eᵢ`, assert:
-   ```
-   keccak256(froms_e) == PI_Eᵢ.txFromsHash
-   ```
-   Then assert that `froms_1 ‖ … ‖ froms_N` equals the concatenation of `froms` across all decompressed truncated blocks (step 2 output), in canonical block-then-transaction order.
-
-6. **Verify the execution proofs.** Recursively verify each `Eᵢ` against `PI_Eᵢ`.
-
-7. **Check execution-proof block-hash alignment.** The `parentBlockHash` of the first execution proof must equal `parentBlockHash` from the public inputs; the `endBlockHash` of the last execution proof must equal `lastBlockHash_K` from step 4; intermediate boundary points must line up with the decompressed block-hash sequence.
-
-8. **Build the L2→L1 Merkle trees.** For each `e ∈ [1, N]`, receive the message hash list as a private witness and assert `keccak256(L2L1MsgList_e) == PI_E_e.L2L1MessagesHash`. Concatenate all N lists in order. Partition the combined list into consecutive chunks of `2^D` leaves (where D is the fixed protocol-level tree depth, currently 5). Pad the final chunk with zero-value (0x00…00) leaves to fill it. Each leaf is a 32-byte message hash; internal nodes are `keccak256(left ‖ right)`. Compute the root of each full tree and collect them into an ordered array `[root_1, …, root_T]`. Output `L2L1BridgeTransactionTree = keccak256(root_1 ‖ … ‖ root_T)` as a commitment to this ordered root list. The tree depth D is a protocol constant and is not included in the public output.
-
-9. **Chain the execution proofs.** For each consecutive pair `(Eᵢ, Eᵢ₊₁)` assert:
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
    ```
    assert_eq!(PI_Eᵢ.endBlockHash,                       PI_Eᵢ₊₁.parentBlockHash)
    assert_eq!(PI_Eᵢ.endL1L2BridgeRollingHash,                  PI_Eᵢ₊₁.parentL1L2BridgeRollingHash)
@@ -278,19 +200,11 @@ For each blob `b ∈ [1, K]` in order, perform the per-blob block (steps 1–3);
    ```
    Continuity *between* blobs is implicit — the same `assert_eq!` block applies at the blob boundary because the execution proofs already tile across it.
 
-<<<<<<< HEAD
 9. **Collect forced-transaction outputs and emit PI.** For each `e ∈ [1, N]`, receive `addrs_e` as a private witness and assert `keccak256(addrs_e) == PI_E_e.filteredAddressesHash`. Concatenate all N lists in order and output `filteredAddressesHash = keccak256(addrs_1 ‖ … ‖ addrs_N)`. Take `parentFtxRollingHash` from `PI_E₁` and `endFtxRollingHash` / `lastProcessedFtxNumber` / `endBlockTimestamp` from `PI_Eₙ`. Output the 14-field public-input tuple covering the entire `K`-blob, `N`-execution range.
 
 ### 2.3 Aggregation Proof
 
 The aggregation prover request recursively verifies the `M` blob proofs covering a finalization range, outputs a single 14-field public-input tuple over the full range, and performs the emulation/SNARK wrap needed for L1 submission. The recursive aggregation topology is **flat**: one guest invocation consumes all `M` blob proofs at once. (Hierarchical / k-ary aggregation is a future option — see §2.5.)
-=======
-10. **Collect forced-transaction outputs and emit PI.** For each `e ∈ [1, N]`, receive `addrs_e` as a private witness and assert `keccak256(addrs_e) == PI_E_e.filteredAddressesHash`. Concatenate all N lists in order and output `filteredAddressesHash = keccak256(addrs_1 ‖ … ‖ addrs_N)`. Take `parentFtxRollingHash` from `PI_E₁` and `endFtxRollingHash` / `lastProcessedFtxNumber` from `PI_Eₙ`. Output the 14-field public-input tuple covering the entire `K`-blob, `N`-execution range.
-
-### 2.3 Aggregation Proof
-
-The aggregation proof recursively verifies the `M` blob proofs covering a finalisation range and outputs a single 14-field public-input tuple over the full range. Topology is **flat**: one guest invocation consumes all `M` blob proofs at once. (Hierarchical / k-ary aggregation is a future option — see §2.5.)
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
 **Public Inputs**
 
@@ -325,15 +239,9 @@ The same 14-field tuple as the blob proof (§2.2) and as the final aggregated PI
 
 4. **Merge filtered address lists.** Receive each blob proof's address list, verify it against its committed hash, concatenate all `M` lists in order, and output `filteredAddressesHash = keccak256(addrs_B₁ ‖ … ‖ addrs_Bₘ)`.
 
-<<<<<<< HEAD
 5. **Output** the combined public inputs covering the full range: take `parentShnarf`, `parentL1L2BridgeRollingHash`, `parentL1L2BridgeRollingHashMessageNumber`, `parentFtxRollingHash`, and `dynamicChainConfigHash` from `PI_B₁`; take `endBlockNumber`, `endBlockTimestamp`, `endL1L2BridgeRollingHash`, `endL1L2BridgeRollingHashMessageNumber`, `endFtxRollingHash`, `lastProcessedFtxNumber`, and `endShnarf` from `PI_Bₘ`; use the merged Merkle commitment from step 3 and merged filtered-address hash from step 4.
 
 The aggregation prover request includes the STARK→SNARK emulation wrap after this guest statement, so the response is directly L1-submittable — no separate emulation request file or prover invocation exists.
-=======
-5. **Output** the combined public inputs covering the full range: take `parentShnarf`, `parentL1L2BridgeRollingHash`, `parentL1L2BridgeRollingHashMessageNumber`, `parentFtxRollingHash`, and `dynamicChainConfigHash` from `PI_B₁`; take `endBlockNumber`, `endStateRootHash`, `endL1L2BridgeRollingHash`, `endL1L2BridgeRollingHashMessageNumber`, `endFtxRollingHash`, `lastProcessedFtxNumber`, and `endShnarf` from `PI_Bₘ`; use the merged Merkle commitment from step 3 and merged filtered-address hash from step 4.
-
-The aggregation prover request bundles the STARK→SNARK emulation wrap (§1.3 Stream 3 sub-step 2) into the same invocation, so the response is directly L1-submittable — no separate emulation request file.
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
 ---
 
@@ -344,11 +252,7 @@ The aggregation proof's root exposes fourteen values to the L1 contract:
 | # | Field |
 |---|---|
 | 1 | `endBlockNumber` |
-<<<<<<< HEAD
 | 2 | `endBlockTimestamp` |
-=======
-| 2 | `endStateRootHash` |
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 | 3 | `L2L1BridgeTransactionTree` |
 | 4 | `parentL1L2BridgeRollingHash` |
 | 5 | `parentL1L2BridgeRollingHashMessageNumber` |
@@ -384,11 +288,7 @@ The DA blob must contain the exact inputs required to re-execute the L2 blocks f
 
 **What is included:**
 
-<<<<<<< HEAD
 - **Block context variables** — fields required to resolve EVM opcodes: `timestamp` (for `TIMESTAMP`) and `mixHash`/`prevrandao` (for `PREVRANDAO`). `baseFeePerGas` is not part of the truncated DA block: `BASEFEE` is resolved from the dynamic chain configuration, whose `baseFee` component is committed through `dynamicChainConfigHash`. Note: `gasLimit` and fields that are deterministic outputs of execution (such as `withdrawalsRoot`) are not included. `coinbase` (for `COINBASE`) is also supplied by the chain configuration.
-=======
-- **Block context variables** — fields required to resolve EVM opcodes: `timestamp` (for `TIMESTAMP`), `mixHash`/`prevrandao` (for `PREVRANDAO`), `baseFeePerGas` (for `BASEFEE`; the guest takes it from any block's header, asserts the value is constant across the range, and folds it into `dynamicChainConfigHash` as the fourth preimage component). Note: `gasLimit` and fields that are deterministic outputs of execution (such as `withdrawalsRoot`) are not included. `coinbase` (for `COINBASE`) is a static configuration field of the rollup.
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 - **Target block hash** — `blockHash` is included so that users can infer the return value of the keccak opcode without having access to the entire block header since a Type-1 block hash requires a perfect RLP-encoding of the full header
 - **Signature-stripped transactions** — the ordered transaction list including `from` (sender address), `nonce`, gas parameters, `to`, `value`, `data`, and `accessLists`; ECDSA signatures `(v, r, s)` are omitted since the execution proof guarantees they were validly signed. `from` is stored explicitly so the sender can be recovered without signature verification during re-execution. However, the transaction must figure their corresponding blob-hashes and access-lists.
 
@@ -404,11 +304,8 @@ The DA blob must contain the exact inputs required to re-execute the L2 blocks f
 
 The JSON files under `prover_inputs/` describe a logical schema. The bytes carried into the zkVM guest are binary.
 
-<<<<<<< HEAD
 **Reference type convention.** In the Python reference, every semantic hash is typed as `Hash32`: block hashes, shnarfs, rolling hashes, message hashes, blob versioned hashes, Merkle roots, and hash commitments. `Bytes32` is reserved for fixed-width 32-byte values that are not hashes, such as `prevRandao`, uint256 log topics before decoding, and BLS12-381 field elements. Plain `bytes` is used only for variable-length encodings or payloads, such as RLP blocks, signed transaction RLP, recursive proofs, compressed blob bytes, and MPT trie nodes.
 
-=======
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 **Transport.** The guest reads input bytes via the zkVM's read-input primitive (`ziskos::read_input()` on Zisk). Transport framing is an 8-byte little-endian length prefix per chunk, padded to 8-byte alignment.
 
 **Container.** Inside the payload, the execution-proof layout is:
@@ -422,11 +319,7 @@ ExecutionWitness:
   headers: [u64 BE: count] then [u64 BE: len][bytes]*    — debug_executionWitness field "headers"
 ```
 
-<<<<<<< HEAD
 Outer framing is length-prefixed binary; inner payloads are RLP. The per-FTX `signedTxRlp` payloads and the `chainConfig` fields are appended in the same `count + length-prefixed bytes` style. Blob-proof and aggregation-proof containers follow the same convention and are pinned alongside the corresponding guest implementations.
-=======
-Outer framing is length-prefixed binary; inner payloads are RLP. The per-FTX `signedTxRlp` / `stateWitness` payloads, the `l1L2Messages` array, and the `chainConfig` fields are appended in the same `count + length-prefixed bytes` style. Blob-proof and aggregation-proof containers follow the same convention and are pinned alongside the corresponding guest implementations.
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
 **Debug format.** The `prover_inputs/` JSONs are the canonical schema source; the coordinator translates them to the binary container before invoking the prover. A separate supporting tool can convert JSON fixtures (e.g. `block.json` + `witness.json`) into the same binary container for local replay.
 
@@ -436,11 +329,7 @@ Outer framing is length-prefixed binary; inner payloads are RLP. The per-FTX `si
 
 ### 4.1 L1 → L2 (Deposits)
 
-<<<<<<< HEAD
 The L1→L2 bridge state is tracked via `endL1L2BridgeRollingHash` and its associated `endL1L2BridgeRollingHashMessageNumber`. These two values live in storage slots on the L2MessageService contract; they are updated by the contract's `anchorL1L2Messages` flow as a side effect of normal EVM execution. The execution-proof guest does not consume the L1→L2 message list directly — it reads the four boundary values (`parent`/`end` × `RollingHash`/`MessageNumber`) from the L2 state at `parentHeader.state_root` and `endBlock.state_root` via the EVM state interface (§2.1).
-=======
-The L1→L2 bridge state is tracked via `endL1L2BridgeRollingHash` and its associated `endL1L2BridgeRollingHashMessageNumber`. The execution proof guest consumes L1 deposit messages (per §2.1) and advances the rolling hash across its range.
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
 Security against L1 re-orgs is not the responsibility of the proof. The Coordinator handles this by waiting for L1 epochs to finalize before anchoring the L1 -> L2 messages — the same model as today.
 
@@ -475,11 +364,7 @@ separate from the execution, blob, and aggregation guest programs.
 **What the contract does:**
 
 1. **On blob submission:** compute `endShnarf = keccak256(parentShnarf, lastBlockHash, blobHash)` and anchor it in storage.
-<<<<<<< HEAD
 2. **On finalization:** verify the STARK-to-SNARK proof against the thirteen aggregated public inputs, then:
-=======
-2. **On finalization:** verify the STARK-to-SNARK proof against the fourteen aggregated public inputs, then:
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
    - Assert `parentShnarf == currentFinalizedShnarf` (DA and block-hash continuity — the shnarf encodes the last block hash, so this check subsumes a separate `parentBlockHash` check)
    - Assert `parentL1L2BridgeRollingHash == currentFinalizedL1L2BridgeRollingHash` and `parentL1L2BridgeRollingHashMessageNumber == currentFinalizedL1L2BridgeRollingHashMessageNumber` (deposit bridge continuity)
    - Assert `endL1L2BridgeRollingHash == l1RollingHash[endL1L2BridgeRollingHashMessageNumber]` (deposit bridge authenticity — the proof's claimed end-of-range rolling hash must match L1's authoritative chain)
@@ -520,11 +405,7 @@ where `txHash = keccak256(signedTxRlp)` is the standard Ethereum transaction has
 
 ### 6.4 New Execution Proof Public Inputs
 
-<<<<<<< HEAD
 Four FTX fields are part of the execution proof public input tuple (see §2.1):
-=======
-Four fields are added to the execution proof (11 → 15 total; see §2.1):
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
 | Field | Description |
 |---|---|
@@ -533,11 +414,7 @@ Four fields are added to the execution proof (11 → 15 total; see §2.1):
 | `lastProcessedFtxNumber` | Sequence number of the last FTX handled in this range |
 | `filteredAddressesHash` | keccak256 of the ordered list of addresses whose FTX was refused in this range; each entry is the recovered sender (`fromAddress`) for refused-from or the decoded recipient (`toAddress`) for refused-to |
 
-<<<<<<< HEAD
 These propagate through the proof tree symmetrically to the L1→L2 bridge fields: the blob proof chains `endFtxRollingHash == parentFtxRollingHash` across consecutive execution proofs (and implicitly across blob boundaries within a multi-blob blob proof); the aggregation proof adds the same assertion across consecutive blob proofs; the final public inputs expose all four (fields 8–11 in §2.4).
-=======
-These propagate through the proof tree symmetrically to the L1→L2 bridge fields: the blob proof chains `endFtxRollingHash == parentFtxRollingHash` across consecutive execution proofs (and implicitly across blob boundaries within a multi-blob blob proof); the aggregation proof adds the same assertion across consecutive blob proofs; the final public inputs expose all four (fields 9–12 in §2.4).
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
 ### 6.5 Execution Proof Statement
 
@@ -553,7 +430,6 @@ A FTX whose deadline falls before the start of this range was already expired; i
 ```
 keccak256(rollingHash ‖ txHash ‖ deadlineBlockNumber ‖ fromAddress) == ftxRollingHash[ftx.number]
 ```
-<<<<<<< HEAD
 where `txHash = keccak256(signedTxRlp)` is the standard Ethereum transaction hash of the FTX's signed RLP (as stored on L1 by `storeForcedTransaction`). The guest decodes `signedTxRlp` once, derives `fromAddress = recover_sender(signedTxRlp, chainID)`, and uses that same derived address for the rolling-hash step and any refused-from output.
 
 **Outcome.** Each FTX carries the sequencer's declared `acceptance`, one of the eight canonical variants (1:1 with `ForcedTransactionInclusionResult` in `linea-besu/plugins/linea-sequencer/.../forced/ForcedTransactionInclusionResult.java`, minus the transient `Other` case):
@@ -573,32 +449,13 @@ where `txHash = keccak256(signedTxRlp)` is the standard Ethereum transaction has
   - `FILTERED_ADDRESS_TO`: recipient on the sanction list; `toAddress` (decoded from `signedTxRlp`; rejected if the FTX is a contract-creation transaction with `to == None`) is appended instead.
   - `PHYLAX`: Phylax compliance filter triggered. **TODO**: pin which address (sender, recipient, or both) is bubbled up for PHYLAX rejections.
 
-=======
-where `txHash = keccak256(signedTxRlp)` is the standard Ethereum transaction hash of the FTX's signed RLP (as stored on L1 by `storeForcedTransaction`). The guest also asserts `fromAddress == recover_sender(signedTxRlp, chainID)` to bind the witness fields to the canonical signed transaction.
-
-**Outcome:**
-- *Included* — the guest asserts `txHash` appears in the declared block's transaction list (decoded from `blockRlp`).
-- *Invalid* — pre-validation fails; the guest reads `tx.nonce`, `tx.value`, `tx.gasLimit`, `tx.maxFeePerGas` from `signedTxRlp` and the relevant account state from the EVM state trie (via `stateWitness`, anchored against the parent state root) and asserts the failure condition:
-  - Bad nonce: `account.nonce != tx.nonce`
-  - Bad balance: `account.balance < tx.gasLimit × tx.maxFeePerGas + tx.value`
-  - Similar checks for other pre-validation failures.
-  No separate invalidity proof type is needed; this is proven inline.
-- *Refused* — the rollup declines for compliance reasons. No governance witness is required inside the proof; the sequencer simply declares the refusal. The L1 contract verifies a posteriori that each refused address appears in its reference sanction list — if any entry is absent, the finalization call reverts. Two refusal modes are supported:
-  - *Refused-from*: the sender is sanctioned; `fromAddress` is appended to the filtered address list.
-  - *Refused-to*: the recipient is sanctioned; `toAddress` (decoded from `signedTxRlp`; rejected if the FTX is a contract-creation transaction with `to == None`) is appended instead.
-
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 After the loop the guest asserts `rollingHash == endFtxRollingHash` and outputs `filteredAddressesHash = keccak256(filtered address list)`.
 
 ### 6.6 Propagation Through the Proof Tree
 
 - **Blob Proof:** asserts `PI_Eᵢ.endFtxRollingHash == PI_Eᵢ₊₁.parentFtxRollingHash` across consecutive execution proofs (§2.2 step 9); collects and concatenates filtered address lists into a single `filteredAddressesHash` (§2.2 step 10).
 - **Aggregation Proof:** adds `assert_eq!(PI_Bᵢ.endFtxRollingHash, PI_Bᵢ₊₁.parentFtxRollingHash)` to the continuity block (§2.3 step 2); merges filtered address lists across all `M` blob proofs by concatenation and rehashing (§2.3 step 4).
-<<<<<<< HEAD
 - **Final public inputs:** exposes `parentFtxRollingHash`, `endFtxRollingHash`, `lastProcessedFtxNumber`, `filteredAddressesHash` as fields 8–11 (§2.4).
-=======
-- **Final public inputs:** exposes `parentFtxRollingHash`, `endFtxRollingHash`, `lastProcessedFtxNumber`, `filteredAddressesHash` as fields 9–12 (§2.4).
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
 ### 6.7 L1 Contract Changes
 
@@ -617,7 +474,6 @@ After the loop the guest asserts `rollingHash == endFtxRollingHash` and outputs 
 
 ## 7. What Changes from Today
 
-<<<<<<< HEAD
 | Component | Current (Type-2)                                                                                                      | New (Type-1 RISC-V) |
 |---|-----------------------------------------------------------------------------------------------------------------------|---|
 | **Shnarf formula** | `keccak256(parent, snarkHash, stateRoot, X, Y)` — 5 inputs; `snarkHash` must be computed in-circuit                   | `keccak256(parent, lastBlockHash, blobHash)` — 3 standard inputs |
@@ -631,18 +487,3 @@ After the loop the guest asserts `rollingHash == endFtxRollingHash` and outputs 
 | **L1 contract** | Complex: precompile calls, dynamic Type-2 input formatting, SNARK-friendly hash routing                               | Lightweight: verify proof against 13 values + roots/addresses calldata, equality checks against stored state, update storage slots |
 | **Final aggregated public inputs** | 13 fields (shnarfs, timestamps, block numbers, rolling hashes ×2, Merkle roots…)                                      | 14 fields — see §2.4 |
 | **Blob-proof granularity** | n/a (no blob proof existed; compression was a separate proof per blob)                                                | Configurable: one blob proof can cover `K ≥ 1` blobs (analogous to today's M-block conflation inside an execution proof). `K = 1` is the simplest case; `K > 1` amortizes recursion overhead |
-=======
-| Component | Current (Type-2) | New (Type-1 RISC-V) |
-|---|---|---|
-| **Shnarf formula** | `keccak256(parent, snarkHash, stateRoot, X, Y)` — 5 inputs; `snarkHash` must be computed in-circuit | `keccak256(parent, lastBlockHash, blobHash)` — 3 standard inputs |
-| **KZG verification** | L1 contract calls `0x0A` precompile; `X` and `Y` exposed on-chain | Proven inside zkVM guest; `X` and `Y` never appear on-chain |
-| **Compression** | Custom SNARK-friendly LZSS; arithmetization-constrained compression ratio | Standard LZ4/zstd compiled into RISC-V guest; unconstrained ratio |
-| **Proof interconnection** | Bespoke pi-interconnection circuit in Go/Gnark; gate-level array mapping | Blob proof: recursively verifies N execution proofs across K ≥ 1 blobs and chains them with `assert_eq!` in the RISC-V guest. Aggregation proof: flat recursion over M blob proofs, same continuity assertions across blob-proof boundaries |
-| **Execution public inputs** | ~14 Type-2 parameters (timestamps, batch indices, conflation data, dynamic arrays) | +`initial`/`endStateRootHash` - `initialBlockNumber` - `initial/finalTimestamp` - `initialStateRootHash` + "ForcedTxData" |
-| **L2→L1 tree construction** | Execution proof outputs flat hash of bounded message list; pi-interconnection organises into fixed-depth Merkle trees | Same flat hash at execution level; blob proof partitions messages into fixed-depth zero-padded trees and outputs `keccak256(roots)`; aggregation proof concatenates the per-blob-proof root arrays and rehashes |
-| **l2MessagingBlocksOffsets** | Unproven hint; L1 emits `L2MessagingBlockAnchored` events for off-chain indexing | Unchanged — still an unproven hint; leaf position is fully derivable from message number, so no security impact |
-| **DA payload — intermediate roots** | `blockHash`, `timestamp` and transaction RLP without signature + From | adding `prevRandao` |
-| **L1 contract** | Complex: precompile calls, dynamic Type-2 input formatting, SNARK-friendly hash routing | Lightweight: verify proof against 14 values + roots/addresses calldata, equality checks against stored state, update storage slots |
-| **Final aggregated public inputs** | 13 fields (shnarfs, timestamps, block numbers, rolling hashes ×2, Merkle roots…) | 14 fields — see §2.4 |
-| **Blob-proof granularity** | n/a (no blob proof existed; compression was a separate proof per blob) | Configurable: one blob proof can cover `K ≥ 1` blobs (analogous to today's M-block conflation inside an execution proof). `K = 1` is the simplest case; `K > 1` amortises recursion overhead |
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a

@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
     "_comment": "Aggregation proof request schema (§2.3) — flat aggregation of M blob proofs plus the STARK→SNARK emulation wrap for L1. Emits the 14-field PI tuple defined in §2.4; there is no separate emulation request.",
-=======
-    "_comment": "Aggregation proof request schema (§2.3) — flat aggregation of M blob proofs, STARK→SNARK-wrapped for L1. Emits the 14-field PI tuple defined in §2.4.",
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
     "proverVersion":      "4.0.0-riscv",
 
@@ -19,11 +15,7 @@
             "proof": "0x...",
             "publicInputs": {
                 "endBlockNumber":                           1000520,
-<<<<<<< HEAD
                 "endBlockTimestamp":                        1763000457,
-=======
-                "endStateRootHash":                         "0x00c79c9d2af1da310f19e194bae34ac3e5dc58ddca0900dd55760b3ea4a91a75",
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
                 "L2L1BridgeTransactionTree":                "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "parentL1L2BridgeRollingHash":              "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "parentL1L2BridgeRollingHashMessageNumber": 0,
@@ -43,28 +35,12 @@
         { "_comment": "remaining M-1 entries (blob proofs covering 1000521-1000545 and 1000546-1000567) have the same shape; abbreviated in the fixture" }
     ],
 
-<<<<<<< HEAD
     "_comment_l1Context": "L1 continuity anchors are not aggregation-guest inputs. The L1 contract checks them during finalization against the 14-field public output.",
-=======
-    "_comment_l1Context": "Coordinator-supplied anchors from the previously finalised aggregation. Bound into the public output for L1 continuity checks (§5).",
-    "l1Context": {
-        "parentAggregationLastL1RollingHash":              "0x0000000000000000000000000000000000000000000000000000000000000000",
-        "parentAggregationLastL1RollingHashMessageNumber": 0,
-        "parentAggregationFinalShnarf":                    "0x47452a1b9ebadfe02bdd02f580fa1eba17680d57eec968a591644d05d78ee84f",
-        "parentStateRootHash":                             "0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd",
-        "parentFtxRollingHash":                            "0x0000000000000000000000000000000000000000000000000000000000000000",
-        "parentLastProcessedFtxNumber":                    0
-    },
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
 
     "_comment_expectedAggregatedPublicInputs": "The 14-field PI tuple defined in §2.4.",
     "expectedAggregatedPublicInputs": {
         "endBlockNumber":                      1000567,
-<<<<<<< HEAD
         "endBlockTimestamp":                   1763002301,
-=======
-        "endStateRootHash":                      "0x00c79c9d2af1da310f19e194bae34ac3e5dc58ddca0900dd55760b3ea4a91a75",
->>>>>>> a468a023ff14028acfd37848bb3f21a42fdcc61a
         "L2L1BridgeTransactionTree":               "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentL1L2BridgeRollingHash":               "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentL1L2BridgeRollingHashMessageNumber":  0,
