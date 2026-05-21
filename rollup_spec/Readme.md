@@ -318,8 +318,6 @@ The DA blob must contain the exact inputs required to re-execute the L2 blocks f
 
 The JSON files under `prover_inputs/` describe a logical schema. The bytes carried into the zkVM guest are binary.
 
-**Reference type convention.** In the Python reference, every semantic hash is typed as `Hash32`: block hashes, shnarfs, rolling hashes, message hashes, blob versioned hashes, Merkle roots, and hash commitments. `Bytes32` is reserved for fixed-width 32-byte values that are not hashes, such as `prevRandao`, uint256 log topics before decoding, and BLS12-381 field elements. Plain `bytes` is used only for variable-length encodings or payloads, such as RLP blocks, signed transaction RLP, recursive proofs, compressed blob bytes, and MPT trie nodes.
-
 **Transport.** The guest reads input bytes via the zkVM's read-input primitive (`ziskos::read_input()` on Zisk). Transport framing is an 8-byte little-endian length prefix per chunk, padded to 8-byte alignment.
 
 **Container.** Inside the payload, the execution-proof layout is:
@@ -446,13 +444,7 @@ keccak256(rollingHash ‖ txHash ‖ deadlineBlockNumber ‖ fromAddress) == ftx
 ```
 where `txHash = keccak256(signedTxRlp)` is the standard Ethereum transaction hash of the FTX's signed RLP (as stored on L1 by `storeForcedTransaction`). The guest decodes `signedTxRlp` once, derives `fromAddress = recover_sender(signedTxRlp, chainID)`, and uses that same derived address for the rolling-hash step and any refused-from output.
 
-**Outcome.** Each FTX carries the sequencer's declared `acceptance`, one of five variants. These mirror the canonical Java enum at `linea-besu/plugins/linea-sequencer/.../forced/ForcedTransactionInclusionResult.java` but **narrowed to the cases the guest program can actually observe under RISC-V proving** — three variants from the Java enum are intentionally absent:
-
-- `BadPrecompile` — every L2 precompile is just ordinary RISC-V code in the new design, so "disallowed precompile" can't fire.
-- `TooManyLogs` — Linea's previous Type-2 stack imposed a per-tx log cap to keep the bespoke arithmetization tractable; the Type-1 RISC-V stack has no such cap.
-- `Other` — the Java enum's transient-failure bucket, marked "should retry next block". It is never finalized, so the guest never sees it.
-
-The five variants and their proof-level treatment:
+**Outcome.** Each FTX carries the sequencer's declared `acceptance`, one of five variants — the cases the guest program can actually observe under RISC-V proving. The five variants and their proof-level treatment:
 
 - *INCLUDED* — the guest asserts `txHash` appears in the declared block's transaction list (decoded from `blockRlp`).
 - *Invalid sub-cases* (`BAD_NONCE` / `BAD_BALANCE`) — pre-validation must fail. The guest asserts `txHash` is NOT in the block, then reads the FTX sender's account from the L2 state at the parent state root of the block where the FTX would have been included, via the EVM state interface (a standard SLOAD/`basic`-style read against the in-process state DB backed by `debug_executionWitness.state`). It then asserts the specific failure condition:
