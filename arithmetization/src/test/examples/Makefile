@@ -92,6 +92,7 @@ ACT4_DEBUG      ?= true
 # String to determine if a program is exiiting with exit code 0
 EXIT_SUCCESS_STRING := "EXIT CODE = 0"
 
+# Support function to generate JSON from ELF, checking if BIN exists and JSON is set
 define ELF_TO_JSON
 	@[ -f "$(BIN)" ] || { echo "BIN must point to an existing ELF"; exit 1; }
 	@[ -n "$(JSON)" ] || { echo "JSON is mandatory"; exit 1; }
@@ -157,7 +158,7 @@ exec-elf: install-zkc elf-to-json
 	zkc exec $(JSON) $(ZKC_MAIN)
 
 # Note: BIN and JSON have a default value but they can be set to arbitrary values
-elf-to-json:
+elf-to-json: $(BIN)
 # Generate JSON from ELF
 	$(ELF_TO_JSON)
 
