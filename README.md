@@ -138,6 +138,7 @@ All commits must follow the [Conventional Commits](https://www.conventionalcommi
 | Scope | Area |
 |---|---|
 | `coordinator` | Coordinator service |
+| `maru` | Maru consensus client |
 | `prover` | Prover |
 | `prover-ray` | Prover Ray (RISC-V) |
 | `postman` | Message bridging and executor |
