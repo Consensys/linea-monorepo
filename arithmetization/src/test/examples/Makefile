@@ -9,12 +9,15 @@
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
 
-# Targets invoking REQUIRE_TEST must provide the TEST variable
+# Support functions to check that mandatory variables are set
 define REQUIRE_TEST
 	@[ -n "$(TEST)" ] || { echo "TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs)"; exit 1; }
 endef
 
-# src_optionaL_subfolder/your_test
+define REQUIRE_BIN_EXT
+	@[ -n "$(BIN_EXT)" ] || { echo "BIN_EXT is mandatory. Usage: make BIN_EXT=path/to/your_bin"; exit 1; }
+endef
+
 BASENAME     := $(basename $(TEST))
 
 # your_test
@@ -95,9 +98,6 @@ EXIT_SUCCESS_STRING := "EXIT CODE = 0"
 
 # Generate JSON from an ELF path, checking that input and output paths are set
 define ELF_TO_JSON
-	@[ -n "$(1)" ] || { echo "BIN[_EXT] is mandatory"; exit 1; }
-	@[ -f "$(1)" ] || { echo "BIN[_EXT] must point to an existing ELF"; exit 1; }
-	@[ -n "$(2)" ] || { echo "JSON[_EXT] is mandatory"; exit 1; }
 	@echo "\nGenerating $(2) from $(1)"
 	@go run $(GO_MAIN) "$(1)" "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > "$(2)"
 endef
@@ -158,10 +158,11 @@ compile: linker-script
 # Note: we use opt-level=2 to remove unused code.
 
 exec-elf: elf-to-json
-	zkc exec "$(JSON_EXT)" $(ZKC_MAIN)
+	zkc exec $(JSON_EXT) $(ZKC_MAIN)
 
 # Convert an already compiled external ELF to a JSON input file
 elf-to-json:
+	$(REQUIRE_BIN_EXT)
 # Generate JSON from ELF
 	$(call ELF_TO_JSON,$(BIN_EXT),$(JSON_EXT))
 
@@ -228,7 +229,7 @@ linker-script:
 		> $(LINKER_SCRIPT)
 
 # Verify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values
-verify-elf: $(BIN)
+verify-elf:
 	$(REQUIRE_TEST)
 	@echo "\nVerify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values"
 	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET))))" ] || \
