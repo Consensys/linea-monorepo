@@ -18,22 +18,24 @@ jobs:
   
   lint-latest-commit-messages:
     uses: ./.github/workflows/lint-commit-messages.yml
+    secrets: inherit
 
   component-changelog-upload:
+    if: github.ref == 'refs/heads/main'
     needs: [lint-latest-commit-messages]
-    permissions:
-      pull-requests: write
-    if: always()
     uses: ./.github/workflows/component-changelog-upload.yml
   
   component-changelog-commit:
+    if: github.ref == 'refs/heads/main'
     needs: [component-changelog-upload]
     permissions:
       contents: write
+      pull-requests: write
     uses: ./.github/workflows/component-changelog-commit.yml
     secrets: inherit
 
   filter-commit-changes:
+    needs: [lint-latest-commit-messages]
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: Filter commit changes
     outputs:
@@ -142,12 +144,12 @@ jobs:
               - 'linea-besu/package/versions.env'
               - 'linea-besu/package/scripts/assemble-packages.sh'
             native-yield-automation-service:
-              - 'operations/native-yield-operations/automation-service/**'
+              - 'operations/native-yield/automation-service/**'
               - 'ts-libs/linea-shared-utils/**'
               - '.github/workflows/native-yield-automation-service-*.yml'
               - '.nvmrc'
             lido-governance-monitor:
-              - 'operations/native-yield-operations/lido-governance-monitor/**'
+              - 'operations/native-yield/lido-governance-monitor/**'
               - 'ts-libs/linea-shared-utils/**'
               - '.github/workflows/lido-governance-monitor-*.yml'
               - '.nvmrc'
