@@ -158,10 +158,11 @@ compile: require-src linker-script
 #
 # Note: we use opt-level=2 to remove unused code.
 
+# Convert and execute an already compiled external ELF
 exec-elf: elf-to-json
 	zkc exec $(JSON_EXT) $(ZKC_MAIN)
 
-# Convert an already compiled external ELF to a JSON input file
+# Convert an already compiled external ELF to a JSON
 elf-to-json: require-bin-ext
 # Generate JSON from ELF
 	$(call ELF_TO_JSON,$(BIN_EXT),$(JSON_EXT))
