@@ -222,13 +222,8 @@ verify-elf: $(BIN)
 
 # Run all blake test vectors in `rust/src/blake/blake.all` (blake_with_in_bytes.rs and main.go are compiled just once)
 blake-all: install-zkc
-	@compile_output=$$($(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=blake/blake_with_in_bytes.rs 2>&1); \
-	compile_status=$$?; \
-	if [ $$compile_status -ne 0 ]; then \
-		printf '%s\n' "$$compile_output"; \
-		exit $$compile_status; \
-	fi; \
-	go build -o $(MAKEFILE_DIR)rust/target/blake_elf2json $(GO_MAIN) || exit $$?; \
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=blake/blake_with_in_bytes.rs
+	@go build -o $(MAKEFILE_DIR)rust/target/blake_elf2json $(GO_MAIN) || exit $$?; \
 	pass=0; fail=0; \
 	i=0; while IFS= read -r in_bytes; do \
 		i=$$((i + 1)); \
