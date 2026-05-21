@@ -43,9 +43,12 @@ pub const Scalar = union(enum) {
 
 pub const ColumnAssignment = struct {
     visibility: Visibility,
+    /// Null means the column has not been assigned. Oracle and public columns
+    /// must be assigned before their round can advance.
     assignment: ?Vector,
 };
 
+/// Verifier-visible data sent before deriving the next round's coins.
 pub const RoundMessage = struct {
     columns: []const ColumnAssignment = &.{},
     cells: []const ?Scalar = &.{},
@@ -73,6 +76,8 @@ pub const Runtime = struct {
         self.current_round += 1;
     }
 
+    /// Absorb one round's verifier-visible messages, advance the round counter,
+    /// and derive the next round's extension-field coins.
     pub fn advanceRoundWithMessage(
         self: *Runtime,
         expected_round: usize,

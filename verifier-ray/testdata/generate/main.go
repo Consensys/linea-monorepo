@@ -1,3 +1,10 @@
+// Package main generates Zig golden-test vectors from prover-ray.
+//
+// The generator is intentionally written in Go because prover-ray is the source
+// of truth for protocol behavior. Each writer below computes expected values
+// with prover-ray packages, serializes those values as Zig literals, and writes
+// them to testdata/generated/vectors.zig. The Zig tests then replay the same
+// operations in verifier-ray and compare against these generated vectors.
 package main
 
 import (
@@ -361,12 +368,18 @@ type runtimeTraceCase struct {
 	rounds []runtimeTraceRound
 }
 
+// runtimeTraceRound is the verifier-visible transcript input for one WIOP
+// round. expectedCoins are the extension-field coins that prover-ray derives for
+// the next round after absorbing this round's columns and cells.
 type runtimeTraceRound struct {
 	columns       []runtimeTraceColumn
 	cells         []runtimeTraceCell
 	expectedCoins []field.Ext
 }
 
+// runtimeTraceColumn records enough information for the Zig runtime to replay
+// prover-ray's column absorption rules: internal columns are skipped, while
+// oracle and public columns must be assigned and absorbed into Fiat-Shamir.
 type runtimeTraceColumn struct {
 	visibility wiop.Visibility
 	assigned   bool
@@ -375,6 +388,9 @@ type runtimeTraceColumn struct {
 	extValues  []field.Ext
 }
 
+// runtimeTraceCell records a scalar value opened in the round. Unlike internal
+// columns, cells are always verifier-visible in prover-ray AdvanceRound and must
+// be assigned.
 type runtimeTraceCell struct {
 	assigned  bool
 	isExt     bool
@@ -382,6 +398,9 @@ type runtimeTraceCell struct {
 	extValue  field.Ext
 }
 
+// writeRuntimeTraceCases emits the scripted multi-round WIOP trace used by
+// verifier-ray to prove that per-round Fiat-Shamir coin derivation matches
+// prover-ray.
 func writeRuntimeTraceCases(out *bytes.Buffer) {
 	fmt.Fprintln(out, "pub const runtime_trace_cases = [_]RuntimeTraceCase{")
 	for _, tc := range buildRuntimeTraceCases() {
@@ -395,6 +414,10 @@ func writeRuntimeTraceCases(out *bytes.Buffer) {
 	fmt.Fprintln(out)
 }
 
+// buildRuntimeTraceCases constructs a small real prover-ray WIOP protocol and
+// runs prover-ray's Runtime.AdvanceRound. The returned trace contains both the
+// verifier-visible messages and the coins produced by prover-ray, so Zig can
+// replay the same transcript updates without porting the whole Go runtime.
 func buildRuntimeTraceCases() []runtimeTraceCase {
 	sys := wiop.NewSystemf("runtime-trace")
 	r0 := sys.NewRound()
@@ -440,6 +463,10 @@ func buildRuntimeTraceCases() []runtimeTraceCase {
 	rt.AssignColumn(r0PublicExt, concreteExt(r0PublicExtValues))
 	rt.AssignCell(r0BaseCell, field.ElemFromBase(r0BaseCellValue))
 	rt.AssignCell(r0ExtCell, field.ElemFromExt(r0ExtCellValue))
+
+	// This is the reference behavior verifier-ray must match. prover-ray absorbs
+	// round-0 oracle/public columns and cells, advances to round 1, then squeezes
+	// the coins declared on round 1.
 	rt.AdvanceRound()
 	r1Coins := []field.Ext{
 		rt.GetCoinValue(r1CoinA).AsExt(),
@@ -449,6 +476,9 @@ func buildRuntimeTraceCases() []runtimeTraceCase {
 	rt.AssignColumn(r1OracleExt, concreteExt(r1OracleExtValues))
 	rt.AssignColumn(r1PublicBase, concreteBase(r1PublicBaseValues))
 	rt.AssignCell(r1BaseCell, field.ElemFromBase(r1BaseCellValue))
+
+	// Advance once more so the generated trace covers more than one downstream
+	// coin derivation.
 	rt.AdvanceRound()
 	r2Coins := []field.Ext{rt.GetCoinValue(r2Coin).AsExt()}
 
