@@ -17,6 +17,11 @@ on:
      - '.github/workflows/arithmetization-*.yml'
   workflow_call:
   workflow_dispatch:
+    inputs:
+      go-corset-ref:
+        description: 'go-corset commit/branch/tag for zkc (defaults to main)'
+        required: false
+        type: string
 
 permissions:
   contents: read
