@@ -226,12 +226,12 @@ blake-rust-test: install-zkc
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=blake/blake_with_in_bytes.rs
 	@echo "building blake_elf2json..."; \
 	go build -o $(MAKEFILE_DIR)rust/target/blake_elf2json $(GO_MAIN) || exit $$?; \
-	echo "blake_elf2json built"; \
+	@echo "blake_elf2json built"; \
 	pass=0; fail=0; \
 	i=0; while IFS= read -r in_bytes; do \
 		i=$$((i + 1)); \
 		$(MAKEFILE_DIR)rust/target/blake_elf2json $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes "$$in_bytes" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json || exit $$?; \
-		echo "RUN   case $$i"; \
+		@echo "RUN   case $$i"; \
 		result_line=$$(zkc exec $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json $(ZKC_MAIN) 2>&1 | awk '{ previous = current; current = $$0 } END { print previous }'); \
 		if [ "$$result_line" = "Program exited successfully (exit with code 0)." ]; then \
 			echo "PASS  case $$i"; \
