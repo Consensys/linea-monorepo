@@ -19,12 +19,12 @@ JSON_EXT ?= $(BIN_EXT).json
 # Support functions to check that mandatory variables are set
 define REQUIRE_TEST
 	@[ -n "$(TEST)" ] || { echo "TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs)"; exit 1; }
-	@[ -i $(TEST) ] || { echo "TEST file not found: $(TEST)"; exit 1; }
+	@[ -f $(SRC) ] || { echo "TEST file not found: $(SRC)"; exit 1; }
 endef
 
 define REQUIRE_BIN_EXT
 	@[ -n "$(BIN_EXT)" ] || { echo "BIN_EXT is mandatory. Usage: make BIN_EXT=path/to/your_bin"; exit 1; }
-	@[ -i $(BIN_EXT) ] || { echo "BIN_EXT file not found: $(BIN_EXT)"; exit 1; }
+	@[ -f $(BIN_EXT) ] || { echo "BIN_EXT file not found: $(BIN_EXT)"; exit 1; }
 endef
 
 BASENAME     := $(basename $(TEST))

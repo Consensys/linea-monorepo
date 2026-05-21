@@ -119,8 +119,10 @@ riscv-test <name>.<ext> IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x08800008
 # Compile only
 riscv-test compile <name>.<ext>
 # Convert an already compiled ELF to JSON
+make elf-to-json BIN_EXT=asm/bin/test
 riscv-test elf-to-json BIN_EXT=asm/bin/test
 # Execute an already compiled ELF
+make exec-elf BIN_EXT=asm/bin/test
 riscv-test exec-elf BIN_EXT=asm/bin/test
 # Clean build artifacts for a specific test
 riscv-test clean <name>.<ext>
@@ -153,8 +155,8 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `make TEST=foo.<ext>`            | Compile and execute (default)                                                          |
 | `make debug TEST=foo.<ext>`      | Compile and debug                                                                      |
 | `make compile TEST=foo.<ext>`    | Compile only                                                                           |
-| `make elf-to-json BIN_EXT=foo`   | Convert an already compiled ELF to JSON                                                |
-| `make exec-elf BIN_EXT=foo`      | Convert and execute an already compiled ELF                                            |
+| `make elf-to-json BIN_EXT=foo`   | Convert an already compiled ELF to JSON (`JSON_EXT=foo.json` by default)               |
+| `make exec-elf BIN_EXT=foo`      | Convert and execute an already compiled ELF (`JSON_EXT=foo.json` by default)           |
 | `make zkc-exec TEST=foo.<ext>`   | Execute without recompiling                                                            |
 | `make zkc-debug TEST=foo.<ext>`  | Debug without recompiling                                                              |
 | `make clean TEST=foo.<ext>`      | Remove binary and JSON for this test                                                   |
