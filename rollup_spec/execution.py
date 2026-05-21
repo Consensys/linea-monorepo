@@ -368,7 +368,6 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
                 current_ftx_rolling_hash,
                 current_last_processed_ftx_number,
                 execution_input.chain_config,
-                base_fee,
                 block.header,
                 block_parent_state,
                 rollup_block,
