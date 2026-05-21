@@ -3,14 +3,15 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all linker-script verify-elf
+.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-all build-act4 run-act4 install-zkc
 
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
 
 # Test to run (with src optional subfolder and extension), mandatory unless clean-all or linker-script are the targets
 # src_optional_subfolder/your_test(.s|.zig|.rs)
-ifeq ($(filter clean-all linker-script,$(MAKECMDGOALS)),)
+ifeq ($(filter clean-all linker-script blake-all build-act4 run-act4 install-zkc,$(MAKECMDGOALS)),)
 ifndef TEST
 $(error TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs))
 endif
@@ -56,7 +57,7 @@ IN_BYTES_OFFSET ?= 0x08800000
 # Since program starts from _start, the entry point is the same as the program offset
 ENTRY_POINT     := $(PROGRAM_OFFSET)
 
-# 8 MiB   (0x08000000 <- 0x087fffff)
+# 8 MiB   (0x08000000 <- 0x08800000)
 SP              ?= 0x08800000
 
 # Parsed values are just to verify that the generate ELF is correct (lazy evaluation allows to parse the ELF only after it is generated)
@@ -65,6 +66,28 @@ IN_BYTES_OFFSET_FROM_ELF = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _
 ENTRY_POINT_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) | grep 'Entry point' | awk '{print $$4}')
 SP_FROM_ELF              = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _stack_start | awk '{print "0x"$$1}')
 VERIFY_ELF               ?= false             
+
+# ACT4 testing framework specific variables
+ACT4_CONFIG_DIR := $(MAKEFILE_DIR)act4/config
+ACT4_WORK_DIR   := $(MAKEFILE_DIR)act4/bin/work
+ACT4_CONFIG     := $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm/test_config.yaml
+# The 3 parameters below must be consistent with the ones provided to arithmetization/Makefile
+ACT4_REF        ?= 9798a554ce4139f472c9ccd3a18c9061d0f7024d
+ACT4_REPO       ?= $(abspath $(shell git -C $(MAKEFILE_DIR) rev-parse --show-toplevel)/../riscv-arch-test)
+ACT4_RISCV_DIR  ?= $(HOME)/riscv
+ACT4_IMAGE      := riscv-act4:$(ACT4_REF)
+ACT4_EXTENSIONS := I,M
+ACT4_JOBS       := 4
+ACT4_ELF_DIR    := $(ACT4_WORK_DIR)/linea-rv64im-zicclsm/elfs
+ACT4_LOGS       := $(MAKEFILE_DIR)act4/bin/logs
+ACT4_RESULTS    := $(MAKEFILE_DIR)act4/bin/results.txt
+# ACT4_BUILD_MODE = (host|docker)
+ACT4_BUILD_MODE ?= host
+# Parameters passed to https://github.com/riscv/riscv-arch-test/blob/act4/Makefile:
+# If true, disables objdump generation for faster builds
+ACT4_FAST       ?= false
+# If true, enables debug output (signature objdump, trace files, and trap report)
+ACT4_DEBUG      ?= true
 
 # Default target (make)
 exec: compile zkc-exec
@@ -106,7 +129,7 @@ compile: $(SRC) linker-script
 	fi
 # Disassemble ELF
 	@echo "\nDisassembling $(BIN)"
-	@LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN)_disassembled.txt
+	@LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN).objdump
 # Verify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values
 	@if [ "$(VERIFY_ELF)" = "true" ]; then \
 		$(MAKE) -f $(MAKEFILE_DIR)Makefile verify-elf TEST=$(TEST); \
@@ -121,20 +144,24 @@ compile: $(SRC) linker-script
 #
 # Note: we use opt-level=2 to remove unused code.
 
-zkc-exec:
+install-zkc:
+	$(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc
+
+zkc-exec: install-zkc
 	zkc exec $(JSON) $(ZKC_MAIN)
 
-zkc-debug:
+zkc-debug: install-zkc
 	zkc debug $(JSON) $(ZKC_MAIN)
 
 clean:
-	rm -f $(BIN) $(JSON) $(BIN)_disassembled.txt $(LINKER_SCRIPT)
+	rm -f $(BIN) $(JSON) $(BIN).objdump $(LINKER_SCRIPT)
 
 clean-all:
 	rm -rf $(MAKEFILE_DIR)asm/bin/
 	rm -rf $(MAKEFILE_DIR)zig/zig-out/
 	rm -rf $(MAKEFILE_DIR)zig/.zig-cache/
 	rm -rf $(MAKEFILE_DIR)rust/target/
+	rm -rf $(MAKEFILE_DIR)act4/bin/
 	rm -f  $(LINKER_SCRIPT)
 
 # Generate the linker script with the specified memory layout
@@ -192,3 +219,114 @@ verify-elf: $(BIN)
 		(echo "ERROR: SP mismatch: expected $(SP), got $(SP_FROM_ELF)" && exit 1)
 	@echo "  SP:              $(SP) (expected) = $(SP_FROM_ELF) (from ELF)"
 	@echo "All values match\n"
+
+# Run all blake test vectors in `rust/src/blake/blake.all` (blake_with_in_bytes.rs and main.go are compiled just once)
+blake-all: install-zkc
+	@compile_output=$$($(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=blake/blake_with_in_bytes.rs 2>&1); \
+	compile_status=$$?; \
+	if [ $$compile_status -ne 0 ]; then \
+		printf '%s\n' "$$compile_output"; \
+		exit $$compile_status; \
+	fi; \
+	go build -o $(MAKEFILE_DIR)rust/target/blake_elf2json $(GO_MAIN) || exit $$?; \
+	pass=0; fail=0; \
+	i=0; while IFS= read -r in_bytes; do \
+		i=$$((i + 1)); \
+		$(MAKEFILE_DIR)rust/target/blake_elf2json $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes "$$in_bytes" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json || exit $$?; \
+		result_line=$$(zkc exec $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json $(ZKC_MAIN) 2>&1 | awk '{ previous = current; current = $$0 } END { print previous }'); \
+		if [ "$$result_line" = "Program exited successfully (exit with code 0)." ]; then \
+			echo "PASS  case $$i"; \
+			pass=$$((pass + 1)); \
+		else \
+			echo "FAIL  case $$i: $$result_line" >&2; \
+			fail=$$((fail + 1)); \
+		fi; \
+	done < $(MAKEFILE_DIR)rust/src/blake/blake.all; \
+	echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
+	if [ "$$fail" -ne 0 ]; then echo "error: $$fail blake vector(s) failed" >&2; exit 1; fi
+
+# Build the ACT4 self-checking ELFs with the Linea ACT4 config 
+# Note: build if needed
+# Note: clone https://github.com/riscv/riscv-arch-test.git if needed
+build-act4:
+	@if [ -n "$$(find "$(ACT4_ELF_DIR)" -name '*.elf' -print -quit 2>/dev/null)" ]; then \
+		echo "ACT4 ELFs already built in $(ACT4_ELF_DIR)"; \
+		exit 0; \
+	fi; \
+	mkdir -p "$(ACT4_WORK_DIR)" || exit $$?; \
+	work_dir=$$(cd "$(ACT4_WORK_DIR)" && pwd) || exit $$?; \
+	[ -d "$(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm" ] || { echo "error: missing $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm"; exit 2; }; \
+	ensure_act4_repo() { \
+		if [ ! -d "$(ACT4_REPO)" ]; then \
+			git clone https://github.com/riscv/riscv-arch-test.git "$(ACT4_REPO)" || exit $$?; \
+		fi; \
+		if ! git -C "$(ACT4_REPO)" rev-parse "$(ACT4_REF)^{commit}" >/dev/null 2>&1; then \
+			git -C "$(ACT4_REPO)" fetch --tags origin || exit $$?; \
+		fi; \
+		if [ "$$(git -C "$(ACT4_REPO)" rev-parse HEAD)" != "$$(git -C "$(ACT4_REPO)" rev-parse "$(ACT4_REF)^{commit}")" ]; then \
+			git -C "$(ACT4_REPO)" checkout --detach "$(ACT4_REF)" || exit $$?; \
+		fi; \
+	}; \
+	if [ "$(ACT4_BUILD_MODE)" = "docker" ]; then \
+		config_dir=$$(cd "$(ACT4_CONFIG_DIR)" && pwd) || exit $$?; \
+		if ! docker image inspect "$(ACT4_IMAGE)" >/dev/null 2>&1; then \
+			ensure_act4_repo; \
+			echo "building Docker image $(ACT4_IMAGE) from $(ACT4_REPO)"; \
+			docker build -t "$(ACT4_IMAGE)" "$(ACT4_REPO)" || exit $$?; \
+		fi; \
+		echo "building ACT4 ELFs in $$work_dir with Docker"; \
+		docker run --rm \
+			-v "$$config_dir:/act4/config/cores/linea:ro" \
+			-v "$$work_dir:/act4/work" \
+			"$(ACT4_IMAGE)" \
+			bash -c "rm -rf /act4/work/linea-rv64im-zicclsm && CONFIG_FILES=config/cores/linea/linea-rv64im-zicclsm/test_config.yaml EXTENSIONS=$(ACT4_EXTENSIONS) $(if $(filter true,$(ACT4_DEBUG)),DEBUG=true) $(if $(filter true,$(ACT4_FAST)),FAST=true) make --jobs $(ACT4_JOBS) --keep-going" || exit $$?; \
+	elif [ "$(ACT4_BUILD_MODE)" = "host" ]; then \
+		ensure_act4_repo; \
+		echo "building ACT4 ELFs in $$work_dir on host"; \
+		export PATH="$(ACT4_RISCV_DIR)/bin:$$PATH"; \
+		$(MAKE) --jobs $(ACT4_JOBS) --keep-going -C "$(ACT4_REPO)" \
+			CONFIG_FILES="$(ACT4_CONFIG)" \
+			WORKDIR="$$work_dir" \
+			EXTENSIONS="$(ACT4_EXTENSIONS)" \
+			$(if $(filter true,$(ACT4_DEBUG)),DEBUG=true) \
+			$(if $(filter true,$(ACT4_FAST)),FAST=true) || exit $$?; \
+	else \
+		echo "error: ACT4_BUILD_MODE must be docker or host"; \
+		exit 2; \
+	fi
+
+# Build and run the ACT4 self-checking ELFs with the Linea ACT4 config
+run-act4: install-zkc build-act4
+	@rm -f "$(ACT4_LOGS)"/*; \
+	mkdir -p "$(ACT4_LOGS)"; \
+	> "$(ACT4_RESULTS)"; \
+	count=0; pass=0; fail=0; \
+	for elf in $$(find "$(ACT4_ELF_DIR)" -name '*.elf' | sort); do \
+		name=$$(basename "$$elf" .elf); \
+		base="$(ACT4_LOGS)/$$name"; \
+		count=$$((count + 1)); \
+		go run $(GO_MAIN) "$$elf" "" "$(PROGRAM_OFFSET)" 0 "$(ENTRY_POINT)" > "$$base.json" 2> "$$base.json.err"; \
+		[ -s "$$base.json.err" ] || rm -f "$$base.json.err"; \
+		zkc exec "$$base.json" $(ZKC_MAIN) > "$$base.full" 2>&1; \
+		awk 'previous == "ECALL for write" || previous == "ECALL for exit" { print } { previous = $$0 }' "$$base.full" > "$$base.out"; \
+		exit_line=$$(awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }' "$$base.full"); \
+		if [ "$$exit_line" = "Program exited successfully (exit with code 0)." ]; then \
+			echo "PASS  $$name"; \
+			echo "PASS  $$name" >> "$(ACT4_RESULTS)"; \
+			awk '{ print "  " $$0 }' "$$base.out"; \
+			awk '{ print "  " $$0 }' "$$base.out" >> "$(ACT4_RESULTS)"; \
+			pass=$$((pass + 1)); \
+			rm -f "$$base.full"; \
+		else \
+			echo "FAIL  $$name"; \
+			echo "FAIL  $$name" >> "$(ACT4_RESULTS)"; \
+			awk '{ print "  " $$0 }' "$$base.out"; \
+			awk '{ print "  " $$0 }' "$$base.out" >> "$(ACT4_RESULTS)"; \
+			fail=$$((fail + 1)); \
+		fi; \
+	done; \
+	echo "DONE: $$count tests   PASS: $$pass   FAIL: $$fail" | tee -a "$(ACT4_RESULTS)"; \
+	echo "results: $(ACT4_RESULTS)"; \
+	echo "logs:    $(ACT4_LOGS)/"; \
+	if [ "$$count" -eq 0 ]; then echo "error: no ACT4 ELFs found in $(ACT4_ELF_DIR)" >&2; exit 1; fi; \
+	if [ "$$fail" -ne 0 ]; then echo "error: $$fail of $$count ACT4 test(s) failed" >&2; exit 1; fi
