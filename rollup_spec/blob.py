@@ -49,13 +49,36 @@ class ShnarfWitness:
         return keccak256(self.parent_shnarf + self.last_block_hash + self.blob_hash)
 
 @dataclass
-class RollupDataWitness:
+class BlobWitness:
     """
-    RollupSubmittedData represents the witness of a data-submission; e.g. the
-    inputs of the prover relative to a particular blob submission.
+    Per-blob witness for the blob proof.
+
+    Fields:
+      - `blob_bytes`: the EIP-4844 compressed payload as submitted on L1.
+      - `block_number_range`: `(startBlockNumber, endBlockNumber)` of the
+        L2 blocks contained in this blob.
+      - `block_rlps`: the canonical full block RLPs (same shape the
+        execution proof receives — header + tx list [+ withdrawals], EIP-2718
+        typed transactions in full signed form), one per block in
+        `block_number_range`. Truncation per §3.2 happens *inside* the
+        guest from these full RLPs; there is no separately-witnessed
+        truncated form.
+      - `blob_kzg_commitment` / `blob_kzg_proof`: KZG witness that binds
+        `blob_bytes` to the on-chain versioned `blobHash`.
+      - `expected_blob_hash`: optional cross-check against the L1-anchored
+        versioned hash.
+
+    The proof statement (§2.2 step 2) is compression of the RLP-encoded
+    truncated form:
+      `lz4_compress(rlp_encode_truncated_blocks(truncate(block_rlps))) == blob_bytes`.
+    The truncated blocks themselves are an internal-only intermediate;
+    their downstream consumers (block-hash boundary checks in §2.2 step 6,
+    sender-list cross-checks in step 4) take the computed truncated form,
+    not a witnessed copy.
     """
     blob_bytes: bytes
     block_number_range: tuple[int, int]
+    block_rlps: List[bytes]
     blob_kzg_commitment: KZGCommitment
     blob_kzg_proof: Bytes48
     expected_blob_hash: Optional[Hash32] = None
@@ -65,13 +88,12 @@ class RollupDataWitness:
         blob_hash returns the versioned hash of the blob KZG commitment.
         """
         return Hash32(kzg_commitment_to_versioned_hash(self.blob_kzg_commitment))
-    
+
     def is_authenticated_blob_bytes(self) -> Tuple[bool, Hash32] :
         """
-        is_authenticated_blob_bytes checks the KZG proofs and returns true if
-        it successfully validates that the blob_hash relates to the blob_data.
+        Check the KZG proof binds `blob_bytes` to the declared `blob_hash`.
 
-        The function also returns the blob_hash.
+        Returns (is_authenticated, blob_hash).
         """
         blob_hash = self.blob_hash()
         if self.expected_blob_hash is not None and self.expected_blob_hash != blob_hash:
@@ -80,23 +102,34 @@ class RollupDataWitness:
         blob_poly = parse_as_bls12_381_fr_vec(self.blob_bytes)
         blob_kzg_y = eval_lagrange_bls12_381(blob_poly, blob_kzg_x)
         return verify_kzg_proof(self.blob_kzg_commitment, blob_kzg_x, blob_kzg_y, self.blob_kzg_proof), blob_hash
-    
-    def parse_block_data(self) -> List[TruncatedEthereumBlock]:
+
+    def verify_compression(self) -> List["TruncatedEthereumBlock"]:
         """
-        This parts parses the blob-data and checks the relevant execution
-        proof for each transaction.
+        Apply the canonical DA truncation (§3.2) to each `block_rlps[i]`
+        internally, RLP-encode the truncated form, LZ4-compress it, and
+        assert the result equals `blob_bytes` (§2.2 step 2). Returns the
+        computed truncated blocks for downstream steps (block-hash
+        boundary alignment, sender-list cross-check).
+
+        The compression-equality check binds the full-RLP witness to the
+        KZG-authenticated blob bytes — no decompression of `blob_bytes`
+        happens inside the proof.
         """
-        blob_data_uncompressed = decompress_lz4(self.blob_bytes)
-        return parse_public_da_block_data(blob_data_uncompressed)
+        truncated = [truncate_block_rlp(rlp_bytes) for rlp_bytes in self.block_rlps]
+        serialized = rlp_encode_truncated_blocks(truncated)
+        if compress_lz4(serialized) != self.blob_bytes:
+            raise Exception("blob compression mismatch: truncated form does not compress to blobContent")
+        return truncated
 
 
 @dataclass
 class AggregatedPublicInput:
     """
-    The 13-field blob-proof / aggregation-proof public input tuple from
+    The 14-field blob-proof / aggregation-proof public input tuple from
     Readme.md section 2.4.
     """
     end_block_number: U64
+    end_block_timestamp: U64
     l2_l1_bridge_transaction_tree: Hash32
     parent_l1_l2_bridge_rolling_hash: Hash32
     parent_l1_l2_bridge_rolling_hash_message_number: U64
@@ -118,7 +151,7 @@ class BlobProofPrivateInput:
     execution proofs tiling the combined block range.
     """
     parent_shnarf: Hash32
-    blobs: List[RollupDataWitness]
+    blobs: List[BlobWitness]
     execution_proofs: List[ExecutionProof]
 
 
@@ -151,15 +184,19 @@ def check_blob_proof(blob_input: BlobProofPrivateInput) -> BlobProof:
     expected_blob_start: Optional[int] = None
 
     for blob in blob_input.blobs:
+        # KZG binding: blob_bytes matches the declared blobHash.
         blob_auth, blob_hash = blob.is_authenticated_blob_bytes()
         if not blob_auth:
             raise Exception("invalid KZG proof")
 
-        blob_blocks = blob.parse_block_data()
+        # Compression equality (§2.2 step 2): the witnessed truncated blocks
+        # serialize+compress to blob_bytes. Downstream cross-checks anchor
+        # their content to the execution proofs.
+        blob_blocks = blob.verify_compression()
         start_block_number, end_block_number = blob.block_number_range
         expected_block_count = end_block_number + 1 - start_block_number
         if len(blob_blocks) != expected_block_count:
-            raise Exception("blob block range is inconsistent with decompressed block data")
+            raise Exception("blob block range is inconsistent with witnessed truncated blocks")
         if len(blob_blocks) == 0:
             raise Exception("blob proof cannot include an empty blob block range")
         if expected_blob_start is not None and start_block_number != expected_blob_start:
@@ -212,6 +249,7 @@ def check_blob_proof(blob_input: BlobProofPrivateInput) -> BlobProof:
     )
     public_inputs = AggregatedPublicInput(
         end_block_number=last_proof.public_inputs.end_block_number,
+        end_block_timestamp=last_proof.public_inputs.end_block_timestamp,
         l2_l1_bridge_transaction_tree=l2_l1_bridge_transaction_tree,
         parent_l1_l2_bridge_rolling_hash=first_proof.public_inputs.parent_l1_l2_bridge_rolling_hash,
         parent_l1_l2_bridge_rolling_hash_message_number=(
@@ -329,18 +367,43 @@ def merkle_root_fixed_depth(leaves: Sequence[Hash32], depth: int) -> Hash32:
     return Hash32(layer[0])
 
 
-def decompress_lz4(data: bytes) -> bytes:
+def truncate_block_rlp(block_rlp: bytes) -> "TruncatedEthereumBlock":
     """
-    decompress_lz4 decompressed with LZ4 decompresses and returns the bytes
-    """
-    raise NotImplementedError("decompress_lz4")
+    Decode the canonical full block RLP (header + tx list [+ withdrawals]
+    with EIP-2718 typed transactions in full signed form) and apply the
+    §3.2 DA truncation rule, returning a `TruncatedEthereumBlock`:
 
-def parse_public_da_block_data(data: bytes) -> List[TruncatedEthereumBlock]:
+      - `timestamp`, `prev_randao`, `block_hash` extracted from the header
+        (block_hash = keccak256(header_rlp));
+      - per-transaction signature-stripped bytes (drop `(v, r, s)`) with
+        the recovered `from` recorded explicitly;
+      - `froms` parallel-list of sender addresses recovered via
+        `recover_sender(signedTxRlp, chainID)`.
+
+    The Python reference defers the actual decode/truncate to the
+    production guest.
     """
-    parse_public_da_block_data parses the blockdata coming from a DA blob. The
-    encoding of the block data relies on the RLP encoding of the block.
+    raise NotImplementedError("truncate_block_rlp")
+
+
+def rlp_encode_truncated_blocks(blocks: Sequence["TruncatedEthereumBlock"]) -> bytes:
     """
-    raise NotImplementedError("parse_public_da_block_data")
+    Canonical RLP serialization of the per-blob truncated-block list
+    (§3.2). Both the sequencer (when producing the blob) and the
+    blob-proof guest (when verifying compression equality) must use the
+    same routine. The resulting byte string is what the LZ4 compressor
+    operates on.
+    """
+    raise NotImplementedError("rlp_encode_truncated_blocks")
+
+
+def compress_lz4(data: bytes) -> bytes:
+    """
+    LZ4-compress the canonical RLP-encoded truncated-block payload. The
+    blob-proof guest asserts that this output equals the KZG-bound
+    `blob_bytes` (§2.2 step 2).
+    """
+    raise NotImplementedError("compress_lz4")
 
 def parse_as_bls12_381_fr_vec(data: bytes) -> List[Bytes32]:
     """

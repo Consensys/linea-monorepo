@@ -1,5 +1,5 @@
 {
-    "_comment": "Blob proof request schema (§2.2). K ≥ 1 EIP-4844 blobs + N execution proofs tiling their combined block range. Emits the 13-field PI tuple defined in §2.4.",
+    "_comment": "Blob proof request schema (§2.2). K ≥ 1 EIP-4844 blobs + N execution proofs tiling their combined block range. Emits the 14-field PI tuple defined in §2.4.",
 
     "proverVersion":      "4.0.0-riscv",
 
@@ -9,7 +9,7 @@
         "endBlockNumber":   1000520
     },
 
-    "_comment_blobs": "K = 2 blobs in this example (K = 1 is the degenerate single-blob case). Ordered by on-chain shnarf-chain order. Each entry carries KZG inputs and its block range.",
+    "_comment_blobs": "K = 2 blobs in this example (K = 1 is the degenerate single-blob case). Ordered by on-chain shnarf-chain order. Each entry carries KZG inputs, its block range, and `blockRlps` — the canonical full block RLPs (one per block in [startBlockNumber, endBlockNumber]), same canonical form the execution proof receives. The guest truncates each block internally per §3.2, RLP-encodes the truncated form, LZ4-compresses it, and asserts the result equals `compressedData` (§2.2 step 2). There is no separately witnessed truncated form; the full block RLPs' authenticity is anchored by downstream cross-checks against the execution proofs (block-hash boundaries, txFromsHash).",
     "blobs": [
         {
             "blobInputs": {
@@ -21,7 +21,11 @@
             "blockRange": {
                 "startBlockNumber": 1000501,
                 "endBlockNumber":   1000510
-            }
+            },
+            "blockRlps": [
+                "0xf90215a0...",
+                "_comment: m_b = 10 entries (one canonical block RLP per block in the range); abbreviated"
+            ]
         },
         {
             "blobInputs": {
@@ -33,7 +37,11 @@
             "blockRange": {
                 "startBlockNumber": 1000511,
                 "endBlockNumber":   1000520
-            }
+            },
+            "blockRlps": [
+                "0xf90215a0...",
+                "_comment: m_b = 10 entries; abbreviated"
+            ]
         }
     ],
 
@@ -43,7 +51,7 @@
         "endShnarf":      "0x8d0a74047e241998a03664b98064da391c492e8a4ad96160ae46eeaaabdc7b5a"
     },
 
-    "_comment_executionProofs": "N execution proofs tiling the combined block range, in canonical (start..end) order. Each entry inlines everything the blob-proof guest needs for that execution proof: the recursive STARK `proof` bytes, the 14-field `publicInputs` tuple, and the preimages of the three hash-committed PI fields — `L2L1MsgList` (preimage of publicInputs.L2L1MessagesHash), `froms` (preimage of publicInputs.txFromsHash), and `addrs` (preimage of publicInputs.filteredAddressesHash, §6.5).",
+    "_comment_executionProofs": "N execution proofs tiling the combined block range, in canonical (start..end) order. Each entry inlines everything the blob-proof guest needs for that execution proof: the recursive STARK `proof` bytes, the 15-field `publicInputs` tuple, and the preimages of the three hash-committed PI fields — `L2L1MsgList` (preimage of publicInputs.L2L1MessagesHash), `froms` (preimage of publicInputs.txFromsHash), and `addrs` (preimage of publicInputs.filteredAddressesHash, §6.5).",
     "executionProofs": [
         {
             "proof": "0x...",
@@ -51,6 +59,7 @@
                 "parentBlockHash":                          "0x0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 "endBlockHash":                             "0x0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                 "endBlockNumber":                           1000503,
+                "endBlockTimestamp":                         1763000123,
                 "L2L1MessagesHash":                         "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "parentL1L2BridgeRollingHash":              "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "parentL1L2BridgeRollingHashMessageNumber": 0,
@@ -69,9 +78,10 @@
         },
         { "_comment": "remaining N-1 entries (covering 1000504-1000510, 1000511-1000515, 1000516-1000520) have the same shape; abbreviated in the fixture" }
     ],
-    "_comment_publicInputs": "The 13-field PI tuple defined in §2.4.",
+    "_comment_publicInputs": "The 14-field PI tuple defined in §2.4.",
     "publicInputs": {
         "endBlockNumber":                      1000520,
+        "endBlockTimestamp":                   1763000457,
         "L2L1BridgeTransactionTree":               "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentL1L2BridgeRollingHash":               "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentL1L2BridgeRollingHashMessageNumber":  0,

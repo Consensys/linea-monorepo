@@ -1,5 +1,6 @@
-from dataclasses import dataclass
-from typing import List
+from dataclasses import dataclass, field
+from functools import cached_property
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from ethereum.forks.osaka.fork import (
     BlockChain,
@@ -14,9 +15,12 @@ from ethereum.forks.osaka import vm
 from ethereum.forks.osaka.blocks import Block, Header
 from ethereum.forks.osaka.bloom import logs_bloom
 from ethereum.forks.osaka.requests import compute_requests_hash
-from ethereum.state import state_root
+from ethereum.state import Address, Account, state_root
+from ethereum.crypto.hash import Hash32, keccak256
 from ethereum.merkle_patricia_trie import root
-from ethereum_types.numeric import U64
+from ethereum_rlp import rlp
+from ethereum_types.bytes import Bytes, Bytes32
+from ethereum_types.numeric import U64, U256, Uint
 
 @dataclass
 class ExecutionWitness:
@@ -26,11 +30,229 @@ class ExecutionWitness:
     The binary/JSON schema carries these fields as encoded bytes. The Python
     reference treats headers as decoded `Header` objects so it can state the
     parent-header matching rule directly.
+
+    The `state` pool must include MPT paths for every account/slot the
+    execution-proof guest reads — both what block execution naturally touches
+    and any extra reads the guest performs (e.g., L1->L2 rolling-hash slots at
+    boundary state roots, FTX-sender accounts for §6.5 'Invalid' checks).
     """
     state: List[bytes]
     codes: List[bytes]
     keys: List[bytes]
     headers: List[Header]
+
+
+# keccak256(rlp.encode(b"")) — the canonical Ethereum "empty trie" root.
+EMPTY_TRIE_ROOT_HASH: Hash32 = Hash32(
+    bytes.fromhex("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"),
+)
+
+
+def _build_node_index(witnesses: Sequence["ExecutionWitness"]) -> Dict[Hash32, bytes]:
+    """Build `{keccak256(node_rlp) -> node_rlp}` over `witnesses[*].state`."""
+    index: Dict[Hash32, bytes] = {}
+    for w in witnesses:
+        for node in w.state:
+            index[Hash32(keccak256(node))] = bytes(node)
+    return index
+
+
+def _build_code_index(witnesses: Sequence["ExecutionWitness"]) -> Dict[Hash32, bytes]:
+    """Build `{keccak256(code) -> code}` over `witnesses[*].codes`."""
+    index: Dict[Hash32, bytes] = {}
+    for w in witnesses:
+        for code in w.codes:
+            index[Hash32(keccak256(code))] = bytes(code)
+    return index
+
+
+def _bytes_to_nibbles(data: bytes) -> List[int]:
+    """Expand a byte string into a flat list of 4-bit nibbles, high first."""
+    out: List[int] = []
+    for b in data:
+        out.append((b >> 4) & 0x0F)
+        out.append(b & 0x0F)
+    return out
+
+
+def _compact_to_nibbles(compact: bytes) -> Tuple[List[int], bool]:
+    """
+    Decode the Ethereum MPT compact-encoded path (see "Hex-Prefix Encoding"
+    in the Yellow Paper).
+
+    The first nibble carries two flag bits: 0x20 = leaf, 0x10 = odd-length
+    path. If odd, the low half of the first byte is the first path nibble.
+    Remaining bytes each contribute two nibbles.
+    """
+    if len(compact) == 0:
+        raise Exception("empty compact-encoded path")
+    first = compact[0]
+    is_leaf = (first & 0x20) != 0
+    is_odd = (first & 0x10) != 0
+    nibbles: List[int] = []
+    if is_odd:
+        nibbles.append(first & 0x0F)
+    for b in compact[1:]:
+        nibbles.append((b >> 4) & 0x0F)
+        nibbles.append(b & 0x0F)
+    return nibbles, is_leaf
+
+
+def _mpt_lookup(
+    state_root: Hash32,
+    key: bytes,
+    node_index: Dict[Hash32, bytes],
+) -> Optional[bytes]:
+    """
+    Walk the Ethereum MPT rooted at `state_root` along the path
+    `keccak256(key)` and return the leaf value bytes, or None on proof of
+    absence (path diverges or terminates at an empty branch slot).
+
+    Raises if a referenced node is missing from `node_index` (the witness
+    pool does not cover the path) or if the proof is malformed.
+
+    Inline children (nodes whose RLP is < 32 bytes and stored inline rather
+    than referenced by hash) are not supported by this reference verifier;
+    they are vanishingly rare in real-world account/storage tries.
+    """
+    if state_root == EMPTY_TRIE_ROOT_HASH:
+        return None
+
+    path = _bytes_to_nibbles(keccak256(key))
+    path_index = 0
+    current_hash = state_root
+
+    while True:
+        if current_hash not in node_index:
+            raise Exception(
+                f"missing MPT node {bytes(current_hash).hex()} from witness pool"
+            )
+        decoded = rlp.decode(node_index[current_hash])
+        if not isinstance(decoded, list):
+            raise Exception("MPT node RLP must decode to a list")
+
+        if len(decoded) == 17:
+            # Branch node: 16 child slots + value-at-this-prefix.
+            if path_index == len(path):
+                value = bytes(decoded[16])
+                return value if len(value) > 0 else None
+            child = bytes(decoded[path[path_index]])
+            path_index += 1
+            if len(child) == 0:
+                return None  # empty branch slot => proof of absence
+            if len(child) != 32:
+                raise Exception("inline child node not supported in this reference")
+            current_hash = Hash32(child)
+            continue
+
+        if len(decoded) == 2:
+            # Extension or leaf node, distinguished by the leaf flag bit.
+            node_nibbles, is_leaf = _compact_to_nibbles(bytes(decoded[0]))
+            remaining = path[path_index:]
+            if (
+                len(remaining) < len(node_nibbles)
+                or remaining[: len(node_nibbles)] != node_nibbles
+            ):
+                return None
+            path_index += len(node_nibbles)
+            if is_leaf:
+                return bytes(decoded[1]) if path_index == len(path) else None
+            child = bytes(decoded[1])
+            if len(child) != 32:
+                raise Exception("inline child node not supported in this reference")
+            current_hash = Hash32(child)
+            continue
+
+        raise Exception(f"unexpected MPT node arity {len(decoded)}")
+
+
+def _decode_account_leaf(leaf_rlp: bytes) -> Tuple[Account, Hash32]:
+    """
+    Decode an account-trie leaf value (`RLP([nonce, balance, storageRoot,
+    codeHash])`) into the pair `(Account, storage_root)`. `Account` carries
+    nonce/balance/code_hash; `storage_root` is returned separately because
+    the in-memory `Account` dataclass does not expose it (storage is
+    materialized as a per-account map in execution-specs).
+    """
+    decoded = rlp.decode(leaf_rlp)
+    if not isinstance(decoded, list) or len(decoded) != 4:
+        raise Exception("account leaf must be RLP([nonce, balance, storageRoot, codeHash])")
+    nonce_b, balance_b, storage_root_b, code_hash_b = (bytes(x) for x in decoded)
+    nonce = Uint(int.from_bytes(nonce_b, "big"))
+    balance = U256(int.from_bytes(balance_b, "big"))
+    storage_root = Hash32(storage_root_b.rjust(32, b"\x00"))
+    code_hash = Bytes32(code_hash_b.rjust(32, b"\x00"))
+    return Account(nonce=nonce, balance=balance, code_hash=code_hash), storage_root
+
+
+@dataclass
+class L2State:
+    """
+    Read-only view of the L2 state at a particular state root.
+
+    Backed by the proof-range `ExecutionWitness` payload that the guest
+    already receives as private input: the aggregated MPT node pool
+    (`witnesses[*].state` plus any extra paths the witness producer
+    included for boundary reads) supports `account()` and `storage()`
+    via inclusion-proof verification against `state_root`, and the codes
+    pool (`witnesses[*].codes`) supports `code()` lookups by `code_hash`.
+
+    The production guest treats this as the EVM Database interface
+    (zesu-style: `basic`, `storage`, `codeByHash`). This Python reference
+    implements the MPT walk explicitly so the data flow is checkable end
+    to end against a fixture.
+    """
+    state_root: Hash32
+    witnesses: Sequence["ExecutionWitness"]
+
+    @cached_property
+    def _node_index(self) -> Dict[Hash32, bytes]:
+        return _build_node_index(self.witnesses)
+
+    @cached_property
+    def _code_index(self) -> Dict[Hash32, bytes]:
+        return _build_code_index(self.witnesses)
+
+    def _account_with_storage_root(self, address: Address) -> Optional[Tuple[Account, Hash32]]:
+        leaf = _mpt_lookup(self.state_root, bytes(address), self._node_index)
+        return None if leaf is None else _decode_account_leaf(leaf)
+
+    def account(self, address: Address) -> Optional[Account]:
+        """
+        Read the account at `address`. Returns None if the account is
+        absent (its absence proven by the MPT walk).
+        """
+        result = self._account_with_storage_root(address)
+        return None if result is None else result[0]
+
+    def storage(self, address: Address, slot: Bytes32) -> Bytes32:
+        """
+        Read storage[`slot`] of `address`. Returns the zero `Bytes32` if
+        the account is absent or the slot is unset. Internally: look up
+        the account leaf for `storage_root`, then walk the per-account
+        storage trie at `keccak256(slot)`.
+        """
+        result = self._account_with_storage_root(address)
+        if result is None:
+            return Bytes32(b"\x00" * 32)
+        _, storage_root = result
+        slot_leaf = _mpt_lookup(storage_root, bytes(slot), self._node_index)
+        if slot_leaf is None:
+            return Bytes32(b"\x00" * 32)
+        # Storage values are RLP(value) where `value` is the big-endian
+        # integer with leading zeros stripped. Left-pad back to 32 bytes.
+        decoded = rlp.decode(slot_leaf)
+        raw = bytes(decoded) if isinstance(decoded, (bytes, bytearray)) else b""
+        return Bytes32(raw.rjust(32, b"\x00"))
+
+    def code(self, code_hash: Hash32) -> Bytes:
+        """
+        Read contract code by hash from `witnesses[*].codes`. Returns
+        empty bytes if the code is absent from the pool (caller is
+        expected to handle that case — e.g. EOAs whose codeHash is
+        `EMPTY_CODE_HASH`).
+        """
+        return Bytes(self._code_index.get(code_hash, b""))
 
 
 def materialize_blockchain_from_execution_witness(

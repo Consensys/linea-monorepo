@@ -1,5 +1,5 @@
 {
-    "_comment": "Execution proof request schema. Covers a contiguous range of L2 blocks; emits the 14-field PI tuple defined in §2.1.",
+    "_comment": "Execution proof request schema. Covers a contiguous range of L2 blocks; emits the 15-field PI tuple defined in §2.1.",
 
     "proverVersion": "4.0.0-riscv",
     "blockRange": {
@@ -7,11 +7,12 @@
         "endBlockNumber":   1000503
     },
 
-    "_comment_publicInputs": "The 14-field PI tuple defined in §2.1.",
+    "_comment_publicInputs": "The 15-field PI tuple defined in §2.1.",
     "publicInputs": {
         "parentBlockHash":                       "0x0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "endBlockHash":                        "0x0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "endBlockNumber":                      1000503,
+        "endBlockTimestamp":                    1763000123,
         "L2L1MessagesHash":                        "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentL1L2BridgeRollingHash":               "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentL1L2BridgeRollingHashMessageNumber":  0,
@@ -25,12 +26,11 @@
         "txFromsHash":                             "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
     },
 
-    "_comment_chainConfig": "Dynamic chain configuration. Forms the preimage of publicInputs.dynamicChainConfigHash (§2.1): keccak256(uint256_be(chainId) || coinbase || l2MessageServiceContract || uint256_be(baseFee)). Single value across the range — a config change is a finalization boundary.",
+    "_comment_chainConfig": "Static chain configuration. Forms three of the four preimage inputs of publicInputs.dynamicChainConfigHash (§2.1); the fourth input (baseFee) is sourced from the first block header and asserted equal across every block in the range — it is NOT a private input. dynamicChainConfigHash = keccak256(uint256_be(chainId) || coinbase || l2MessageServiceContract || uint256_be(baseFee)). A change in any of these four values is a finalization boundary.",
     "chainConfig": {
         "l2MessageServiceContract": "0x508Ca82Df566dCD1B0019D2DEdF7e3D6f7Ad6ddE",
         "coinbase":                  "0x0000000000000000000000000000000000000000",
-        "chainId":                   59144,
-        "baseFee":                   7
+        "chainId":                   59144
     },
 
     "_comment_blocks": "Canonical RLP-encoded L2 blocks (header + transaction list [+ withdrawals]), EIP-2718 typed transactions in full signed form. The parent block is not a top-level field — it lives inside `executionWitness.headers`. `forcedTransactions` is per-block FTX metadata (§6.5); empty for blocks without FTXs.",
@@ -43,12 +43,11 @@
             "blockRlp": "0xf90215a0...",
             "forcedTransactions": [
                 {
-                    "_comment":           "Per-FTX metadata (§6.5). `ftxNumber`, `deadlineBlockNumber`, and `signedTxRlp` are the canonical fields. `fromAddress` is recovered from `signedTxRlp` inside the guest and is not witnessed separately. `stateWitness` is non-null only for the ACCEPTED-but-invalid branch (§6.5 'Invalid') and uses the Ethereum MPT account proof shape (`eth_getProof`).",
+                    "_comment":           "Per-FTX metadata (§6.5). `ftxNumber`, `deadlineBlockNumber`, and `signedTxRlp` are the canonical fields. `fromAddress` is recovered from `signedTxRlp` inside the guest and is not witnessed separately. `acceptance` is one of the canonical `ForcedTransactionAcceptance` variants: INCLUDED, BAD_NONCE, BAD_BALANCE, BAD_PRECOMPILE, TOO_MANY_LOGS, FILTERED_ADDRESS_FROM, FILTERED_ADDRESS_TO, PHYLAX. For Invalid sub-cases (BAD_*) the guest reads the sender's account via the EVM state interface at this block's parent state root — no per-FTX state witness; the witness pool must include the MPT path (see `_comment_executionWitness`).",
                     "ftxNumber":           17,
                     "deadlineBlockNumber": 1000600,
                     "signedTxRlp":         "0x02f86b...",
-                    "acceptance":          "ACCEPTED",
-                    "stateWitness":        null
+                    "acceptance":          "INCLUDED"
                 }
             ]
         },
@@ -58,49 +57,7 @@
         }
     ],
 
-    "_comment_l1L2BridgeState": "Ethereum MPT account/storage proofs (`eth_getProof` shape) for L2MessageService's L1→L2 rolling-hash slots at the parent and end L2 state roots. This is the state proof referenced by §2.1; it is not a list of consumed L1→L2 deposit messages. `accountProof.value` is the RLP-encoded account (`[nonce, balance, storageRoot, codeHash]`); `proof` is the ordered list of RLP-encoded trie nodes from the state root (or storage root) down to the leaf.",
-    "l1L2BridgeState": {
-        "parent": {
-            "rollingHash":              "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "rollingHashMessageNumber": 0,
-            "accountProof": {
-                "address": "0x508Ca82Df566dCD1B0019D2DEdF7e3D6f7Ad6ddE",
-                "value":   "0x...",
-                "proof":   ["0x..."]
-            },
-            "rollingHashProof": {
-                "key":   "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "value": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "proof": ["0x..."]
-            },
-            "rollingHashMessageNumberProof": {
-                "key":   "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "value": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "proof": ["0x..."]
-            }
-        },
-        "end": {
-            "rollingHash":              "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "rollingHashMessageNumber": 0,
-            "accountProof": {
-                "address": "0x508Ca82Df566dCD1B0019D2DEdF7e3D6f7Ad6ddE",
-                "value":   "0x...",
-                "proof":   ["0x..."]
-            },
-            "rollingHashProof": {
-                "key":   "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "value": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "proof": ["0x..."]
-            },
-            "rollingHashMessageNumberProof": {
-                "key":   "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "value": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "proof": ["0x..."]
-            }
-        }
-    },
-
-    "_comment_executionWitness": "Output of Besu's `debug_executionWitness`, one entry per block in canonical block-range order. Each entry contains `state` (state-trie nodes touched), `keys` (storage keys accessed), `codes` (accessed contract bytecode), and `headers` (recent block headers for the BLOCKHASH opcode). The first entry's `headers` must contain exactly one parent header whose block hash equals the first block's parentHash; that header anchors `parentBlockHash` and provides the starting state root.",
+    "_comment_executionWitness": "Output of Besu's `debug_executionWitness`, one entry per block in canonical block-range order. Each entry contains `state` (state-trie nodes touched), `keys` (storage keys accessed), `codes` (accessed contract bytecode), and `headers` (recent block headers for the BLOCKHASH opcode). The first entry's `headers` must contain exactly one parent header whose block hash equals the first block's parentHash; that header anchors `parentBlockHash` and provides the starting state root. The `state` pool MUST additionally include MPT paths for: (a) the L2MessageService's `L1L2RollingHash` and `L1L2RollingHashMessageNumber` slots at both the parent and end state roots (read at proof-range boundaries via the EVM state interface, §2.1 / §4.1) — even when no block in the range writes them; (b) the sender account of any FTX whose declared outcome is Invalid, at the parent state root of the block where that FTX would have been included (§6.5).",
     "executionWitness": [
         {
             "state":   ["..."],

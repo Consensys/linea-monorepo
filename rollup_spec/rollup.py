@@ -17,6 +17,7 @@ class LineaRollupState:
     current_finalized_shnarf: Hash32
     current_finalized_last_block_hash: Hash32
     current_l2_block_number: U64
+    current_l2_block_timestamp: U64
     current_finalized_l1_l2_bridge_rolling_hash: Hash32
     current_finalized_l1_l2_bridge_rolling_hash_message_number: U64
     dynamic_chain_config_hash: Hash32
@@ -102,6 +103,7 @@ def finalize_rollup(state: LineaRollupState, submission: FinalizationSubmission)
     state.current_finalized_shnarf = pi.end_shnarf
     state.current_finalized_last_block_hash = state.submitted_shnarf_last_block_hashes[pi.end_shnarf]
     state.current_l2_block_number = pi.end_block_number
+    state.current_l2_block_timestamp = pi.end_block_timestamp
     state.current_finalized_l1_l2_bridge_rolling_hash = pi.end_l1_l2_bridge_rolling_hash
     state.current_finalized_l1_l2_bridge_rolling_hash_message_number = (
         pi.end_l1_l2_bridge_rolling_hash_message_number

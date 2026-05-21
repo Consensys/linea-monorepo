@@ -42,6 +42,7 @@ def check_aggregation_proof(aggregation_input: AggregationProofPrivateInput) -> 
 
     return AggregatedPublicInput(
         end_block_number=last_proof.public_inputs.end_block_number,
+        end_block_timestamp=last_proof.public_inputs.end_block_timestamp,
         l2_l1_bridge_transaction_tree=hash_hash_list(merged_l2_l1_roots),
         parent_l1_l2_bridge_rolling_hash=first_proof.public_inputs.parent_l1_l2_bridge_rolling_hash,
         parent_l1_l2_bridge_rolling_hash_message_number=(
@@ -75,8 +76,12 @@ def verify_blob_proof(proof: BlobProof) -> None:
 
 
 def assert_blob_continuity(left: BlobProof, right: BlobProof) -> None:
-    if left.end_block_number + 1 != right.start_block_number:
-        raise Exception("blob proof block ranges must be contiguous")
+    # Block-number / block-hash continuity is implicit in the shnarf check:
+    # `endShnarf = Hash(parentShnarf, lastBlockHash, blobHash)` binds the
+    # last block hash. Once the next blob's `parentShnarf` matches, the
+    # inner block-hash chain inside that blob anchors block numbers
+    # transitively. No separate block-number assertion is needed at this
+    # layer (the blob-proof PI does not expose `startBlockNumber` anyway).
     if left.public_inputs.end_shnarf != right.public_inputs.parent_shnarf:
         raise Exception("blob shnarf continuity failed")
     if left.public_inputs.end_l1_l2_bridge_rolling_hash != right.public_inputs.parent_l1_l2_bridge_rolling_hash:

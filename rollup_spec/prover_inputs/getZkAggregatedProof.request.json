@@ -1,5 +1,5 @@
 {
-    "_comment": "Aggregation proof request schema (§2.3) — flat aggregation of M blob proofs plus the STARK→SNARK emulation wrap for L1. Emits the 13-field PI tuple defined in §2.4; there is no separate emulation request.",
+    "_comment": "Aggregation proof request schema (§2.3) — flat aggregation of M blob proofs plus the STARK→SNARK emulation wrap for L1. Emits the 14-field PI tuple defined in §2.4; there is no separate emulation request.",
 
     "proverVersion":      "4.0.0-riscv",
 
@@ -9,12 +9,13 @@
         "endBlockNumber":   1000567
     },
 
-    "_comment_blobProofs": "M blob proofs in shnarf-chain order. Each entry inlines everything the aggregation-proof guest needs for that blob proof: the recursive STARK `proof` bytes, the 13-field `publicInputs` tuple, and the preimages of the two hash-committed PI fields — `L2L1Roots` (preimage of publicInputs.L2L1BridgeTransactionTree) and `filteredAddresses` (preimage of publicInputs.filteredAddressesHash).",
+    "_comment_blobProofs": "M blob proofs in shnarf-chain order. Each entry inlines everything the aggregation-proof guest needs for that blob proof: the recursive STARK `proof` bytes, the 14-field `publicInputs` tuple, and the preimages of the two hash-committed PI fields — `L2L1Roots` (preimage of publicInputs.L2L1BridgeTransactionTree) and `filteredAddresses` (preimage of publicInputs.filteredAddressesHash).",
     "blobProofs": [
         {
             "proof": "0x...",
             "publicInputs": {
                 "endBlockNumber":                           1000520,
+                "endBlockTimestamp":                        1763000457,
                 "L2L1BridgeTransactionTree":                "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "parentL1L2BridgeRollingHash":              "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "parentL1L2BridgeRollingHashMessageNumber": 0,
@@ -34,11 +35,12 @@
         { "_comment": "remaining M-1 entries (blob proofs covering 1000521-1000545 and 1000546-1000567) have the same shape; abbreviated in the fixture" }
     ],
 
-    "_comment_l1Context": "L1 continuity anchors are not aggregation-guest inputs. The L1 contract checks them during finalization against the 13-field public output.",
+    "_comment_l1Context": "L1 continuity anchors are not aggregation-guest inputs. The L1 contract checks them during finalization against the 14-field public output.",
 
-    "_comment_expectedAggregatedPublicInputs": "The 13-field PI tuple defined in §2.4.",
+    "_comment_expectedAggregatedPublicInputs": "The 14-field PI tuple defined in §2.4.",
     "expectedAggregatedPublicInputs": {
         "endBlockNumber":                      1000567,
+        "endBlockTimestamp":                   1763002301,
         "L2L1BridgeTransactionTree":               "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentL1L2BridgeRollingHash":               "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentL1L2BridgeRollingHashMessageNumber":  0,

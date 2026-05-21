@@ -1,39 +1,297 @@
 from dataclasses import dataclass, field
-from typing import List, Sequence
+from typing import List, Sequence, Tuple
 
 from ethereum.crypto.hash import Hash32, keccak256
 from ethereum.forks.osaka.blocks import Block as EthereumBlock, Header
-from ethereum.forks.osaka.transactions import recover_sender
-from ethereum.state import Address
-from ethereum_types.bytes import Bytes32
-from ethereum_types.numeric import U64
+from ethereum.forks.osaka.transactions import (
+    BlobTransaction,
+    FeeMarketTransaction,
+    SetCodeTransaction,
+    Transaction,
+    recover_sender,
+    validate_transaction,
+)
+from ethereum.forks.osaka.fork import (
+    BLOB_COUNT_LIMIT,
+    VERSIONED_HASH_VERSION_KZG,
+)
+from ethereum.forks.osaka.vm.eoa_delegation import is_valid_delegation
+from ethereum.forks.osaka.vm.gas import calculate_total_blob_gas
+from ethereum.state import Account, Address, EMPTY_CODE_HASH
+from ethereum_types.bytes import Bytes, Bytes32
+from ethereum_types.numeric import U64, Uint
 
 from .block import (
-    AccountProof,
     ChainConfig,
+    ForcedTransactionAcceptance,
+    ResolvedForcedTransaction,
     RollupBlock,
-    StorageProof,
     block_hash,
     decode_block_rlp,
     decode_signed_transaction_rlp,
     parse_block_transaction_rlps,
-    validate_forced_transactions,
+    resolve_forced_transaction,
 )
-from .state_transition import ExecutionWitness, state_transition_modified
+from .state_transition import ExecutionWitness, L2State, state_transition_modified
 
 BRIDGE_L2L1_MESSAGE_SENT_TOPIC_0 = Hash32(
     bytes.fromhex("e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c"),
 )
 
+# Storage layout of the L2MessageService contract.
+#
+# The L1->L2 rolling hash is not a single slot — it lives in the
+# `l1RollingHashes` mapping keyed by message number, with the latest message
+# number tracked separately in `lastAnchoredL1MessageNumber`. The two slot
+# positions below are determined by the L2MessageService source (see
+# `contracts/src/messaging/l2/L2MessageManager.sol`); the Python reference
+# uses placeholder slot indices and the production guest must pin them to
+# match the deployed contract's storage layout.
+LAST_ANCHORED_L1_MESSAGE_NUMBER_SLOT: Bytes32 = Bytes32(b"\x00" * 31 + b"\x00")
+L1_ROLLING_HASHES_MAPPING_BASE_SLOT: Bytes32 = Bytes32(b"\x00" * 31 + b"\x01")
+
+
+def _mapping_slot(base_slot: Bytes32, key: bytes) -> Bytes32:
+    """
+    Solidity mapping slot computation: slot = keccak256(key || base_slot).
+    `key` is the abi-encoded mapping key padded to 32 bytes.
+    """
+    padded_key = key.rjust(32, b"\x00") if len(key) < 32 else bytes(key)
+    return Bytes32(keccak256(padded_key + bytes(base_slot)))
+
+
+def read_l1l2_bridge_state(state: L2State, l2_message_service_address: Address) -> Tuple[Hash32, U64]:
+    """
+    Read the L1->L2 bridge rolling hash and its associated message number
+    from the L2MessageService contract's storage at `state.state_root`.
+    Reads through the EVM state interface — the production guest verifies
+    the corresponding MPT proof paths against `state.state_root` from the
+    `ExecutionWitness.state` node pool.
+
+    Two reads: (a) `lastAnchoredL1MessageNumber` at a fixed slot, and
+    (b) `l1RollingHashes[lastAnchoredL1MessageNumber]` at the mapping slot
+    computed via `keccak256(uint256_be(messageNumber) || base_slot)`.
+    """
+    number_bytes = state.storage(l2_message_service_address, LAST_ANCHORED_L1_MESSAGE_NUMBER_SLOT)
+    rolling_hash_number = U64(int.from_bytes(bytes(number_bytes), "big"))
+
+    rolling_hash_slot = _mapping_slot(
+        L1_ROLLING_HASHES_MAPPING_BASE_SLOT,
+        int(rolling_hash_number).to_bytes(32, "big"),
+    )
+    rolling_hash = Hash32(state.storage(l2_message_service_address, rolling_hash_slot))
+    return rolling_hash, rolling_hash_number
+
+
+def add_to_forced_tx_rolling_hash(
+    forced_tx_rolling_hash: Hash32,
+    ftx: ResolvedForcedTransaction,
+) -> Tuple[Hash32, U64]:
+    """
+    Update the forced-transaction rolling hash with an already-resolved FTX.
+    Formula matches §6.3: keccak256(prev || txHash || deadline || from).
+    """
+    return keccak256(
+        forced_tx_rolling_hash +
+        ftx.tx_hash +
+        int(ftx.deadline).to_bytes(32, "big") +
+        bytes(ftx.from_address)
+    ), ftx.number
+
+
+def validate_forced_transactions(
+    curr_rolling_hash: Hash32,
+    last_processed_ftx_number: U64,
+    chain_config: ChainConfig,
+    base_fee: Uint,
+    block_header: Header,
+    parent_state: L2State,
+    block: RollupBlock,
+) -> Tuple[List[Address], Hash32, U64]:
+    """
+    Scan the forced transactions in this block and assert each has the
+    correct outcome (Included / Invalid sub-case / Refused sub-case,
+    §6.5). For the Invalid sub-cases, the FTX sender's account is read
+    from `parent_state` (the L2 state at the parent of this block) via
+    the EVM state interface; the witness pool in `ExecutionWitness.state`
+    must include that MPT path.
+
+    Dispatch on `resolved_ftx.acceptance`:
+      - FILTERED_ADDRESS_FROM | FILTERED_ADDRESS_TO | PHYLAX -> Refused;
+        bubble up the relevant address for the L1 sanction-list check.
+      - INCLUDED                                            -> assert
+        `txHash` is in the block's tx list.
+      - BAD_NONCE | BAD_BALANCE | BAD_PRECOMPILE |
+        TOO_MANY_LOGS                                        -> Invalid;
+        assert `txHash` is NOT in the block AND that Ethereum
+        pre-validation fails when the sender's account is read from
+        `parent_state`.
+    """
+    rejected_addresses: List[Address] = []
+
+    for ftx in block.forced_transactions:
+        # FTXs are processed in ascending L1-assigned number.
+        if ftx.number != last_processed_ftx_number + 1:
+            raise Exception("forced transactions must be processed in ascending sequence")
+
+        # Deadline constraint (§6.5): the FTX must be handled in a block whose
+        # number does not exceed its declared deadline.
+        if ftx.deadline < block_header.number:
+            raise Exception("deadline exceeded")
+
+        resolved_ftx = resolve_forced_transaction(ftx, chain_config.chain_id)
+        transaction = resolved_ftx.transaction
+        from_address = resolved_ftx.from_address
+
+        # The rolling hash is updated for every FTX in the proof range,
+        # regardless of outcome.
+        curr_rolling_hash, last_processed_ftx_number = add_to_forced_tx_rolling_hash(
+            curr_rolling_hash, resolved_ftx,
+        )
+
+        # Refused (sanction list) — bubble up the relevant address. The L1
+        # contract verifies a-posteriori that each bubbled address appears
+        # on its reference sanction list.
+        if resolved_ftx.acceptance == ForcedTransactionAcceptance.FILTERED_ADDRESS_FROM:
+            rejected_addresses.append(from_address)
+            continue
+
+        if resolved_ftx.acceptance == ForcedTransactionAcceptance.FILTERED_ADDRESS_TO:
+            # Contract-creation transactions have no recipient (to == None);
+            # FILTERED_ADDRESS_TO is meaningless for them.
+            if not isinstance(transaction.to, Address):
+                raise Exception("FILTERED_ADDRESS_TO on a contract-creation transaction")
+            rejected_addresses.append(transaction.to)
+            continue
+
+        if resolved_ftx.acceptance == ForcedTransactionAcceptance.PHYLAX:
+            # Phylax compliance filter triggered.
+            # TODO(taxonomy): pin which address gets bubbled up for PHYLAX
+            # rejections (sender? recipient? both? a separate channel?).
+            # The current placeholder treats it as a from-style refusal.
+            rejected_addresses.append(from_address)
+            continue
+
+        # Block-membership check: INCLUDED variants must appear in the
+        # block; the four Invalid variants must NOT appear.
+        block_tx_hashes = [
+            keccak256(tx_rlp)
+            for tx_rlp in parse_block_transaction_rlps(block.block_rlp)
+        ]
+        tx_in_block = resolved_ftx.tx_hash in block_tx_hashes
+
+        if resolved_ftx.acceptance == ForcedTransactionAcceptance.INCLUDED:
+            if not tx_in_block:
+                raise Exception("INCLUDED FTX was not found in the block's transaction list")
+            # The EVM state transition proves the FTX executed validly as part
+            # of the block; nothing more to check at this layer.
+            continue
+
+        if resolved_ftx.acceptance not in (
+            ForcedTransactionAcceptance.BAD_NONCE,
+            ForcedTransactionAcceptance.BAD_BALANCE,
+            ForcedTransactionAcceptance.BAD_PRECOMPILE,
+            ForcedTransactionAcceptance.TOO_MANY_LOGS,
+        ):
+            raise Exception("forced transaction has an unknown acceptance value")
+
+        if tx_in_block:
+            raise Exception(
+                "FTX declared as one of the Invalid sub-cases but was found in the block"
+            )
+
+        # Invalid — pre-validation must fail against the L2 state at this
+        # block's parent state root. The witness pool must include the MPT
+        # path for the sender account (and any other state the specific
+        # invalidity sub-case requires).
+        #
+        # TODO(taxonomy): the four BAD_*/TOO_MANY_LOGS variants currently
+        # collapse into the same generic pre-validation path below. The
+        # production prover dispatches each variant to its specific check
+        # (e.g. TOO_MANY_LOGS requires partial-execution tracing; BAD_PRECOMPILE
+        # requires inspecting the call target). Refine this dispatch when
+        # aligning with the production handler — see §6.5 of Readme.md.
+        sender_account = parent_state.account(from_address)
+        if sender_account is None:
+            raise Exception("FTX-invalid: sender account absent from L2 state")
+        sender_code = (
+            parent_state.code(sender_account.code_hash)
+            if sender_account.code_hash != EMPTY_CODE_HASH
+            else Bytes(b"")
+        )
+
+        try:
+            validate_transaction(transaction)
+        except Exception:
+            continue
+
+        if is_valid_forced_transaction(transaction, sender_account, sender_code, base_fee):
+            raise Exception("the forced transaction was indicated to be invalid, but was found to be valid")
+
+    return rejected_addresses, curr_rolling_hash, last_processed_ftx_number
+
+
+def is_valid_forced_transaction(
+    tx: Transaction,
+    sender_account: Account,
+    sender_code: Bytes,
+    base_fee: Uint,
+) -> bool:
+    """
+    Re-derive whether the FTX would have passed Ethereum pre-validation
+    against `sender_account` and `sender_code`. Mirrors
+    `fork.check_transaction` minus the checks that depend on remaining block
+    gas / blob gas. Returns a boolean instead of raising.
+    """
+    if isinstance(tx, (FeeMarketTransaction, BlobTransaction, SetCodeTransaction)):
+        if tx.max_fee_per_gas < tx.max_priority_fee_per_gas:
+            return False
+        if tx.max_fee_per_gas < base_fee:
+            return False
+        max_gas_fee = tx.gas * tx.max_fee_per_gas
+    else:
+        if tx.gas_price < base_fee:
+            return False
+        max_gas_fee = tx.gas * tx.gas_price
+
+    if isinstance(tx, BlobTransaction):
+        blob_count = len(tx.blob_versioned_hashes)
+        if blob_count == 0:
+            return False
+        if blob_count > BLOB_COUNT_LIMIT:
+            return False
+        for blob_versioned_hash in tx.blob_versioned_hashes:
+            if blob_versioned_hash[0:1] != VERSIONED_HASH_VERSION_KZG:
+                return False
+        max_gas_fee += Uint(calculate_total_blob_gas(tx)) * Uint(tx.max_fee_per_blob_gas)
+
+    if isinstance(tx, (BlobTransaction, SetCodeTransaction)):
+        if not isinstance(tx.to, Address):
+            return False
+
+    if isinstance(tx, SetCodeTransaction):
+        if not any(tx.authorizations):
+            return False
+
+    if sender_account.nonce != Uint(tx.nonce):
+        return False
+    if Uint(sender_account.balance) < max_gas_fee + Uint(tx.value):
+        return False
+    if sender_account.code_hash != EMPTY_CODE_HASH and not is_valid_delegation(sender_code):
+        return False
+
+    return True
+
 
 @dataclass
 class ExecutionProofPublicInput:
     """
-    The 14-field execution-proof public input tuple from Readme.md section 2.1.
+    The 15-field execution-proof public input tuple from Readme.md section 2.1.
     """
     parent_block_hash: Hash32
     end_block_hash: Hash32
     end_block_number: U64
+    end_block_timestamp: U64
     l2_l1_messages_hash: Hash32
     parent_l1_l2_bridge_rolling_hash: Hash32
     parent_l1_l2_bridge_rolling_hash_message_number: U64
@@ -48,53 +306,19 @@ class ExecutionProofPublicInput:
 
 
 @dataclass
-class L1L2BridgeStorageWitness:
-    """
-    Storage witness for the L2MessageService L1->L2 rolling-hash slots at one
-    state root.
-
-    The account proof authenticates the L2MessageService account against the
-    state root. The two storage proofs authenticate the rolling hash and its
-    message number against the account's `storageRoot`. All three are
-    Ethereum MPT proofs (Type-1 state, `eth_getProof` shape).
-    """
-    rolling_hash: Hash32
-    rolling_hash_message_number: U64
-    account_proof: AccountProof
-    rolling_hash_proof: StorageProof
-    rolling_hash_message_number_proof: StorageProof
-
-    def check_inclusion(self, state_root: Hash32, l2_message_service_address: Address) -> bool:
-        if len(state_root) != 32:
-            return False
-        if not self.account_proof.check_shape():
-            return False
-        if self.account_proof.address != l2_message_service_address:
-            return False
-        return (
-            self.rolling_hash_proof.check_shape() and
-            self.rolling_hash_message_number_proof.check_shape()
-        )
-
-
-@dataclass
-class L1L2BridgeStateTransitionWitness:
-    """
-    Old and new storage witnesses for the L1->L2 rolling-hash accumulator.
-    """
-    parent: L1L2BridgeStorageWitness
-    end: L1L2BridgeStorageWitness
-
-
-@dataclass
 class ExecutionProofPrivateInput:
     """
     Logical execution-proof request. `blocks` carries canonical block RLP bytes
     plus per-block FTX metadata. `execution_witnesses` carries the corresponding
     Besu `debug_executionWitness` payload for each block. The first witness must
     contain the parent header whose hash is `blocks[0].header.parent_hash`.
+
+    The L1->L2 rolling-hash boundary values are not separate witness fields:
+    the guest reads them directly from the L2 state at the parent and end
+    state roots via the EVM state interface (`L2State.storage`). The witness
+    producer must ensure the relevant MPT paths are in
+    `ExecutionWitness.state`
     """
-    l1_l2_bridge_state: L1L2BridgeStateTransitionWitness
     parent_ftx_rolling_hash: Hash32
     parent_last_processed_ftx_number: U64
     blocks: List[RollupBlock]
@@ -138,14 +362,25 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
     )
     parent_block_hash = block_hash(parent_header)
     start_block_number = parent_header.number + 1
-    base_fee = execution_input.chain_config.base_fee
     current_parent_header = parent_header
-    parent_l1_l2_bridge_state = execution_input.l1_l2_bridge_state.parent
-    if not parent_l1_l2_bridge_state.check_inclusion(
-        parent_header.state_root,
-        execution_input.chain_config.l2_message_service_address,
-    ):
-        raise Exception("invalid parent L1-to-L2 rolling-hash storage proof")
+    l2_ms_address = execution_input.chain_config.l2_message_service_address
+
+    # `base_fee` is sourced from the first block's header. The loop below
+    # asserts every other block carries the same value, so any of them would
+    # do; the first is canonical. (§2.1)
+    base_fee = Uint(decoded_blocks[0].header.base_fee_per_gas)
+
+    # Read the L1->L2 bridge rolling hash at the parent state root (start of
+    # this range) via the EVM state interface. The witness pool must contain
+    # the MPT path for the L2MessageService account + rolling-hash slots.
+    parent_state = L2State(
+        state_root=parent_header.state_root,
+        witnesses=execution_input.execution_witnesses,
+    )
+    parent_rolling_hash, parent_rolling_hash_number = read_l1l2_bridge_state(
+        parent_state, l2_ms_address,
+    )
+
     current_ftx_rolling_hash = execution_input.parent_ftx_rolling_hash
     current_last_processed_ftx_number = execution_input.parent_last_processed_ftx_number
     l2_l1_message_hashes: List[Hash32] = []
@@ -160,10 +395,17 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
         execution_input.execution_witnesses,
         decoded_blocks,
     ):
-        if block.header.base_fee_per_gas != base_fee:
+        if Uint(block.header.base_fee_per_gas) != base_fee:
             raise Exception("baseFee must be constant across an execution proof")
         if block.header.coinbase != execution_input.chain_config.coinbase:
             raise Exception("block coinbase does not match chain configuration")
+        # Sequencer consensus rules: parent-hash chain & monotonic timestamps
+        # (validate_header inside state_transition_modified covers the
+        # standard Ethereum checks; here we restate the chain-level invariants).
+        if block.header.parent_hash != block_hash(current_parent_header):
+            raise Exception("block parent_hash does not chain from previous header")
+        if Uint(block.header.timestamp) <= Uint(current_parent_header.timestamp):
+            raise Exception("block timestamp must be strictly increasing")
 
         for tx_rlp in parse_block_transaction_rlps(rollup_block.block_rlp):
             tx_froms.append(
@@ -173,14 +415,20 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
                 ),
             )
 
+        # FTX-invalid pre-validation reads the sender's account against the
+        # L2 state at this block's parent state root (§6.5 'Invalid').
+        block_parent_state = L2State(
+            state_root=current_parent_header.state_root,
+            witnesses=execution_input.execution_witnesses,
+        )
         block_filtered_addresses, current_ftx_rolling_hash, current_last_processed_ftx_number = (
             validate_forced_transactions(
                 current_ftx_rolling_hash,
                 current_last_processed_ftx_number,
                 execution_input.chain_config,
                 base_fee,
-                current_parent_header.number,
-                current_parent_header.state_root,
+                block.header,
+                block_parent_state,
                 rollup_block,
             )
         )
@@ -202,31 +450,30 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
             if log.topics[0] == BRIDGE_L2L1_MESSAGE_SENT_TOPIC_0:
                 l2_l1_message_hashes.append(Hash32(log.topics[3]))
 
-    end_l1_l2_bridge_state = execution_input.l1_l2_bridge_state.end
-    if not end_l1_l2_bridge_state.check_inclusion(
-        current_block.header.state_root,
-        execution_input.chain_config.l2_message_service_address,
-    ):
-        raise Exception("invalid end L1-to-L2 rolling-hash storage proof")
-    if end_l1_l2_bridge_state.rolling_hash_message_number < (
-        parent_l1_l2_bridge_state.rolling_hash_message_number
-    ):
+    # Read the L1->L2 bridge rolling hash at the end state root (after all
+    # blocks in this range have applied) via the EVM state interface.
+    end_state = L2State(
+        state_root=current_block.header.state_root,
+        witnesses=execution_input.execution_witnesses,
+    )
+    end_rolling_hash, end_rolling_hash_number = read_l1l2_bridge_state(
+        end_state, l2_ms_address,
+    )
+
+    if end_rolling_hash_number < parent_rolling_hash_number:
         raise Exception("L1-to-L2 rolling-hash message number cannot decrease")
 
     public_inputs = ExecutionProofPublicInput(
         parent_block_hash=parent_block_hash,
         end_block_hash=block_hash(current_block.header),
         end_block_number=current_block.header.number,
+        end_block_timestamp=U64(current_block.header.timestamp),
         l2_l1_messages_hash=hash_hash_list(l2_l1_message_hashes),
-        parent_l1_l2_bridge_rolling_hash=parent_l1_l2_bridge_state.rolling_hash,
-        parent_l1_l2_bridge_rolling_hash_message_number=(
-            parent_l1_l2_bridge_state.rolling_hash_message_number
-        ),
-        end_l1_l2_bridge_rolling_hash=end_l1_l2_bridge_state.rolling_hash,
-        end_l1_l2_bridge_rolling_hash_message_number=(
-            end_l1_l2_bridge_state.rolling_hash_message_number
-        ),
-        dynamic_chain_config_hash=execution_input.chain_config.hash(),
+        parent_l1_l2_bridge_rolling_hash=parent_rolling_hash,
+        parent_l1_l2_bridge_rolling_hash_message_number=parent_rolling_hash_number,
+        end_l1_l2_bridge_rolling_hash=end_rolling_hash,
+        end_l1_l2_bridge_rolling_hash_message_number=end_rolling_hash_number,
+        dynamic_chain_config_hash=execution_input.chain_config.hash(base_fee),
         parent_ftx_rolling_hash=execution_input.parent_ftx_rolling_hash,
         end_ftx_rolling_hash=current_ftx_rolling_hash,
         last_processed_ftx_number=current_last_processed_ftx_number,
