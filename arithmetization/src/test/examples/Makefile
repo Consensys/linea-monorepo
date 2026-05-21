@@ -158,7 +158,7 @@ exec-elf: elf-to-json
 	zkc exec $(JSON) $(ZKC_MAIN)
 
 # Note: BIN and JSON have a default value but they can be set to arbitrary values
-elf-to-json: $(BIN)
+elf-to-json:
 # Generate JSON from ELF
 	$(ELF_TO_JSON)
 
