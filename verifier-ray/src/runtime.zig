@@ -72,10 +72,6 @@ pub const Runtime = struct {
         };
     }
 
-    pub fn advanceRound(self: *Runtime) void {
-        self.current_round += 1;
-    }
-
     /// Absorb one round's verifier-visible messages, advance the round counter,
     /// and derive the next round's extension-field coins.
     pub fn advanceRoundWithMessage(
