@@ -8,10 +8,10 @@ The executable, the JSON and the disassembled file live in `asm/bin/` for assemb
 
 ## Requirements
 
-- `riscv64-unknown-elf-as (>= 2.45)` — for assembly programs and Zig
+- `riscv64-unknown-elf-gcc (>= 15)` — for assembly programs and Zig
 - `zig (>= 0.16.0)` — for Zig programs
 - `cargo (>= 1.88.0)` — for Rust programs
-- `rustc (>= rustc 1.88.0)` with `riscv64imac-unknown-none-elf` target — for Rust programs
+- nightly `rustc (>= rustc 1.88.0)` — for Rust programs
 - `go (>= 1.26.1)` — to convert ELF to JSON
 - `go-corset, zkc (>= 1.2.12)` — to execute/debug the JSON
 
