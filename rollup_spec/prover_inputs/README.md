@@ -1,6 +1,6 @@
 # Prover I/O Drafts — Type-1 RISC-V Rollup
 
-This directory drafts the prover-request **logical schemas** for the new RISC-V proving stack described in `../Readme.md`. The shapes track the existing Linea conventions (0x-prefixed hex, base64-encoded blob bytes, RLP-encoded blocks, version strings) but cover the new public-input surface (13 fields, FTX rolling hash, shnarf rebased on `lastBlockHash`).
+This directory drafts the prover-request **logical schemas** for the new RISC-V proving stack described in `../Readme.md`. The shapes track the existing Linea conventions (0x-prefixed hex, base64-encoded blob bytes, RLP-encoded blocks, version strings) but cover the new public-input surface (14 fields at the blob / aggregation layer, 15 fields at the execution layer, FTX rolling hash, shnarf rebased on `lastBlockHash`).
 
 > **JSON ≠ on-wire format.** These files describe *what* the coordinator hands to the prover at each layer (which fields exist, what they mean, how they relate). The bytes actually carried into the zkVM guest are **binary** — a length-prefixed container holding RLP-encoded blocks and the `debug_executionWitness` payload verbatim. See §3.3 of `../Readme.md` for the on-wire format spec. The JSON form here is the canonical source of truth for the schema, and is also accepted directly by the guest in a `--json` debug mode for fixture loading.
 
@@ -20,9 +20,9 @@ One request file per guest layer:
 
 | File | Layer | What it proves |
 |---|---|---|
-| `getZkExecutionProof.request.json` | Execution proof (per block range, M ≥ 1 conflated blocks) | EVM state transition for a contiguous range of L2 blocks; emits the 14-field execution PI tuple. |
-| `getZkBlobProof.request.json`      | **Blob proof (per K ≥ 1 blobs)**          | KZG binding + decompression for each blob, the chained shnarf transition across all K blobs, and recursive verification of the N execution proofs whose ranges tile the combined block range. Emits the 13-field aggregated PI tuple. |
-| `getZkAggregatedProof.request.json`| Aggregation proof + emulation (the final proof, SNARK-wrapped for L1) | Recursively verifies all M blob proofs covering the finalization range, asserts pairwise continuity, merges the L2L1 root arrays and FTX filtered-address lists, emits the same 13-field PI tuple over the full range, and performs the STARK→SNARK emulation wrap in the same aggregation request. Flat (one guest invocation over all M); see §2.5 of `../Readme.md` for the future hierarchical option. There is no separate emulation file. |
+| `getZkExecutionProof.request.json` | Execution proof (per block range, M ≥ 1 conflated blocks) | EVM state transition for a contiguous range of L2 blocks; emits the 15-field execution PI tuple. |
+| `getZkBlobProof.request.json`      | **Blob proof (per K ≥ 1 blobs)**          | For each blob, recomputes the canonical compressed payload from `blockRlps` (truncate → RLP-encode → LZ4-compress → zero-pad to 131072 bytes) and KZG-verifies it against the L1-committed `blobHash` — the verifier accepts iff the computed bytes match the sequencer's commitment, so there is no separately witnessed `compressedData`. Also chains the shnarf transition across all K blobs and recursively verifies the N execution proofs whose ranges tile the combined block range. Emits the 14-field aggregated PI tuple. |
+| `getZkAggregatedProof.request.json`| Aggregation proof + emulation (the final proof, SNARK-wrapped for L1) | Recursively verifies all M blob proofs covering the finalization range, asserts pairwise continuity, merges the L2L1 root arrays and FTX filtered-address lists, emits the same 14-field PI tuple over the full range, and performs the STARK→SNARK emulation wrap in the same aggregation request. Flat (one guest invocation over all M); see §2.5 of `../Readme.md` for the future hierarchical option. There is no separate emulation file. |
 
 ## Blob-proof generalization: K ≥ 1 blobs in one proof
 

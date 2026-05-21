@@ -239,6 +239,11 @@ class L2State:
         the account is absent or the slot is unset. Internally: look up
         the account leaf for `storage_root`, then walk the per-account
         storage trie at `keccak256(slot)`.
+
+        Raises on a malformed leaf (RLP decoding that does not yield raw
+        bytes is not a valid Ethereum storage slot — silently treating it
+        as zero would mask witness tampering, so the proof must reject
+        the read outright).
         """
         result = self._account_with_storage_root(address)
         if result is None:
@@ -250,8 +255,12 @@ class L2State:
         # Storage values are RLP(value) where `value` is the big-endian
         # integer with leading zeros stripped. Left-pad back to 32 bytes.
         decoded = rlp.decode(slot_leaf)
-        raw = bytes(decoded) if isinstance(decoded, (bytes, bytearray)) else b""
-        return Bytes32(raw.rjust(32, b"\x00"))
+        if not isinstance(decoded, (bytes, bytearray)):
+            raise Exception(
+                f"malformed storage leaf at {bytes(address).hex()}/{bytes(slot).hex()}: "
+                f"RLP decode produced {type(decoded).__name__}, expected bytes"
+            )
+        return Bytes32(bytes(decoded).rjust(32, b"\x00"))
 
     def code(self, code_hash: Hash32) -> Bytes:
         """

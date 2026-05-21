@@ -103,7 +103,6 @@ def validate_forced_transactions(
     curr_rolling_hash: Hash32,
     last_processed_ftx_number: U64,
     chain_config: ChainConfig,
-    base_fee: Uint,
     block_header: Header,
     parent_state: L2State,
     block: RollupBlock,
@@ -282,7 +281,7 @@ class ExecutionProof:
 def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> ExecutionProof:
     """
     Execution proof: validates the EVM state transition for a contiguous block
-    range and emits the 14-field execution PI.
+    range and emits the 15-field execution PI (§2.1).
     """
     if len(execution_input.blocks) == 0:
         raise Exception("execution proof must cover at least one block")

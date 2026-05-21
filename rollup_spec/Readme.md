@@ -29,7 +29,7 @@ The system is organized around three concurrent, independent streams that conver
 **Stream 2 — Proving (Execution & Blob).** Two leaf-level proof types are produced independently and in parallel:
 
 - **Execution proofs** — for each contiguous range of L2 blocks (a *conflation*), a prover generates an execution proof attesting to the EVM state transition. Multiple execution proofs can be produced in parallel across different block ranges.
-- **Blob proofs** — for one or more EIP-4844 blobs, a single blob proof attests to: (a) compression equality (the witnessed truncated blocks LZ4-compress to the KZG-bound blob bytes) for each blob, (b) the chained shnarf transition across the blobs, and (c) recursive verification of the N execution proofs whose ranges tile the combined block range of those blobs. The blob proof is the smallest unit of aggregation: it folds multiple execution proofs into one and exposes the unified 14-field public-input tuple. A single blob proof generalizes across `K ≥ 1` blobs.
+- **Blob proofs** — for one or more EIP-4844 blobs, a single blob proof attests to: (a) for each blob, the guest computes the canonical compressed payload from the witnessed full block RLPs (truncate → RLP-encode → LZ4-compress → zero-pad to 131 072 bytes) and KZG-verifies the result against the L1-committed `blobHash`, which accepts iff the computed bytes match what the sequencer committed to; (b) the chained shnarf transition across the blobs; and (c) recursive verification of the N execution proofs whose ranges tile the combined block range of those blobs. The blob proof is the smallest unit of aggregation: it folds multiple execution proofs into one and exposes the unified 14-field public-input tuple. A single blob proof generalizes across `K ≥ 1` blobs.
 
 **Stream 3 — Aggregation.** Once all blob proofs for a target finalization range are available, they are assembled, aggregated, and wrapped for L1 by one aggregation prover request:
 
@@ -60,7 +60,7 @@ checks modeled separately in `rollup.py`:
 | Guest program | Reference entry point | Scope |
 |---|---|---|
 | Execution | `execution.py::check_execution_proof` | Replays a contiguous L2 block range from canonical `blockRlp` plus `debug_executionWitness`, validates the EVM state transition, extracts bridge events, processes forced transactions, and emits the 15-field execution PI. It does not read blobs, verify KZG, or recursively verify other proofs. |
-| Blob | `blob.py::check_blob_proof` | Verifies KZG binding and LZ4 compression equality (`lz4_compress(serialize(truncatedBlocks)) == blob_bytes`) for `K >= 1` consecutive blobs, chains their shnarf transition, recursively verifies the `N` execution proofs that tile the blob range, builds L2->L1 root commitments, merges refused-address outputs, and emits the 14-field blob PI. It does not run the EVM or perform L1 finalization checks. |
+| Blob | `blob.py::check_blob_proof` | For each of `K >= 1` consecutive blobs, recomputes the canonical compressed payload from the witnessed full block RLPs (truncate → RLP-encode → LZ4-compress → zero-pad to `BLOB_BYTES_LENGTH`) and KZG-verifies it against the L1-committed `blobHash` — the KZG check accepts iff the computed bytes match the sequencer's commitment. Chains the shnarf transition, recursively verifies the `N` execution proofs that tile the blob range, builds L2->L1 root commitments, merges refused-address outputs, and emits the 14-field blob PI. It does not run the EVM or perform L1 finalization checks. |
 | Aggregation | `aggregation.py::check_aggregation_proof` | Recursively verifies the `M` blob proofs for a finalization range, checks proof-to-proof continuity, merges root/address commitments, and emits the final 14-field PI consumed by L1. It does not inspect raw blocks, raw blobs, or L1 storage. |
 
 `rollup.py` models the contract-facing blob anchoring and finalization checks
@@ -115,7 +115,7 @@ declared outcome is one of the allowed outcomes in §6.5.
 
 ### 2.2 Blob Proof
 
-The blob proof covers `K ≥ 1` consecutive EIP-4844 blobs and proves that, for each, the KZG polynomial binding holds and `lz4_compress(serialize(truncatedBlocks)) == blobContent` (compression equality). It is also the leaf aggregator: it recursively verifies the `N` execution proofs whose ranges tile the combined block range of the `K` blobs and chains them with software `assert_eq!` continuity checks. Its public-input tuple is identical in shape to the aggregation proof's (§2.4), so the upstream aggregation step can consume blob proofs directly.
+The blob proof covers `K ≥ 1` consecutive EIP-4844 blobs and proves that, for each, the canonical compressed payload recomputed from the witnessed full block RLPs (`lz4_compress(rlp_encode(truncate(blockRlps)))`, zero-padded to the EIP-4844 blob size) is what the sequencer committed to on L1 — verified via a single `verify_blob_kzg_proof` call against the L1-anchored `blobHash`. The KZG check subsumes a separate byte-equality assertion: if the bytes the guest computed differ from what the L1 commitment binds, the KZG verifier rejects. It is also the leaf aggregator: it recursively verifies the `N` execution proofs whose ranges tile the combined block range of the `K` blobs and chains them with software `assert_eq!` continuity checks. Its public-input tuple is identical in shape to the aggregation proof's (§2.4), so the upstream aggregation step can consume blob proofs directly.
 
 `K = 1` is the simplest case (one blob per blob proof). `K > 1` lets the coordinator amortize recursion overhead by folding several blobs into a single proof — directly analogous to the existing M-block conflation inside an execution proof.
 
@@ -125,68 +125,68 @@ The blob proof covers `K ≥ 1` consecutive EIP-4844 blobs and proves that, for 
 
 The same 14-field tuple as the aggregation proof (§2.4). `parentShnarf` is the inbound shnarf before blob 1; `endShnarf` is the outbound shnarf after blob K.
 
-The **execution proof's 15-field PI** is *input* to this guest (private witness, §2.2 step 6 recursive verification) — it is **not** the output. The 14 fields below derive from those 15 (across all N execution proofs) plus the blob content and shnarf chain:
+The **execution proof's 15-field PI** is *input* to this guest (private witness, §2.2 step 4 recursive verification) — it is **not** the output. The 14 fields below derive from those 15 (across all N execution proofs) plus the blob content and shnarf chain:
 
 | Execution PI (§2.1, 15 fields) | Fate at blob level |
 |---|---|
-| `parentBlockHash` | **Dropped** — folded into `parentShnarf` via `Hash(parentShnarf, lastBlockHash, blobHash)` (step 3) |
+| `parentBlockHash` | **Dropped** — folded into `parentShnarf` via `Hash(parentShnarf, lastBlockHash, blobHash)` (step 2) |
 | `endBlockHash` | **Dropped** — folded into `endShnarf` (last block of the last blob) |
-| `L2L1MessagesHash` | **Dropped** — per-execution flat hash consumed in step 8 to build `L2L1BridgeTransactionTree`, then discarded |
-| `txFromsHash` | **Dropped** — consumed in step 5 to cross-check `froms_e` against blob `blockData.froms`; not propagated |
+| `L2L1MessagesHash` | **Dropped** — per-execution flat hash consumed in step 6 to build `L2L1BridgeTransactionTree`, then discarded |
+| `txFromsHash` | **Dropped** — consumed in step 3 to cross-check `froms_e` against blob `blockData.froms`; not propagated |
 | `endBlockNumber` | Carried over from `PI_Eₙ` |
 | `endBlockTimestamp` | Carried over from `PI_Eₙ` |
 | `parentL1L2BridgeRollingHash` | Carried over from `PI_E₁` |
 | `parentL1L2BridgeRollingHashMessageNumber` | Carried over from `PI_E₁` |
 | `endL1L2BridgeRollingHash` | Carried over from `PI_Eₙ` |
 | `endL1L2BridgeRollingHashMessageNumber` | Carried over from `PI_Eₙ` |
-| `dynamicChainConfigHash` | Single shared value (step 9 asserts equality across all N) |
+| `dynamicChainConfigHash` | Single shared value (step 7 asserts equality across all N) |
 | `parentFtxRollingHash` | Carried over from `PI_E₁` |
 | `endFtxRollingHash` | Carried over from `PI_Eₙ` |
 | `lastProcessedFtxNumber` | Carried over from `PI_Eₙ` |
-| `filteredAddressesHash` | Same name, content rehashed: `keccak256(addrs_E₁ ‖ … ‖ addrs_Eₙ)` (step 10) |
+| `filteredAddressesHash` | Same name, content rehashed: `keccak256(addrs_E₁ ‖ … ‖ addrs_Eₙ)` (step 8) |
 
-Plus three **new** blob-level fields: `parentShnarf` (input), `endShnarf` (computed in step 3), `L2L1BridgeTransactionTree` (computed in step 8).
+Plus three **new** blob-level fields: `parentShnarf` (input), `endShnarf` (computed in step 2), `L2L1BridgeTransactionTree` (computed in step 6).
 
 **Private Inputs (Witness)**
 
 | Field | Description |
 |---|---|
-| `blobContent_b` | Raw compressed blob bytes (4096 × 32-byte EIP-4844 payload) for blob `b ∈ [1, K]` |
-| `blobHash_b` | The blob's versioned hash as submitted on L1 |
+| `blobCommitment_b` | KZG commitment for blob `b ∈ [1, K]` (48-byte G1 point); committed to on L1 via `kzg_commitment_to_versioned_hash` |
+| `blobHash_b` | The blob's versioned hash as submitted on L1 — cross-checked against `kzg_commitment_to_versioned_hash(blobCommitment_b)` |
 | `KzgProof_b` | KZG proof for blob `b` |
 | `blockRange_b` | The `(startBlockNumber, endBlockNumber)` pair for the blocks contained in blob `b` |
-| `blockRlps_b` | The ordered list of canonical full block RLPs for blob `b` (`m_b` entries) — same canonical shape the execution proof receives (header + tx list [+ withdrawals], EIP-2718 typed transactions in full signed form). Truncation per §3.2 happens *inside* the guest; there is no separately witnessed truncated form. |
+| `blockRlps_b` | The ordered list of canonical full block RLPs for blob `b` (`m_b` entries) — same canonical shape the execution proof receives (header + tx list [+ withdrawals], EIP-2718 typed transactions in full signed form). Truncation per §3.2 happens *inside* the guest; there is no separately witnessed truncated form, and the compressed blob bytes are not witnessed either — the guest recomputes them. |
 | `E₁ … Eₙ` | The execution proofs, ordered by block range, tiling the combined range of all K blobs |
 | `PI_E₁ … PI_Eₙ` | The public-input tuple for each execution proof |
 | `L2L1MsgList_e` | Per-execution-proof L2→L1 message hash list, for `e ∈ [1, N]` |
 | `froms_e` | Per-execution-proof sender address list (block-then-transaction order) — preimage of `PI_E_e.txFromsHash` |
 | `addrs_e` | Per-execution-proof refused-FTX address list (§6.5) — preimage of `PI_E_e.filteredAddressesHash` |
 
-The proven statement is **compression of the canonical truncated RLP**: the guest applies the §3.2 truncation rule to each `blockRlps_b[i]` internally, RLP-encodes the truncated form, and attests that `lz4_compress(rlp_encode(truncate(blockRlps_b))) == blobContent_b`. The intermediate truncated blocks are computed by the guest, not witnessed; their downstream consumers (block-hash boundary checks in step 6, sender-list cross-checks in step 4) read them from the in-guest computation. Authenticity of the full block RLPs is anchored by the same downstream checks — every block hash is bound to an execution-proof boundary, every `froms` list to the execution proof's `txFromsHash` — so the guest cannot diverge from what was actually executed.
+The proven statement is **KZG verification on the canonical compressed payload computed from the canonical truncated RLP**: the guest applies the §3.2 truncation rule to each `blockRlps_b[i]` internally, RLP-encodes the truncated form, LZ4-compresses it, zero-pads to `BLOB_BYTES_LENGTH` (4096 × 32 = 131 072 bytes), and runs `verify_blob_kzg_proof` against the L1-committed `blobHash`. The KZG verifier accepts iff the computed bytes match what the sequencer committed to on L1 — so there is no separate byte-equality assertion against a witnessed `blobContent`. The intermediate truncated blocks are computed by the guest, not witnessed; their downstream consumers (block-hash boundary checks in step 5, sender-list cross-checks in step 3) read them from the in-guest computation. Authenticity of the full block RLPs is anchored by KZG (the compressed bytes are pinned to L1) plus the downstream checks — every block hash is bound to an execution-proof boundary, every `froms` list to the execution proof's `txFromsHash` — so the guest cannot diverge from what was actually executed.
 
 **Statement (RISC-V Guest)**
 
-For each blob `b ∈ [1, K]` in order, perform the per-blob block (steps 1–3); then perform the cross-blob recursion block (steps 4–9) once over the combined range.
+For each blob `b ∈ [1, K]` in order, perform the per-blob block (steps 1–2); then perform the cross-blob recursion block (steps 3–8) once over the combined range.
 
-1. **KZG verification (per blob).** Check that `blobContent_b`, `blobCommitment_b`, and `KzgProof_b` form a valid EIP-4844 blob/commitment/proof triple — the same predicate that `verify_blob_kzg_proof` computes in [consensus-specs `polynomial-commitments.md`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/polynomial-commitments.md) and that the L1 point-evaluation precompile relies on. The Fiat-Shamir challenge `z = compute_challenge(blobContent_b, blobCommitment_b)`, the polynomial evaluation `y = P_b(z)`, and the pairing check are entirely internal to this primitive — neither `z` nor `y` is a witness field or PI. The production guest runs the equivalent in-zkVM primitive (e.g. zesu's KZG verifier); the Python reference calls `ckzg.verify_blob_kzg_proof` directly. Also assert that `kzg_commitment_to_versioned_hash(blobCommitment_b) == blobHash_b` so the on-chain versioned hash binds to the same commitment.
+1. **Compute and verify the blob payload (per blob).** Take the per-blob list `blockRlps_b` of `m_b` canonical full block RLPs as a private witness. For each entry: decode it, apply the §3.2 truncation rule to produce a `TruncatedEthereumBlock` (`blob.py::TruncatedEthereumBlock`: `{timestamp, blockHash, prevRandao, transactions, froms}`) — `blockHash` is computed as `keccak256(headerRlp)` from the decoded header, `transactions` are the signature-stripped tx bytes, and `froms` are the per-tx recovered senders. RLP-encode the resulting truncated-block list in canonical order, LZ4-compress it, and zero-pad the compressed bytes to `BLOB_BYTES_LENGTH = 4096 × 32 = 131 072` bytes. Then check that `(paddedBytes_b, blobCommitment_b, KzgProof_b)` form a valid EIP-4844 blob/commitment/proof triple — the same predicate that `verify_blob_kzg_proof` computes in [consensus-specs `polynomial-commitments.md`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/polynomial-commitments.md) and that the L1 point-evaluation precompile relies on. The Fiat-Shamir challenge `z = compute_challenge(paddedBytes_b, blobCommitment_b)`, the polynomial evaluation `y = P_b(z)`, and the pairing check are entirely internal to this primitive — neither `z` nor `y` is a witness field or PI. The production guest runs the equivalent in-zkVM primitive; the Python reference calls `ckzg.verify_blob_kzg_proof` directly. Also assert `kzg_commitment_to_versioned_hash(blobCommitment_b) == blobHash_b` and `m_b == blockRange_b.endBlockNumber - blockRange_b.startBlockNumber + 1`.
 
-2. **Verify compression (per blob).** Take the per-blob list `blockRlps_b` of `m_b` canonical full block RLPs as a private witness. For each entry: decode it, apply the §3.2 truncation rule to produce a `TruncatedEthereumBlock` (`blob.py::TruncatedEthereumBlock`: `{timestamp, blockHash, prevRandao, transactions, froms}`) — `blockHash` is computed as `keccak256(headerRlp)` from the decoded header, `transactions` are the signature-stripped tx bytes, and `froms` are the per-tx recovered senders. RLP-encode the resulting truncated-block list in canonical order, LZ4-compress it, and assert the result equals `blobContent_b` byte-for-byte. The statement is **compression of the truncated RLP**, not decompression: the full block RLPs are the input, the truncated form is an internal intermediate, compression equality anchors them to the KZG-bound blob. Also assert `m_b == blockRange_b.endBlockNumber - blockRange_b.startBlockNumber + 1`.
+   This single check subsumes a separate byte-equality assertion: the KZG verifier accepts iff `paddedBytes_b` matches the bytes the sequencer committed to on L1, so any drift between the guest-computed compressed payload and the sequencer's blob causes KZG rejection. The intermediate truncated blocks are forwarded to downstream steps as in-guest values; the compressed blob bytes are not exposed beyond this step.
 
-3. **Chain the shnarf (per blob).** Recompute:
+2. **Chain the shnarf (per blob).** Recompute:
    ```
    shnarf_b = Hash(shnarf_{b-1}, lastBlockHash_b, blobHash_b)
    ```
-   where `shnarf_0 = parentShnarf` (public input) and `lastBlockHash_b` is the `blockHash` field of the last `TruncatedEthereumBlock` of blob `b` (from step 2). After all K blobs, assert `shnarf_K == endShnarf`.
+   where `shnarf_0 = parentShnarf` (public input) and `lastBlockHash_b` is the `blockHash` field of the last `TruncatedEthereumBlock` of blob `b` (from step 1). After all K blobs, assert `shnarf_K == endShnarf`.
 
-4. **Verify sender addresses.** For each execution proof `Eᵢ`, assert:
+3. **Verify sender addresses.** For each execution proof `Eᵢ`, assert:
    ```
    keccak256(froms_e) == PI_Eᵢ.txFromsHash
    ```
-   Then assert that `froms_1 ‖ … ‖ froms_N` equals the concatenation of `froms` across all truncated blocks (step 2 input), in canonical block-then-transaction order.
+   Then assert that `froms_1 ‖ … ‖ froms_N` equals the concatenation of `froms` across all truncated blocks (step 1 input), in canonical block-then-transaction order.
 
-5. **Verify the execution proofs.** Recursively verify each `Eᵢ` against `PI_Eᵢ`.
+4. **Verify the execution proofs.** Recursively verify each `Eᵢ` against `PI_Eᵢ`.
 
-6. **Bind blob blocks to the execution-proof chain.** Two checks together pin every block in the blob — boundary *and* intermediate — to the chain that the execution proofs verified.
+5. **Bind blob blocks to the execution-proof chain.** Two checks together pin every block in the blob — boundary *and* intermediate — to the chain that the execution proofs verified.
 
     a. **Boundary alignment.** For every execution proof `Eᵢ`, its `endBlockHash` (PI) must equal the `blockHash` of the corresponding entry in the per-blob truncated-block list at index `Eᵢ.endBlockNumber − firstBlockNumber`. This pins the *last* block of each execution proof.
 
@@ -198,13 +198,13 @@ For each blob `b ∈ [1, K]` in order, perform the per-blob block (steps 1–3);
        blockHash[last]           == PI_Eₙ.endBlockHash             // already enforced by (a)
        ```
 
-       Without (b), a malicious prover could swap a non-boundary block's header (e.g., timestamp or `prevRandao`) for a different value as long as its successor's `parent_hash` still pointed at the *original* hash, leaving the new block dangling outside the proven chain. The `from`-list cross-check (step 4) catches transaction substitutions but not header-only changes, so (b) is the load-bearing constraint for intermediate blocks.
+       Without (b), a malicious prover could swap a non-boundary block's header (e.g., timestamp or `prevRandao`) for a different value as long as its successor's `parent_hash` still pointed at the *original* hash, leaving the new block dangling outside the proven chain. The `from`-list cross-check (step 3) catches transaction substitutions but not header-only changes, so (b) is the load-bearing constraint for intermediate blocks.
 
-    Adjacent execution proofs already chain `endBlockHash → parentBlockHash` via step 8 below, so the head-anchor in (b) only needs to look at `PI_E₁.parentBlockHash`.
+    Adjacent execution proofs already chain `endBlockHash → parentBlockHash` via step 7 below, so the head-anchor in (b) only needs to look at `PI_E₁.parentBlockHash`.
 
-7. **Build the L2→L1 Merkle trees.** For each `e ∈ [1, N]`, receive the message hash list as a private witness and assert `keccak256(L2L1MsgList_e) == PI_E_e.L2L1MessagesHash`. Concatenate all N lists in order. Partition the combined list into consecutive chunks of `2^D` leaves (where D is the fixed protocol-level tree depth, currently 5). Pad the final chunk with zero-value (0x00…00) leaves to fill it. Each leaf is a 32-byte message hash; internal nodes are `keccak256(left ‖ right)`. Compute the root of each full tree and collect them into an ordered array `[root_1, …, root_T]`. Output `L2L1BridgeTransactionTree = keccak256(root_1 ‖ … ‖ root_T)` as a commitment to this ordered root list. The tree depth D is a protocol constant and is not included in the public output.
+6. **Build the L2→L1 Merkle trees.** For each `e ∈ [1, N]`, receive the message hash list as a private witness and assert `keccak256(L2L1MsgList_e) == PI_E_e.L2L1MessagesHash`. Concatenate all N lists in order. Partition the combined list into consecutive chunks of `2^D` leaves (where D is the fixed protocol-level tree depth, currently 5). Pad the final chunk with zero-value (0x00…00) leaves to fill it. Each leaf is a 32-byte message hash; internal nodes are `keccak256(left ‖ right)`. Compute the root of each full tree and collect them into an ordered array `[root_1, …, root_T]`. Output `L2L1BridgeTransactionTree = keccak256(root_1 ‖ … ‖ root_T)` as a commitment to this ordered root list. The tree depth D is a protocol constant and is not included in the public output.
 
-8. **Chain the execution proofs.** For each consecutive pair `(Eᵢ, Eᵢ₊₁)` assert:
+7. **Chain the execution proofs.** For each consecutive pair `(Eᵢ, Eᵢ₊₁)` assert:
    ```
    assert_eq!(PI_Eᵢ.endBlockHash,                       PI_Eᵢ₊₁.parentBlockHash)
    assert_eq!(PI_Eᵢ.endL1L2BridgeRollingHash,                  PI_Eᵢ₊₁.parentL1L2BridgeRollingHash)
@@ -214,7 +214,7 @@ For each blob `b ∈ [1, K]` in order, perform the per-blob block (steps 1–3);
    ```
    Continuity *between* blobs is implicit — the same `assert_eq!` block applies at the blob boundary because the execution proofs already tile across it.
 
-9. **Collect forced-transaction outputs and emit PI.** For each `e ∈ [1, N]`, receive `addrs_e` as a private witness and assert `keccak256(addrs_e) == PI_E_e.filteredAddressesHash`. Concatenate all N lists in order and output `filteredAddressesHash = keccak256(addrs_1 ‖ … ‖ addrs_N)`. Take `parentFtxRollingHash` from `PI_E₁` and `endFtxRollingHash` / `lastProcessedFtxNumber` / `endBlockTimestamp` from `PI_Eₙ`. Output the 14-field public-input tuple covering the entire `K`-blob, `N`-execution range.
+8. **Collect forced-transaction outputs and emit PI.** For each `e ∈ [1, N]`, receive `addrs_e` as a private witness and assert `keccak256(addrs_e) == PI_E_e.filteredAddressesHash`. Concatenate all N lists in order and output `filteredAddressesHash = keccak256(addrs_1 ‖ … ‖ addrs_N)`. Take `parentFtxRollingHash` from `PI_E₁` and `endFtxRollingHash` / `lastProcessedFtxNumber` / `endBlockTimestamp` from `PI_Eₙ`. Output the 14-field public-input tuple covering the entire `K`-blob, `N`-execution range.
 
 ### 2.3 Aggregation Proof
 
@@ -312,7 +312,7 @@ The DA blob must contain the exact inputs required to re-execute the L2 blocks f
 - Intermediate state roots and receipt roots — these are deterministic outputs of execution, not inputs to it. Note: the current shnarf formula includes `newStateRootHash` as an explicit input; in the new design (§3.1) it is replaced by `lastBlockHash`, which is an execution input rather than an output, so no state root ever appears on-chain.
 - ChainID
 
-**Encoding and compression:** The remaining payload is compressed with a standard algorithm (LZ4 or zstd) and packed into the 4096 × 32-byte EIP-4844 blob field. Stripping the above outputs and using an unconstrained compressor significantly increases the effective throughput per blob compared to the current LZSS-based approach.
+**Encoding and compression:** The remaining payload is compressed with a standard algorithm (LZ4 today; the framing is open to zstd in a future iteration) and zero-padded to fill the 4096 × 32-byte (`BLOB_BYTES_LENGTH = 131 072`) EIP-4844 blob field. The KZG commitment is taken over the full padded payload, so the sequencer and the blob-proof guest must agree byte-for-byte on the trailing zero bytes — see §2.2 step 1. Stripping the above outputs and using an unconstrained compressor significantly increases the effective throughput per blob compared to the current LZSS-based approach.
 
 ### 3.3 Prover I/O — On-Wire Format
 
@@ -460,7 +460,7 @@ After the loop the guest asserts `rollingHash == endFtxRollingHash` and outputs 
 
 ### 6.6 Propagation Through the Proof Tree
 
-- **Blob Proof:** asserts `PI_Eᵢ.endFtxRollingHash == PI_Eᵢ₊₁.parentFtxRollingHash` across consecutive execution proofs (§2.2 step 9); collects and concatenates filtered address lists into a single `filteredAddressesHash` (§2.2 step 10).
+- **Blob Proof:** asserts `PI_Eᵢ.endFtxRollingHash == PI_Eᵢ₊₁.parentFtxRollingHash` across consecutive execution proofs (§2.2 step 7); collects and concatenates filtered address lists into a single `filteredAddressesHash` (§2.2 step 8).
 - **Aggregation Proof:** adds `assert_eq!(PI_Bᵢ.endFtxRollingHash, PI_Bᵢ₊₁.parentFtxRollingHash)` to the continuity block (§2.3 step 2); merges filtered address lists across all `M` blob proofs by concatenation and rehashing (§2.3 step 4).
 - **Final public inputs:** exposes `parentFtxRollingHash`, `endFtxRollingHash`, `lastProcessedFtxNumber`, `filteredAddressesHash` as fields 8–11 (§2.4).
 
