@@ -49,7 +49,7 @@ type scenario struct {
 func scenarios() []scenario {
 	return []scenario{
 		{
-			name: "SingleColumn_FirstRowZero",
+			name: "SingleColumn_FirstPositionZero",
 			build: func() (*wiop.System, func(*wiop.Runtime), func(*wiop.Runtime)) {
 				sys := wiop.NewSystemf("lv-p0")
 				r0 := sys.NewRound()
@@ -62,7 +62,7 @@ func scenarios() []scenario {
 			},
 		},
 		{
-			name: "SingleColumn_LastRowZero",
+			name: "SingleColumn_LastPositionZero",
 			build: func() (*wiop.System, func(*wiop.Runtime), func(*wiop.Runtime)) {
 				sys := wiop.NewSystemf("lv-pNeg1")
 				r0 := sys.NewRound()
@@ -75,7 +75,7 @@ func scenarios() []scenario {
 			},
 		},
 		{
-			name: "ShiftedColumn_SecondRowZero",
+			name: "ShiftedColumn_SecondPositionZero",
 			build: func() (*wiop.System, func(*wiop.Runtime), func(*wiop.Runtime)) {
 				sys := wiop.NewSystemf("lv-shift")
 				r0 := sys.NewRound()
@@ -90,7 +90,7 @@ func scenarios() []scenario {
 			},
 		},
 		{
-			name: "TwoColumns_EqualAtFirstRow",
+			name: "TwoColumns_EqualAtFirstPosition",
 			build: func() (*wiop.System, func(*wiop.Runtime), func(*wiop.Runtime)) {
 				sys := wiop.NewSystemf("lv-pair")
 				r0 := sys.NewRound()
@@ -234,7 +234,7 @@ func TestCompile_SharesLagrangeColumnsByAnchor(t *testing.T) {
 	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
 	a := mod.NewColumn(sys.Context.Childf("a"), wiop.VisibilityOracle, r0)
 	b := mod.NewColumn(sys.Context.Childf("b"), wiop.VisibilityOracle, r0)
-	// Two distinct scalar vanishings, both anchored at row 0.
+	// Two distinct scalar vanishings, both anchored at position 0.
 	mod.NewLocalConstraint(sys.Context.Childf("lc-a"), a.View(), 0)
 	mod.NewLocalConstraint(sys.Context.Childf("lc-b"), b.View(), 0)
 
