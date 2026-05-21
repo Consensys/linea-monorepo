@@ -221,7 +221,7 @@ verify-elf: $(BIN)
 	@echo "All values match\n"
 
 # Run all blake test vectors in `rust/src/blake/blake15.all` (blake_with_in_bytes.rs and main.go are compiled just once)
-blake-all: install-zkc
+blake-30-tests: install-zkc
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=blake/blake_with_in_bytes.rs
 	@echo "building blake_elf2json..."; \
 	go build -o $(MAKEFILE_DIR)rust/target/blake_elf2json $(GO_MAIN) || exit $$?; \
@@ -239,7 +239,7 @@ blake-all: install-zkc
 			echo "FAIL  case $$i: $$result_line" >&2; \
 			fail=$$((fail + 1)); \
 		fi; \
-	done < $(MAKEFILE_DIR)rust/src/blake/blake15.all; \
+	done < $(MAKEFILE_DIR)rust/src/blake/blake30.all; \
 	echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
 	if [ "$$fail" -ne 0 ]; then echo "error: $$fail blake vector(s) failed" >&2; exit 1; fi
 
