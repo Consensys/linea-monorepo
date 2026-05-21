@@ -1,3 +1,8 @@
+## [1.1.1-mrc1] - 2026-05-21
+
+### ⚙️ Miscellaneous Tasks
+
+- *(linea-besu)* For manual release testing
 ## [1.1.0] - 2026-05-20
 ### for testing
 ### 🐛 Bug Fixes
