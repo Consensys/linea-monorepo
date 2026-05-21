@@ -9,6 +9,10 @@
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
 
+# Paths to go main (to turn BIN into JSON), zkc main (to execute/debug the json) and linker script
+GO_MAIN       := $(MAKEFILE_DIR)main.go
+ZKC_MAIN      := $(MAKEFILE_DIR)../../main/riscv/main.zkc
+LINKER_SCRIPT := $(MAKEFILE_DIR)linker_script.ld
 # Support functions to check that mandatory variables are set
 define REQUIRE_TEST
 	@[ -n "$(TEST)" ] || { echo "TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs)"; exit 1; }
@@ -27,6 +31,7 @@ TEST ?=
 BIN_EXT  ?=
 JSON_EXT ?= $(BIN_EXT).json
 
+# If TEST=src_optional_subfolder/your_test(.s|.zig|.rs), the variables below are set as follows:
 # src_optional_subfolder/your_test
 BASENAME     := $(basename $(TEST))
 
@@ -42,22 +47,16 @@ NOTSUBDIR    := $(notdir $(TEST))
 # (.s|.zig|.rs)
 EXT          := $(suffix $(TEST))
 
-# Paths below are determined by the extension
+# Paths below are determined by TEST and the extension
 SRC  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm,$(if $(filter .zig,$(EXT)),zig,rust))/src/$(TEST)
 BIN  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME)
 JSON := $(BIN).json
 # Note: in the future the JSON file will be removed and main.zkc will receive directly the ELF file
 
-# Paths to go main (to turn BIN into JSON), zkc main (to execute/debug the json) and linker script
-GO_MAIN       := $(MAKEFILE_DIR)main.go
-ZKC_MAIN      := $(MAKEFILE_DIR)../../main/riscv/main.zkc
-LINKER_SCRIPT := $(MAKEFILE_DIR)linker_script.ld
-
 # Inputs and offsets for the program
 IN_BYTES        ?= ""
 
 # Values to generate the linker script
-
 # 128 MiB (0x00000000 -> 0x07FFFFFF)
 PROGRAM_OFFSET  ?= 0x00000000
 
