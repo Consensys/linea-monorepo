@@ -35,7 +35,7 @@ EXT          := $(suffix $(TEST))
 # Paths below are determined by the extension
 SRC  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm,$(if $(filter .zig,$(EXT)),zig,rust))/src/$(TEST)
 BIN  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME)
-JSON ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME).json
+JSON ?= $(BIN).json
 # Note: in the future the JSON file will be removed and main.zkc will receive directly the ELF file
 
 # Paths to go main (to turn BIN into JSON), zkc main (to execute/debug the json) and linker script
@@ -154,7 +154,7 @@ compile: $(SRC) linker-script
 #
 # Note: we use opt-level=2 to remove unused code.
 
-exec-elf: install-zkc elf-to-json
+exec-elf: elf-to-json
 	zkc exec $(JSON) $(ZKC_MAIN)
 
 # Note: BIN and JSON have a default value but they can be set to arbitrary values
