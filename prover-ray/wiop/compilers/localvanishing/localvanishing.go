@@ -108,7 +108,7 @@ func reduce(
 	v *wiop.Vanishing,
 	cache map[lagrangeKey]*wiop.Column,
 ) {
-	positions := collectColumnPositions(v.Expression, v, ctx)
+	positions := collectColumnPositions(v.Expression)
 	if len(positions) == 0 {
 		panic(fmt.Sprintf(
 			"wiop/compilers/localvanishing: %s: scalar vanishing has no column references; nothing to lift",
@@ -130,7 +130,9 @@ func reduce(
 		cache[key] = lagCol
 	}
 
-	shifted := wiop.EditExpression(v.Expression, func(curr wiop.Expression, newChildren []wiop.Expression) wiop.Expression {
+	shifted := wiop.EditExpression(v.Expression, func(
+		curr wiop.Expression, newChildren []wiop.Expression,
+	) wiop.Expression {
 		if cp, ok := curr.(*wiop.ColumnPosition); ok {
 			return cp.Column.View().Shift(cp.Position - anchor)
 		}
@@ -147,7 +149,7 @@ func reduce(
 // leaf of expr. *Cell and *CoinField leaves are allowed and pass through
 // unchanged into the lifted expression: the global compiler broadcasts them
 // (base or extension) as constants across the coset.
-func collectColumnPositions(expr wiop.Expression, v *wiop.Vanishing, ctx *wiop.ContextFrame) []int {
+func collectColumnPositions(expr wiop.Expression) []int {
 	var positions []int
 	var walk func(e wiop.Expression)
 	walk = func(e wiop.Expression) {

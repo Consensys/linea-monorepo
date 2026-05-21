@@ -180,7 +180,7 @@ func TestCompile_EmitsMultiValuedReplacement(t *testing.T) {
 
 	before := len(mod.Vanishings)
 	localvanishing.Compile(sys)
-	require.Equal(t, before+1, len(mod.Vanishings),
+	require.Len(t, mod.Vanishings, before+1,
 		"Compile must register one lifted multi-valued vanishing per scalar one")
 	lifted := mod.Vanishings[before]
 	assert.True(t, lifted.Expression.IsMultiValued(),
@@ -199,7 +199,7 @@ func TestCompile_SkipsMultiValuedVanishings(t *testing.T) {
 
 	before := len(mod.Vanishings)
 	localvanishing.Compile(sys)
-	assert.Equal(t, before, len(mod.Vanishings),
+	assert.Len(t, mod.Vanishings, before,
 		"Compile must not register new vanishings when only multi-valued ones exist")
 	assert.False(t, v.IsReduced(),
 		"Compile must leave multi-valued vanishings unreduced")
@@ -210,7 +210,7 @@ func TestCompile_NoWork_IsNoOp(t *testing.T) {
 	sys.NewRound()
 	before := len(sys.Rounds)
 	localvanishing.Compile(sys)
-	assert.Equal(t, before, len(sys.Rounds),
+	assert.Len(t, sys.Rounds, before,
 		"Compile must not touch sys.Rounds when there is nothing to reduce")
 }
 
@@ -224,8 +224,9 @@ func TestCompile_IsIdempotent(t *testing.T) {
 	localvanishing.Compile(sys)
 	afterFirst := len(mod.Vanishings)
 	localvanishing.Compile(sys)
-	assert.Equal(t, afterFirst, len(mod.Vanishings),
-		"second Compile must not register more vanishings; the scalar one is already reduced and the lifted one is multi-valued")
+	assert.Len(t, mod.Vanishings, afterFirst,
+		"second Compile must not register more vanishings; the scalar one is "+
+			"already reduced and the lifted one is multi-valued")
 }
 
 func TestCompile_SharesLagrangeColumnsByAnchor(t *testing.T) {
@@ -240,7 +241,7 @@ func TestCompile_SharesLagrangeColumnsByAnchor(t *testing.T) {
 
 	colsBefore := len(mod.Columns)
 	localvanishing.Compile(sys)
-	assert.Equal(t, colsBefore+1, len(mod.Columns),
+	assert.Len(t, mod.Columns, colsBefore+1,
 		"both vanishings share anchor 0, so only one Lagrange column should be created")
 }
 
@@ -255,8 +256,7 @@ func elementFromUint64(v uint64) field.Element {
 // the isBase tag set to false so downstream arithmetic stays in the
 // extension path).
 func extOf(v uint64) field.Gen {
-	var ext field.Ext
-	ext = field.Lift(elementFromUint64(v))
+	ext := field.Lift(elementFromUint64(v))
 	return field.ElemFromExt(ext)
 }
 

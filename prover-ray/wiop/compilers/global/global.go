@@ -818,7 +818,8 @@ func evalExprOnCoset(
 	case *wiop.Cell:
 		if e.IsExtension() {
 			panic(fmt.Sprintf(
-				"wiop/compilers: extension-field cell %q reached the base-field coset evaluator; the caller must dispatch on isBaseExpr",
+				"wiop/compilers: extension-field cell %q reached the base-field coset evaluator; "+
+					"the caller must dispatch on isBaseExpr",
 				e.Context.Path(),
 			))
 		}
