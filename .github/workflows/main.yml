@@ -18,6 +18,8 @@ jobs:
   
   lint-latest-commit-messages:
     uses: ./.github/workflows/lint-commit-messages.yml
+    permissions:
+      pull-requests: read
     secrets: inherit
 
   component-changelog-upload:
