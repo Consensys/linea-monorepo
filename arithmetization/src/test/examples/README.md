@@ -119,10 +119,8 @@ riscv-test <name>.<ext> IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x08800008
 # Compile only
 riscv-test compile <name>.<ext>
 # Convert an already compiled ELF to JSON
-make elf-to-json BIN_EXT=asm/bin/test
 riscv-test elf-to-json BIN_EXT=asm/bin/test
 # Execute an already compiled ELF
-make exec-elf BIN_EXT=asm/bin/test
 riscv-test exec-elf BIN_EXT=asm/bin/test
 # Clean build artifacts for a specific test
 riscv-test clean <name>.<ext>
@@ -155,8 +153,9 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `make TEST=foo.<ext>`            | Compile and execute (default)                                                          |
 | `make debug TEST=foo.<ext>`      | Compile and debug                                                                      |
 | `make compile TEST=foo.<ext>`    | Compile only                                                                           |
-| `make elf-to-json BIN_EXT=foo`   | Convert an already compiled ELF to JSON (`JSON_EXT=foo.json` by default)               |
 | `make exec-elf BIN_EXT=foo`      | Convert and execute an already compiled ELF (`JSON_EXT=foo.json` by default)           |
+| `make elf-to-json BIN_EXT=foo`   | Convert an already compiled ELF to JSON (`JSON_EXT=foo.json` by default)               |
+| `make install-zkc`               | Invoke `../../../Makefile install-zkc` to install zkc if not already installed         |
 | `make zkc-exec TEST=foo.<ext>`   | Execute without recompiling                                                            |
 | `make zkc-debug TEST=foo.<ext>`  | Debug without recompiling                                                              |
 | `make clean TEST=foo.<ext>`      | Remove binary and JSON for this test                                                   |
@@ -169,21 +168,22 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 
 ## Options
 
-| Variable         | Default                                                                                 | Description                                                                   |
-|------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
-| `IN_BYTES`       | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution           |
-| `BIN_EXT`        | `""`                                                                                    | Already compiled ELF used by `elf-to-json` and `exec-elf`                    |
-| `JSON_EXT`       | `$(BIN_EXT).json`                                                                       | JSON output path used by `elf-to-json` and `exec-elf`                         |
-| `PROGRAM_OFFSET` | `0x00000000`                                                                            | Memory address where the program is loaded (up to 128 MiB)                    |
-| `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                    |
-| `SP`             | `0x08800000`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)       |
-| `VERIFY_ELF`     | `false`                                                                                 | Set to `true` to verify offsets, entry point and sp match the ELF ones        |
-| `ACT4_BUILD_MODE`| `host`                                                                                  | Build ACT4 ELFs with `host` or `docker`                                       |
-| `ACT4_REF`       | `9798a554ce4139f472c9ccd3a18c9061d0f7024d`                                              | `riscv-arch-test` tag or commit used to build ACT4 ELFs                       |
-| `ACT4_REPO`      | `../riscv-arch-test`                                                                    | Local `riscv-arch-test` checkout used for ACT4 builds                         |
-| `ACT4_RISCV_DIR` | `~/riscv`                                                                               | Directory where `install-sail` installs `sail_riscv_sim`                      |
-| `ACT4_DEBUG`     | `true`                                                                                  | Set to `false` to skip ACT4 debug artifacts                                   |
-| `ACT4_FAST`      | `false`                                                                                 | Set to `true` to skip ACT4 objdump generation for faster builds               |
+| Variable         | Default                                                                                 | Description                                                                     |
+|------------------|-----------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| `TEST`           | `""`                                                                                    | Source file name without extension, relative to the corresponding `src/` folder |
+| `BIN_EXT`        | `""`                                                                                    | Already compiled ELF used by `elf-to-json` and `exec-elf`                       |
+| `JSON_EXT`       | `$(BIN_EXT).json`                                                                       | JSON output path used by `elf-to-json` and `exec-elf`                           |
+| `IN_BYTES`       | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution             |
+| `PROGRAM_OFFSET` | `0x00000000`                                                                            | Memory address where the program is loaded (up to 128 MiB)                      |
+| `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                      |
+| `SP`             | `0x08800000`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)         |
+| `VERIFY_ELF`     | `false`                                                                                 | Set to `true` to verify offsets, entry point and sp match the ELF ones          |
+| `ACT4_BUILD_MODE`| `host`                                                                                  | Build ACT4 ELFs with `host` or `docker`                                         |
+| `ACT4_REF`       | `9798a554ce4139f472c9ccd3a18c9061d0f7024d`                                              | `riscv-arch-test` tag or commit used to build ACT4 ELFs                         |
+| `ACT4_REPO`      | `../riscv-arch-test`                                                                    | Local `riscv-arch-test` checkout used for ACT4 builds                           |
+| `ACT4_RISCV_DIR` | `~/riscv`                                                                               | Directory where `install-sail` installs `sail_riscv_sim`                        |
+| `ACT4_FAST`      | `false`                                                                                 | Set to `true` to skip ACT4 objdump generation for faster builds                 |
+| `ACT4_DEBUG`     | `true`                                                                                  | Set to `false` to skip ACT4 debug artifacts                                     |
 
 ## Target ISA
 

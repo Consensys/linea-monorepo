@@ -9,13 +9,6 @@
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
 
-# Assembly, Zig, or Rust test file to execute with exec target (TEST=src_optional_subfolder/your_test(.s|.zig|.rs)
-TEST ?=
-
-# Already compiled binary to execute with exec-elf target (BIN_EXT=path/to/your_bin)
-BIN_EXT  ?=
-JSON_EXT ?= $(BIN_EXT).json
-
 # Support functions to check that mandatory variables are set
 define REQUIRE_TEST
 	@[ -n "$(TEST)" ] || { echo "TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs)"; exit 1; }
@@ -27,6 +20,14 @@ define REQUIRE_BIN_EXT
 	@[ -f $(BIN_EXT) ] || { echo "BIN_EXT file not found: $(BIN_EXT)"; exit 1; }
 endef
 
+# Assembly, Zig, or Rust test file to execute with exec target (TEST=src_optional_subfolder/your_test(.s|.zig|.rs)
+TEST ?=
+
+# Already compiled binary to execute with exec-elf target (BIN_EXT=path/to/your_bin)
+BIN_EXT  ?=
+JSON_EXT ?= $(BIN_EXT).json
+
+# src_optional_subfolder/your_test
 BASENAME     := $(basename $(TEST))
 
 # your_test
