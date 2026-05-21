@@ -87,6 +87,6 @@ jobs:
 
           if [ "${failed}" -gt 0 ]; then
             echo "✗ ${failed} commit message(s) failed validation." >&2
-            exit 0 # TODO: This will be set to 1
+            exit 1
           fi
           echo "✓ All commit messages OK."
