@@ -220,7 +220,7 @@ verify-elf: $(BIN)
 	@echo "  SP:              $(SP) (expected) = $(SP_FROM_ELF) (from ELF)"
 	@echo "All values match\n"
 
-# Run all blake test vectors in `rust/src/blake/blake15.all` (blake_with_in_bytes.rs and main.go are compiled just once)
+# Run 30 blake test vectors in `rust/src/blake/blake15.all` (blake_with_in_bytes.rs and main.go are compiled just once)
 blake-30-tests: install-zkc
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=blake/blake_with_in_bytes.rs
 	@echo "building blake_elf2json..."; \
