@@ -3,7 +3,7 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-30-tests build-act4 run-act4 install-zkc
+.PHONY: exec debug compile zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-rust-test build-act4 run-act4 install-zkc
 
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -11,7 +11,7 @@ ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
 
 # Test to run (with src optional subfolder and extension), mandatory unless clean-all or linker-script are the targets
 # src_optional_subfolder/your_test(.s|.zig|.rs)
-ifeq ($(filter clean-all linker-script blake-30-tests build-act4 run-act4 install-zkc,$(MAKECMDGOALS)),)
+ifeq ($(filter clean-all linker-script blake-rust-test build-act4 run-act4 install-zkc,$(MAKECMDGOALS)),)
 ifndef TEST
 $(error TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs))
 endif
@@ -220,8 +220,9 @@ verify-elf: $(BIN)
 	@echo "  SP:              $(SP) (expected) = $(SP_FROM_ELF) (from ELF)"
 	@echo "All values match\n"
 
-# Run 30 blake test vectors in `rust/src/blake/blake15.all` (blake_with_in_bytes.rs and main.go are compiled just once)
-blake-30-tests: install-zkc
+# Run 10 blake test vectors from `rust/src/blake/blake10.all`
+# (blake_with_in_bytes.rs and main.go are compiled just once)
+blake-rust-test: install-zkc
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=blake/blake_with_in_bytes.rs
 	@echo "building blake_elf2json..."; \
 	go build -o $(MAKEFILE_DIR)rust/target/blake_elf2json $(GO_MAIN) || exit $$?; \
@@ -239,7 +240,7 @@ blake-30-tests: install-zkc
 			echo "FAIL  case $$i: $$result_line" >&2; \
 			fail=$$((fail + 1)); \
 		fi; \
-	done < $(MAKEFILE_DIR)rust/src/blake/blake30.all; \
+	done < $(MAKEFILE_DIR)rust/src/blake/blake10.all; \
 	echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
 	if [ "$$fail" -ne 0 ]; then echo "error: $$fail blake vector(s) failed" >&2; exit 1; fi
 

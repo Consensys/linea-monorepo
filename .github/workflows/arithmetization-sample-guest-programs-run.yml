@@ -54,6 +54,6 @@ jobs:
         timeout-minutes: 6
 
       - name: Run Blake rust against test vectors with zkc interpreter
-        run: make blake-30-tests
+        run: make blake-rust-test
         working-directory: arithmetization/src/test/examples
         timeout-minutes: 30
