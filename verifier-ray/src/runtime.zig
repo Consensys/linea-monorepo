@@ -58,7 +58,7 @@ pub const RoundMessage = struct {
 pub const Runtime = struct {
     transcript: fiat_shamir.Transcript,
     current_round: usize,
-    round_count: usize,
+    total_rounds: usize,
 
     pub fn init() Runtime {
         return initWithRoundCount(0);
@@ -68,7 +68,7 @@ pub const Runtime = struct {
         return .{
             .transcript = fiat_shamir.Transcript.init(),
             .current_round = 0,
-            .round_count = round_count,
+            .total_rounds = round_count,
         };
     }
 
@@ -84,11 +84,11 @@ pub const Runtime = struct {
         message: RoundMessage,
         out_coins: []ext.Ext,
     ) Error![]const ext.Ext {
-        if (self.round_count == 0) return Error.NoRounds;
-        if (self.current_round != expected_round or expected_round >= self.round_count) {
+        if (self.total_rounds == 0) return Error.NoRounds;
+        if (self.current_round != expected_round or expected_round >= self.total_rounds) {
             return Error.UnexpectedRound;
         }
-        if (self.current_round + 1 >= self.round_count) return Error.LastRound;
+        if (self.current_round + 1 >= self.total_rounds) return Error.LastRound;
         if (message.next_round_coin_count > out_coins.len) return Error.OutputTooSmall;
 
         for (message.columns) |column| {
