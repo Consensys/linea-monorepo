@@ -58,4 +58,4 @@ jobs:
         working-directory: arithmetization/src/test/examples
         env:
           GO_CORSET_REF_FOR_ZKC: ${{ inputs.go-corset-ref || 'main' }}
-          timeout-minutes: 30
+        timeout-minutes: 30
