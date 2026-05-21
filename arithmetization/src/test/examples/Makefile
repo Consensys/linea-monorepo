@@ -11,7 +11,7 @@ ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
 
 # Test to run (with src optional subfolder and extension), mandatory unless clean-all or linker-script are the targets
 # src_optional_subfolder/your_test(.s|.zig|.rs)
-ifeq ($(filter clean-all linker-script blake-rust-exec build-act4 run-act4 install-zkc,$(MAKECMDGOALS)),)
+ifeq ($(filter clean-all linker-script blake-rust-exec build-act4 run-act4 install-zkc exec-elf elf-to-json,$(MAKECMDGOALS)),)
 ifndef TEST
 $(error TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs))
 endif
@@ -34,8 +34,8 @@ EXT          := $(suffix $(TEST))
 
 # Paths below are determined by the extension
 SRC  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm,$(if $(filter .zig,$(EXT)),zig,rust))/src/$(TEST)
-BIN  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME)
-JSON := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME).json
+BIN  ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME)
+JSON ?= $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EXT)),zig/zig-out/bin/,rust/target/riscv64im-unknown-none-elf/release/))$(NAME).json
 # Note: in the future the JSON file will be removed and main.zkc will receive directly the ELF file
 
 # Paths to go main (to turn BIN into JSON), zkc main (to execute/debug the json) and linker script
@@ -146,6 +146,14 @@ compile: $(SRC) linker-script
 # if these extensions were explicitly exluded from the target.
 #
 # Note: we use opt-level=2 to remove unused code.
+
+exec-elf: elf-to-json zkc-exec 
+
+# Note: BIN and JSON have a default value but they can be set to arbitrary values
+elf-to-json: $(BIN)
+# Generate JSON from ELF
+	@echo "\nGenerating $(JSON) from $(BIN)"
+	@go run $(GO_MAIN) $(BIN) "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
 
 install-zkc:
 	$(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc

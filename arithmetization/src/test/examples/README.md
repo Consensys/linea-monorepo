@@ -89,7 +89,7 @@ Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 riscv-test() {
     local makefile="path/to/linea-monorepo/arithmetization/src/test/examples/Makefile"
     case "$1" in
-        clean-all|linker-script|blake-rust-exec|build-act4|run-act4|install-zkc)
+        clean-all|linker-script|blake-rust-exec|build-act4|run-act4|install-zkc|exec-elf|elf-to-json)
             # targets that do NOT require TEST argument
             make -f "$makefile" "$1" "${@:2}"
             ;;
