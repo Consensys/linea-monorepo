@@ -34,7 +34,7 @@ permissions:
 
 jobs:
   sample-guest-programs-run:
-    runs-on: gha-runner-scale-set-ubuntu-24-amd64-medium
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-large
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -49,10 +49,7 @@ jobs:
         run: make TEST=test.zig IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x08800000
         working-directory: arithmetization/src/test/examples
         env:
-          # Pinned to the last known-good commit before go-corset#1815 (fix: lazy ternary)
-          # introduced broken skip offsets causing an infinite loop in zkc exec.
-          # Update this pin once the regression is fixed upstream.
-          # Override with a custom go-corset repo commit here in the event zkc on main is failing
+          # Pinned to the last known-good commit before go-corset#1815
           GO_CORSET_REF_FOR_ZKC: ${{ inputs.go-corset-ref || '414e7b73' }}
         timeout-minutes: 6
 
@@ -60,6 +57,5 @@ jobs:
         run: make blake-all
         working-directory: arithmetization/src/test/examples
         env:
-          # Same pin as above — both steps must use the same zkc version.
           GO_CORSET_REF_FOR_ZKC: ${{ inputs.go-corset-ref || '414e7b73' }}
         timeout-minutes: 30
