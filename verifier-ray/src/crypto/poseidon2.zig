@@ -94,7 +94,7 @@ pub const MDHasher = struct {
 
     pub fn getState(self: MDHasher) Digest {
         var copy = self;
-        return copy.sumElement();
+        return copy.sumDigest();
     }
 
     pub fn setState(self: *MDHasher, state: Digest) void {
