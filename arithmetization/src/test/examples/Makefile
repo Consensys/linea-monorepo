@@ -5,6 +5,10 @@
 # Declare all targets as phony to prevent conflicts with files of the same name
 .PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-rust-exec build-act4 run-act4 require-test require-src require-bin-ext
 
+######################################################
+# Variables and support functions
+######################################################
+
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
@@ -95,6 +99,10 @@ define ELF_TO_JSON
 	@echo "\nGenerating $(2) from $(1)"
 	@go run $(GO_MAIN) "$(1)" "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > "$(2)"
 endef
+
+######################################################
+# Targets
+######################################################
 
 # Default target (make)
 exec: compile zkc-exec
@@ -346,7 +354,10 @@ run-act4: install-zkc build-act4
 	if [ "$$count" -eq 0 ]; then echo "error: no ACT4 ELFs found in $(ACT4_ELF_DIR)" >&2; exit 1; fi; \
 	if [ "$$fail" -ne 0 ]; then echo "error: $$fail of $$count ACT4 test(s) failed" >&2; exit 1; fi
 
-# Support targets used as prerequisites to validate mandatory command-line variables.
+######################################################
+# Support targets to validate mandatory parameters
+######################################################
+
 require-test:
 	@[ -n "$(TEST)" ] || { echo "TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs)"; exit 1; }
 
