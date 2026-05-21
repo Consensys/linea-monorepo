@@ -166,11 +166,13 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `make build-act4`                | Build ACT4 ELFs with the Linea ACT4 config                                             |
 | `make run-act4`                  | Build and run ACT4 ELFs through zkc and write results/logs under `act4/bin/`           |
 
+`require-test`, `require-src`, and `require-bin-ext` are internal support targets used to validate mandatory command-line variables before running the targets above.
+
 ## Options
 
 | Variable         | Default                                                                                 | Description                                                                     |
 |------------------|-----------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
-| `TEST`           | `""`                                                                                    | Source file name without extension, relative to the corresponding `src/` folder |
+| `TEST`           | `""`                                                                                    | Source file path with extension, relative to the corresponding `src/` folder    |
 | `BIN_EXT`        | `""`                                                                                    | Already compiled ELF used by `elf-to-json` and `exec-elf`                       |
 | `JSON_EXT`       | `$(BIN_EXT).json`                                                                       | JSON output path used by `elf-to-json` and `exec-elf`                           |
 | `IN_BYTES`       | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution             |

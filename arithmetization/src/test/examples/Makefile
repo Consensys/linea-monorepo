@@ -3,7 +3,7 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-rust-exec build-act4 run-act4
+.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-rust-exec build-act4 run-act4 require-test require-src require-bin-ext
 
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -13,17 +13,6 @@ ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
 GO_MAIN       := $(MAKEFILE_DIR)main.go
 ZKC_MAIN      := $(MAKEFILE_DIR)../../main/riscv/main.zkc
 LINKER_SCRIPT := $(MAKEFILE_DIR)linker_script.ld
-# Support functions to check that mandatory variables are set
-define REQUIRE_TEST
-	@[ -n "$(TEST)" ] || { echo "TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs)"; exit 1; }
-	@[ -f $(SRC) ] || { echo "TEST file not found: $(SRC)"; exit 1; }
-endef
-
-define REQUIRE_BIN_EXT
-	@[ -n "$(BIN_EXT)" ] || { echo "BIN_EXT is mandatory. Usage: make BIN_EXT=path/to/your_bin"; exit 1; }
-	@[ -f $(BIN_EXT) ] || { echo "BIN_EXT file not found: $(BIN_EXT)"; exit 1; }
-endef
-
 # Assembly, Zig, or Rust test file to execute with exec target (TEST=src_optional_subfolder/your_test(.s|.zig|.rs)
 TEST ?=
 
@@ -112,8 +101,7 @@ exec: compile zkc-exec
 
 debug: compile zkc-debug
 
-compile: linker-script
-	$(REQUIRE_TEST)
+compile: require-src linker-script
 # Print all variables for debugging purposes
 	@echo "TEST:      $(TEST)"
 	@echo "BASENAME:  $(BASENAME)"
@@ -166,24 +154,20 @@ exec-elf: elf-to-json
 	zkc exec $(JSON_EXT) $(ZKC_MAIN)
 
 # Convert an already compiled external ELF to a JSON input file
-elf-to-json:
-	$(REQUIRE_BIN_EXT)
+elf-to-json: require-bin-ext
 # Generate JSON from ELF
 	$(call ELF_TO_JSON,$(BIN_EXT),$(JSON_EXT))
 
 install-zkc:
 	$(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc
 
-zkc-exec: install-zkc
-	$(REQUIRE_TEST)
+zkc-exec: require-test install-zkc
 	zkc exec $(JSON) $(ZKC_MAIN)
 
-zkc-debug: install-zkc
-	$(REQUIRE_TEST)
+zkc-debug: require-test install-zkc
 	zkc debug $(JSON) $(ZKC_MAIN)
 
-clean:
-	$(REQUIRE_TEST)
+clean: require-test
 	rm -f $(BIN) $(JSON) $(BIN).objdump $(LINKER_SCRIPT)
 
 clean-all:
@@ -234,8 +218,7 @@ linker-script:
 		> $(LINKER_SCRIPT)
 
 # Verify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values
-verify-elf:
-	$(REQUIRE_TEST)
+verify-elf: require-test
 	@echo "\nVerify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values"
 	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET))))" ] || \
 		(echo "ERROR: PROGRAM_OFFSET mismatch: expected $(PROGRAM_OFFSET), got $(PROGRAM_OFFSET_FROM_ELF)" && exit 1)
@@ -362,3 +345,14 @@ run-act4: install-zkc build-act4
 	echo "logs:    $(ACT4_LOGS)/"; \
 	if [ "$$count" -eq 0 ]; then echo "error: no ACT4 ELFs found in $(ACT4_ELF_DIR)" >&2; exit 1; fi; \
 	if [ "$$fail" -ne 0 ]; then echo "error: $$fail of $$count ACT4 test(s) failed" >&2; exit 1; fi
+
+# Support targets used as prerequisites to validate mandatory command-line variables.
+require-test:
+	@[ -n "$(TEST)" ] || { echo "TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs)"; exit 1; }
+
+require-src: require-test
+	@[ -f $(SRC) ] || { echo "TEST file not found: $(SRC)"; exit 1; }
+
+require-bin-ext:
+	@[ -n "$(BIN_EXT)" ] || { echo "BIN_EXT is mandatory. Usage: make BIN_EXT=path/to/your_bin"; exit 1; }
+	@[ -f $(BIN_EXT) ] || { echo "BIN_EXT file not found: $(BIN_EXT)"; exit 1; }
