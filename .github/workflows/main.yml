@@ -18,6 +18,7 @@ jobs:
   
   lint-latest-commit-messages:
     uses: ./.github/workflows/lint-commit-messages.yml
+    secrets: inherit
 
   component-changelog-upload:
     if: github.ref == 'refs/heads/main'
