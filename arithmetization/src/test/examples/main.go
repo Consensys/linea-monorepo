@@ -18,7 +18,6 @@ const (
 	ENTRY_POINT          = "entry_point"
 	RISCV_PROGRAM_LENGTH = "riscV_program_length"
 	IN_BYTES_LENGTH      = "in_bytes_length"
-	WRITE_SECTIONS_FILE  = false // Set to true to addtionally write a file containing the names of the sections of the ELF that are copied into the JSON (which can be seen also via objdump) for debugging purposes
 )
 
 // The purpose of this program is simply to generate a suitable ZkC json input
@@ -68,21 +67,19 @@ func main() {
 	}
 	// extract loadable program segments
 	var program = extractProgramBytes(elfFile.Progs, programOffset)
-	if WRITE_SECTIONS_FILE {
-		sectionsFile, err := os.Create(strings.TrimSuffix(os.Args[1], ".elf") + ".sections")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error creating ELF sections file: %v\n", err)
-			os.Exit(1)
+	sectionsFile, err := os.Create(strings.TrimSuffix(os.Args[1], ".elf") + ".sections")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error creating ELF sections file: %v\n", err)
+		os.Exit(1)
+	}
+	for _, s := range elfFile.Sections {
+		if s.Name != "" && s.Size > 0 && s.Flags&elf.SHF_ALLOC != 0 {
+			fmt.Fprintln(sectionsFile, s.Name)
 		}
-		for _, s := range elfFile.Sections {
-			if s.Name != "" && s.Size > 0 && s.Flags&elf.SHF_ALLOC != 0 {
-				fmt.Fprintln(sectionsFile, s.Name)
-			}
-		}
-		if err := sectionsFile.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "error writing ELF sections file: %v\n", err)
-			os.Exit(1)
-		}
+	}
+	if err := sectionsFile.Close(); err != nil {
+		fmt.Fprintf(os.Stderr, "error writing ELF sections file: %v\n", err)
+		os.Exit(1)
 	}
 	printJson(program, inBytes, programOffset, inputsOffset, entryPoint)
 }
