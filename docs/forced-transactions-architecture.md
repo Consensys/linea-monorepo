@@ -120,8 +120,10 @@ The **Sequencer** is responsible for block production:
   │   - L2_BLOCK_BUFFER                  │
   │   - L2_BLOCK_DURATION_SECONDS        │
   │   - BLOCK_NUMBER_DEADLINE_BUFFER     │
+  │   - MIN_GAS_LIMIT                    │
   │   - MAX_GAS_LIMIT                    │
   │   - MAX_INPUT_LENGTH_LIMIT           │
+  │   - MINIMUM_BASE_GAS_FEE             │
   │   - ADDRESS_FILTER                   │
   │   ────────────────────────────────── │
   │   + submitForcedTransaction          │
@@ -188,9 +190,27 @@ The user-facing contract that validates and submits forced transactions.
 | `L2_BLOCK_BUFFER` | Buffer added to deadline calculation (in L2 blocks) |
 | `L2_BLOCK_DURATION_SECONDS` | L2 block time in seconds, used to convert elapsed time to L2 blocks in deadline calculation |
 | `BLOCK_NUMBER_DEADLINE_BUFFER` | Buffer added when deadline would not be strictly increasing (ensures monotonic deadlines) |
+| `MIN_GAS_LIMIT` | Minimum allowed gas limit per forced tx. Must cover worst-case Osaka intrinsic gas (see below). |
 | `MAX_GAS_LIMIT` | Maximum allowed gas limit per forced tx |
-| `MAX_INPUT_LENGTH_LIMIT` | Maximum calldata length |
+| `MAX_INPUT_LENGTH_LIMIT` | Maximum calldata / initcode length in bytes |
+| `MINIMUM_BASE_GAS_FEE` | Minimum `maxFeePerGas` accepted (base fee floor). Zero disables fee checks for gasless networks. When non-zero, `maxFeePerGas` must be ≥ this value and both fee fields must be > 0. |
 | `ADDRESS_FILTER` | Contract for address filtering |
+
+#### Intrinsic gas derivation for MIN_GAS_LIMIT
+
+`MIN_GAS_LIMIT` must cover the worst-case **Osaka** intrinsic gas for any transaction permitted by the other limits. With an empty access list and `MAX_INPUT_LENGTH_LIMIT = 1,000 bytes` the ceiling is:
+
+| Component | Formula | Value |
+|-----------|---------|-------|
+| Base transaction cost | fixed | 21,000 |
+| Non-zero calldata bytes (max cost) | 16 × 1,000 | 16,000 |
+| Contract creation extra (`to = address(0)`) | fixed | 32,000 |
+| Initcode word charge | 2 × ⌈ 1,000 / 32 ⌉ = 2 × 32 | 64 |
+| **Worst-case total** | | **69,064** |
+
+The deployment constant is **70,000** — a conservative over-estimate of 69,064. If `MAX_INPUT_LENGTH_LIMIT` or the per-byte gas costs change, update `MIN_GAS_LIMIT` and the prover’s RLP-byte-size configuration together.
+
+> **Note on `MINIMUM_BASE_GAS_FEE`:** Setting this to zero (gasless networks) skips the zero-fee and base-fee-floor checks entirely. The `maxPriorityFeePerGas <= maxFeePerGas` ordering check always applies regardless of `MINIMUM_BASE_GAS_FEE`.
 
 ### 2. LineaRollup
 
@@ -267,12 +287,15 @@ User constructs:
 
 PHASE 3: VALIDATION (in Gateway)
 ─────────────────────────────────────────────────────────────────────────────
-  ┌─ Gas limit checks (21000 <= gasLimit <= MAX_GAS_LIMIT)
-  ├─ Calldata length check (input.length <= MAX_INPUT_LENGTH_LIMIT)
-  ├─ Fee parameter checks (maxFeePerGas, maxPriorityFeePerGas > 0)
-  ├─ Fee ordering check (maxPriorityFeePerGas <= maxFeePerGas)
-  ├─ Signature parity check (yParity <= 1)
-  ├─ One-tx-per-block check (block.number > lastSubmissionBlock)
+  ┌─ Gas limit lower bound: gasLimit >= MIN_GAS_LIMIT
+  ├─ Gas limit upper bound: gasLimit <= MAX_GAS_LIMIT
+  ├─ Calldata length check: input.length <= MAX_INPUT_LENGTH_LIMIT
+  ├─ Fee checks (only when MINIMUM_BASE_GAS_FEE != 0):
+  │     ├─ maxFeePerGas > 0 && maxPriorityFeePerGas > 0
+  │     └─ maxFeePerGas >= MINIMUM_BASE_GAS_FEE
+  ├─ Fee ordering check: maxPriorityFeePerGas <= maxFeePerGas (always)
+  ├─ Signature parity check: yParity <= 1
+  ├─ One-tx-per-block check: block.number > lastSubmissionBlock
   ├─ msg.value == forcedTransactionFeeInWei
   ├─ LastFinalizedState hash matches currentFinalizedState
   ├─ Signature recovery (ECDSA.recover) succeeds
@@ -695,11 +718,11 @@ The system maintains a list of filtered addresses that cannot participate in for
 
 | Check | Error | Purpose |
 |-------|-------|---------|
-| `gasLimit < 21000` | `GasLimitTooLow` | Minimum viable gas |
+| `gasLimit < MIN_GAS_LIMIT` | `GasLimitTooLow` | Must cover worst-case intrinsic gas |
 | `gasLimit > MAX_GAS_LIMIT` | `MaxGasLimitExceeded` | Prevent DoS |
 | `input.length > MAX_INPUT_LENGTH_LIMIT` | `CalldataInputLengthLimitExceeded` | Prevent DoS |
-| `maxPriorityFeePerGas == 0` | `GasFeeParametersContainZero` | Valid EIP-1559 |
-| `maxFeePerGas == 0` | `GasFeeParametersContainZero` | Valid EIP-1559 |
+| `maxPriorityFeePerGas == 0 \| maxFeePerGas == 0` _(when MINIMUM_BASE_GAS_FEE != 0)_ | `GasFeeParametersContainZero` | Valid EIP-1559 |
+| `maxFeePerGas < MINIMUM_BASE_GAS_FEE` _(when MINIMUM_BASE_GAS_FEE != 0)_ | `MaxFeePerGasLowerThanMinimumBaseGasFee` | Enforce base fee floor |
 | `maxPriorityFeePerGas > maxFeePerGas` | `MaxPriorityFeePerGasHigherThanMaxFee` | Valid EIP-1559 |
 | `yParity > 1` | `YParityGreaterThanOne` | Valid signature |
 | Duplicate tx in same L1 block | `ForcedTransactionAlreadySubmittedInBlock` | Rate limiting |

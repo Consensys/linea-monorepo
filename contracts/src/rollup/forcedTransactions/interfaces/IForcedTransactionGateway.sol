@@ -78,7 +78,7 @@ interface IForcedTransactionGateway {
   error MaxGasLimitExceeded();
 
   /**
-   * @dev Thrown when the gas limit configured is less than the minimum 21000.
+   * @dev Thrown when the gas limit is below the configured minimum.
    */
   error GasLimitTooLow();
 
@@ -88,9 +88,15 @@ interface IForcedTransactionGateway {
   error CalldataInputLengthLimitExceeded();
 
   /**
-   * @dev Thrown when one of the gas fee parameters are zero.
+   * @dev Thrown when one of the gas fee parameters are zero (only checked when MINIMUM_BASE_GAS_FEE is non-zero).
    */
   error GasFeeParametersContainZero(uint256 maxFeePerGas, uint256 maxPriorityFeePerGas);
+
+  /**
+   * @dev Thrown when the transaction's maxFeePerGas is below the configured MINIMUM_BASE_GAS_FEE.
+   *      Only checked when MINIMUM_BASE_GAS_FEE is non-zero.
+   */
+  error MaxFeePerGasLowerThanMinimumBaseGasFee(uint256 maxFeePerGas, uint256 minimumBaseGasFee);
 
   /**
    * @dev Thrown when the max priority fee per gas is higher than the max fee per gas.
