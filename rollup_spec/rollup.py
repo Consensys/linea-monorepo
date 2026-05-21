@@ -10,9 +10,39 @@ from .execution import hash_address_list, hash_hash_list
 
 
 @dataclass
+class PlonkVerifier:
+    """
+    Model of the on-chain `IPlonkVerifier` interface (see
+    `contracts/src/verifiers/interfaces/IPlonkVerifier.sol`).
+
+    The chain-configuration preimage (`chainId`, `baseFee`, `coinbase`,
+    `l2MessageServiceAddress`) is passed to the verifier at deploy time as
+    a `ChainConfigurationParameter[]` array of named bytes32 values (see
+    `contracts/deploy/01_deploy_PlonkVerifier.ts`); the constructor hashes
+    those values and stores ONLY the digest in `bytes32 immutable
+    CHAIN_CONFIGURATION`, then emits the full preimage in the
+    `ChainConfigurationSet` event. The L1 `LineaRollupBase` reads the
+    digest at finalization time via `getChainConfiguration()`; changing
+    the chain configuration requires deploying a new verifier and pointing
+    the rollup at it via `setVerifierAddress`. The preimage is therefore
+    auditable on-chain (via the deploy event + the verifier's constructor
+    args) but is not held in any contract's runtime storage.
+    """
+    chain_configuration_hash: Hash32
+
+    def get_chain_configuration(self) -> Hash32:
+        return self.chain_configuration_hash
+
+
+@dataclass
 class LineaRollupState:
     """
     L1 `LineaRollup` storage relevant to proof finalization.
+
+    Note that `dynamicChainConfigHash` is NOT a field of this state — it
+    lives in the verifier as an immutable bytes32, and is read via
+    `verifier.get_chain_configuration()` (modelled by the `PlonkVerifier`
+    field below).
     """
     current_finalized_shnarf: Hash32
     current_finalized_last_block_hash: Hash32
@@ -20,9 +50,9 @@ class LineaRollupState:
     current_l2_block_timestamp: U64
     current_finalized_l1_l2_bridge_rolling_hash: Hash32
     current_finalized_l1_l2_bridge_rolling_hash_message_number: U64
-    dynamic_chain_config_hash: Hash32
     current_finalized_ftx_rolling_hash: Hash32
     current_finalized_last_processed_ftx_number: U64
+    verifier: PlonkVerifier
     l1_l2_rolling_hashes: Dict[U64, Hash32] = field(default_factory=dict)
     ftx_rolling_hashes: Dict[U64, Hash32] = field(default_factory=dict)
     ftx_deadlines: Dict[U64, U64] = field(default_factory=dict)
@@ -74,7 +104,11 @@ def finalize_rollup(state: LineaRollupState, submission: FinalizationSubmission)
         pi.end_l1_l2_bridge_rolling_hash
     ):
         raise Exception("L1-to-L2 rolling hash does not match L1 storage")
-    if pi.dynamic_chain_config_hash != state.dynamic_chain_config_hash:
+    if pi.dynamic_chain_config_hash != state.verifier.get_chain_configuration():
+        # The verifier holds the chain-configuration hash as an immutable
+        # bytes32 set at its deploy time; the full preimage (chainId,
+        # baseFee, coinbase, l2MessageServiceAddress) is auditable via the
+        # `ChainConfigurationSet` event the verifier emitted at deploy.
         raise Exception("dynamic chain config hash mismatch")
     if pi.parent_ftx_rolling_hash != state.current_finalized_ftx_rolling_hash:
         raise Exception("FTX rolling hash continuity mismatch")

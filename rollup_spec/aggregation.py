@@ -64,11 +64,19 @@ def check_aggregation_proof(aggregation_input: AggregationProofPrivateInput) -> 
 
 def verify_blob_proof(proof: BlobProof) -> None:
     """
-    Placeholder for recursive proof verification plus explicit checks for the
-    hash preimages that the aggregation proof consumes.
+    Verify an inner blob proof against its claimed public inputs.
+
+    PRECOMPILE (production guest): recursive STARK verification.
+        Same primitive as `verify_execution_proof` (§blob.py) — the zkVM's
+        in-circuit recursive verifier. In this reference, the
+        recursive-verify step is implicit; `BlobProof.proof` stands in for
+        the recursive STARK bytes the guest would actually check. We only
+        re-validate the hash preimages (`L2L1BridgeTransactionTree`,
+        `filteredAddressesHash`) the aggregation proof consumes.
     """
     if proof.public_inputs.end_block_number != proof.end_block_number:
         raise Exception("blob proof range metadata does not match public inputs")
+    # PRECOMPILE: keccak256 (preimage-binding checks).
     if hash_hash_list(proof.l2_l1_roots) != proof.public_inputs.l2_l1_bridge_transaction_tree:
         raise Exception("invalid L2L1BridgeTransactionTree preimage")
     if hash_address_list(proof.filtered_addresses) != proof.public_inputs.filtered_addresses_hash:

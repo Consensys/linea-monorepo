@@ -201,6 +201,14 @@ class L2State:
     (zesu-style: `basic`, `storage`, `codeByHash`). This Python reference
     implements the MPT walk explicitly so the data flow is checkable end
     to end against a fixture.
+
+    PRECOMPILE (production guest): keccak256.
+        The MPT walk implemented below by `_mpt_lookup` invokes keccak256
+        once per node (to look up by hash in `_node_index`) — in the
+        production guest each of these is a zkVM-native primitive call.
+        The walk logic itself (RLP-decode the node, classify branch /
+        extension / leaf, follow path nibbles) runs as ordinary in-guest
+        code on top of that primitive.
     """
     state_root: Hash32
     witnesses: Sequence["ExecutionWitness"]
@@ -282,6 +290,21 @@ def state_transition_modified(
     This function mirrors [ethereum.forks.osaka.fork.state_transition] but takes
     the protocol witness shape. It materializes the execution-spec `BlockChain`
     adapter internally and returns `block_output` so the caller can inspect logs.
+
+    PRECOMPILE-INTENSIVE (production guest):
+        This is the most precompile-heavy step in the entire proof stack.
+        Replaying the block exercises (at minimum):
+          - keccak256                — block-hash, MPT node hashes, tx hashes
+          - secp256k1 ecrecover      — every external tx (one per signer)
+          - sha256 / ripemd160       — precompiled contracts 0x02 / 0x03
+          - modexp                   — precompile 0x05
+          - BN254 add/mul/pairing    — precompiles 0x06 / 0x07 / 0x08
+          - BLS12-381 ops            — EIP-2537 precompiles
+          - KZG point evaluation     — precompile 0x0A (EIP-4844)
+          - MPT verification         — every SLOAD / SSTORE / account touch
+        Each of these is a zkVM-native primitive in the production guest;
+        the Python reference defers to execution-specs' Python implementation,
+        which in turn would compile to those primitives in a real build.
     """
     if len(block_rlp) > MAX_RLP_BLOCK_SIZE:
         raise InvalidBlock("Block rlp size exceeds MAX_RLP_BLOCK_SIZE")

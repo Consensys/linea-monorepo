@@ -3,6 +3,9 @@
 
     "proverVersion":      "4.0.0-riscv",
 
+    "_comment_chainId": "Chain identifier (uint64). Needed for sender recovery during DA truncation (§2.2 step 2). Same value across all execution proofs in this blob; committed transitively via their `dynamicChainConfigHash` PI field.",
+    "chainId": 59144,
+
     "_comment_blockRange": "Combined block range across all K blobs. Equals `blobs[0].blockRange.startBlockNumber .. blobs[K-1].blockRange.endBlockNumber`; consecutive blob ranges must be contiguous.",
     "blockRange": {
         "startBlockNumber": 1000501,

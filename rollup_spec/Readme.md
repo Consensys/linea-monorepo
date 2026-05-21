@@ -168,7 +168,7 @@ The proven statement is **compression of the canonical truncated RLP**: the gues
 
 For each blob `b ∈ [1, K]` in order, perform the per-blob block (steps 1–3); then perform the cross-blob recursion block (steps 4–9) once over the combined range.
 
-1. **Schwartz–Zippel evaluation (per blob).** Derive evaluation point `X_b = keccak256(blobContent_b ‖ blobHash_b)`. Compute `KzgY_b = P_b(X_b)` directly from `blobContent_b`, then check the KZG proof using `blobHash_b`, `X_b`, computed `KzgY_b`, and `KzgProof_b`. `KzgY_b` is not supplied as a witness.
+1. **KZG verification (per blob).** Check that `blobContent_b`, `blobCommitment_b`, and `KzgProof_b` form a valid EIP-4844 blob/commitment/proof triple — the same predicate that `verify_blob_kzg_proof` computes in [consensus-specs `polynomial-commitments.md`](https://github.com/ethereum/consensus-specs/blob/master/specs/deneb/polynomial-commitments.md) and that the L1 point-evaluation precompile relies on. The Fiat-Shamir challenge `z = compute_challenge(blobContent_b, blobCommitment_b)`, the polynomial evaluation `y = P_b(z)`, and the pairing check are entirely internal to this primitive — neither `z` nor `y` is a witness field or PI. The production guest runs the equivalent in-zkVM primitive (e.g. zesu's KZG verifier); the Python reference calls `ckzg.verify_blob_kzg_proof` directly. Also assert that `kzg_commitment_to_versioned_hash(blobCommitment_b) == blobHash_b` so the on-chain versioned hash binds to the same commitment.
 
 2. **Verify compression (per blob).** Take the per-blob list `blockRlps_b` of `m_b` canonical full block RLPs as a private witness. For each entry: decode it, apply the §3.2 truncation rule to produce a `TruncatedEthereumBlock` (`blob.py::TruncatedEthereumBlock`: `{timestamp, blockHash, prevRandao, transactions, froms}`) — `blockHash` is computed as `keccak256(headerRlp)` from the decoded header, `transactions` are the signature-stripped tx bytes, and `froms` are the per-tx recovered senders. RLP-encode the resulting truncated-block list in canonical order, LZ4-compress it, and assert the result equals `blobContent_b` byte-for-byte. The statement is **compression of the truncated RLP**, not decompression: the full block RLPs are the input, the truncated form is an internal intermediate, compression equality anchors them to the KZG-bound blob. Also assert `m_b == blockRange_b.endBlockNumber - blockRange_b.startBlockNumber + 1`.
 
@@ -186,7 +186,21 @@ For each blob `b ∈ [1, K]` in order, perform the per-blob block (steps 1–3);
 
 5. **Verify the execution proofs.** Recursively verify each `Eᵢ` against `PI_Eᵢ`.
 
-6. **Check execution-proof block-hash alignment.** The `parentBlockHash` of the first execution proof must equal the parent block hash that the shnarf chain descends from (encoded transitively via `parentShnarf`). The `endBlockHash` of the last execution proof must equal `lastBlockHash_K` from step 3. For each intermediate execution-proof boundary, the proof's `endBlockHash` must equal the `blockHash` field of the corresponding `TruncatedEthereumBlock` (step 2 input) at that index. Parent-hash continuity among the truncated blocks themselves is enforced *transitively*: each block's `blockHash` is bound to its execution-proof boundary, and adjacent execution proofs already chain `endBlockHash → parentBlockHash` (step 8 below).
+6. **Bind blob blocks to the execution-proof chain.** Two checks together pin every block in the blob — boundary *and* intermediate — to the chain that the execution proofs verified.
+
+    a. **Boundary alignment.** For every execution proof `Eᵢ`, its `endBlockHash` (PI) must equal the `blockHash` of the corresponding entry in the per-blob truncated-block list at index `Eᵢ.endBlockNumber − firstBlockNumber`. This pins the *last* block of each execution proof.
+
+    b. **Parent-hash continuity over the full range.** Decode the `header.parent_hash` of every `blockRlps_b[i]` and walk the resulting list:
+
+       ```
+       parent_hash[0]            == PI_E₁.parentBlockHash         // anchors the chain head
+       parent_hash[i]            == blockHash[i-1] for i ≥ 1      // chains internal blocks
+       blockHash[last]           == PI_Eₙ.endBlockHash             // already enforced by (a)
+       ```
+
+       Without (b), a malicious prover could swap a non-boundary block's header (e.g., timestamp or `prevRandao`) for a different value as long as its successor's `parent_hash` still pointed at the *original* hash, leaving the new block dangling outside the proven chain. The `from`-list cross-check (step 4) catches transaction substitutions but not header-only changes, so (b) is the load-bearing constraint for intermediate blocks.
+
+    Adjacent execution proofs already chain `endBlockHash → parentBlockHash` via step 8 below, so the head-anchor in (b) only needs to look at `PI_E₁.parentBlockHash`.
 
 7. **Build the L2→L1 Merkle trees.** For each `e ∈ [1, N]`, receive the message hash list as a private witness and assert `keccak256(L2L1MsgList_e) == PI_E_e.L2L1MessagesHash`. Concatenate all N lists in order. Partition the combined list into consecutive chunks of `2^D` leaves (where D is the fixed protocol-level tree depth, currently 5). Pad the final chunk with zero-value (0x00…00) leaves to fill it. Each leaf is a 32-byte message hash; internal nodes are `keccak256(left ‖ right)`. Compute the root of each full tree and collect them into an ordered array `[root_1, …, root_T]`. Output `L2L1BridgeTransactionTree = keccak256(root_1 ‖ … ‖ root_T)` as a commitment to this ordered root list. The tree depth D is a protocol constant and is not included in the public output.
 
@@ -368,7 +382,7 @@ separate from the execution, blob, and aggregation guest programs.
    - Assert `parentShnarf == currentFinalizedShnarf` (DA and block-hash continuity — the shnarf encodes the last block hash, so this check subsumes a separate `parentBlockHash` check)
    - Assert `parentL1L2BridgeRollingHash == currentFinalizedL1L2BridgeRollingHash` and `parentL1L2BridgeRollingHashMessageNumber == currentFinalizedL1L2BridgeRollingHashMessageNumber` (deposit bridge continuity)
    - Assert `endL1L2BridgeRollingHash == l1RollingHash[endL1L2BridgeRollingHashMessageNumber]` (deposit bridge authenticity — the proof's claimed end-of-range rolling hash must match L1's authoritative chain)
-   - Assert `chainID`, `coinbase`, the L2 message-service address, and `baseFee` match the contract's registered chain configuration by checking the dynamic-chain config hash
+   - Assert the proof's `dynamicChainConfigHash` matches what the verifier was deployed with: `pi.dynamicChainConfigHash == IPlonkVerifier(verifier).getChainConfiguration()`. The verifier holds this digest as an immutable `bytes32` (`CHAIN_CONFIGURATION`); its preimage — the four named `ChainConfigurationParameter` entries `chainId`, `baseFee`, `coinbase`, `l2MessageServiceAddress` — is bound at verifier deploy time and emitted in the `ChainConfigurationSet` event, so the values are auditable on-chain via the deploy log + the verifier's verified constructor args. Changing any of the four values means deploying a new verifier and re-pointing the rollup at it via `setVerifierAddress`; there is no separate L1 storage slot for the chain-config preimage that could fall out of sync.
    - Verify `keccak256(submittedRoots) == L2L1BridgeTransactionTree`; store each root via `l2MerkleRootsDepths[root] = D`
    - Optionally process `l2MessagingBlocksOffsets` calldata to emit `L2MessagingBlockAnchored` discovery events (unchanged from today)
    - Update storage: `currentFinalizedLastBlockHash`, `currentFinalizedShnarf`, `currentL2BlockNumber`, `currentL2BlockTimestamp`, `currentFinalizedL1L2BridgeRollingHash`, `currentFinalizedL1L2BridgeRollingHashMessageNumber`
@@ -432,22 +446,23 @@ keccak256(rollingHash ‖ txHash ‖ deadlineBlockNumber ‖ fromAddress) == ftx
 ```
 where `txHash = keccak256(signedTxRlp)` is the standard Ethereum transaction hash of the FTX's signed RLP (as stored on L1 by `storeForcedTransaction`). The guest decodes `signedTxRlp` once, derives `fromAddress = recover_sender(signedTxRlp, chainID)`, and uses that same derived address for the rolling-hash step and any refused-from output.
 
-**Outcome.** Each FTX carries the sequencer's declared `acceptance`, one of the eight canonical variants (1:1 with `ForcedTransactionInclusionResult` in `linea-besu/plugins/linea-sequencer/.../forced/ForcedTransactionInclusionResult.java`, minus the transient `Other` case):
+**Outcome.** Each FTX carries the sequencer's declared `acceptance`, one of five variants. These mirror the canonical Java enum at `linea-besu/plugins/linea-sequencer/.../forced/ForcedTransactionInclusionResult.java` but **narrowed to the cases the guest program can actually observe under RISC-V proving** — three variants from the Java enum are intentionally absent:
+
+- `BadPrecompile` — every L2 precompile is just ordinary RISC-V code in the new design, so "disallowed precompile" can't fire.
+- `TooManyLogs` — Linea's previous Type-2 stack imposed a per-tx log cap to keep the bespoke arithmetization tractable; the Type-1 RISC-V stack has no such cap.
+- `Other` — the Java enum's transient-failure bucket, marked "should retry next block". It is never finalized, so the guest never sees it.
+
+The five variants and their proof-level treatment:
 
 - *INCLUDED* — the guest asserts `txHash` appears in the declared block's transaction list (decoded from `blockRlp`).
-- *Invalid sub-cases* (`BAD_NONCE` / `BAD_BALANCE` / `BAD_PRECOMPILE` / `TOO_MANY_LOGS`) — pre-validation must fail. The guest asserts `txHash` is NOT in the block, then reads `tx.nonce`, `tx.value`, `tx.gasLimit`, `tx.maxFeePerGas` from `signedTxRlp` and reads the FTX sender's account from the L2 state at the parent state root of the block where the FTX would have been included, via the EVM state interface (a standard SLOAD/`basic`-style read against the in-process state DB backed by `debug_executionWitness.state`). It then asserts the failure condition corresponding to the variant:
+- *Invalid sub-cases* (`BAD_NONCE` / `BAD_BALANCE`) — pre-validation must fail. The guest asserts `txHash` is NOT in the block, then reads the FTX sender's account from the L2 state at the parent state root of the block where the FTX would have been included, via the EVM state interface (a standard SLOAD/`basic`-style read against the in-process state DB backed by `debug_executionWitness.state`). It then asserts the specific failure condition:
   - `BAD_NONCE`: `account.nonce != tx.nonce`
-  - `BAD_BALANCE`: `account.balance < tx.gasLimit × tx.maxFeePerGas + tx.value`
-  - `BAD_PRECOMPILE`: the call target is a precompile that the L2 disallows or the call is malformed for that precompile
-  - `TOO_MANY_LOGS`: the transaction would emit more log entries than the per-tx cap
+  - `BAD_BALANCE`: `account.balance < tx.gasLimit × tx.maxFeePerGas + tx.value` (using the canonical gas-cost formula per tx type, including the blob-gas surcharge for Type-3 transactions)
 
-  > **TODO (per-variant dispatch).** The Python reference currently collapses all four Invalid sub-cases into a single generic pre-validation re-derivation (the same logic regardless of which `BAD_*` / `TOO_MANY_LOGS` variant was declared). The production prover dispatches each variant to its specific check — e.g. `TOO_MANY_LOGS` requires partial-execution log counting, `BAD_PRECOMPILE` requires inspecting the call target — and each variant may require additional witness paths (extra account/slot proofs) beyond the sender's account. A follow-up will pin the per-variant witness shape and dispatch.
-
-  No separate per-FTX state witness is needed; the `debug_executionWitness.state` MPT node pool must include the sender account's proof path (and any other accounts/slots required by sub-case-specific checks) at the parent state root (§2.1).
+  No separate per-FTX state witness is needed; the `debug_executionWitness.state` MPT node pool must include the sender account's proof path at the parent state root (§2.1).
 - *Refused sub-cases* — the rollup declines for compliance reasons. No governance witness is required inside the proof; the sequencer simply declares the refusal. The L1 contract verifies a-posteriori that each bubbled-up address appears in its reference sanction list — if any entry is absent, the finalization call reverts.
   - `FILTERED_ADDRESS_FROM`: sender on the sanction list; `fromAddress` is appended to the filtered address list.
   - `FILTERED_ADDRESS_TO`: recipient on the sanction list; `toAddress` (decoded from `signedTxRlp`; rejected if the FTX is a contract-creation transaction with `to == None`) is appended instead.
-  - `PHYLAX`: Phylax compliance filter triggered. **TODO**: pin which address (sender, recipient, or both) is bubbled up for PHYLAX rejections.
 
 After the loop the guest asserts `rollingHash == endFtxRollingHash` and outputs `filteredAddressesHash = keccak256(filtered address list)`.
 

@@ -53,10 +53,20 @@ class ForcedTransactionAcceptance(Enum):
     """
     Sequencer's declared outcome for a forced transaction.
 
-    1:1 mirror of the canonical Java enum at
+    Mirrors the canonical Java enum at
     `linea-besu/plugins/linea-sequencer/sequencer/src/main/java/net/consensys/linea/sequencer/forced/ForcedTransactionInclusionResult.java`
-    minus the transient `Other` case (which is never finalized — the FTX
-    is retried in the next block).
+    *narrowed to the cases that can actually be observed by the guest
+    program under RISC-V proving*. Three variants from the Java enum are
+    intentionally absent here:
+
+      - `BadPrecompile` — every L2 precompile is just ordinary RISC-V code
+        in the new design, so "disallowed precompile" can't fire.
+      - `TooManyLogs`   — Linea's previous Type-2 stack imposed a per-tx
+        log cap to keep the bespoke arithmetization tractable; the Type-1
+        RISC-V stack has no such cap.
+      - `Other`         — the canonical Java enum's transient-failure
+        bucket, marked "should retry next block". It is never finalized,
+        so the guest never sees it.
 
     Outcome category at proof level (§6.5):
 
@@ -65,27 +75,14 @@ class ForcedTransactionAcceptance(Enum):
     | INCLUDED               | Included | tx hash must appear in the host block's tx list |
     | BAD_NONCE              | Invalid  | sender's `account.nonce != tx.nonce` at the host block's parent state root |
     | BAD_BALANCE            | Invalid  | sender's `account.balance < tx.gasLimit * tx.maxFeePerGas + tx.value` |
-    | BAD_PRECOMPILE         | Invalid  | tx calls a disallowed precompile (Linea-specific) |
-    | TOO_MANY_LOGS          | Invalid  | tx execution would emit more than the per-tx log cap |
     | FILTERED_ADDRESS_FROM  | Refused  | sender on the sanction list — bubble up sender address |
     | FILTERED_ADDRESS_TO    | Refused  | recipient on the sanction list — bubble up recipient address; rejected for contract-creation tx with `to == None` |
-    | PHYLAX                 | Refused  | Phylax compliance filter triggered |
-
-    TODO: the per-variant validation logic in `execution.validate_forced_transactions`
-    currently collapses the four Invalid sub-cases into a single
-    pre-validation re-derivation path and treats PHYLAX as a generic
-    Refused case. A follow-up will pin the exact witness shape per
-    variant so the spec/reference matches the production handler step
-    for step. See §6.5 of `../Readme.md`.
     """
     INCLUDED = 0
     BAD_NONCE = 1
     BAD_BALANCE = 2
-    BAD_PRECOMPILE = 3
-    TOO_MANY_LOGS = 4
-    FILTERED_ADDRESS_FROM = 5
-    FILTERED_ADDRESS_TO = 6
-    PHYLAX = 7
+    FILTERED_ADDRESS_FROM = 3
+    FILTERED_ADDRESS_TO = 4
 
 @dataclass
 class ForcedTransactionWitness:
@@ -101,20 +98,16 @@ class ForcedTransactionWitness:
 
     - INCLUDED                       -> the guest asserts `txHash` is in the
                                          host block's transaction list.
-    - BAD_NONCE / BAD_BALANCE /
-      BAD_PRECOMPILE / TOO_MANY_LOGS -> the guest asserts `txHash` is NOT in
+    - BAD_NONCE / BAD_BALANCE        -> the guest asserts `txHash` is NOT in
                                          the block AND re-derives the
-                                         pre-validation failure against the
-                                         L2 state at the block's parent
-                                         state root.
+                                         specific pre-validation failure
+                                         against the L2 state at the block's
+                                         parent state root.
     - FILTERED_ADDRESS_FROM          -> the guest bubbles up `fromAddress`
                                          for L1-side sanction-list checking.
     - FILTERED_ADDRESS_TO            -> the guest bubbles up `toAddress`;
                                          rejected if the FTX is a
                                          contract-creation tx (`to == None`).
-    - PHYLAX                         -> currently treated as another Refused
-                                         category (TODO: pin which address
-                                         gets bubbled up).
     """
     number: U64
     signed_tx_rlp: bytes

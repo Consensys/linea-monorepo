@@ -7,18 +7,11 @@ from ethereum.forks.osaka.transactions import (
     BlobTransaction,
     FeeMarketTransaction,
     SetCodeTransaction,
-    Transaction,
     recover_sender,
-    validate_transaction,
 )
-from ethereum.forks.osaka.fork import (
-    BLOB_COUNT_LIMIT,
-    VERSIONED_HASH_VERSION_KZG,
-)
-from ethereum.forks.osaka.vm.eoa_delegation import is_valid_delegation
 from ethereum.forks.osaka.vm.gas import calculate_total_blob_gas
-from ethereum.state import Account, Address, EMPTY_CODE_HASH
-from ethereum_types.bytes import Bytes, Bytes32
+from ethereum.state import Address
+from ethereum_types.bytes import Bytes32
 from ethereum_types.numeric import U64, Uint
 
 from .block import (
@@ -43,12 +36,16 @@ BRIDGE_L2L1_MESSAGE_SENT_TOPIC_0 = Hash32(
 # The L1->L2 rolling hash is not a single slot — it lives in the
 # `l1RollingHashes` mapping keyed by message number, with the latest message
 # number tracked separately in `lastAnchoredL1MessageNumber`. The two slot
-# positions below are determined by the L2MessageService source (see
-# `contracts/src/messaging/l2/L2MessageManager.sol`); the Python reference
-# uses placeholder slot indices and the production guest must pin them to
-# match the deployed contract's storage layout.
-LAST_ANCHORED_L1_MESSAGE_NUMBER_SLOT: Bytes32 = Bytes32(b"\x00" * 31 + b"\x00")
-L1_ROLLING_HASHES_MAPPING_BASE_SLOT: Bytes32 = Bytes32(b"\x00" * 31 + b"\x01")
+# positions below are extracted from the compiled storage layout of
+# `contracts/src/messaging/l2/L2MessageService.sol` (build-info JSON in
+# `contracts/build/build-info/`; the layout is reproduced via
+# `_storage_layout_table` in the script that maintains these constants).
+# If the contract's storage layout changes — including adding/removing
+# upgrade-safety `__gap` slots in any ancestor — these slot indices MUST
+# be re-extracted; otherwise the proof reads zero / unrelated values and
+# the L1 finalization check on `l1RollingHash[messageNumber]` will fail.
+LAST_ANCHORED_L1_MESSAGE_NUMBER_SLOT: Bytes32 = Bytes32(int(280).to_bytes(32, "big"))
+L1_ROLLING_HASHES_MAPPING_BASE_SLOT: Bytes32 = Bytes32(int(281).to_bytes(32, "big"))
 
 
 def _mapping_slot(base_slot: Bytes32, key: bytes) -> Bytes32:
@@ -71,6 +68,9 @@ def read_l1l2_bridge_state(state: L2State, l2_message_service_address: Address) 
     Two reads: (a) `lastAnchoredL1MessageNumber` at a fixed slot, and
     (b) `l1RollingHashes[lastAnchoredL1MessageNumber]` at the mapping slot
     computed via `keccak256(uint256_be(messageNumber) || base_slot)`.
+
+    PRECOMPILE (production guest): keccak256 (mapping-slot computation in
+    `_mapping_slot` below) and the MPT-walk hashes inside `state.storage()`.
     """
     number_bytes = state.storage(l2_message_service_address, LAST_ANCHORED_L1_MESSAGE_NUMBER_SLOT)
     rolling_hash_number = U64(int.from_bytes(bytes(number_bytes), "big"))
@@ -117,15 +117,14 @@ def validate_forced_transactions(
     must include that MPT path.
 
     Dispatch on `resolved_ftx.acceptance`:
-      - FILTERED_ADDRESS_FROM | FILTERED_ADDRESS_TO | PHYLAX -> Refused;
+      - FILTERED_ADDRESS_FROM | FILTERED_ADDRESS_TO         -> Refused;
         bubble up the relevant address for the L1 sanction-list check.
       - INCLUDED                                            -> assert
         `txHash` is in the block's tx list.
-      - BAD_NONCE | BAD_BALANCE | BAD_PRECOMPILE |
-        TOO_MANY_LOGS                                        -> Invalid;
-        assert `txHash` is NOT in the block AND that Ethereum
-        pre-validation fails when the sender's account is read from
-        `parent_state`.
+      - BAD_NONCE | BAD_BALANCE                              -> Invalid;
+        assert `txHash` is NOT in the block AND that the specific
+        pre-validation failure holds against the sender's account read
+        from `parent_state`.
     """
     rejected_addresses: List[Address] = []
 
@@ -164,16 +163,8 @@ def validate_forced_transactions(
             rejected_addresses.append(transaction.to)
             continue
 
-        if resolved_ftx.acceptance == ForcedTransactionAcceptance.PHYLAX:
-            # Phylax compliance filter triggered.
-            # TODO(taxonomy): pin which address gets bubbled up for PHYLAX
-            # rejections (sender? recipient? both? a separate channel?).
-            # The current placeholder treats it as a from-style refusal.
-            rejected_addresses.append(from_address)
-            continue
-
         # Block-membership check: INCLUDED variants must appear in the
-        # block; the four Invalid variants must NOT appear.
+        # block; the two Invalid variants must NOT appear.
         block_tx_hashes = [
             keccak256(tx_rlp)
             for tx_rlp in parse_block_transaction_rlps(block.block_rlp)
@@ -190,8 +181,6 @@ def validate_forced_transactions(
         if resolved_ftx.acceptance not in (
             ForcedTransactionAcceptance.BAD_NONCE,
             ForcedTransactionAcceptance.BAD_BALANCE,
-            ForcedTransactionAcceptance.BAD_PRECOMPILE,
-            ForcedTransactionAcceptance.TOO_MANY_LOGS,
         ):
             raise Exception("forced transaction has an unknown acceptance value")
 
@@ -202,85 +191,33 @@ def validate_forced_transactions(
 
         # Invalid — pre-validation must fail against the L2 state at this
         # block's parent state root. The witness pool must include the MPT
-        # path for the sender account (and any other state the specific
-        # invalidity sub-case requires).
-        #
-        # TODO(taxonomy): the four BAD_*/TOO_MANY_LOGS variants currently
-        # collapse into the same generic pre-validation path below. The
-        # production prover dispatches each variant to its specific check
-        # (e.g. TOO_MANY_LOGS requires partial-execution tracing; BAD_PRECOMPILE
-        # requires inspecting the call target). Refine this dispatch when
-        # aligning with the production handler — see §6.5 of Readme.md.
+        # path for the sender account.
         sender_account = parent_state.account(from_address)
         if sender_account is None:
             raise Exception("FTX-invalid: sender account absent from L2 state")
-        sender_code = (
-            parent_state.code(sender_account.code_hash)
-            if sender_account.code_hash != EMPTY_CODE_HASH
-            else Bytes(b"")
-        )
 
-        try:
-            validate_transaction(transaction)
-        except Exception:
+        # Dispatch on the specific Invalid sub-case so the spec/PI carries the
+        # actual reason the FTX failed.
+        if resolved_ftx.acceptance == ForcedTransactionAcceptance.BAD_NONCE:
+            if sender_account.nonce == Uint(transaction.nonce):
+                raise Exception("BAD_NONCE declared but account.nonce matches tx.nonce")
             continue
 
-        if is_valid_forced_transaction(transaction, sender_account, sender_code, base_fee):
-            raise Exception("the forced transaction was indicated to be invalid, but was found to be valid")
+        # BAD_BALANCE — the sender's balance must be less than the maximum gas
+        # cost plus the transferred value. We mirror the gas-cost arithmetic
+        # from `is_valid_forced_transaction` (which itself mirrors
+        # `fork.check_transaction`).
+        if isinstance(transaction, (FeeMarketTransaction, BlobTransaction, SetCodeTransaction)):
+            max_gas_fee = transaction.gas * transaction.max_fee_per_gas
+            if isinstance(transaction, BlobTransaction):
+                max_gas_fee += Uint(calculate_total_blob_gas(transaction)) * Uint(transaction.max_fee_per_blob_gas)
+        else:
+            max_gas_fee = transaction.gas * transaction.gas_price
+
+        if Uint(sender_account.balance) >= max_gas_fee + Uint(transaction.value):
+            raise Exception("BAD_BALANCE declared but account.balance covers gas+value")
 
     return rejected_addresses, curr_rolling_hash, last_processed_ftx_number
-
-
-def is_valid_forced_transaction(
-    tx: Transaction,
-    sender_account: Account,
-    sender_code: Bytes,
-    base_fee: Uint,
-) -> bool:
-    """
-    Re-derive whether the FTX would have passed Ethereum pre-validation
-    against `sender_account` and `sender_code`. Mirrors
-    `fork.check_transaction` minus the checks that depend on remaining block
-    gas / blob gas. Returns a boolean instead of raising.
-    """
-    if isinstance(tx, (FeeMarketTransaction, BlobTransaction, SetCodeTransaction)):
-        if tx.max_fee_per_gas < tx.max_priority_fee_per_gas:
-            return False
-        if tx.max_fee_per_gas < base_fee:
-            return False
-        max_gas_fee = tx.gas * tx.max_fee_per_gas
-    else:
-        if tx.gas_price < base_fee:
-            return False
-        max_gas_fee = tx.gas * tx.gas_price
-
-    if isinstance(tx, BlobTransaction):
-        blob_count = len(tx.blob_versioned_hashes)
-        if blob_count == 0:
-            return False
-        if blob_count > BLOB_COUNT_LIMIT:
-            return False
-        for blob_versioned_hash in tx.blob_versioned_hashes:
-            if blob_versioned_hash[0:1] != VERSIONED_HASH_VERSION_KZG:
-                return False
-        max_gas_fee += Uint(calculate_total_blob_gas(tx)) * Uint(tx.max_fee_per_blob_gas)
-
-    if isinstance(tx, (BlobTransaction, SetCodeTransaction)):
-        if not isinstance(tx.to, Address):
-            return False
-
-    if isinstance(tx, SetCodeTransaction):
-        if not any(tx.authorizations):
-            return False
-
-    if sender_account.nonce != Uint(tx.nonce):
-        return False
-    if Uint(sender_account.balance) < max_gas_fee + Uint(tx.value):
-        return False
-    if sender_account.code_hash != EMPTY_CODE_HASH and not is_valid_delegation(sender_code):
-        return False
-
-    return True
 
 
 @dataclass
@@ -409,6 +346,10 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
 
         for tx_rlp in parse_block_transaction_rlps(rollup_block.block_rlp):
             tx_froms.append(
+                # PRECOMPILE (production guest): secp256k1 ecrecover.
+                # The zkVM exposes signature-recovery as a native circuit;
+                # the Python reference defers to the execution-specs
+                # implementation (which compiles to that primitive).
                 recover_sender(
                     execution_input.chain_config.chain_id,
                     decode_signed_transaction_rlp(tx_rlp),
@@ -416,7 +357,9 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
             )
 
         # FTX-invalid pre-validation reads the sender's account against the
-        # L2 state at this block's parent state root (§6.5 'Invalid').
+        # L2 state at this block's parent state root (§6.5 'Invalid'). The
+        # `L2State` interface is backed by the zkVM's MPT verifier
+        # (PRECOMPILE: keccak256 for node hashing) over the witness pool.
         block_parent_state = L2State(
             state_root=current_parent_header.state_root,
             witnesses=execution_input.execution_witnesses,
@@ -434,6 +377,14 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
         )
         filtered_addresses.extend(block_filtered_addresses)
 
+        # PRECOMPILE-INTENSIVE (production guest): full EVM state transition.
+        # `state_transition_modified` is the heart of the execution proof —
+        # it replays the block and verifies the resulting header (state root,
+        # receipts root, transactions root, …). Internally it leans on
+        # zkVM-native primitives for keccak256, secp256k1 ecrecover, sha256
+        # (used by some precompiled contracts), modexp, BLS12-381 pairings
+        # (point evaluation precompile on L1; here it's executed inside the
+        # EVM), and MPT verification of every state/storage read.
         block_output = state_transition_modified(
             execution_input.chain_config.chain_id,
             current_parent_header,

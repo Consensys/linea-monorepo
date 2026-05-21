@@ -1,15 +1,32 @@
 from dataclasses import dataclass, field
-from ethereum_types.numeric import U64
-from ethereum.crypto.hash import Hash32, keccak256
-from ethereum_types.bytes import Bytes32, Bytes48
-from ethereum.state import Address
+from functools import lru_cache
+from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
+import ckzg
+import lz4.block
+
+from ethereum.crypto.hash import Hash32, keccak256
 from ethereum.crypto.kzg import (
     KZGCommitment,
     kzg_commitment_to_versioned_hash,
-    verify_kzg_proof,
 )
+from ethereum.forks.osaka.transactions import (
+    AccessListTransaction,
+    BlobTransaction,
+    FeeMarketTransaction,
+    LegacyTransaction,
+    SetCodeTransaction,
+    Transaction,
+    decode_transaction,
+    recover_sender,
+)
+from ethereum.state import Address
+from ethereum_rlp import rlp
+from ethereum_types.bytes import Bytes, Bytes32, Bytes48
+from ethereum_types.numeric import U64, Uint
+
+from .block import block_hash, decode_block_rlp
 from .execution import (
     ExecutionProof,
     ExecutionProofPublicInput,
@@ -19,6 +36,37 @@ from .execution import (
 
 L2_L1_TREE_DEPTH = 5
 ZERO_HASH32 = Hash32(b"\x00" * 32)
+
+# EIP-4844 trusted setup (4096 G1 + 65 G2 monomial points from the Ethereum
+# KZG ceremony). The `ckzg` wheel does not bundle a setup file, so we reuse
+# the one already vendored in this repo for the hardhat contract tests. All
+# four trusted-setup files we found in linea-monorepo (`contracts/test/...`,
+# `contracts/scripts/testEIP4844/...`, `tmp/besu-eth/.../resources/...`)
+# produce identical KZG commitments; the byte-level sha256 differences are
+# just file-format ordering variants that ckzg parses transparently.
+_TRUSTED_SETUP_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "contracts" / "test" / "hardhat" / "_testData" / "trusted_setup.txt"
+)
+
+
+@lru_cache(maxsize=1)
+def _trusted_setup():
+    """
+    Load the EIP-4844 trusted setup once on first use; cached for the
+    process lifetime via `lru_cache`. `precompute=0` skips the optional
+    FK20 multi-scalar-multiplication precomputation that only matters for
+    `compute_cells_and_kzg_proofs`; we don't need it for the single
+    polynomial evaluation we perform per blob.
+    """
+    if not _TRUSTED_SETUP_PATH.is_file():
+        raise FileNotFoundError(
+            f"trusted setup not found at {_TRUSTED_SETUP_PATH}. "
+            "The Python reference expects the linea-monorepo layout — re-fetch via "
+            "`curl -L https://raw.githubusercontent.com/ethereum/c-kzg-4844/main/src/trusted_setup.txt "
+            f"-o {_TRUSTED_SETUP_PATH}` if missing."
+        )
+    return ckzg.load_trusted_setup(str(_TRUSTED_SETUP_PATH), 0)
 
 @dataclass
 class TruncatedEthereumBlock:
@@ -93,33 +141,76 @@ class BlobWitness:
         """
         Check the KZG proof binds `blob_bytes` to the declared `blob_hash`.
 
+        Delegates the full EIP-4844 verification (Fiat-Shamir challenge
+        derivation, polynomial evaluation in Lagrange form, pairing check)
+        to `ckzg.verify_blob_kzg_proof` — the same canonical entry point
+        that consensus-level clients call. The production guest runs the
+        equivalent in-zkVM primitive; this reference defers to the
+        c-kzg-4844 binding rather than re-deriving its internals.
+
         Returns (is_authenticated, blob_hash).
         """
         blob_hash = self.blob_hash()
         if self.expected_blob_hash is not None and self.expected_blob_hash != blob_hash:
             return False, blob_hash
-        blob_kzg_x = Bytes32(keccak256(self.blob_bytes + blob_hash))
-        blob_poly = parse_as_bls12_381_fr_vec(self.blob_bytes)
-        blob_kzg_y = eval_lagrange_bls12_381(blob_poly, blob_kzg_x)
-        return verify_kzg_proof(self.blob_kzg_commitment, blob_kzg_x, blob_kzg_y, self.blob_kzg_proof), blob_hash
+        try:
+            # ┌─ PRECOMPILE (production guest): BLS12-381 / KZG verifier ─────┐
+            # │ The zkVM exposes EIP-4844 blob verification as a single       │
+            # │ primitive (zkVM-native circuit or a ckzg-equivalent crate     │
+            # │ statically linked into the guest). This call hides BLS12-381  │
+            # │ multi-scalar multiplication, polynomial evaluation in         │
+            # │ Lagrange form, and the final pairing check.                   │
+            # └───────────────────────────────────────────────────────────────┘
+            ok = ckzg.verify_blob_kzg_proof(
+                self.blob_bytes,
+                self.blob_kzg_commitment,
+                self.blob_kzg_proof,
+                _trusted_setup(),
+            )
+        except Exception:
+            # Malformed witness bytes (invalid G1 encoding, blob length
+            # mismatch, field-element overflow, …): treat as non-authentic.
+            ok = False
+        return ok, blob_hash
 
-    def verify_compression(self) -> List["TruncatedEthereumBlock"]:
+    def verify_compression(self, chain_id: U64) -> Tuple[List["TruncatedEthereumBlock"], List[Hash32]]:
         """
         Apply the canonical DA truncation (§3.2) to each `block_rlps[i]`
         internally, RLP-encode the truncated form, LZ4-compress it, and
-        assert the result equals `blob_bytes` (§2.2 step 2). Returns the
-        computed truncated blocks for downstream steps (block-hash
-        boundary alignment, sender-list cross-check).
+        assert the result equals `blob_bytes` (§2.2 step 2). Returns:
 
-        The compression-equality check binds the full-RLP witness to the
-        KZG-authenticated blob bytes — no decompression of `blob_bytes`
-        happens inside the proof.
+          - `truncated`: the computed `TruncatedEthereumBlock` per block,
+            consumed by downstream steps (block-hash boundary alignment,
+            sender-list cross-check).
+          - `parent_hashes`: each block's `header.parent_hash`. Exposed
+            so `check_blob_proof` can verify the full block-hash chain
+            (§2.2 step 6): every block's claimed parent must match the
+            previous block's computed hash, anchored at the first
+            execution proof's `parentBlockHash` and at each execution
+            proof's `endBlockHash` boundary. Without this, intermediate
+            blocks inside an execution-proof range would only be bound
+            transitively, leaving room for a malicious prover to swap a
+            non-boundary block as long as its successor's `parent_hash`
+            still pointed to the *original* (un-swapped) block.
+
+        `chain_id` is required to recover transaction senders during the
+        truncation. The compression-equality check binds the full-RLP
+        witness to the KZG-authenticated blob bytes — no decompression of
+        `blob_bytes` happens inside the proof.
         """
-        truncated = [truncate_block_rlp(rlp_bytes) for rlp_bytes in self.block_rlps]
+        truncated: List["TruncatedEthereumBlock"] = []
+        parent_hashes: List[Hash32] = []
+        for rlp_bytes in self.block_rlps:
+            # Decode once to capture the header's parent_hash; the
+            # downstream `truncate_block_rlp` redoes the decode — small
+            # redundancy that keeps the reference implementation simple.
+            header = decode_block_rlp(rlp_bytes).header
+            parent_hashes.append(Hash32(header.parent_hash))
+            truncated.append(truncate_block_rlp(rlp_bytes, chain_id))
         serialized = rlp_encode_truncated_blocks(truncated)
         if compress_lz4(serialized) != self.blob_bytes:
             raise Exception("blob compression mismatch: truncated form does not compress to blobContent")
-        return truncated
+        return truncated, parent_hashes
 
 
 @dataclass
@@ -149,8 +240,16 @@ class BlobProofPrivateInput:
     """
     Logical blob-proof request. One blob proof folds K >= 1 DA blobs and N >= 1
     execution proofs tiling the combined block range.
+
+    `chain_id` is needed for sender recovery during DA truncation (§2.2
+    step 2). It is committed transitively via the execution proofs'
+    `dynamicChainConfigHash` PI field — `assert_execution_continuity`
+    (step 8) ensures the same value flows across all execution proofs in
+    the blob's range, so the blob proof inherits chain-config integrity
+    from the execution proofs it recursively verifies.
     """
     parent_shnarf: Hash32
+    chain_id: U64
     blobs: List[BlobWitness]
     execution_proofs: List[ExecutionProof]
 
@@ -180,7 +279,8 @@ def check_blob_proof(blob_input: BlobProofPrivateInput) -> BlobProof:
         raise Exception("blob proof must consume at least one execution proof")
 
     current_shnarf = blob_input.parent_shnarf
-    truncated_blocks = []
+    truncated_blocks: List[TruncatedEthereumBlock] = []
+    parent_hashes: List[Hash32] = []
     expected_blob_start: Optional[int] = None
 
     for blob in blob_input.blobs:
@@ -189,10 +289,10 @@ def check_blob_proof(blob_input: BlobProofPrivateInput) -> BlobProof:
         if not blob_auth:
             raise Exception("invalid KZG proof")
 
-        # Compression equality (§2.2 step 2): the witnessed truncated blocks
-        # serialize+compress to blob_bytes. Downstream cross-checks anchor
-        # their content to the execution proofs.
-        blob_blocks = blob.verify_compression()
+        # Compression equality (§2.2 step 2): the witnessed full block RLPs,
+        # after internal truncation, serialize+compress to blob_bytes.
+        # Downstream cross-checks anchor their content to the execution proofs.
+        blob_blocks, blob_parent_hashes = blob.verify_compression(blob_input.chain_id)
         start_block_number, end_block_number = blob.block_number_range
         expected_block_count = end_block_number + 1 - start_block_number
         if len(blob_blocks) != expected_block_count:
@@ -203,6 +303,7 @@ def check_blob_proof(blob_input: BlobProofPrivateInput) -> BlobProof:
             raise Exception("blob ranges must be contiguous")
 
         truncated_blocks.extend(blob_blocks)
+        parent_hashes.extend(blob_parent_hashes)
         current_shnarf = ShnarfWitness(
             current_shnarf,
             blob_blocks[-1].block_hash,
@@ -240,6 +341,28 @@ def check_blob_proof(blob_input: BlobProofPrivateInput) -> BlobProof:
             raise Exception("execution proof boundary falls outside the blob block range")
         if proof.public_inputs.end_block_hash != truncated_block_hashes[boundary_index]:
             raise Exception("execution proof end block hash does not match blob data at its boundary")
+
+    # Parent-hash continuity across the *entire* block range (§2.2 step 6):
+    # without this every block strictly between execution-proof boundaries
+    # would only be bound transitively through `from`-list matching, which
+    # accepts header changes that don't touch transactions (e.g., timestamp
+    # or prevRandao swaps).
+    #
+    # The first block's parent must equal the first execution proof's
+    # `parentBlockHash`; every subsequent block's parent must equal the
+    # previous block's computed hash. Combined with the boundary check
+    # above, this anchors every block to the chain that the execution
+    # proofs verified.
+    if parent_hashes[0] != first_proof.public_inputs.parent_block_hash:
+        raise Exception(
+            "blob's first block does not descend from the first execution proof's parentBlockHash"
+        )
+    for i in range(1, len(parent_hashes)):
+        if parent_hashes[i] != truncated_block_hashes[i - 1]:
+            raise Exception(
+                f"blob block-hash chain breaks at index {i}: "
+                f"parent_hash != previous block's hash"
+            )
 
     for left, right in zip(blob_input.execution_proofs, blob_input.execution_proofs[1:]):
         assert_execution_continuity(left.public_inputs, right.public_inputs)
@@ -279,11 +402,22 @@ def check_blob_proof(blob_input: BlobProofPrivateInput) -> BlobProof:
 
 def verify_execution_proof(proof: ExecutionProof) -> None:
     """
-    Placeholder for recursive proof verification plus explicit checks for the
-    hash preimages that the blob proof consumes.
+    Verify an inner execution proof against its claimed public inputs.
+
+    PRECOMPILE (production guest): recursive STARK verification.
+        The zkVM exposes the inner-proof verifier as a circuit primitive
+        (typically wired through the underlying field's hash precompile,
+        e.g. Poseidon2 for KoalaBear / Goldilocks). In this reference,
+        the recursive-verify step is implicit — `ExecutionProof.proof`
+        stands in for the recursive STARK bytes the guest would actually
+        check. The Python reference only re-checks the hash-preimage
+        bindings (`txFromsHash`, `L2L1MessagesHash`, `filteredAddressesHash`)
+        the blob proof consumes alongside the PI tuple.
     """
     if proof.public_inputs.end_block_number != proof.end_block_number:
         raise Exception("execution proof range metadata does not match public inputs")
+    # The three checks below are PRECOMPILE: keccak256 in production (used
+    # to verify the preimage bindings that the blob proof consumes).
     if hash_hash_list(proof.l2_l1_messages) != proof.public_inputs.l2_l1_messages_hash:
         raise Exception("invalid L2-to-L1 message-list preimage")
     if hash_address_list(proof.tx_froms) != proof.public_inputs.tx_froms_hash:
@@ -367,60 +501,131 @@ def merkle_root_fixed_depth(leaves: Sequence[Hash32], depth: int) -> Hash32:
     return Hash32(layer[0])
 
 
-def truncate_block_rlp(block_rlp: bytes) -> "TruncatedEthereumBlock":
+def _signature_stripped_tx_bytes(tx: Transaction) -> bytes:
     """
-    Decode the canonical full block RLP (header + tx list [+ withdrawals]
-    with EIP-2718 typed transactions in full signed form) and apply the
-    §3.2 DA truncation rule, returning a `TruncatedEthereumBlock`:
+    Canonical signature- and chainID-stripped tx encoding per §3.2.
 
-      - `timestamp`, `prev_randao`, `block_hash` extracted from the header
-        (block_hash = keccak256(header_rlp));
-      - per-transaction signature-stripped bytes (drop `(v, r, s)`) with
-        the recovered `from` recorded explicitly;
-      - `froms` parallel-list of sender addresses recovered via
-        `recover_sender(signedTxRlp, chainID)`.
+    For legacy transactions: RLP([nonce, gas_price, gas, to, value, data])
+    — chain_id was implicit in `v` for EIP-155, dropped here along with
+    the entire `(v, r, s)` triplet.
 
-    The Python reference defers the actual decode/truncate to the
-    production guest.
+    For typed (EIP-2718) transactions: `type_byte || RLP([...])` with
+    `chain_id` (always the first field of the typed-tx RLP) and the
+    `(y_parity, r, s)` signature triplet both omitted.
     """
-    raise NotImplementedError("truncate_block_rlp")
+    if isinstance(tx, LegacyTransaction):
+        return rlp.encode([tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data])
+    if isinstance(tx, AccessListTransaction):
+        return b"\x01" + rlp.encode([
+            tx.nonce, tx.gas_price, tx.gas, tx.to, tx.value, tx.data, tx.access_list,
+        ])
+    if isinstance(tx, FeeMarketTransaction):
+        return b"\x02" + rlp.encode([
+            tx.nonce, tx.max_priority_fee_per_gas, tx.max_fee_per_gas, tx.gas,
+            tx.to, tx.value, tx.data, tx.access_list,
+        ])
+    if isinstance(tx, BlobTransaction):
+        return b"\x03" + rlp.encode([
+            tx.nonce, tx.max_priority_fee_per_gas, tx.max_fee_per_gas, tx.gas,
+            tx.to, tx.value, tx.data, tx.access_list,
+            tx.max_fee_per_blob_gas, tx.blob_versioned_hashes,
+        ])
+    if isinstance(tx, SetCodeTransaction):
+        return b"\x04" + rlp.encode([
+            tx.nonce, tx.max_priority_fee_per_gas, tx.max_fee_per_gas, tx.gas,
+            tx.to, tx.value, tx.data, tx.access_list, tx.authorizations,
+        ])
+    raise Exception(f"unknown transaction type {type(tx).__name__}")
 
 
-def rlp_encode_truncated_blocks(blocks: Sequence["TruncatedEthereumBlock"]) -> bytes:
+def truncate_block_rlp(block_rlp: bytes, chain_id: U64) -> TruncatedEthereumBlock:
+    """
+    Decode the canonical full block RLP and apply the §3.2 DA truncation
+    rule, returning a `TruncatedEthereumBlock`.
+
+    Header-derived fields:
+      - `timestamp` and `prev_randao` are taken from the decoded header.
+      - `block_hash = keccak256(rlp_encode(header))` — a Type-1 block hash
+        depends on the full canonical header encoding.
+
+    Per-transaction fields:
+      - `transactions[i]` is the signature- and chainID-stripped canonical
+        bytes (see `_signature_stripped_tx_bytes`).
+      - `froms[i]` is the sender recovered via `recover_sender(chain_id, tx)`.
+    """
+    block = decode_block_rlp(block_rlp)
+    bh = block_hash(block.header)
+
+    transactions: List[bytes] = []
+    froms: List[Address] = []
+    for tx_item in block.transactions:
+        # `Block.transactions` holds typed (EIP-2718) txs as bytes and
+        # legacy txs as decoded `LegacyTransaction` objects.
+        if isinstance(tx_item, (bytes, bytearray)):
+            decoded_tx: Transaction = decode_transaction(Bytes(tx_item))
+        else:
+            decoded_tx = tx_item
+        transactions.append(_signature_stripped_tx_bytes(decoded_tx))
+        froms.append(recover_sender(chain_id, decoded_tx))
+
+    return TruncatedEthereumBlock(
+        timestamp=U64(block.header.timestamp),
+        block_hash=bh,
+        prev_randao=Bytes32(block.header.prev_randao),
+        transactions=transactions,
+        froms=froms,
+    )
+
+
+def rlp_encode_truncated_blocks(blocks: Sequence[TruncatedEthereumBlock]) -> bytes:
     """
     Canonical RLP serialization of the per-blob truncated-block list
-    (§3.2). Both the sequencer (when producing the blob) and the
-    blob-proof guest (when verifying compression equality) must use the
-    same routine. The resulting byte string is what the LZ4 compressor
-    operates on.
+    (§3.2). Both the sequencer (producing the blob) and the blob-proof
+    guest (verifying compression equality) must use this exact encoding.
+
+    Layout::
+
+      RLP([
+        [
+          uint(timestamp),
+          bytes32(blockHash),
+          bytes32(prevRandao),
+          [stripped_tx_1, stripped_tx_2, ...],
+          [from_1, from_2, ...],
+        ],
+        ...
+      ])
     """
-    raise NotImplementedError("rlp_encode_truncated_blocks")
+    items = [
+        [
+            Uint(int(b.timestamp)),
+            bytes(b.block_hash),
+            bytes(b.prev_randao),
+            list(b.transactions),
+            [bytes(f) for f in b.froms],
+        ]
+        for b in blocks
+    ]
+    return rlp.encode(items)
 
 
 def compress_lz4(data: bytes) -> bytes:
     """
-    LZ4-compress the canonical RLP-encoded truncated-block payload. The
+    LZ4-compress the canonical RLP-encoded truncated-block payload using
+    the raw LZ4 block format (no 4-byte uncompressed-size header). The
     blob-proof guest asserts that this output equals the KZG-bound
     `blob_bytes` (§2.2 step 2).
-    """
-    raise NotImplementedError("compress_lz4")
 
-def parse_as_bls12_381_fr_vec(data: bytes) -> List[Bytes32]:
-    """
-    parse_as_bls12_381_fr_vec parses the input sequence of bytes into a sequence
-    of BLS12-381 field elements. The function must return an error if the input
-    cannot be parsed into an array of BLS12-381 field elements.
+    The sequencer producing the blob must use the same compression mode
+    (LZ4 block, `store_size=False`) and compression level — both choices
+    are protocol-level decisions and must match byte-for-byte for the
+    compression-equality assertion to pass.
 
-    The way the function works is that it expects data to be formed as a
-    sequence of BLS12-381 scalar field elements all stored over 32 bytes. So
-    the function does not really do anything aside slicing the input data and
-    checking the field elements are well formed (don't overflow the modulus)
+    NOT a precompile — LZ4 runs as ordinary in-guest code. A vendored C
+    library (lz4) compiled into the RISC-V guest performs the compression
+    in linear time; soundness comes from byte-equality against the
+    KZG-bound `blob_bytes` (§2.2 step 2), not from the LZ4 internals.
     """
-    raise NotImplementedError("parse_as_bls12_381_fr_vec")
+    return lz4.block.compress(data, store_size=False)
 
-def eval_lagrange_bls12_381(poly: List[Bytes32], x: Bytes32) -> Bytes32:
-    """
-    eval_lagrange_bls12_381 evaluates a polynomial in Lagrange form in the
-    BLS12-381 field
-    """
-    raise NotImplementedError("eval_lagrange_bls12_381")
+

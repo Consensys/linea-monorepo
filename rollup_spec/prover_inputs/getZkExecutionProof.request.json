@@ -43,7 +43,7 @@
             "blockRlp": "0xf90215a0...",
             "forcedTransactions": [
                 {
-                    "_comment":           "Per-FTX metadata (§6.5). `ftxNumber`, `deadlineBlockNumber`, and `signedTxRlp` are the canonical fields. `fromAddress` is recovered from `signedTxRlp` inside the guest and is not witnessed separately. `acceptance` is one of the canonical `ForcedTransactionAcceptance` variants: INCLUDED, BAD_NONCE, BAD_BALANCE, BAD_PRECOMPILE, TOO_MANY_LOGS, FILTERED_ADDRESS_FROM, FILTERED_ADDRESS_TO, PHYLAX. For Invalid sub-cases (BAD_*) the guest reads the sender's account via the EVM state interface at this block's parent state root — no per-FTX state witness; the witness pool must include the MPT path (see `_comment_executionWitness`).",
+                    "_comment":           "Per-FTX metadata (§6.5). `ftxNumber`, `deadlineBlockNumber`, and `signedTxRlp` are the canonical fields. `fromAddress` is recovered from `signedTxRlp` inside the guest and is not witnessed separately. `acceptance` is one of the five `ForcedTransactionAcceptance` variants: INCLUDED, BAD_NONCE, BAD_BALANCE, FILTERED_ADDRESS_FROM, FILTERED_ADDRESS_TO. For Invalid sub-cases (BAD_NONCE / BAD_BALANCE) the guest reads the sender's account via the EVM state interface at this block's parent state root — no per-FTX state witness; the witness pool must include the MPT path (see `_comment_executionWitness`).",
                     "ftxNumber":           17,
                     "deadlineBlockNumber": 1000600,
                     "signedTxRlp":         "0x02f86b...",
