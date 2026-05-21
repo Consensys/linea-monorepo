@@ -278,7 +278,7 @@ const TraceRoundBacking = struct {
                     try std.testing.expect(column_case.base_values.len <= max_trace_values);
                     fillElems(&self.base_values[i], column_case.base_values);
                     if (tamper_first_absorb and !tampered and column_case.base_values.len != 0) {
-                        // the lsb of the first value is bit flipped to simulate a tampered absorb, which should cause 
+                        // the lsb of the first value is bit flipped to simulate a tampered absorb, which should cause
                         //downstream coins to diverge
                         self.base_values[i][0] = field.Element.init(self.base_values[i][0].value ^ 1);
                         tampered = true;
