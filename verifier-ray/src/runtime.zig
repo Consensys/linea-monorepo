@@ -6,15 +6,13 @@ pub const Error = error{
     NoRounds,
     UnexpectedRound,
     LastRound,
-    MissingColumnAssignment,
     MissingCellAssignment,
     OutputTooSmall,
 };
 
 pub const Visibility = enum(u8) {
-    internal = 0,
-    oracle = 1,
-    public = 2,
+    oracle = 0,
+    public = 1,
 };
 
 pub const Vector = union(enum) {
@@ -43,9 +41,7 @@ pub const Scalar = union(enum) {
 
 pub const ColumnAssignment = struct {
     visibility: Visibility,
-    /// Null means the column has not been assigned. Oracle and public columns
-    /// must be assigned before their round can advance.
-    assignment: ?Vector,
+    assignment: Vector,
 };
 
 /// Verifier-visible data sent before deriving the next round's coins.
@@ -87,17 +83,12 @@ pub const Runtime = struct {
         if (self.current_round + 1 >= self.total_rounds) return Error.LastRound;
         if (message.next_round_coin_count > out_coins.len) return Error.OutputTooSmall;
 
-        for (message.columns) |column| {
-            if (column.visibility == .internal) continue;
-            if (column.assignment == null) return Error.MissingColumnAssignment;
-        }
         for (message.cells) |cell| {
             if (cell == null) return Error.MissingCellAssignment;
         }
 
         for (message.columns) |column| {
-            if (column.visibility == .internal) continue;
-            column.assignment.?.absorb(&self.transcript);
+            column.assignment.absorb(&self.transcript);
         }
         for (message.cells) |cell| {
             cell.?.absorb(&self.transcript);

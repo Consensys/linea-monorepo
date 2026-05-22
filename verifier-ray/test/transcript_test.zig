@@ -54,17 +54,9 @@ test "runtime rejects advancing without a next round" {
     );
 }
 
-test "runtime validates assignments before absorbing" {
+test "runtime validates cell assignments before absorbing" {
     var rt = runtime.Runtime.initWithRoundCount(2);
     var coins: [1]ext.Ext = undefined;
-
-    const missing_column = [_]runtime.ColumnAssignment{
-        .{ .visibility = .oracle, .assignment = null },
-    };
-    try std.testing.expectError(
-        error.MissingColumnAssignment,
-        rt.advanceRoundWithMessage(0, .{ .columns = &missing_column }, &coins),
-    );
 
     const missing_cell = [_]?runtime.Scalar{null};
     try std.testing.expectError(
@@ -73,15 +65,15 @@ test "runtime validates assignments before absorbing" {
     );
 }
 
-test "runtime skips internal columns and squeezes requested extension coins" {
+test "runtime absorbs columns and squeezes requested extension coins" {
     var rt = runtime.Runtime.initWithRoundCount(2);
     var coins: [2]ext.Ext = undefined;
 
-    const internal_columns = [_]runtime.ColumnAssignment{
-        .{ .visibility = .internal, .assignment = null },
+    const columns = [_]runtime.ColumnAssignment{
+        .{ .visibility = .oracle, .assignment = .{ .base = &.{field.Element.init(1)} } },
     };
     const got = try rt.advanceRoundWithMessage(0, .{
-        .columns = &internal_columns,
+        .columns = &columns,
         .next_round_coin_count = coins.len,
     }, &coins);
 

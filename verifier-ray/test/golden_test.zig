@@ -267,29 +267,32 @@ const TraceRoundBacking = struct {
         try std.testing.expect(round_case.cells.len <= max_trace_cells);
 
         var tampered = false;
+        var column_count: usize = 0;
         for (round_case.columns, 0..) |column_case, i| {
-            var assignment: ?runtime.Vector = null;
-            if (column_case.is_assigned) {
-                if (column_case.is_ext) {
-                    try std.testing.expect(column_case.ext_values.len <= max_trace_values);
-                    fillExts(&self.ext_values[i], column_case.ext_values);
-                    assignment = .{ .ext = self.ext_values[i][0..column_case.ext_values.len] };
-                } else {
-                    try std.testing.expect(column_case.base_values.len <= max_trace_values);
-                    fillElems(&self.base_values[i], column_case.base_values);
-                    if (tamper_first_absorb and !tampered and column_case.base_values.len != 0) {
-                        // the lsb of the first value is bit flipped to simulate a tampered absorb, which should cause
-                        //downstream coins to diverge
-                        self.base_values[i][0] = field.Element.init(self.base_values[i][0].value ^ 1);
-                        tampered = true;
-                    }
-                    assignment = .{ .base = self.base_values[i][0..column_case.base_values.len] };
+            if (column_case.visibility == 0) continue;
+            try std.testing.expect(column_case.is_assigned);
+
+            const assignment: runtime.Vector = if (column_case.is_ext) assignment: {
+                try std.testing.expect(column_case.ext_values.len <= max_trace_values);
+                fillExts(&self.ext_values[i], column_case.ext_values);
+                break :assignment .{ .ext = self.ext_values[i][0..column_case.ext_values.len] };
+            } else assignment: {
+                try std.testing.expect(column_case.base_values.len <= max_trace_values);
+                fillElems(&self.base_values[i], column_case.base_values);
+                if (tamper_first_absorb and !tampered and column_case.base_values.len != 0) {
+                    // The lsb of the first value is bit flipped to simulate a tampered absorb, which should cause
+                    // downstream coins to diverge.
+                    self.base_values[i][0] = field.Element.init(self.base_values[i][0].value ^ 1);
+                    tampered = true;
                 }
-            }
-            self.columns[i] = .{
+                break :assignment .{ .base = self.base_values[i][0..column_case.base_values.len] };
+            };
+
+            self.columns[column_count] = .{
                 .visibility = try visibility(column_case.visibility),
                 .assignment = assignment,
             };
+            column_count += 1;
         }
 
         for (round_case.cells, 0..) |cell_case, i| {
@@ -302,7 +305,7 @@ const TraceRoundBacking = struct {
         }
 
         return .{
-            .columns = self.columns[0..round_case.columns.len],
+            .columns = self.columns[0..column_count],
             .cells = self.cells[0..round_case.cells.len],
             .next_round_coin_count = round_case.expected_coins.len,
         };
@@ -311,7 +314,6 @@ const TraceRoundBacking = struct {
 
 fn visibility(value: u8) !runtime.Visibility {
     return switch (value) {
-        0 => .internal,
         1 => .oracle,
         2 => .public,
         else => error.InvalidVisibility,
