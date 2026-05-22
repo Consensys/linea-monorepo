@@ -39,6 +39,8 @@ pub const Scalar = union(enum) {
     }
 };
 
+pub const Coin = ext.Ext;
+
 pub const ColumnAssignment = struct {
     visibility: Visibility,
     assignment: Vector,
@@ -74,8 +76,8 @@ pub const Runtime = struct {
         self: *Runtime,
         expected_round: usize,
         message: RoundMessage,
-        out_coins: []ext.Ext,
-    ) Error![]const ext.Ext {
+        out_coins: []Coin,
+    ) Error![]const Coin {
         if (self.total_rounds == 0) return Error.NoRounds;
         if (self.current_round != expected_round or expected_round >= self.total_rounds) {
             return Error.UnexpectedRound;

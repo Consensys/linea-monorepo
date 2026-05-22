@@ -19,7 +19,7 @@ test "transcript absorbs elements deterministically" {
 
 test "runtime rejects skipped and replayed rounds" {
     var rt = runtime.Runtime.initWithRoundCount(3);
-    var coins: [1]ext.Ext = undefined;
+    var coins: [1]runtime.Coin = undefined;
 
     try std.testing.expectError(
         error.UnexpectedRound,
@@ -40,7 +40,7 @@ test "runtime rejects skipped and replayed rounds" {
 
 test "runtime rejects advancing without a next round" {
     var no_rounds = runtime.Runtime.init();
-    var coins: [1]ext.Ext = undefined;
+    var coins: [1]runtime.Coin = undefined;
 
     try std.testing.expectError(
         error.NoRounds,
@@ -56,7 +56,7 @@ test "runtime rejects advancing without a next round" {
 
 test "runtime validates cell assignments before absorbing" {
     var rt = runtime.Runtime.initWithRoundCount(2);
-    var coins: [1]ext.Ext = undefined;
+    var coins: [1]runtime.Coin = undefined;
 
     const missing_cell = [_]?runtime.Scalar{null};
     try std.testing.expectError(
@@ -67,7 +67,7 @@ test "runtime validates cell assignments before absorbing" {
 
 test "runtime absorbs columns and squeezes requested extension coins" {
     var rt = runtime.Runtime.initWithRoundCount(2);
-    var coins: [2]ext.Ext = undefined;
+    var coins: [2]runtime.Coin = undefined;
 
     const columns = [_]runtime.ColumnAssignment{
         .{ .visibility = .oracle, .assignment = .{ .base = &.{field.Element.init(1)} } },
@@ -83,7 +83,7 @@ test "runtime absorbs columns and squeezes requested extension coins" {
 
 test "runtime rejects undersized coin output buffer" {
     var rt = runtime.Runtime.initWithRoundCount(2);
-    var coins: [0]ext.Ext = .{};
+    var coins: [0]runtime.Coin = .{};
 
     try std.testing.expectError(
         error.OutputTooSmall,
