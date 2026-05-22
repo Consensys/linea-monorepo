@@ -19,7 +19,6 @@ import {
 } from "./../helpers";
 import l2SendMessageTransaction from "../../_testData/eip1559RlpEncoderTransactions/l2SendMessage.json";
 import transactionWithCalldata from "../../_testData/eip1559RlpEncoderTransactions/withCalldata.json";
-import transactionWithCalldataAndAccessList from "../../_testData/eip1559RlpEncoderTransactions/withCalldataAndAccessList.json";
 import transactionWithLargeCalldata from "../../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
 import transactionWithoutCalldata from "../../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
 import {
@@ -817,12 +816,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
     it("Should submit the forced transaction with no calldata", async () => {
       const forcedTransaction = buildEip1559Transaction(transactionWithoutCalldata.result);
-      forcedTransaction.gasLimit = MIN_FORCED_TRANSACTION_GAS_LIMIT;
-      await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
-    });
-
-    it("Should submit the forced transaction with calldata and access list", async () => {
-      const forcedTransaction = buildEip1559Transaction(transactionWithCalldataAndAccessList.result);
       forcedTransaction.gasLimit = MIN_FORCED_TRANSACTION_GAS_LIMIT;
       await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
     });

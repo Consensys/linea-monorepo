@@ -198,7 +198,7 @@ The user-facing contract that validates and submits forced transactions.
 
 #### Intrinsic gas derivation for MIN_GAS_LIMIT
 
-`MIN_GAS_LIMIT` must cover the worst-case **Osaka** intrinsic gas for any transaction permitted by the other limits. With an empty access list and `MAX_INPUT_LENGTH_LIMIT = 1,000 bytes` the ceiling is:
+`MIN_GAS_LIMIT` must cover the worst-case **Osaka** intrinsic gas for any transaction permitted by the other limits. Forced transactions always use an empty access list, and with `MAX_INPUT_LENGTH_LIMIT = 1,000 bytes` the ceiling is:
 
 | Component | Formula | Value |
 |-----------|---------|-------|
@@ -774,12 +774,13 @@ struct Eip1559Transaction {
     address to;
     uint256 value;
     bytes input;
-    AccessList[] accessList;
     uint8 yParity;
     uint256 r;
     uint256 s;
 }
 ```
+
+The gateway always RLP-encodes the access list as an empty list (`[]`). The access list is intentionally not part of the submission struct.
 
 ### Finalized State Hash Computation
 

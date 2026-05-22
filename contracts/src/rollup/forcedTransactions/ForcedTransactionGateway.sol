@@ -207,7 +207,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     }
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.value);
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.input);
-    transactionFieldList = LibRLP.p(transactionFieldList, _buildAccessList(_forcedTransaction.accessList));
+    transactionFieldList = LibRLP.p(transactionFieldList, LibRLP.p());
 
     bytes32 hashedPayload = keccak256(abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList)));
 
@@ -279,29 +279,5 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     require(useAddressFilter != _useAddressFilter, AddressFilterAlreadySet(_useAddressFilter));
     useAddressFilter = _useAddressFilter;
     emit AddressFilterSet(_useAddressFilter);
-  }
-
-  /**
-   * @notice Function to convert the transaction access list to a LibRLP.List.
-   * @param _accessList The transaction access list to convert.
-   * @return list The List object.
-   */
-  function _buildAccessList(AccessList[] memory _accessList) internal pure returns (LibRLP.List memory list) {
-    unchecked {
-      for (uint256 i; i < _accessList.length; ++i) {
-        LibRLP.List memory keys;
-        bytes32[] memory ks = _accessList[i].storageKeys;
-        for (uint256 j; j < ks.length; ++j) {
-          bytes memory b = new bytes(32);
-          assembly {
-            mstore(add(b, 0x20), mload(add(ks, add(0x20, shl(5, j)))))
-          }
-          keys = LibRLP.p(keys, b);
-        }
-        LibRLP.List memory acct = LibRLP.p(_accessList[i].contractAddress);
-        acct = LibRLP.p(acct, keys);
-        list = LibRLP.p(list, acct);
-      }
-    }
   }
 }

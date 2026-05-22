@@ -32,7 +32,6 @@ interface IForcedTransactionGateway {
    * @param to The destination address of the transaction.
    * @param value The Ether value to transfer.
    * @param input The calldata input to send to the "to" address.
-   * @param accessList The access list for the transaction.
    * @param yParity The signature's yParity.
    * @param r The r portion of the signature.
    * @param s The s portion of the signature.
@@ -45,20 +44,9 @@ interface IForcedTransactionGateway {
     address to;
     uint256 value;
     bytes input;
-    AccessList[] accessList;
     uint8 yParity;
     uint256 r;
     uint256 s;
-  }
-
-  /**
-   * @notice Supporting data for encoding an EIP-2930/1559 access lists.
-   * @param contractAddress is the address where the storageKeys will be accessed.
-   * @param storageKeys contains the list of keys expected to be accessed at contractAddress.
-   */
-  struct AccessList {
-    address contractAddress;
-    bytes32[] storageKeys;
   }
 
   /**
