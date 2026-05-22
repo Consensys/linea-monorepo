@@ -5,6 +5,9 @@
 # Declare all targets as phony to prevent conflicts with files of the same name
 .PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-rust-exec build-act4 run-act4 require-test require-src require-bin-ext
 
+# Keep validation, build, and execution targets running in order
+.NOTPARALLEL:
+
 ######################################################
 # Variables and support functions
 ######################################################
