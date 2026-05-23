@@ -1,3 +1,8 @@
+## [1.0.2-rc1] - 2026-05-23
+
+### ⚙️ Miscellaneous Tasks
+
+- *(linea-besu)* For manual release testing
 ## [1.0.1] - 2026-05-22
 ### Testing
 
