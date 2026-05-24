@@ -23,6 +23,11 @@ const (
 	BLOBS_DATA                  = "blobs_data"
 )
 
+type memoryBlob struct {
+	offset uint64
+	data   []byte
+}
+
 // The purpose of this program is simply to generate a suitable ZkC json input
 // file for a given RISC-V binary program.
 func main() {
@@ -69,7 +74,9 @@ func main() {
 		os.Exit(1)
 	}
 	// extract loadable program segments
-	var program = extractProgramBytes(elfFile.Progs, programOffset)
+	var programBlobs = extractProgramBlobs(elfFile.Progs)
+	var program = mergeProgramBytes(programBlobs, programOffset)
+	var blobs = append(programBlobs, memoryBlob{offset: inputsOffset, data: inBytes})
 	switch writeSections := os.Getenv("ELF2JSON_WRITE_SECTIONS"); writeSections {
 	case "", "false":
 	case "true":
@@ -91,61 +98,70 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ELF2JSON_WRITE_SECTIONS must be true or false, got %q\n", writeSections)
 		os.Exit(1)
 	}
-	printJson(program, inBytes, programOffset, inputsOffset, entryPoint)
+	printJson(program, inBytes, blobs, programOffset, inputsOffset, entryPoint)
 }
 
-// Extract loadable ELF segments and assemble them into a contiguous byte slice
-// starting at programOffset. The JSON format has a single riscV_program blob for
-// now; supporting very sparse ELFs properly would require multiple memory blobs.
+// Extract loadable ELF segments as sparse memory blobs. The legacy
+// riscV_program field below still merges them into a single contiguous blob for
+// compatibility.
 //
 // Our own tests contain .text, .rodata, .data and .bss sections.
 // ACT4 tests contain .text.init, .text.rvtest, .text.rvmodel, .data,
 // and .tohost sections. We do not filter by section names here:
 // PT_LOAD segments are what the ELF loader actually maps into memory.
-func extractProgramBytes(progs []*elf.Prog, programOffset uint64) []byte {
-	var maxAddr uint64 = 0
+func extractProgramBlobs(progs []*elf.Prog) []memoryBlob {
+	var blobs []memoryBlob
+
 	for _, p := range progs {
-		if p.Type != elf.PT_LOAD {
+		if p.Type != elf.PT_LOAD || p.Memsz == 0 {
 			continue
 		}
 		if p.Filesz > p.Memsz {
 			panic(fmt.Sprintf("loadable segment at %#x has file size larger than memory size", p.Vaddr))
 		}
-		if p.Memsz == 0 {
-			continue
+		// Vaddr is the RAM address where the segment is loaded; Memsz is the
+		// number of RAM bytes it occupies, including zero-initialized bytes
+		// not present in the ELF file
+		data := make([]byte, p.Memsz)
+		if p.Filesz > 0 {
+			n, err := p.ReadAt(data[:p.Filesz], 0)
+			if err != nil && err != io.EOF {
+				panic(fmt.Sprintf("error reading loadable segment at %#x: %v", p.Vaddr, err))
+			}
+			if uint64(n) != p.Filesz {
+				panic(fmt.Sprintf("short read for loadable segment at %#x: got %d bytes, expected %d", p.Vaddr, n, p.Filesz))
+			}
 		}
-		if p.Vaddr < programOffset {
-			panic(fmt.Sprintf("loadable segment starts before program offset: segment=%#x programOffset=%#x", p.Vaddr, programOffset))
+		blobs = append(blobs, memoryBlob{offset: p.Vaddr, data: data})
+	}
+
+	if len(blobs) == 0 {
+		panic("no loadable program segments found.")
+	}
+
+	return blobs
+}
+
+func mergeProgramBytes(blobs []memoryBlob, programOffset uint64) []byte {
+	var maxAddr uint64 = 0
+	for _, blob := range blobs {
+		if blob.offset < programOffset {
+			panic(fmt.Sprintf("loadable segment starts before program offset: segment=%#x programOffset=%#x", blob.offset, programOffset))
 		}
-		end := p.Vaddr + p.Memsz
-		if end < p.Vaddr {
-			panic(fmt.Sprintf("loadable segment address overflow at %#x", p.Vaddr))
+		end := blob.offset + uint64(len(blob.data))
+		if end < blob.offset {
+			panic(fmt.Sprintf("loadable segment address overflow at %#x", blob.offset))
 		}
 		if end > maxAddr {
 			maxAddr = end
 		}
 	}
 
-	if maxAddr == 0 {
-		panic("no loadable program segments found.")
-	}
-
 	buf := make([]byte, maxAddr-programOffset)
 
-	for _, p := range progs {
-		if p.Type != elf.PT_LOAD || p.Filesz == 0 {
-			continue
-		}
-		data := make([]byte, p.Filesz)
-		n, err := p.ReadAt(data, 0)
-		if err != nil && err != io.EOF {
-			panic(fmt.Sprintf("error reading loadable segment at %#x: %v", p.Vaddr, err))
-		}
-		if uint64(n) != p.Filesz {
-			panic(fmt.Sprintf("short read for loadable segment at %#x: got %d bytes, expected %d", p.Vaddr, n, p.Filesz))
-		}
-		offset := p.Vaddr - programOffset
-		copy(buf[offset:], data)
+	for _, blob := range blobs {
+		offset := blob.offset - programOffset
+		copy(buf[offset:], blob.data)
 	}
 
 	// If needed pad buffer to multiple of 4 bytes (add at most 3 zero bytes)
@@ -156,7 +172,7 @@ func extractProgramBytes(progs []*elf.Prog, programOffset uint64) []byte {
 	return buf
 }
 
-func printJson(program, inBytes []byte, programOffset, inputsOffset, entryPoint uint64) {
+func printJson(program, inBytes []byte, blobs []memoryBlob, programOffset, inputsOffset, entryPoint uint64) {
 	var (
 		programString       = hex.EncodeToString(program)
 		inBytesString       = hex.EncodeToString(inBytes)
@@ -165,10 +181,20 @@ func printJson(program, inBytes []byte, programOffset, inputsOffset, entryPoint 
 		entryPointString    = fmt.Sprintf("%016x", entryPoint)
 		programLenString    = fmt.Sprintf("%016x", len(program))
 		inputLenString      = fmt.Sprintf("%016x", len(inBytes))
+		blobsCountString    = fmt.Sprintf("%016x", len(blobs))
+		entryPointAndBlobs  = entryPointString + blobsCountString
+		blobMetadata        []string
+		blobData            []string
 	)
 
 	if len(program)%4 != 0 {
 		panic("program length not multiple of 4")
+	}
+	for _, blob := range blobs {
+		blobMetadata = append(blobMetadata, fmt.Sprintf("%016x%016x", blob.offset, len(blob.data)))
+		if len(blob.data) > 0 {
+			blobData = append(blobData, hex.EncodeToString(blob.data))
+		}
 	}
 
 	fmt.Println("{")
@@ -179,9 +205,8 @@ func printJson(program, inBytes []byte, programOffset, inputsOffset, entryPoint 
 	fmt.Printf("\t\"%s\": \"0x%s\",\n", ENTRY_POINT, entryPointString)
 	fmt.Printf("\t\"%s\": \"0x%s\",\n", RISCV_PROGRAM_LENGTH, programLenString)
 	fmt.Printf("\t\"%s\": \"0x%s\",\n", IN_BYTES_LENGTH, inputLenString)
-	// Temporary hardcoded values for sparse blobs
-	fmt.Printf("\t\"%s\": \"0x%s\",\n", ENTRY_POINT_AND_BLOBS_COUNT, "00000000000000000000000000000002")
-	fmt.Printf("\t\"%s\": \"0x%s\",\n", BLOBS_OFFSET_AND_SIZE, "00000000000000000000000000000002_00000000000010000000000000000002")
-	fmt.Printf("\t\"%s\": \"0x%s\"\n", BLOBS_DATA, "AA_BB_CC_DD")
+	fmt.Printf("\t\"%s\": \"0x%s\",\n", ENTRY_POINT_AND_BLOBS_COUNT, entryPointAndBlobs)
+	fmt.Printf("\t\"%s\": \"0x%s\",\n", BLOBS_OFFSET_AND_SIZE, strings.Join(blobMetadata, "_"))
+	fmt.Printf("\t\"%s\": \"0x%s\"\n", BLOBS_DATA, strings.Join(blobData, "_"))
 	fmt.Println("}")
 }
