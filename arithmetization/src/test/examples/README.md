@@ -176,7 +176,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `BIN_EXT`        | `""`                                                                                    | Already compiled ELF used by `elf-to-json` and `exec-elf`                       |
 | `JSON_EXT`       | `$(BIN_EXT).json`                                                                       | JSON output path used by `elf-to-json` and `exec-elf`                           |
 | `IN_BYTES`       | `""`                                                                                    | Input bytes written to memory at `IN_BYTES_OFFSET` before execution             |
-| `PROGRAM_OFFSET` | `0x00000000`                                                                            | Memory address where the program is loaded (up to 128 MiB)                      |
+| `PROGRAM_OFFSET` | `0x00000000`                                                                            | Program address used by this Makefile's generated linker script (up to 128 MiB) |
 | `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                      |
 | `SP`             | `0x08800000`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)         |
 | `VERIFY_ELF`     | `false`                                                                                 | Set to `true` to verify offsets, entry point and sp match the ELF ones          |
@@ -240,7 +240,7 @@ make build-act4 ACT4_DEBUG=false ACT4_FAST=true
 The `build/` directory contains ACT4 intermediate and debug artifacts: signature-generating ELFs, signatures, objdumps, traces and trap reports.
 The `elfs/` directory contains the final self-checking ELFs run by `make run-act4`.
 The `logs/` directory contains one JSON input per test, non-empty JSON conversion stderr in `.json.err`, and the filtered ecall output (for `exit` or `write`) in `.out`.
-Add `export ELF2JSON_WRITE_SECTIONS=true` to your shell startup file (e.g. `~/.bashrc` or `~/.zshrc`) to also write `.sections` files next to each ELF, listing the allocated ELF sections included in the generated JSON input, one per line, plus their indexes, offsets and sizes. 
+Add `export ELF2JSON_WRITE_SECTIONS=true` to your shell startup file (e.g. `~/.bashrc` or `~/.zshrc`) to also write `.sections` files next to each ELF, listing the sparse blobs included in the generated JSON input with their indexes, offsets, sizes and names.
 The full zkc output is kept as `.full` only for failing tests. A summary of ACT4 results is written in `results.txt`.
 
 To rerun one generated ACT4 test through zkc:

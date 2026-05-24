@@ -100,7 +100,7 @@ EXIT_SUCCESS_STRING := "EXIT CODE = 0"
 # Support function to generate JSON from an ELF
 define ELF_TO_JSON
 	@echo "\nGenerating $(2) from $(1)"
-	@go run $(GO_MAIN) "$(1)" "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > "$(2)"
+	@go run $(GO_MAIN) "$(1)" "$(IN_BYTES)" $(IN_BYTES_OFFSET) > "$(2)"
 endef
 
 ######################################################
@@ -256,7 +256,7 @@ blake-rust-exec: install-zkc
 	pass=0; fail=0; \
 	i=0; while IFS= read -r in_bytes; do \
 		i=$$((i + 1)); \
-		$(MAKEFILE_DIR)rust/target/blake_elf2json $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes "$$in_bytes" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json || exit $$?; \
+		$(MAKEFILE_DIR)rust/target/blake_elf2json $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes "$$in_bytes" $(IN_BYTES_OFFSET) > $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json || exit $$?; \
 		echo "RUN   case $$i"; \
 		exit_line=$$(zkc exec $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
 		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
@@ -332,7 +332,7 @@ run-act4: install-zkc build-act4
 		name=$$(basename "$$elf" .elf); \
 		base="$(ACT4_LOGS)/$$name"; \
 		count=$$((count + 1)); \
-		go run $(GO_MAIN) "$$elf" "" "$(PROGRAM_OFFSET)" 0 "$(ENTRY_POINT)" > "$$base.json" 2> "$$base.json.err"; \
+		go run $(GO_MAIN) "$$elf" "" 0 > "$$base.json" 2> "$$base.json.err"; \
 		[ -s "$$base.json.err" ] || rm -f "$$base.json.err"; \
 		zkc exec "$$base.json" $(ZKC_MAIN) > "$$base.full" 2>&1; \
 		awk '(previous == "ECALL for write" || previous == "ECALL for exit") && $$0 != "" { print } { previous = $$0 }' "$$base.full" > "$$base.out"; \
