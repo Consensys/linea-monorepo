@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -26,6 +27,7 @@ const (
 type memoryBlob struct {
 	offset uint64
 	data   []byte
+	name   string
 }
 
 // The purpose of this program is simply to generate a suitable ZkC json input
@@ -74,9 +76,12 @@ func main() {
 		os.Exit(1)
 	}
 	// extract loadable program segments
-	var programBlobs = extractProgramBlobs(elfFile.Progs)
-	var program = mergeProgramBytes(programBlobs, programOffset)
-	var blobs = append(programBlobs, memoryBlob{offset: inputsOffset, data: inBytes})
+	var loadBlobs = extractLoadBlobs(elfFile.Progs)
+	var program = mergeProgramBytes(loadBlobs, programOffset)
+	var blobs = extractProgramBlobs(elfFile.Progs, elfFile.Sections)
+	if len(inBytes) > 0 {
+		blobs = append(blobs, memoryBlob{offset: inputsOffset, data: inBytes, name: IN_BYTES})
+	}
 	switch writeSections := os.Getenv("ELF2JSON_WRITE_SECTIONS"); writeSections {
 	case "", "false":
 	case "true":
@@ -85,11 +90,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "error creating ELF sections file: %v\n", err)
 			os.Exit(1)
 		}
-		for _, s := range elfFile.Sections {
-			if s.Name != "" && s.Size > 0 && s.Flags&elf.SHF_ALLOC != 0 {
-				fmt.Fprintln(sectionsFile, s.Name)
-			}
-		}
+		writeSectionsFile(sectionsFile, blobs)
 		if err := sectionsFile.Close(); err != nil {
 			fmt.Fprintf(os.Stderr, "error writing ELF sections file: %v\n", err)
 			os.Exit(1)
@@ -101,15 +102,9 @@ func main() {
 	printJson(program, inBytes, blobs, programOffset, inputsOffset, entryPoint)
 }
 
-// Extract loadable ELF segments as sparse memory blobs. The legacy
-// riscV_program field below still merges them into a single contiguous blob for
-// compatibility.
-//
-// Our own tests contain .text, .rodata, .data and .bss sections.
-// ACT4 tests contain .text.init, .text.rvtest, .text.rvmodel, .data,
-// and .tohost sections. We do not filter by section names here:
-// PT_LOAD segments are what the ELF loader actually maps into memory.
-func extractProgramBlobs(progs []*elf.Prog) []memoryBlob {
+// Extract full PT_LOAD memory images for the legacy contiguous riscV_program
+// field.
+func extractLoadBlobs(progs []*elf.Prog) []memoryBlob {
 	var blobs []memoryBlob
 
 	for _, p := range progs {
@@ -122,17 +117,7 @@ func extractProgramBlobs(progs []*elf.Prog) []memoryBlob {
 		// Vaddr is the RAM address where the segment is loaded; Memsz is the
 		// number of RAM bytes it occupies, including zero-initialized bytes
 		// not present in the ELF file
-		data := make([]byte, p.Memsz)
-		if p.Filesz > 0 {
-			n, err := p.ReadAt(data[:p.Filesz], 0)
-			if err != nil && err != io.EOF {
-				panic(fmt.Sprintf("error reading loadable segment at %#x: %v", p.Vaddr, err))
-			}
-			if uint64(n) != p.Filesz {
-				panic(fmt.Sprintf("short read for loadable segment at %#x: got %d bytes, expected %d", p.Vaddr, n, p.Filesz))
-			}
-		}
-		blobs = append(blobs, memoryBlob{offset: p.Vaddr, data: data})
+		blobs = append(blobs, memoryBlob{offset: p.Vaddr, data: readProgBytes(p, 0, p.Memsz), name: "PT_LOAD"})
 	}
 
 	if len(blobs) == 0 {
@@ -140,6 +125,97 @@ func extractProgramBlobs(progs []*elf.Prog) []memoryBlob {
 	}
 
 	return blobs
+}
+
+// Extract sparse memory blobs from allocated sections. Gaps inside a PT_LOAD
+// segment are added only when needed to reproduce the loader memory image over
+// non-zero RAM.
+//
+// Our own tests contain .text, .rodata, .data and .bss sections.
+// ACT4 tests contain .text.init, .text.rvtest, .text.rvmodel, .data,
+// and .tohost sections. We do not filter by section names here.
+func extractProgramBlobs(progs []*elf.Prog, sections []*elf.Section) []memoryBlob {
+	var blobs []memoryBlob
+
+	for _, p := range progs {
+		if p.Type != elf.PT_LOAD || p.Memsz == 0 {
+			continue
+		}
+		if p.Filesz > p.Memsz {
+			panic(fmt.Sprintf("loadable segment at %#x has file size larger than memory size", p.Vaddr))
+		}
+
+		var sectionBlobs []memoryBlob
+		progEnd := p.Vaddr + p.Memsz
+		for _, s := range sections {
+			if s.Size == 0 || s.Flags&elf.SHF_ALLOC == 0 {
+				continue
+			}
+			sectionEnd := s.Addr + s.Size
+			if s.Addr < p.Vaddr || sectionEnd > progEnd {
+				continue
+			}
+			sectionBlobs = append(sectionBlobs, memoryBlob{offset: s.Addr, data: readSectionBytes(s), name: s.Name})
+		}
+		sort.Slice(sectionBlobs, func(i, j int) bool { return sectionBlobs[i].offset < sectionBlobs[j].offset })
+
+		for i, blob := range sectionBlobs {
+			if i > 0 {
+				gapStart := sectionBlobs[i-1].offset + uint64(len(sectionBlobs[i-1].data))
+				if gapStart < blob.offset {
+					blobs = append(blobs, memoryBlob{
+						offset: gapStart,
+						data:   readProgBytes(p, gapStart-p.Vaddr, blob.offset-gapStart),
+						name:   "zero gap",
+					})
+				}
+			}
+			blobs = append(blobs, blob)
+		}
+	}
+
+	if len(blobs) == 0 {
+		panic("no loadable program sections found.")
+	}
+
+	return blobs
+}
+
+func readProgBytes(p *elf.Prog, offset, size uint64) []byte {
+	data := make([]byte, size)
+	if offset < p.Filesz {
+		sizeFromFile := min(size, p.Filesz-offset)
+		n, err := p.ReadAt(data[:sizeFromFile], int64(offset))
+		if err != nil && err != io.EOF {
+			panic(fmt.Sprintf("error reading loadable segment at %#x: %v", p.Vaddr+offset, err))
+		}
+		if uint64(n) != sizeFromFile {
+			panic(fmt.Sprintf("short read for loadable segment at %#x: got %d bytes, expected %d", p.Vaddr+offset, n, sizeFromFile))
+		}
+	}
+	return data
+}
+
+func readSectionBytes(s *elf.Section) []byte {
+	data := make([]byte, s.Size)
+	if s.Type == elf.SHT_NOBITS {
+		return data
+	}
+	n, err := s.ReadAt(data, 0)
+	if err != nil && err != io.EOF {
+		panic(fmt.Sprintf("error reading section %s: %v", s.Name, err))
+	}
+	if uint64(n) != s.Size {
+		panic(fmt.Sprintf("short read for section %s: got %d bytes, expected %d", s.Name, n, s.Size))
+	}
+	return data
+}
+
+func writeSectionsFile(file *os.File, blobs []memoryBlob) {
+	fmt.Fprintln(file, "# index offset size name")
+	for i, blob := range blobs {
+		fmt.Fprintf(file, "%d 0x%016x 0x%016x %s\n", i, blob.offset, len(blob.data), blob.name)
+	}
 }
 
 func mergeProgramBytes(blobs []memoryBlob, programOffset uint64) []byte {
