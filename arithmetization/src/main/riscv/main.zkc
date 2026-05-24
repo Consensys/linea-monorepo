@@ -32,32 +32,24 @@ fn main<ram, registers>() {
     }
 
     // #####################################################################
-    //
-    // zkc exec test/examples/asm/bin/test.json main/riscv/main.zkc
-    // 
     // new JSON format
-    // {
-    // 	"entry_point_and_blobs_count": "0x00000000000000000000000000000002",
-    //     "blobs_offset_and_size": "0x00000000000000000000000000000002_00000000000010000000000000000002",
-    //     "blobs_data": "0xAA_BB_CC_DD"
-    // }
-    //
-    // var entry_point:Address
-    // var blobs_count:u64
-    // entry_point :: blobs_count = entry_point_and_blobs_count[0]
-    // 
-    // var internal_offset:Length = 0 // internal offset to blobs_data
-    // for i:u64 = 0; i<blobs_count; i = i + 1 {
-    //     var blob_offset:Address
-    //     var blob_size:Length
-    //     blob_offset :: blob_size = blobs_offset_and_size[i]
-    //     printf "blobs_offset_and_size[%d] == %x :: %x\n", i, blob_offset, blob_size
-    //     for j:Address = 0; j<blob_size; j = j + 1 {
-    //         printf "blobs_data[%d + %d] = %x\n", internal_offset, j, blobs_data[internal_offset + j]
-    //         write_8(blob_offset + j, blobs_data[internal_offset + j])
-    //     }
-    //     internal_offset = internal_offset + blob_size
-    // }
+    var entry_point:Address
+    var blobs_count:u64
+    entry_point::blobs_count = entry_point_and_blobs_count[0]
+
+    var internal_offset:Length = 0 // internal offset to blobs_data
+    for i:u64 = 0; i<blobs_count; i = i + 1 {
+        var blob_offset:Address
+        var blob_size:Length
+        blob_offset::blob_size = blobs_offset_and_size[i]
+        printf "blobs_offset_and_size[%d] == %x :: %x\n", i, blob_offset, blob_size
+        for j:Address = 0; j<blob_size; j = j + 1 {
+            printf "blobs_data[%d + %d] = %x\n", internal_offset, j, blobs_data[internal_offset + j]
+            // write_8(blob_offset + j, blobs_data[internal_offset + j])
+        }
+        internal_offset = internal_offset + blob_size
+    }
+    printf "###############################################################\n"
     // #####################################################################
 
     printf "program length=%d\n", program_len
@@ -75,5 +67,4 @@ fn main<ram, registers>() {
         pc = interpreter(instruction, pc)
     }
 }
-
 

@@ -11,13 +11,16 @@ import (
 )
 
 const (
-	RISCV_PROGRAM        = "riscV_program"
-	IN_BYTES             = "in_bytes"
-	RISCV_PROGRAM_OFFSET = "riscV_program_offset"
-	IN_BYTES_OFFSET      = "in_bytes_offset"
-	ENTRY_POINT          = "entry_point"
-	RISCV_PROGRAM_LENGTH = "riscV_program_length"
-	IN_BYTES_LENGTH      = "in_bytes_length"
+	RISCV_PROGRAM               = "riscV_program"
+	IN_BYTES                    = "in_bytes"
+	RISCV_PROGRAM_OFFSET        = "riscV_program_offset"
+	IN_BYTES_OFFSET             = "in_bytes_offset"
+	ENTRY_POINT                 = "entry_point"
+	RISCV_PROGRAM_LENGTH        = "riscV_program_length"
+	IN_BYTES_LENGTH             = "in_bytes_length"
+	ENTRY_POINT_AND_BLOBS_COUNT = "entry_point_and_blobs_count"
+	BLOBS_OFFSET_AND_SIZE       = "blobs_offset_and_size"
+	BLOBS_DATA                  = "blobs_data"
 )
 
 // The purpose of this program is simply to generate a suitable ZkC json input
@@ -175,6 +178,10 @@ func printJson(program, inBytes []byte, programOffset, inputsOffset, entryPoint 
 	fmt.Printf("\t\"%s\": \"0x%s\",\n", IN_BYTES_OFFSET, inputsOffsetString)
 	fmt.Printf("\t\"%s\": \"0x%s\",\n", ENTRY_POINT, entryPointString)
 	fmt.Printf("\t\"%s\": \"0x%s\",\n", RISCV_PROGRAM_LENGTH, programLenString)
-	fmt.Printf("\t\"%s\": \"0x%s\"\n", IN_BYTES_LENGTH, inputLenString)
+	fmt.Printf("\t\"%s\": \"0x%s\",\n", IN_BYTES_LENGTH, inputLenString)
+	// Temporary hardcoded values for sparse blobs
+	fmt.Printf("\t\"%s\": \"0x%s\",\n", ENTRY_POINT_AND_BLOBS_COUNT, "00000000000000000000000000000002")
+	fmt.Printf("\t\"%s\": \"0x%s\",\n", BLOBS_OFFSET_AND_SIZE, "00000000000000000000000000000002_00000000000010000000000000000002")
+	fmt.Printf("\t\"%s\": \"0x%s\"\n", BLOBS_DATA, "AA_BB_CC_DD")
 	fmt.Println("}")
 }
