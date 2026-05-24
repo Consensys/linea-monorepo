@@ -16,9 +16,6 @@ fn main<ram, registers>() {
     var opcode:Opcode
     var instruction:Instruction
     var clock_cycle:u32 = 0
-
-    // #####################################################################
-    // new JSON format
     var entry_point:Address
     var blobs_count:u64
     entry_point::blobs_count = entry_point_and_blobs_count[0]
@@ -36,8 +33,6 @@ fn main<ram, registers>() {
         }
         internal_offset = internal_offset + blob_size
     }
-    printf "###############################################################\n"
-    // #####################################################################
 
     // We interpret pc == MAX_UINT_64 as the stop signal, which is set by the ecall instruction
     while pc != MAX_UINT_64 {

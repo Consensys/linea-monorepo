@@ -37,7 +37,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer elfFile.Close()
-	// inBytes
+	// Parse inBytes
 	var inBytes []byte
 	inBytesString := os.Args[2]
 	if strings.HasPrefix(inBytesString, "0x") || strings.HasPrefix(inBytesString, "0X") {
@@ -49,7 +49,7 @@ func main() {
 	} else {
 		inBytes = []byte(inBytesString)
 	}
-	// offsets
+	// Parse inBytesOffset
 	var inBytesOffset uint64
 	inBytesOffset, err = strconv.ParseUint(os.Args[3], 0, 64)
 	if err != nil {
@@ -62,6 +62,8 @@ func main() {
 	if len(inBytes) > 0 {
 		blobs = append(blobs, memoryBlob{offset: inBytesOffset, data: inBytes, name: "in_bytes"})
 	}
+	// Optionally write a .sections file with the indexes, offsets, sizes and names of the blobs for debugging purposes.
+	// This is controlled by the ELF2JSON_WRITE_SECTIONS environment variable, which must be set to "true" to enable this feature.
 	switch writeSections := os.Getenv("ELF2JSON_WRITE_SECTIONS"); writeSections {
 	case "", "false":
 	case "true":
@@ -84,7 +86,7 @@ func main() {
 
 // Extract sparse memory blobs from allocated sections. Gaps inside a PT_LOAD
 // segment are added only when needed to reproduce the loader memory image over
-// non-zero RAM.
+// non-zero RAM. In case we can assume the RAM to be zero-initialized, we can skip the gaps between sections
 //
 // Our own tests contain .text, .rodata, .data and .bss sections.
 // ACT4 tests contain .text.init, .text.rvtest, .text.rvmodel, .data,
