@@ -185,9 +185,9 @@ func readAllocSectionBytes(s *elf.Section) []byte {
 }
 
 func writeSectionsFile(file *os.File, blobs []memoryBlob) {
-	fmt.Fprintln(file, "# index offset size name")
+	fmt.Fprintln(file, "index, offset,             size,               name")
 	for i, blob := range blobs {
-		fmt.Fprintf(file, "%d 0x%016x 0x%016x %s\n", i, blob.offset, len(blob.data), blob.name)
+		fmt.Fprintf(file, "%-5d, 0x%016x, 0x%016x, %s\n", i, blob.offset, len(blob.data), blob.name)
 	}
 }
 
