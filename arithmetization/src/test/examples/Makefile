@@ -65,7 +65,7 @@ ENTRY_POINT     := $(PROGRAM_OFFSET)
 # 8 MiB   (0x08000000 <- 0x08800000)
 SP              ?= 0x08800000
 
-# Parsed values are just to verify that the generate ELF is correct (lazy evaluation allows to parse the ELF only after it is generated)
+# Parsed values are just to verify that the generated ELF is correct (lazy evaluation allows to parse the ELF only after it is generated)
 PROGRAM_OFFSET_FROM_ELF  = $(shell LANG=C riscv64-unknown-elf-readelf -S $(BIN) | grep '\.text' | awk '{print "0x"$$5}')
 IN_BYTES_OFFSET_FROM_ELF = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _input_start | awk '{print "0x"$$1}') 
 ENTRY_POINT_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) | grep 'Entry point' | awk '{print $$4}')
@@ -94,7 +94,7 @@ ACT4_FAST       ?= false
 # If true, enables debug output (signature objdump, trace files, and trap report)
 ACT4_DEBUG      ?= true
 
-# String to determine if a program is exiiting with exit code 0
+# String to determine if a program is exiting with exit code 0
 EXIT_SUCCESS_STRING := "EXIT CODE = 0"
 
 # Support function to generate JSON from an ELF

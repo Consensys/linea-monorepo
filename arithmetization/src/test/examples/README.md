@@ -195,7 +195,7 @@ Moreover, ABI being `LP64` (soft-float) is relevant only for float numbers, whic
 
 ## ACT4
 
-The `Makefile` in this folder allows running tests from the [RISC-V Architectural Certification Tests (ACTs)](https://github.com/riscv/riscv-arch-test) framework (currently ACT4), which is set of assembly language tests designed to certify that a design faithfully implements the RISC-V specification.
+The `Makefile` in this folder allows running tests from the [RISC-V Architectural Certification Tests (ACTs)](https://github.com/riscv/riscv-arch-test) framework (currently ACT4), which is a set of assembly language tests designed to certify that a design faithfully implements the RISC-V specification.
 
 Tests can be inspected by looking at:
 
@@ -240,7 +240,7 @@ make build-act4 ACT4_DEBUG=false ACT4_FAST=true
 The `build/` directory contains ACT4 intermediate and debug artifacts: signature-generating ELFs, signatures, objdumps, traces and trap reports.
 The `elfs/` directory contains the final self-checking ELFs run by `make run-act4`.
 The `logs/` directory contains one JSON input per test, non-empty JSON conversion stderr in `.json.err`, and the filtered ecall output (for `exit` or `write`) in `.out`.
-Add `export ELF2JSON_WRITE_SECTIONS=true` to your shell startup file (e.g. `~/.bashrc` or `~/.zshrc`) to also write `.sections` files next to each ELF, listing the sparse blobs included in the generated JSON input with their indexes, offsets, sizes and names.
+Add `export ELF2JSON_WRITE_SECTIONS=true` to your shell startup file (e.g. `~/.bashrc` or `~/.zshrc`) to also write `.sections` files next to the ELF files, listing the sparse blobs included in the generated JSON input with their indexes, offsets, sizes and names.
 The full zkc output is kept as `.full` only for failing tests. A summary of ACT4 results is written in `results.txt`.
 
 To rerun one generated ACT4 test through zkc:

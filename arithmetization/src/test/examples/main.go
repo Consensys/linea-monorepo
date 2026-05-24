@@ -85,8 +85,8 @@ func main() {
 }
 
 // Extract sparse memory blobs from allocated sections. Gaps inside a PT_LOAD
-// segment are added only when needed to reproduce the loader memory image over
-// non-zero RAM. In case we can assume the RAM to be zero-initialized, we can skip the gaps between sections
+// segment are emitted explicitly to reproduce the ELF loader memory image
+// without assuming RAM is zero-initialized.
 //
 // Our own tests contain .text, .rodata, .data and .bss sections.
 // ACT4 tests contain .text.init, .text.rvtest, .text.rvmodel, .data,
