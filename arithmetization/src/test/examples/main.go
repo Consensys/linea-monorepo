@@ -110,30 +110,32 @@ func extractProgramBlobs(progs []*elf.Prog, sections []*elf.Section) []memoryBlo
 			if s.Addr < p.Vaddr || sectionEnd > progEnd {
 				continue
 			}
-			sectionBlobs = append(sectionBlobs, memoryBlob{offset: s.Addr, data: readSectionBytes(s), name: s.Name})
+			sectionBlobs = append(sectionBlobs, memoryBlob{offset: s.Addr, data: readAllocSectionBytes(s), name: s.Name})
 		}
 		sort.Slice(sectionBlobs, func(i, j int) bool { return sectionBlobs[i].offset < sectionBlobs[j].offset })
+
+		appendGap := func(offset, size uint64) {
+			data := readLoadSegmentBytes(p, offset-p.Vaddr, size)
+			name := "zero gap"
+			for _, b := range data {
+				if b != 0 {
+					name = "load gap"
+					break
+				}
+			}
+			blobs = append(blobs, memoryBlob{offset: offset, data: data, name: name})
+		}
 
 		cursor := p.Vaddr
 		for _, blob := range sectionBlobs {
 			if cursor < blob.offset {
-				data := readProgBytes(p, cursor-p.Vaddr, blob.offset-cursor)
-				blobs = append(blobs, memoryBlob{
-					offset: cursor,
-					data:   data,
-					name:   gapName(data),
-				})
+				appendGap(cursor, blob.offset-cursor)
 			}
 			blobs = append(blobs, blob)
 			cursor = blob.offset + uint64(len(blob.data))
 		}
 		if cursor < progEnd {
-			data := readProgBytes(p, cursor-p.Vaddr, progEnd-cursor)
-			blobs = append(blobs, memoryBlob{
-				offset: cursor,
-				data:   data,
-				name:   gapName(data),
-			})
+			appendGap(cursor, progEnd-cursor)
 		}
 	}
 
@@ -144,7 +146,10 @@ func extractProgramBlobs(progs []*elf.Prog, sections []*elf.Section) []memoryBlo
 	return blobs
 }
 
-func readProgBytes(p *elf.Prog, offset, size uint64) []byte {
+// readLoadSegmentBytes reads a byte range from a PT_LOAD segment memory image.
+// Bytes past Filesz but inside Memsz are returned as zeroes, matching ELF
+// loader semantics for uninitialized segment memory.
+func readLoadSegmentBytes(p *elf.Prog, offset, size uint64) []byte {
 	data := make([]byte, size)
 	if offset < p.Filesz {
 		sizeFromFile := min(size, p.Filesz-offset)
@@ -159,7 +164,10 @@ func readProgBytes(p *elf.Prog, offset, size uint64) []byte {
 	return data
 }
 
-func readSectionBytes(s *elf.Section) []byte {
+// readAllocSectionBytes reads the bytes for an allocated ELF section. SHT_NOBITS
+// sections, such as .bss, occupy memory but have no file bytes, so they are
+// returned as explicit zeroes.
+func readAllocSectionBytes(s *elf.Section) []byte {
 	data := make([]byte, s.Size)
 	if s.Type == elf.SHT_NOBITS {
 		return data
@@ -172,15 +180,6 @@ func readSectionBytes(s *elf.Section) []byte {
 		panic(fmt.Sprintf("short read for section %s: got %d bytes, expected %d", s.Name, n, s.Size))
 	}
 	return data
-}
-
-func gapName(data []byte) string {
-	for _, b := range data {
-		if b != 0 {
-			return "load gap"
-		}
-	}
-	return "zero gap"
 }
 
 func writeSectionsFile(file *os.File, blobs []memoryBlob) {
