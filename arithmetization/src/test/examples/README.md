@@ -240,7 +240,7 @@ make build-act4 ACT4_DEBUG=false ACT4_FAST=true
 The `build/` directory contains ACT4 intermediate and debug artifacts: signature-generating ELFs, signatures, objdumps, traces and trap reports.
 The `elfs/` directory contains the final self-checking ELFs run by `make run-act4`.
 The `logs/` directory contains one JSON input per test, non-empty JSON conversion stderr in `.json.err`, and the filtered ecall output (for `exit` or `write`) in `.out`.
-Add `export ELF2JSON_WRITE_SECTIONS=true` to your shell startup file (e.g. `~/.bashrc` or `~/.zshrc`) to also write `.sections` files next to each ELF, listing the allocated ELF sections included in the generated JSON input, one per line.
+Add `export ELF2JSON_WRITE_SECTIONS=true` to your shell startup file (e.g. `~/.bashrc` or `~/.zshrc`) to also write `.sections` files next to each ELF, listing the allocated ELF sections included in the generated JSON input, one per line, plus their indexes, offsets and sizes. 
 The full zkc output is kept as `.full` only for failing tests. A summary of ACT4 results is written in `results.txt`.
 
 To rerun one generated ACT4 test through zkc:

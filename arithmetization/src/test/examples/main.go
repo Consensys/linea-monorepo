@@ -250,17 +250,17 @@ func mergeProgramBytes(blobs []memoryBlob, programOffset uint64) []byte {
 
 func printJson(program, inBytes []byte, blobs []memoryBlob, programOffset, inputsOffset, entryPoint uint64) {
 	var (
-		programString       = hex.EncodeToString(program)
-		inBytesString       = hex.EncodeToString(inBytes)
-		programOffsetString = fmt.Sprintf("%016x", programOffset)
-		inputsOffsetString  = fmt.Sprintf("%016x", inputsOffset)
-		entryPointString    = fmt.Sprintf("%016x", entryPoint)
-		programLenString    = fmt.Sprintf("%016x", len(program))
-		inputLenString      = fmt.Sprintf("%016x", len(inBytes))
-		blobsCountString    = fmt.Sprintf("%016x", len(blobs))
-		entryPointAndBlobs  = entryPointString + blobsCountString
-		blobMetadata        []string
-		blobData            []string
+		// programString       = hex.EncodeToString(program)
+		// inBytesString       = hex.EncodeToString(inBytes)
+		// programOffsetString = fmt.Sprintf("%016x", programOffset)
+		// inputsOffsetString  = fmt.Sprintf("%016x", inputsOffset)
+		entryPointString = fmt.Sprintf("%016x", entryPoint)
+		// programLenString    = fmt.Sprintf("%016x", len(program))
+		// inputLenString      = fmt.Sprintf("%016x", len(inBytes))
+		blobsCountString   = fmt.Sprintf("%016x", len(blobs))
+		entryPointAndBlobs = entryPointString + blobsCountString
+		blobMetadata       []string
+		blobData           []string
 	)
 
 	if len(program)%4 != 0 {
@@ -274,13 +274,13 @@ func printJson(program, inBytes []byte, blobs []memoryBlob, programOffset, input
 	}
 
 	fmt.Println("{")
-	fmt.Printf("\t\"%s\": \"0x%s\",\n", RISCV_PROGRAM, programString)
-	fmt.Printf("\t\"%s\": \"0x%s\",\n", IN_BYTES, inBytesString)
-	fmt.Printf("\t\"%s\": \"0x%s\",\n", RISCV_PROGRAM_OFFSET, programOffsetString)
-	fmt.Printf("\t\"%s\": \"0x%s\",\n", IN_BYTES_OFFSET, inputsOffsetString)
-	fmt.Printf("\t\"%s\": \"0x%s\",\n", ENTRY_POINT, entryPointString)
-	fmt.Printf("\t\"%s\": \"0x%s\",\n", RISCV_PROGRAM_LENGTH, programLenString)
-	fmt.Printf("\t\"%s\": \"0x%s\",\n", IN_BYTES_LENGTH, inputLenString)
+	// fmt.Printf("\t\"%s\": \"0x%s\",\n", RISCV_PROGRAM, programString)
+	// fmt.Printf("\t\"%s\": \"0x%s\",\n", IN_BYTES, inBytesString)
+	// fmt.Printf("\t\"%s\": \"0x%s\",\n", RISCV_PROGRAM_OFFSET, programOffsetString)
+	// fmt.Printf("\t\"%s\": \"0x%s\",\n", IN_BYTES_OFFSET, inputsOffsetString)
+	// fmt.Printf("\t\"%s\": \"0x%s\",\n", ENTRY_POINT, entryPointString)
+	// fmt.Printf("\t\"%s\": \"0x%s\",\n", RISCV_PROGRAM_LENGTH, programLenString)
+	// fmt.Printf("\t\"%s\": \"0x%s\",\n", IN_BYTES_LENGTH, inputLenString)
 	fmt.Printf("\t\"%s\": \"0x%s\",\n", ENTRY_POINT_AND_BLOBS_COUNT, entryPointAndBlobs)
 	fmt.Printf("\t\"%s\": \"0x%s\",\n", BLOBS_OFFSET_AND_SIZE, strings.Join(blobMetadata, "_"))
 	fmt.Printf("\t\"%s\": \"0x%s\"\n", BLOBS_DATA, strings.Join(blobData, "_"))
