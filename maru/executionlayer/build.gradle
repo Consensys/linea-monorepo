@@ -34,6 +34,6 @@ dependencies {
   implementation project(':jvm-libs:linea:core:metrics')
 
   testImplementation (group: 'tech.pegasys.teku.internal', name: 'spec', version: libs.versions.teku.get(), classifier: 'test-fixtures')
-  testImplementation(testFixtures(project(':maru:core')))
+  testImplementation(project(':maru:test-fixtures'))
   testImplementation(testFixtures(project(':jvm-libs:generic:extensions:kotlin')))
 }

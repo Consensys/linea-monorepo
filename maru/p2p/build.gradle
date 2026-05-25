@@ -52,10 +52,10 @@ dependencies {
 
   implementation(project(':maru:core'))
 
-  testImplementation(testFixtures(project(':maru:core')))
+  testImplementation(project(':maru:test-fixtures'))
   testImplementation "org.awaitility:awaitility-kotlin:${libs.versions.awaitility.get()}"
 
   testFixturesImplementation(project(':maru:serialization'))
   testFixturesImplementation(project(':maru:crypto'))
-  testFixturesImplementation(testFixtures(project(':maru:core')))
+  testFixturesImplementation(project(':maru:test-fixtures'))
 }

@@ -52,7 +52,7 @@ dependencies {
   implementation project(':jvm-libs:linea:core:long-running-service')
 
 
-  testImplementation(testFixtures(project(':maru:core')))
+  testImplementation(project(':maru:test-fixtures'))
   testImplementation(testFixtures(project(':maru:crypto')))
   testImplementation(project(':maru:jvm-libs:test-utils'))
   testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"

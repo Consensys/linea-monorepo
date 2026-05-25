@@ -76,7 +76,7 @@ dependencies {
   integrationTestImplementation("org.hyperledger.besu.internal:besu-consensus-qbft-core")
   integrationTestImplementation("com.squareup.okhttp3:okhttp:${libs.versions.okhttp.get()}")
   integrationTestImplementation("io.javalin:javalin:${libs.versions.javalin.get()}")
-  testImplementation(testFixtures(project(':maru:core')))
+  testImplementation(project(':maru:test-fixtures'))
 }
 
 // Besu and Teku have similar versioning and some modules are also named the same. This creates conflicts when

@@ -18,14 +18,17 @@ plugins {
 }
 
 dependencies {
-  implementation (project(':maru:core'))
-  implementation (project(':maru:serialization'))
-  implementation (project(':maru:jvm-libs:extensions'))
-  implementation "org.rocksdb:rocksdbjni:${libs.versions.rocksdbjni.get()}"
-  implementation "tech.pegasys.teku.internal:storage:${libs.versions.teku.get()}"
-  implementation "org.hyperledger.besu.internal:besu-metrics-core"
-  implementation "org.hyperledger.besu:besu-plugin-api"
-  testImplementation (project(':maru:test-fixtures'))
-  testImplementation (project(':maru:observability'))
-  testImplementation (project(':jvm-libs:linea:core:metrics'))
+  api(project(':jvm-libs:linea:core:metrics'))
+  api(project(':maru:core'))
+  api(project(':maru:executionlayer'))
+  api(project(':maru:p2p'))
+  api("org.hyperledger.besu:besu-plugin-api")
+
+  implementation(project(':jvm-libs:linea:metrics:micrometer'))
+  implementation(project(':maru:observability'))
+  implementation(project(':maru:serialization'))
+  implementation("io.consensys.tuweni:tuweni-bytes:${libs.versions.tuweni.get()}")
+  implementation("org.hyperledger.besu:besu-datatypes")
+  implementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
+  implementation("org.hyperledger.besu.internal:besu-ethereum-core")
 }

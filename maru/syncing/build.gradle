@@ -41,7 +41,7 @@ dependencies {
   testImplementation project(':maru:crypto')
   testImplementation project(':maru:observability')
   testImplementation project(':maru:serialization')
-  testImplementation(testFixtures(project(':maru:core')))
+  testImplementation(project(':maru:test-fixtures'))
   testImplementation(testFixtures(project(':maru:p2p')))
   testImplementation(project(':maru:jvm-libs:test-utils'))
   testImplementation "org.mockito:mockito-core:${libs.versions.mockito.get()}"
