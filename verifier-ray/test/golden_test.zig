@@ -258,7 +258,7 @@ const max_trace_coins = 8;
 
 const TraceRoundBacking = struct {
     columns: [max_trace_columns]runtime.ColumnAssignment = undefined,
-    cells: [max_trace_cells]?runtime.Scalar = undefined,
+    cells: [max_trace_cells]runtime.Scalar = undefined,
     base_values: [max_trace_columns][max_trace_values]field.Element = undefined,
     ext_values: [max_trace_columns][max_trace_values]ext.Ext = undefined,
 
@@ -296,9 +296,8 @@ const TraceRoundBacking = struct {
         }
 
         for (round_case.cells, 0..) |cell_case, i| {
-            self.cells[i] = if (!cell_case.is_assigned)
-                null
-            else if (cell_case.is_ext)
+            try std.testing.expect(cell_case.is_assigned);
+            self.cells[i] = if (cell_case.is_ext)
                 .{ .ext = uintsToExt(cell_case.ext_value) }
             else
                 .{ .base = elem(cell_case.base_value) };

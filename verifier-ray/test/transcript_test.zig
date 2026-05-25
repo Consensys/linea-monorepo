@@ -54,17 +54,6 @@ test "runtime rejects advancing without a next round" {
     );
 }
 
-test "runtime validates cell assignments before absorbing" {
-    var rt = runtime.Runtime.initWithRoundCount(2);
-    var coins: [1]runtime.Coin = undefined;
-
-    const missing_cell = [_]?runtime.Scalar{null};
-    try std.testing.expectError(
-        error.MissingCellAssignment,
-        rt.advanceRoundWithMessage(0, .{ .cells = &missing_cell }, &coins),
-    );
-}
-
 test "runtime absorbs columns and squeezes requested extension coins" {
     var rt = runtime.Runtime.initWithRoundCount(2);
     var coins: [2]runtime.Coin = undefined;
@@ -72,8 +61,12 @@ test "runtime absorbs columns and squeezes requested extension coins" {
     const columns = [_]runtime.ColumnAssignment{
         .{ .visibility = .oracle, .assignment = .{ .base = &.{field.Element.init(1)} } },
     };
+    const cells = [_]runtime.Scalar{
+        .{ .base = field.Element.init(2) },
+    };
     const got = try rt.advanceRoundWithMessage(0, .{
         .columns = &columns,
+        .cells = &cells,
         .next_round_coin_count = coins.len,
     }, &coins);
 
