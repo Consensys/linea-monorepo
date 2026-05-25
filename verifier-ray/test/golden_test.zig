@@ -1,3 +1,10 @@
+//! Golden-vector conformance tests for verifier-ray.
+//!
+//! The vectors are generated from prover-ray and encoded as plain integers in
+//! `test_vectors`. The helpers in this file convert that generated data into
+//! verifier-ray field/runtime types while keeping the expected values close to
+//! the source vectors.
+
 const std = @import("std");
 const verifier_ray = @import("verifier_ray");
 const vectors = @import("test_vectors");
@@ -209,14 +216,17 @@ test "runtime downstream coin diverges after tampered absorb" {
     try std.testing.expect(!got[0].eql(uintsToExt(case.rounds[0].expected_coins[0])));
 }
 
+/// Convert a generated base-field integer into the concrete field element type.
 fn elem(value: u32) field.Element {
     return field.Element.init(value);
 }
 
+/// Convert six generated base-field limbs into one KoalaBear extension value.
 fn uintsToExt(limbs: [6]u32) ext.Ext {
     return ext.Ext.fromUints(limbs[0], limbs[1], limbs[2], limbs[3], limbs[4], limbs[5]);
 }
 
+/// Convert a generated Poseidon digest fixture into field elements.
 fn digest(values: [8]u32) poseidon2.Digest {
     var out: poseidon2.Digest = undefined;
     for (&out, values) |*dst, value| {
@@ -225,26 +235,31 @@ fn digest(values: [8]u32) poseidon2.Digest {
     return out;
 }
 
+/// Fill an existing buffer with generated base-field values.
 fn fillElems(out: []field.Element, values: []const u32) void {
     for (values, 0..) |value, i| {
         out[i] = elem(value);
     }
 }
 
+/// Fill an existing buffer with generated extension-field values.
 fn fillExts(out: []ext.Ext, values: []const [6]u32) void {
     for (values, 0..) |value, i| {
         out[i] = uintsToExt(value);
     }
 }
 
+/// Compare a field element to its generated integer representation.
 fn expectElem(actual: field.Element, expected: u32) !void {
     try std.testing.expectEqual(expected, actual.value);
 }
 
+/// Compare extension-field values using the field's equality helper.
 fn expectExt(actual: ext.Ext, expected: ext.Ext) !void {
     try std.testing.expect(actual.eql(expected));
 }
 
+/// Compare a Poseidon digest to its generated integer representation.
 fn expectDigest(actual: poseidon2.Digest, expected: [8]u32) !void {
     for (actual, expected) |actual_limb, expected_limb| {
         try expectElem(actual_limb, expected_limb);
@@ -257,6 +272,7 @@ const max_trace_values = trace_dimensions.values;
 const max_trace_cells = trace_dimensions.cells;
 const max_trace_coins = trace_dimensions.coins;
 
+/// Maximum scratch-buffer sizes needed to replay all generated runtime traces.
 const TraceDimensions = struct {
     columns: usize = 0,
     values: usize = 0,
@@ -264,6 +280,7 @@ const TraceDimensions = struct {
     coins: usize = 0,
 };
 
+/// Derive runtime trace backing sizes from the generated vectors at comptime.
 fn traceDimensions(comptime cases: anytype) TraceDimensions {
     var dimensions = TraceDimensions{};
     for (cases) |case| {
@@ -280,13 +297,18 @@ fn traceDimensions(comptime cases: anytype) TraceDimensions {
     return dimensions;
 }
 
+/// Owns the scratch buffers used by a runtime round message.
+///
+/// `RoundMessage` stores slices into this backing, so callers must keep the
+/// backing alive until the runtime has absorbed the message.
 const TraceRoundBacking = struct {
     columns: [max_trace_columns]runtime.ColumnAssignment = undefined,
     cells: [max_trace_cells]runtime.Scalar = undefined,
     base_values: [max_trace_columns][max_trace_values]field.Element = undefined,
     ext_values: [max_trace_columns][max_trace_values]ext.Ext = undefined,
 
-    fn fill(self: *TraceRoundBacking, round_case: anytype, tamper_first_absorb: bool) !runtime.RoundMessage {
+    /// Convert one generated trace round into the verifier runtime message shape.
+    fn fill(self: *TraceRoundBacking, round_case: vectors.RuntimeTraceRound, tamper_first_absorb: bool) !runtime.RoundMessage {
         try std.testing.expect(round_case.columns.len <= max_trace_columns);
         try std.testing.expect(round_case.cells.len <= max_trace_cells);
 
@@ -304,9 +326,8 @@ const TraceRoundBacking = struct {
                 try std.testing.expect(column_case.base_values.len <= max_trace_values);
                 fillElems(&self.base_values[i], column_case.base_values);
                 if (tamper_first_absorb and !tampered and column_case.base_values.len != 0) {
-                    // The lsb of the first value is bit flipped to simulate a tampered absorb, which should cause
-                    // downstream coins to diverge.
-                    self.base_values[i][0] = field.Element.init(self.base_values[i][0].value ^ 1);
+                    // The lsb of the first value is bit flipped to simulate a tampered absorb, which should cause downstream coins to diverge.
+                    self.base_values[i][0] = elem(self.base_values[i][0].value ^ 1);
                     tampered = true;
                 }
                 break :assignment .{ .base = self.base_values[i][0..column_case.base_values.len] };
@@ -335,6 +356,7 @@ const TraceRoundBacking = struct {
     }
 };
 
+/// Convert generated visibility tags into verifier runtime visibility values.
 fn visibility(value: u8) !runtime.Visibility {
     return switch (value) {
         1 => .oracle,

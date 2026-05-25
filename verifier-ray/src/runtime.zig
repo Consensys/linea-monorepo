@@ -10,7 +10,7 @@ pub const Error = error{
 };
 
 /// For the verifier, there are only two meaningful visibilty, the internal visisbilty
-/// of prover-ray is not relevant. The `oracle` visibility is for columns that are only visible to the prover, and the `public` visibility is for columns that are visible to both the prover and verifier.  
+/// of prover-ray is not relevant. The `oracle` visibility is for columns that are only visible to the prover, and the `public` visibility is for columns that are visible to both the prover and verifier.
 pub const Visibility = enum(u8) {
     oracle = 0,
     public = 1,
@@ -50,8 +50,18 @@ pub const Runtime = struct {
         };
     }
 
-    /// Absorb one round's verifier-visible messages, advance the round counter,
-    /// and derive the next round's extension-field coins.
+    /// Absorbs one round's verifier-visible messages, advances the round counter,
+    /// and derives the extension-field coins used by the next round.
+    ///
+    /// `expected_round` must match the runtime's current round and must not be the
+    /// final round, because there is no next round to receive derived coins.
+    ///
+    /// `message` contains the assigned oracle/public columns and public cells that
+    /// are absorbed into the Fiat-Shamir transcript before any coins are sampled.
+    ///
+    /// `out_coins` is caller-owned backing storage. The runtime writes exactly
+    /// `message.next_round_coin_count` coins into the beginning of that slice and
+    /// returns the initialized prefix.
     pub fn advanceRoundWithMessage(
         self: *Runtime,
         expected_round: usize,
