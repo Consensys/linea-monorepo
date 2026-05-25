@@ -251,10 +251,34 @@ fn expectDigest(actual: poseidon2.Digest, expected: [8]u32) !void {
     }
 }
 
-const max_trace_columns = 8;
-const max_trace_values = 8;
-const max_trace_cells = 8;
-const max_trace_coins = 8;
+const trace_dimensions = traceDimensions(vectors.runtime_trace_cases);
+const max_trace_columns = trace_dimensions.columns;
+const max_trace_values = trace_dimensions.values;
+const max_trace_cells = trace_dimensions.cells;
+const max_trace_coins = trace_dimensions.coins;
+
+const TraceDimensions = struct {
+    columns: usize = 0,
+    values: usize = 0,
+    cells: usize = 0,
+    coins: usize = 0,
+};
+
+fn traceDimensions(comptime cases: anytype) TraceDimensions {
+    var dimensions = TraceDimensions{};
+    for (cases) |case| {
+        for (case.rounds) |round| {
+            dimensions.columns = @max(dimensions.columns, round.columns.len);
+            dimensions.cells = @max(dimensions.cells, round.cells.len);
+            dimensions.coins = @max(dimensions.coins, round.expected_coins.len);
+            for (round.columns) |column| {
+                dimensions.values = @max(dimensions.values, column.base_values.len);
+                dimensions.values = @max(dimensions.values, column.ext_values.len);
+            }
+        }
+    }
+    return dimensions;
+}
 
 const TraceRoundBacking = struct {
     columns: [max_trace_columns]runtime.ColumnAssignment = undefined,
