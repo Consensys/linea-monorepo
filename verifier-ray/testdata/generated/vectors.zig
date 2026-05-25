@@ -48,6 +48,16 @@ pub const RuntimeTraceCell = struct { is_assigned: bool, is_ext: bool, base_valu
 pub const RuntimeTraceRound = struct { columns: []const RuntimeTraceColumn, cells: []const RuntimeTraceCell, expected_coins: []const [6]u32 };
 pub const RuntimeTraceCase = struct { rounds: []const RuntimeTraceRound };
 
+pub const GlobalOperator = enum(u8) { add, mul, sub, div, double, square, negate, inverse };
+pub const GlobalColumnView = struct { column: usize, shift: i32 };
+pub const GlobalExprOp = struct { operator: GlobalOperator, operands: []const usize };
+pub const GlobalExprNode = union(enum) { column_view: GlobalColumnView, constant: u32, op: GlobalExprOp };
+pub const GlobalVanishing = struct { expression: usize, cancelled_positions: []const i32 };
+pub const GlobalModule = struct { size: usize, expressions: []const GlobalExprNode, vanishings: []const GlobalVanishing };
+pub const GlobalRoundView = struct { columns: []const RuntimeTraceColumn, cells: []const RuntimeTraceCell };
+pub const GlobalProofView = struct { initial_round: GlobalRoundView, quotient_round: GlobalRoundView, witness_claims: []const [6]u32, quotient_claims: []const [6]u32 };
+pub const GlobalCompilerCase = struct { name: []const u8, modules: []const GlobalModule, honest: GlobalProofView, invalid: GlobalProofView };
+
 pub const field_cases = [_]FieldCase{
     .{ .a = 0, .b = 1, .add = 1, .sub = 2130706432, .mul = 0, .square_a = 0, .neg_a = 0, .has_inv_a = false, .inv_a = 0, .has_div_ab = true, .div_ab = 0, .bytes_a = .{ 0x00, 0x00, 0x00, 0x00 } },
     .{ .a = 1, .b = 2, .add = 3, .sub = 2130706432, .mul = 2, .square_a = 1, .neg_a = 2130706432, .has_inv_a = true, .inv_a = 1, .has_div_ab = true, .div_ab = 1065353217, .bytes_a = .{ 0x00, 0x00, 0x00, 0x01 } },
@@ -166,5 +176,150 @@ pub const runtime_trace_cases = [_]RuntimeTraceCase{
             .cells = &.{},
             .expected_coins = &.{},
         },
+    } },
+};
+
+pub const global_compiler_cases = [_]GlobalCompilerCase{
+    .{ .name = "BooleanColumn", .modules = &.{
+        .{
+            .size = 4,
+            .expressions = &.{
+                .{ .column_view = .{ .column = 0, .shift = 0 } },
+                .{ .column_view = .{ .column = 0, .shift = 0 } },
+                .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
+                .{ .column_view = .{ .column = 0, .shift = 0 } },
+                .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
+            },
+            .vanishings = &.{
+                .{ .expression = 4, .cancelled_positions = &.{} },
+            },
+        },
+    }, .honest = .{
+        .initial_round = .{
+            .columns = &.{
+                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 1, 0, 1 }, .ext_values = &.{} },
+            },
+            .cells = &.{},
+        },
+        .quotient_round = .{
+            .columns = &.{
+                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 1598029825, 0, 0, 0, 0, 0 }, .{ 1598029825, 0, 0, 0, 0, 0 }, .{ 1598029825, 0, 0, 0, 0, 0 }, .{ 1598029825, 0, 0, 0, 0, 0 } } },
+            },
+            .cells = &.{},
+        },
+        .witness_claims = &.{.{ 1347096082, 997183271, 2024727729, 473491915, 1834332932, 1513211784 }},
+        .quotient_claims = &.{.{ 1598029825, 0, 0, 0, 0, 0 }},
+    }, .invalid = .{
+        .initial_round = .{
+            .columns = &.{
+                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 2, 0, 1 }, .ext_values = &.{} },
+            },
+            .cells = &.{},
+        },
+        .quotient_round = .{
+            .columns = &.{
+                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 1604296705, 0, 0, 0, 0, 0 }, .{ 958817896, 0, 0, 0, 0, 0 }, .{ 2124439554, 0, 0, 0, 0, 0 }, .{ 1331691521, 0, 0, 0, 0, 0 } } },
+            },
+            .cells = &.{},
+        },
+        .witness_claims = &.{.{ 174395034, 187508812, 1644405456, 64543109, 1989752537, 850930437 }},
+        .quotient_claims = &.{.{ 573262348, 489397423, 953933642, 372487517, 2011764470, 24549056 }},
+    } },
+    .{ .name = "Fibonacci", .modules = &.{
+        .{
+            .size = 8,
+            .expressions = &.{
+                .{ .column_view = .{ .column = 0, .shift = 0 } },
+                .{ .column_view = .{ .column = 0, .shift = -1 } },
+                .{ .op = .{ .operator = .sub, .operands = &.{ 0, 1 } } },
+                .{ .column_view = .{ .column = 0, .shift = -2 } },
+                .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
+            },
+            .vanishings = &.{
+                .{ .expression = 4, .cancelled_positions = &.{ 0, 1 } },
+            },
+        },
+    }, .honest = .{
+        .initial_round = .{
+            .columns = &.{
+                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 1, 1, 2, 3, 5, 8, 13, 21 }, .ext_values = &.{} },
+            },
+            .cells = &.{},
+        },
+        .quotient_round = .{
+            .columns = &.{
+                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 552753386, 0, 0, 0, 0, 0 }, .{ 1170422654, 0, 0, 0, 0, 0 }, .{ 1520879065, 0, 0, 0, 0, 0 }, .{ 1398117480, 0, 0, 0, 0, 0 }, .{ 1740509171, 0, 0, 0, 0, 0 }, .{ 1122839903, 0, 0, 0, 0, 0 }, .{ 772383492, 0, 0, 0, 0, 0 }, .{ 895145077, 0, 0, 0, 0, 0 } } },
+            },
+            .cells = &.{},
+        },
+        .witness_claims = &.{ .{ 1447242592, 978962941, 713008718, 2098986074, 810460008, 1622438948 }, .{ 1595630697, 1671389507, 1674422187, 1691736160, 1824101463, 792937680 }, .{ 1881232788, 627383792, 680025590, 1782463208, 1665432448, 1958953104 } },
+        .quotient_claims = &.{.{ 121605825, 302074000, 1996294172, 1700051928, 98596367, 812372901 }},
+    }, .invalid = .{
+        .initial_round = .{
+            .columns = &.{
+                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 1, 1, 2, 3, 5, 8, 13, 22 }, .ext_values = &.{} },
+            },
+            .cells = &.{},
+        },
+        .quotient_round = .{
+            .columns = &.{
+                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 1039702195, 0, 0, 0, 0, 0 }, .{ 1441997329, 0, 0, 0, 0, 0 }, .{ 1381606708, 0, 0, 0, 0, 0 }, .{ 769807354, 0, 0, 0, 0, 0 }, .{ 1164221666, 0, 0, 0, 0, 0 }, .{ 761926532, 0, 0, 0, 0, 0 }, .{ 822317153, 0, 0, 0, 0, 0 }, .{ 1135626563, 0, 0, 0, 0, 0 } } },
+            },
+            .cells = &.{},
+        },
+        .witness_claims = &.{ .{ 1151832766, 489109694, 745564059, 2065529070, 787588006, 1722051715 }, .{ 1842952544, 1264021167, 1374471502, 1711228060, 247568247, 1873163260 }, .{ 468663487, 519972582, 1677417873, 175539661, 684550919, 698689360 } },
+        .quotient_claims = &.{.{ 105354878, 539148090, 407216735, 2029376794, 1215296786, 1606162197 }},
+    } },
+    .{ .name = "PythagoreanTriplet", .modules = &.{
+        .{
+            .size = 8,
+            .expressions = &.{
+                .{ .column_view = .{ .column = 0, .shift = 0 } },
+                .{ .op = .{ .operator = .square, .operands = &.{0} } },
+                .{ .column_view = .{ .column = 1, .shift = 0 } },
+                .{ .op = .{ .operator = .square, .operands = &.{2} } },
+                .{ .op = .{ .operator = .sub, .operands = &.{ 1, 3 } } },
+                .{ .column_view = .{ .column = 2, .shift = 0 } },
+                .{ .op = .{ .operator = .square, .operands = &.{5} } },
+                .{ .op = .{ .operator = .sub, .operands = &.{ 4, 6 } } },
+            },
+            .vanishings = &.{
+                .{ .expression = 7, .cancelled_positions = &.{} },
+            },
+        },
+    }, .honest = .{
+        .initial_round = .{
+            .columns = &.{
+                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 5, 1, 17, 5, 13, 0, 0 }, .ext_values = &.{} },
+                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 3, 0, 15, 4, 5, 0, 0 }, .ext_values = &.{} },
+                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 4, 1, 8, 3, 12, 0, 0 }, .ext_values = &.{} },
+            },
+            .cells = &.{},
+        },
+        .quotient_round = .{
+            .columns = &.{
+                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 518081830, 0, 0, 0, 0, 0 }, .{ 789740332, 0, 0, 0, 0, 0 }, .{ 453184355, 0, 0, 0, 0, 0 }, .{ 1857154566, 0, 0, 0, 0, 0 }, .{ 643251762, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 } } },
+            },
+            .cells = &.{},
+        },
+        .witness_claims = &.{ .{ 2114663936, 114777422, 15412438, 2011912399, 1464434366, 1798477065 }, .{ 1967563917, 358234591, 832210107, 1398783869, 1862552223, 1585056298 }, .{ 828644885, 357296671, 46987991, 229350711, 651818895, 1549556730 } },
+        .quotient_claims = &.{.{ 592008129, 464249399, 274217022, 1537628298, 973575580, 105122496 }},
+    }, .invalid = .{
+        .initial_round = .{
+            .columns = &.{
+                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 5, 1, 17, 5, 13, 0, 0 }, .ext_values = &.{} },
+                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 3, 0, 15, 4, 5, 0, 0 }, .ext_values = &.{} },
+                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 5, 1, 8, 3, 12, 0, 0 }, .ext_values = &.{} },
+            },
+            .cells = &.{},
+        },
+        .quotient_round = .{
+            .columns = &.{
+                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 1992899991, 0, 0, 0, 0, 0 }, .{ 2092905736, 0, 0, 0, 0, 0 }, .{ 393839656, 0, 0, 0, 0, 0 }, .{ 712211300, 0, 0, 0, 0, 0 }, .{ 1186587689, 0, 0, 0, 0, 0 }, .{ 776420915, 0, 0, 0, 0, 0 }, .{ 147332501, 0, 0, 0, 0, 0 }, .{ 2121306113, 0, 0, 0, 0, 0 } } },
+            },
+            .cells = &.{},
+        },
+        .witness_claims = &.{ .{ 988870300, 1203699276, 1330121521, 2115066293, 108155212, 1797498855 }, .{ 2094768038, 208927751, 1661254795, 1662391509, 188846522, 57040700 }, .{ 534917688, 335705016, 1683121587, 734272976, 1314390997, 106930461 } },
+        .quotient_claims = &.{.{ 792555281, 1393289163, 105640680, 1958374838, 93028563, 1245367677 }},
     } },
 };

@@ -548,6 +548,45 @@ type Verifier struct {
 	buckets       []verifierBucket
 }
 
+// VerifierExport is the minimal public view of a compiled global verifier
+// action. It is intended for verifier-ray code generation and tests; the
+// runtime verifier should continue to use [Verifier.Check].
+type VerifierExport struct {
+	Module        *wiop.Module
+	MergeCoin     *wiop.CoinField
+	EvalCoin      *wiop.CoinField
+	WitnessViews  []*wiop.ColumnView
+	WitnessClaims []*wiop.Cell
+	Buckets       []VerifierBucketExport
+}
+
+// VerifierBucketExport is the public counterpart of verifierBucket.
+type VerifierBucketExport struct {
+	Ratio          int
+	Vanishings     []*wiop.Vanishing
+	QuotientClaims []*wiop.Cell
+}
+
+// Export returns a shallow-copy description of this verifier action.
+func (gv *Verifier) Export() VerifierExport {
+	buckets := make([]VerifierBucketExport, len(gv.buckets))
+	for i, bkt := range gv.buckets {
+		buckets[i] = VerifierBucketExport{
+			Ratio:          bkt.ratio,
+			Vanishings:     append([]*wiop.Vanishing(nil), bkt.vanishings...),
+			QuotientClaims: append([]*wiop.Cell(nil), bkt.quotientClaims...),
+		}
+	}
+	return VerifierExport{
+		Module:        gv.m,
+		MergeCoin:     gv.mergeCoin,
+		EvalCoin:      gv.evalCoin,
+		WitnessViews:  append([]*wiop.ColumnView(nil), gv.witnessViews...),
+		WitnessClaims: append([]*wiop.Cell(nil), gv.witnessClaims...),
+		Buckets:       buckets,
+	}
+}
+
 // Check verifies the PLONK quotient identity for the module using the runtime's claimed values.
 func (gv *Verifier) Check(rt wiop.Runtime) error {
 	n := gv.m.RuntimeSize(rt)

@@ -34,6 +34,7 @@ func main() {
 	writePoseidonCases(&out)
 	writeFiatShamirCases(&out)
 	writeRuntimeTraceCases(&out)
+	writeGlobalCompilerCases(&out)
 
 	data := out.Bytes()
 	zigfmt, err := runZigFmt(data)
@@ -97,6 +98,16 @@ func writeHeader(out *bytes.Buffer) {
 	fmt.Fprintln(out, "pub const RuntimeTraceCell = struct { is_assigned: bool, is_ext: bool, base_value: u32, ext_value: [6]u32 };")
 	fmt.Fprintln(out, "pub const RuntimeTraceRound = struct { columns: []const RuntimeTraceColumn, cells: []const RuntimeTraceCell, expected_coins: []const [6]u32 };")
 	fmt.Fprintln(out, "pub const RuntimeTraceCase = struct { rounds: []const RuntimeTraceRound };")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "pub const GlobalOperator = enum(u8) { add, mul, sub, div, double, square, negate, inverse };")
+	fmt.Fprintln(out, "pub const GlobalColumnView = struct { column: usize, shift: i32 };")
+	fmt.Fprintln(out, "pub const GlobalExprOp = struct { operator: GlobalOperator, operands: []const usize };")
+	fmt.Fprintln(out, "pub const GlobalExprNode = union(enum) { column_view: GlobalColumnView, constant: u32, op: GlobalExprOp };")
+	fmt.Fprintln(out, "pub const GlobalVanishing = struct { expression: usize, cancelled_positions: []const i32 };")
+	fmt.Fprintln(out, "pub const GlobalModule = struct { size: usize, expressions: []const GlobalExprNode, vanishings: []const GlobalVanishing };")
+	fmt.Fprintln(out, "pub const GlobalRoundView = struct { columns: []const RuntimeTraceColumn, cells: []const RuntimeTraceCell };")
+	fmt.Fprintln(out, "pub const GlobalProofView = struct { initial_round: GlobalRoundView, quotient_round: GlobalRoundView, witness_claims: []const [6]u32, quotient_claims: []const [6]u32 };")
+	fmt.Fprintln(out, "pub const GlobalCompilerCase = struct { name: []const u8, modules: []const GlobalModule, honest: GlobalProofView, invalid: GlobalProofView };")
 	fmt.Fprintln(out)
 }
 
