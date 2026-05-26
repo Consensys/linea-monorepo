@@ -32,6 +32,32 @@ func VanishingScenarios() []func() *VanishingScenario {
 		NewConditionalCounterVanishingScenario,
 		NewPythagoreanTripletVanishingScenario,
 		NewDynamicFibonacciVanishingScenario,
+		// Additional scenarios that broaden compiler coverage.
+		NewConstantColumnVanishingScenario,
+		NewForwardShiftVanishingScenario,
+		NewBooleanCubeVanishingScenario,
+		NewLinearCombinationVanishingScenario,
+		NewLargeFibonacciVanishingScenario,
+		NewMultipleVanishingsSameRatioScenario,
+		NewMixedRatioVanishingsScenario,
+		NewMultiModuleVanishingScenario,
+		NewManualCancellationVanishingScenario,
+		NewPrecomputedSelectorVanishingScenario,
+		NewCellLeafVanishingScenario,
+		NewCoinScaledVanishingScenario,
+		NewThreeStepRecurrenceVanishingScenario,
+		NewQuarticVanishingScenario,
+		NewLeftPadDynamicVanishingScenario,
+		// Ratio > 1 corner cases (ratios stay within {2, 4}, the realistic
+		// range produced by [computeRatio] for DegreeFactor up to 4).
+		NewCubicWithBackShiftVanishingScenario,
+		NewMixedHighRatioVanishingsScenario,
+		NewMultiModuleHighRatioVanishingScenario,
+		NewSizeThirtyTwoCubicVanishingScenario,
+		NewLargeForwardShiftVanishingScenario,
+		NewBackAndForwardShiftVanishingScenario,
+		NewDynamicQuadraticVanishingScenario,
+		NewQuarticWithBackShiftVanishingScenario,
 	}
 }
 

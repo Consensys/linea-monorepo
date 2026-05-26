@@ -84,12 +84,36 @@ func Compile(sys *wiop.System) {
 	sort.Strings(keys)
 
 	// Determine the latest witness round across every group: this dictates
-	// where the coin and result rounds live.
+	// where the coin and result rounds live. Groups whose only contributing
+	// columns are precomputed leave witnessRound nil (see
+	// [lookupGroup.updateWitnessRound]); they are skipped here and patched up
+	// after the loop so the compiler still emits its M / α / γ on an
+	// interactive round.
 	var latestWitness *wiop.Round
 	for _, k := range keys {
 		g := groups[k]
+		if g.witnessRound == nil {
+			continue
+		}
 		if latestWitness == nil || g.witnessRound.ID > latestWitness.ID {
 			latestWitness = g.witnessRound
+		}
+	}
+	if latestWitness == nil {
+		// Every group's columns were precomputed. Default to the first
+		// interactive round so M (committed in each group's witness round)
+		// still lives outside the PrecomputedRound.
+		if len(sys.Rounds) == 0 {
+			panic("wiop/compilers/lookuptologderivsum: cannot compile a fully-precomputed inclusion " +
+				"against a system with no interactive rounds; call sys.NewRound() first")
+		}
+		latestWitness = sys.Rounds[0]
+	}
+	// Backfill any group whose witnessRound is still nil so compileGroup can
+	// rely on a non-nil interactive round.
+	for _, k := range keys {
+		if groups[k].witnessRound == nil {
+			groups[k].witnessRound = latestWitness
 		}
 	}
 

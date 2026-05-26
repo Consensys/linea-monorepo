@@ -88,13 +88,37 @@ func (g *lookupGroup) addIncluded(q *wiop.TableRelation, tab wiop.Table) {
 
 // updateWitnessRound bumps the recorded witness round if r is later than the
 // currently recorded one. A nil r is a no-op.
+//
+// The PrecomputedRound is intentionally skipped: precomputed columns are
+// available "at every round" so they don't constrain when the M column must
+// be committed. If they did, the M column would end up registered against
+// PrecomputedRound (whose [Round.Columns] is expected to track ONLY
+// precomputed columns paired with parallel entries in
+// [PrecomputedRound.PrecomputedValues]), which corrupts the precomputed-round
+// invariant and crashes [wiop.NewRuntime]. Callers that touch only
+// precomputed columns are left with a nil witnessRound; the compiler
+// defaults to the first interactive round in that case (see [Compile]).
 func (g *lookupGroup) updateWitnessRound(r *wiop.Round) {
 	if r == nil {
+		return
+	}
+	if isPrecomputedRound(r) {
 		return
 	}
 	if g.witnessRound == nil || r.ID > g.witnessRound.ID {
 		g.witnessRound = r
 	}
+}
+
+// isPrecomputedRound reports whether r is the PrecomputedRound of its
+// owning system. Precomputed columns return a [*wiop.Round] that points at
+// the embedded Round field of [wiop.PrecomputedRound], so identity is the
+// reliable check.
+func isPrecomputedRound(r *wiop.Round) bool {
+	if r == nil || r.System() == nil {
+		return false
+	}
+	return r == &r.System().PrecomputedRound.Round
 }
 
 // allIncludingColumnsShareModule reports whether every column in the

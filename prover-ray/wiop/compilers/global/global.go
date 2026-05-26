@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	gnarkutils "github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/polynomials"
 	"github.com/consensys/linea-monorepo/prover-ray/utils"
@@ -471,12 +472,31 @@ func (a *QuotientProverAction) Run(rt wiop.Runtime) {
 
 		// --- IFFT on the large coset: coset evals → canonical coefficients ---
 		// FFTInverseExt6 operates directly on the contiguous E6 layout.
+		// In DIF mode it returns coefficients in BIT-REVERSED order across
+		// the full size-N domain.
 		largeDomain.FFTInverseExt6(aggregate[:N], fft.DIF, fft.OnCoset())
+
+		// For ratio == 1 the FFT(DIT) in the loop below consumes bit-reversed
+		// input directly, so we can slice without a prior bit-reverse. For
+		// ratio > 1 the bit-reversal across N interleaves coefficients
+		// across the ratio chunks (for ratio = 2, aggregate[0:n] would hold
+		// the even-indexed coefficients of the size-N polynomial rather
+		// than the contiguous low-degree slice we need to form Q_0). We
+		// bit-reverse to natural order, then bit-reverse each chunk so the
+		// subsequent FFT(DIT) still sees its expected bit-reversed input.
+		// Net effect for ratio > 1: aggregate -> natural, then per-chunk
+		// natural -> bit-reversed -> FFT(DIT) -> natural Lagrange.
+		if ratio > 1 {
+			gnarkutils.BitReverse(aggregate[:N])
+		}
 
 		// --- Split into ratio chunks and FFT each to standard Lagrange form ---
 		for k := range ratio {
 			chunk := make([]field.Ext, n)
 			copy(chunk, aggregate[k*n:(k+1)*n])
+			if ratio > 1 {
+				gnarkutils.BitReverse(chunk)
+			}
 			extFFT(smallDomain, chunk)
 
 			cv := &wiop.ConcreteVector{
@@ -513,7 +533,21 @@ func reevalOnLargeCoset(
 	}
 
 	// iFFT on small domain (standard, no coset shift): Lagrange → canonical.
+	// FFTInverse(DIF) leaves the output in bit-reversed-of-n order. When
+	// n == N (ratio == 1) the trailing zero-pad is empty and bit-reversed-of-n
+	// matches bit-reversed-of-N, so FFT(DIT) below consumes the result
+	// directly. For n < N the bit-reversal index space changes between the
+	// two FFTs, so we normalise to natural order in between (BitReverse on
+	// vals[:n] then on vals[:N]) before re-introducing bit-reversal for the
+	// large FFT's DIT input convention.
 	smallDomain.FFTInverse(vals[:n], fft.DIF)
+	if N != n {
+		gnarkutils.BitReverse(vals[:n])
+		// vals[n:N] is already zero, so vals[:N] is now natural-order
+		// coefficients of the zero-padded polynomial. Re-bit-reverse to
+		// feed FFT(DIT) which expects bit-reversed input.
+		gnarkutils.BitReverse(vals[:N])
+	}
 	// FFT on large coset: canonical → coset Lagrange.
 	largeDomain.FFT(vals, fft.DIT, fft.OnCoset())
 	return vals
