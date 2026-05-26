@@ -104,11 +104,17 @@ func extractProgramBlobs(progs []*elf.Prog, sections []*elf.Section) []memoryBlo
 
 		var sectionBlobs []memoryBlob
 		progEnd := p.Vaddr + p.Memsz
+		if progEnd < p.Vaddr {
+			panic(fmt.Sprintf("loadable segment address overflow at %#x", p.Vaddr))
+		}
 		for _, s := range sections {
 			if s.Size == 0 || s.Flags&elf.SHF_ALLOC == 0 {
 				continue
 			}
 			sectionEnd := s.Addr + s.Size
+			if sectionEnd < s.Addr {
+				panic(fmt.Sprintf("section %s address overflow at %#x", s.Name, s.Addr))
+			}
 			if s.Addr < p.Vaddr || sectionEnd > progEnd {
 				continue
 			}
