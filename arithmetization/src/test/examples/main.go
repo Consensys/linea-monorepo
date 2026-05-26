@@ -4,7 +4,6 @@ import (
 	"debug/elf"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
 	"sort"
 	"strconv"
@@ -84,9 +83,9 @@ func main() {
 	printJson(blobs, elfFile.Entry)
 }
 
-// Extract sparse memory blobs from allocated sections. Gaps inside a PT_LOAD
-// segment are emitted explicitly to reproduce the ELF loader memory image
-// without assuming RAM is zero-initialized.
+// Extract sparse memory blobs from allocated file-backed sections. Zero-filled
+// memory such as .bss and section padding is not emitted because RAM is
+// initialized to zero before the blobs are loaded.
 //
 // Our own tests contain .text, .rodata, .data and .bss sections.
 // ACT4 tests contain .text.init, .text.rvtest, .text.rvmodel, .data,
@@ -108,7 +107,7 @@ func extractProgramBlobs(progs []*elf.Prog, sections []*elf.Section) []memoryBlo
 			panic(fmt.Sprintf("loadable segment address overflow at %#x", p.Vaddr))
 		}
 		for _, s := range sections {
-			if s.Size == 0 || s.Flags&elf.SHF_ALLOC == 0 {
+			if s.Size == 0 || s.Type == elf.SHT_NOBITS || s.Flags&elf.SHF_ALLOC == 0 {
 				continue
 			}
 			sectionEnd := s.Addr + s.Size
@@ -118,33 +117,10 @@ func extractProgramBlobs(progs []*elf.Prog, sections []*elf.Section) []memoryBlo
 			if s.Addr < p.Vaddr || sectionEnd > progEnd {
 				continue
 			}
-			sectionBlobs = append(sectionBlobs, memoryBlob{offset: s.Addr, data: readAllocSectionBytes(s), name: s.Name})
+			sectionBlobs = append(sectionBlobs, memoryBlob{offset: s.Addr, data: readSectionBytes(s), name: s.Name})
 		}
 		sort.Slice(sectionBlobs, func(i, j int) bool { return sectionBlobs[i].offset < sectionBlobs[j].offset })
-
-		appendGap := func(offset, size uint64) {
-			data := readLoadSegmentBytes(p, offset-p.Vaddr, size)
-			name := "zero gap"
-			for _, b := range data {
-				if b != 0 {
-					name = "load gap"
-					break
-				}
-			}
-			blobs = append(blobs, memoryBlob{offset: offset, data: data, name: name})
-		}
-
-		cursor := p.Vaddr
-		for _, blob := range sectionBlobs {
-			if cursor < blob.offset {
-				appendGap(cursor, blob.offset-cursor)
-			}
-			blobs = append(blobs, blob)
-			cursor = blob.offset + uint64(len(blob.data))
-		}
-		if cursor < progEnd {
-			appendGap(cursor, progEnd-cursor)
-		}
+		blobs = append(blobs, sectionBlobs...)
 	}
 
 	if len(blobs) == 0 {
@@ -154,38 +130,15 @@ func extractProgramBlobs(progs []*elf.Prog, sections []*elf.Section) []memoryBlo
 	return blobs
 }
 
-// readLoadSegmentBytes reads a byte range from a PT_LOAD segment memory image.
-// Bytes past Filesz but inside Memsz are returned as zeroes, matching ELF
-// loader semantics for uninitialized segment memory.
-func readLoadSegmentBytes(p *elf.Prog, offset, size uint64) []byte {
-	data := make([]byte, size)
-	if offset < p.Filesz {
-		sizeFromFile := min(size, p.Filesz-offset)
-		n, err := p.ReadAt(data[:sizeFromFile], int64(offset))
-		if err != nil && err != io.EOF {
-			panic(fmt.Sprintf("error reading loadable segment at %#x: %v", p.Vaddr+offset, err))
-		}
-		if uint64(n) != sizeFromFile {
-			panic(fmt.Sprintf("short read for loadable segment at %#x: got %d bytes, expected %d", p.Vaddr+offset, n, sizeFromFile))
-		}
-	}
-	return data
-}
-
-// readAllocSectionBytes reads the bytes for an allocated ELF section. SHT_NOBITS
-// sections, such as .bss, occupy memory but have no file bytes, so they are
-// returned as explicit zeroes.
-func readAllocSectionBytes(s *elf.Section) []byte {
-	data := make([]byte, s.Size)
-	if s.Type == elf.SHT_NOBITS {
-		return data
-	}
-	n, err := s.ReadAt(data, 0)
-	if err != nil && err != io.EOF {
+// readSectionBytes reads the bytes for an allocated ELF section that has file
+// contents. SHT_NOBITS sections are skipped by extractProgramBlobs.
+func readSectionBytes(s *elf.Section) []byte {
+	data, err := s.Data()
+	if err != nil {
 		panic(fmt.Sprintf("error reading section %s: %v", s.Name, err))
 	}
-	if uint64(n) != s.Size {
-		panic(fmt.Sprintf("short read for section %s: got %d bytes, expected %d", s.Name, n, s.Size))
+	if uint64(len(data)) != s.Size {
+		panic(fmt.Sprintf("short read for section %s: got %d bytes, expected %d", s.Name, len(data), s.Size))
 	}
 	return data
 }
