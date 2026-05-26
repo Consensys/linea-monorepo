@@ -1,4 +1,4 @@
-// Package lookuptologderivsum compiles every unreduced [wiop.TableRelation]
+// Package lookuptologderivsum compiles every unreduced [wiop.LookupQuery]
 // of kind [wiop.TableRelationInclusion] into a single [wiop.LogDerivativeSum]
 // query whose final result is asserted to be zero. It is the prover-ray
 // analogue of linea/prover/protocol/compiler/logderivativesum's
@@ -37,7 +37,7 @@
 // A-side, mirroring linea/lookuptologderivsum's IsFilteredOnIncluding
 // handling.
 //
-// After Compile runs, every consumed [wiop.TableRelation] is marked reduced
+// After Compile runs, every consumed [wiop.LookupQuery] is marked reduced
 // and a single [wiop.LogDerivativeSum] query is left in sys for the
 // downstream [logderivativesum] compiler pass to consume.
 //
@@ -57,7 +57,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
 )
 
-// Compile reduces every unreduced inclusion [wiop.TableRelation] in sys to a
+// Compile reduces every unreduced inclusion [wiop.LookupQuery] in sys to a
 // single [wiop.LogDerivativeSum] query plus a multiplicity column per
 // lookup-table fragment, plus a verifier action that asserts the resulting
 // LogDerivativeSum result equals zero.
@@ -136,7 +136,7 @@ func Compile(sys *wiop.System) {
 
 	var (
 		fractions  []wiop.Fraction
-		consumedQs []*wiop.TableRelation
+		consumedQs []*wiop.LookupQuery
 	)
 	for _, k := range keys {
 		g := groups[k]
