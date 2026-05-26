@@ -2,6 +2,7 @@ const builtin = @import("builtin");
 const verifier_ray = @import("verifier_ray");
 
 const field = verifier_ray.field.koalabear;
+const ext = verifier_ray.field.koalabear_ext;
 const polynomial = verifier_ray.pcs.polynomial;
 const poseidon2 = verifier_ray.crypto.poseidon2;
 const Transcript = verifier_ray.crypto.fiat_shamir.Transcript;
@@ -29,7 +30,7 @@ const SmokeInput = struct {
     proof_bytes: [proof_byte_count]u8,
     coefficients: [coefficient_count]field.Element,
     point: field.Element,
-    expected_challenge: Digest,
+    expected_challenge: ext.Ext,
 };
 
 const raw_input_len = @sizeOf(SmokeInput);
@@ -117,16 +118,9 @@ fn exerciseTemporaryTraceWork(input: *const SmokeInput) bool {
     var transcript = Transcript.init();
     transcript.updateElements(input.coefficients[0..]);
     transcript.updateElement(evaluation);
-    const challenge = transcript.randomField();
+    const challenge = transcript.randomExt();
 
-    return digestEql(challenge, input.expected_challenge);
-}
-
-fn digestEql(lhs: Digest, rhs: Digest) bool {
-    for (lhs, rhs) |lhs_limb, rhs_limb| {
-        if (!lhs_limb.eql(rhs_limb)) return false;
-    }
-    return true;
+    return challenge.eql(input.expected_challenge);
 }
 
 const sys_open: u64 = 2;
