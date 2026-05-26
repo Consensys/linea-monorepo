@@ -419,12 +419,22 @@ func (a *QuotientProverAction) Run(rt wiop.Runtime) {
 		}
 
 		// --- Evaluate all root columns on the large coset ---
-		// cosetEvals[colID][j] = col evaluated at coset point j
+		// cosetEvals[colID][j] = col evaluated at coset point j (base-field
+		// columns); cosetEvalsExt[colID][j] for extension-field columns.
+		// A column populates exactly one of the two maps; expression
+		// evaluators dispatch on Column.IsExtension.
 		cosetEvals := make(map[wiop.ObjectID][]field.Element, len(bkt.rootCols))
+		cosetEvalsExt := make(map[wiop.ObjectID][]field.Ext, len(bkt.rootCols))
 		for _, col := range bkt.rootCols {
-			cosetEvals[col.Context.ID] = reevalOnLargeCoset(
-				rt, col, a.m, n, N, smallDomain, largeDomain,
-			)
+			if col.IsExtension {
+				cosetEvalsExt[col.Context.ID] = reevalOnLargeCosetExt(
+					rt, col, a.m, n, N, smallDomain, largeDomain,
+				)
+			} else {
+				cosetEvals[col.Context.ID] = reevalOnLargeCoset(
+					rt, col, a.m, n, N, smallDomain, largeDomain,
+				)
+			}
 		}
 
 		// --- Compute the aggregate extension-field polynomial on the coset ---
@@ -446,7 +456,7 @@ func (a *QuotientProverAction) Run(rt wiop.Runtime) {
 			// Static module: use precomputed cancellation cosets.
 			for _, entry := range bkt.entries {
 				accumulateOnCoset(
-					rt, entry.v.Expression, cosetEvals,
+					rt, entry.v.Expression, cosetEvals, cosetEvalsExt,
 					entry.cancellationCoset, &coinPow, aggregate, ratio, N,
 				)
 				// advance coinPow: coinPow *= coinExt
@@ -457,7 +467,7 @@ func (a *QuotientProverAction) Run(rt wiop.Runtime) {
 			for _, v := range bkt.vanishings {
 				cancellationCoset := computeCancellationCoset(v.CancelledPositions, n, N)
 				accumulateOnCoset(
-					rt, v.Expression, cosetEvals,
+					rt, v.Expression, cosetEvals, cosetEvalsExt,
 					cancellationCoset, &coinPow, aggregate, ratio, N,
 				)
 				coinPow.Mul(&coinPow, &coinExt)
@@ -550,6 +560,45 @@ func reevalOnLargeCoset(
 	}
 	// FFT on large coset: canonical → coset Lagrange.
 	largeDomain.FFT(vals, fft.DIT, fft.OnCoset())
+	return vals
+}
+
+// reevalOnLargeCosetExt is the extension-field counterpart of
+// [reevalOnLargeCoset]. It evaluates an extension-field column on the
+// large coset, using the Ext6 FFT path so the prover can incorporate
+// extension witness columns (e.g. the Z columns produced by the
+// log-derivative compiler) into a quotient bucket.
+//
+// The bit-reversal accounting mirrors the base-field version: the small
+// IFFT(DIF) returns bit-reversed-of-n coefficients in vals[:n] with the
+// trailing zero-pad untouched; if n < N the index space switches between
+// the two FFTs, so we BitReverse twice to normalise the polynomial layout
+// before feeding it to the large FFT(DIT, OnCoset).
+func reevalOnLargeCosetExt(
+	rt wiop.Runtime,
+	col *wiop.Column,
+	m *wiop.Module,
+	n, N int,
+	smallDomain, largeDomain *fft.Domain,
+) []field.Ext {
+	cv := rt.GetColumnAssignment(col)
+
+	vals := make([]field.Ext, N) // zero-padded
+	for i := range n {
+		elem := cv.ElementAtN(m.Padding, n, i)
+		if elem.IsBase() {
+			vals[i] = field.Lift(elem.AsBase())
+		} else {
+			vals[i] = elem.AsExt()
+		}
+	}
+
+	smallDomain.FFTInverseExt6(vals[:n], fft.DIF)
+	if N != n {
+		gnarkutils.BitReverse(vals[:n])
+		gnarkutils.BitReverse(vals[:N])
+	}
+	largeDomain.FFTExt6(vals, fft.DIT, fft.OnCoset())
 	return vals
 }
 
@@ -768,6 +817,7 @@ func accumulateOnCoset(
 	rt wiop.Runtime,
 	expr wiop.Expression,
 	cosetEvals map[wiop.ObjectID][]field.Element,
+	cosetEvalsExt map[wiop.ObjectID][]field.Ext,
 	cancellationCoset []field.Element,
 	coinPow *field.Ext,
 	aggregate []field.Ext,
@@ -789,7 +839,7 @@ func accumulateOnCoset(
 		return
 	}
 	for j := 0; j < N; j++ {
-		pVal := evalExprOnCosetExt(rt, expr, cosetEvals, j, ratio, N)
+		pVal := evalExprOnCosetExt(rt, expr, cosetEvals, cosetEvalsExt, j, ratio, N)
 		var pTimesC field.Ext
 		if cancellationCoset != nil {
 			pTimesC.MulByElement(&pVal, &cancellationCoset[j])
@@ -803,13 +853,16 @@ func accumulateOnCoset(
 }
 
 // isBaseExpr reports whether expr evaluates to a base-field element at every
-// coset point. Extension-field cells and CoinField leaves (always extension)
-// make the result extension; everything else is base. The check is purely
-// structural, so it is computed once per Vanishing expression and reused
-// across all N coset points.
+// coset point. Extension-field cells, extension-field column views, and
+// CoinField leaves (always extension) make the result extension;
+// everything else is base. The check is purely structural, so it is
+// computed once per Vanishing expression and reused across all N coset
+// points.
 func isBaseExpr(expr wiop.Expression) bool {
 	switch e := expr.(type) {
-	case *wiop.ColumnView, *wiop.Constant:
+	case *wiop.ColumnView:
+		return !e.Column.IsExtension
+	case *wiop.Constant:
 		return true
 	case *wiop.Cell:
 		return !e.IsExtension()
@@ -910,23 +963,31 @@ func evalExprOnCoset(
 // evalExprOnCosetExt is the extension-field counterpart of [evalExprOnCoset].
 // It accepts any leaf type, lifting base-field values (column samples,
 // constants, base cells) into the extension field, and is used when the
-// expression contains at least one extension-typed leaf (extension cell or
-// any coin).
+// expression contains at least one extension-typed leaf (extension cell,
+// extension column view, or any coin).
 //
 // All arithmetic runs in the extension field — including for sub-expressions
 // that happen to be pure base — so this path is slower per operation than
 // [evalExprOnCoset]. Callers should dispatch on [isBaseExpr] to use the
 // base-field fast path whenever possible.
+//
+// cosetEvalsExt holds the extension-field coset evaluations for any
+// extension witness columns referenced by the expression. ColumnView leaves
+// dispatch on their underlying column's IsExtension flag.
 func evalExprOnCosetExt(
 	rt wiop.Runtime,
 	expr wiop.Expression,
 	cosetEvals map[wiop.ObjectID][]field.Element,
+	cosetEvalsExt map[wiop.ObjectID][]field.Ext,
 	j, ratio, N int,
 ) field.Ext {
 	switch e := expr.(type) {
 	case *wiop.ColumnView:
 		k := e.ShiftingOffset
 		idx := ((j+k*ratio)%N + N) % N
+		if e.Column.IsExtension {
+			return cosetEvalsExt[e.Column.Context.ID][idx]
+		}
 		return field.Lift(cosetEvals[e.Column.Context.ID][idx])
 	case *wiop.Cell:
 		return rt.GetCellValue(e).AsExt()
@@ -936,7 +997,7 @@ func evalExprOnCosetExt(
 		return field.Lift(e.Value)
 	case *wiop.ArithmeticOperation:
 		eval := func(i int) field.Ext {
-			return evalExprOnCosetExt(rt, e.Operands[i], cosetEvals, j, ratio, N)
+			return evalExprOnCosetExt(rt, e.Operands[i], cosetEvals, cosetEvalsExt, j, ratio, N)
 		}
 		a0 := eval(0)
 		var res field.Ext

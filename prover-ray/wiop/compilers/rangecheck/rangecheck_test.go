@@ -112,7 +112,6 @@ func TestCompile_CreatesInclusion(t *testing.T) {
 
 	assert.True(t, rc.IsReduced(), "RangeCheck must be marked reduced after Compile")
 	require.Len(t, sys.TableRelations, 1)
-	assert.Equal(t, wiop.TableRelationInclusion, sys.TableRelations[0].Kind)
 }
 
 func TestCompile_SharedRangeColumn(t *testing.T) {

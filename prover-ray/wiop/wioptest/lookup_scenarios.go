@@ -209,7 +209,7 @@ func NewLookupMultiColumnFilterOnIncludingScenario() *LookupScenario {
 	sys := wiop.NewSystemf("lk-multi-filterT")
 	r0 := sys.NewRound()
 	modT := sys.NewSizedModule(sys.Context.Childf("modT"), 4, wiop.PaddingDirectionNone)
-	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 3, wiop.PaddingDirectionNone)
+	modS := sys.NewSizedModule(sys.Context.Childf("modS"), 4, wiop.PaddingDirectionNone)
 	tx := modT.NewColumn(sys.Context.Childf("Tx"), wiop.VisibilityOracle, r0)
 	ty := modT.NewColumn(sys.Context.Childf("Ty"), wiop.VisibilityOracle, r0)
 	filterT := modT.NewColumn(sys.Context.Childf("filterT"), wiop.VisibilityOracle, r0)
@@ -228,8 +228,11 @@ func NewLookupMultiColumnFilterOnIncludingScenario() *LookupScenario {
 			rt.AssignColumn(tx, makeVec(1, 99, 2, 3))
 			rt.AssignColumn(ty, makeVec(10, 99, 20, 30))
 			rt.AssignColumn(filterT, makeVec(1, 0, 1, 1))
-			rt.AssignColumn(sx, makeVec(1, 2, 3))
-			rt.AssignColumn(sy, makeVec(10, 20, 30))
+			// The fourth S row repeats (3, 30) so the table is still
+			// over a power-of-two-sized module (size 3 is invalid for the
+			// global compiler's FFT path).
+			rt.AssignColumn(sx, makeVec(1, 2, 3, 3))
+			rt.AssignColumn(sy, makeVec(10, 20, 30, 30))
 		},
 	}
 }

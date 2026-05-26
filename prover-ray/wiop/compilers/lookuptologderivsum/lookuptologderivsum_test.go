@@ -524,22 +524,6 @@ func TestCompile_NoInclusions(t *testing.T) {
 		"compile without inclusion queries must register no LogDerivativeSum")
 }
 
-func TestCompile_PermutationIgnored(t *testing.T) {
-	sys := wiop.NewSystemf("ll-perm-ignored")
-	r0 := sys.NewRound()
-	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
-	colA := mod.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
-	colB := mod.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
-	perm := sys.NewPermutation(sys.Context.Childf("perm"),
-		[]wiop.Table{wiop.NewTable(colA.View())},
-		[]wiop.Table{wiop.NewTable(colB.View())})
-	lookuptologderivsum.Compile(sys) // must not panic
-	assert.False(t, perm.IsReduced(),
-		"permutation queries must be left untouched by this compiler")
-	assert.Empty(t, sys.LogDerivativeSums,
-		"no LogDerivativeSum should be emitted when there are no inclusion queries")
-}
-
 func TestCompile_MultiFragmentBPanics(t *testing.T) {
 	sys := wiop.NewSystemf("ll-multi-frag-B")
 	r0 := sys.NewRound()

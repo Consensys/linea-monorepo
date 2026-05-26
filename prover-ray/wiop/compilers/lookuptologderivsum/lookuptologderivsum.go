@@ -1,8 +1,7 @@
 // Package lookuptologderivsum compiles every unreduced [wiop.LookupQuery]
-// of kind [wiop.TableRelationInclusion] into a single [wiop.LogDerivativeSum]
-// query whose final result is asserted to be zero. It is the prover-ray
-// analogue of linea/prover/protocol/compiler/logderivativesum's
-// LookupIntoLogDerivativeSum pass.
+// into a single [wiop.LogDerivativeSum] query whose final result is asserted
+// to be zero. It is the prover-ray analogue of linea/prover/protocol/compiler/
+// logderivativesum's LookupIntoLogDerivativeSum pass.
 //
 // The reduction follows the standard log-derivative argument:
 //
@@ -181,9 +180,6 @@ func collectGroups(sys *wiop.System) map[string]*lookupGroup {
 	groups := make(map[string]*lookupGroup)
 	for _, q := range sys.TableRelations {
 		if q.IsReduced() {
-			continue
-		}
-		if q.Kind != wiop.TableRelationInclusion {
 			continue
 		}
 		if len(q.B) != 1 {
