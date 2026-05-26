@@ -12,7 +12,7 @@ include "utils/negative.zkc"
 include "memory.zkc"
 
 // TODO @Ghost
-fn main<ram, registers>() {
+fn main<ram, registers, poseidon_state>() {
 
     var pc:Address = entry_point[0]
     var opcode:Opcode

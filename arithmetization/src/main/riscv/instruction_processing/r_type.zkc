@@ -5,6 +5,8 @@ include "../utils/negative.zkc"
 include "../utils/sign_bit.zkc"
 include "../utils/sign_extend.zkc"
 include "../utils/signed_comparisons.zkc"
+include "../../precompiles/poseidon/impl/poseidon.zkc"
+include "../../precompiles/poseidon/impl/state.zkc"
 
 // Process a RISC-V R-type instruction, writing the result into the register file.
 //
@@ -36,7 +38,7 @@ include "../utils/signed_comparisons.zkc"
 // treat register values as two's-complement integers.  Division and remainder
 // follow RISC-V semantics: division by zero returns −1 (or the dividend for REM),
 // and signed overflow (INT_MIN / −1) returns INT_MIN (or 0 for REM).
-fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u25) {
+fn process_R_type_instruction<ram, registers, poseidon_state>(opcode:Opcode, instruction_parameters:u25) {
 
     var funct7:Funct7
     var rs2:Register
@@ -330,18 +332,22 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
             }
         }
 
+        // ==========================================
+        // custom instructions (precompiles etc ...)
+        // ==========================================
         case CUSTOM_0: {
-            // ==========================================
-            // custom instructions (precompiles etc ...)
-            // ==========================================
 
             printf "custom-0 instruction\n"
 
             if (funct3 == FUNCT3_POSEIDON_1) && (funct7 == FUNCT7_POSEIDON_1) {
-                printf "POSEIDON precompile\n"
-                fail
+                // address:Address, size_in_bytes:u32, destination:Address, apply_mds_initially:u1
+                v2_upper::v2_lower = v2
+                var vd : DoubleWord = registers[rd]
+                poseidon(v1, v2_lower, rd as Address, 0)
+                printf "Poseidon done!\n"
             }
         }
+
         default: {
             printf "[ERROR] Unsupported R-type instruction with\n"
             printf "\topcode ≡ %x ≡ %b\n", opcode, opcode

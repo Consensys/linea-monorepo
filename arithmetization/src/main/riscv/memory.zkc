@@ -23,9 +23,21 @@ pub input entry_point(i:u1) -> (address:Address)
 
 // Represents the available Random Access Memory (RAM) for the guest program.
 // This will act as the program "heap" and will contain, amongst other things,
-// the program executable itself and the program inputs. 
+// the program executable itself and the program inputs.
 memory ram(address:Address) -> (bytes:u8)
 
 // Represents the Register File to use when executing the guest program.  That
 // is, the value of all registers at the given moment.
 memory registers(id:Register) -> (value:DoubleWord)
+
+// Poseidon state: where computations take place
+// The Poseidon state is defined as an array of KOALABEAR field elements (felts)
+// of length STATE_WIDTH × 2, which looks like so:
+//
+//    [ σ₁, σ₂, ..., σₙ │ τ₁, τ₂, ..., τₙ]
+//
+// where n ≡ STATE_WIDTH, the σ-part of the state holds the actual Poseidon state,
+// and the τ-part of the state is meant as temporary storage for operations
+// updating the full Poseidon state.
+memory poseidon_state(address:u8) -> (felt:𝔽)
+

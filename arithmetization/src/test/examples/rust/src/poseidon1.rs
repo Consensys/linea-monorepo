@@ -37,19 +37,20 @@ core::arch::global_asm!(
 );
 
 
-fn some_crap(input_offset :usize, input_size :usize, output_offset :usize) {
+fn in_line_assembly_poseidon_call(input_offset :usize, input_size :usize, output_offset :usize) {
   unsafe {
     core::arch::asm!(
-      // interpretation of ":insn r 0x0b, 0x42, 0x69, {2}, {0}, {1}",
+      // interpretation of ":insn r opc, funct3, funct7, {rd}, {rs1}, {rs2}",
+      // interpretation of ".insn r 0x0b, 0b111, 0b1111111, {2}, {0}, {1}",
       //
       // instruction type: r
       // opcode: 0x0b ≡ custom-0
       // funct3: 0x01
       // funct7: 0x69
       //
-      // {0} = register address holding io
-      // {1} = register address holding is
-      // {2} = register address holding ro
+      // {0} = register address holding io ≡ inputs offset
+      // {1} = register address holding is ≡ inputs size
+      // {2} = register address holding ro ≡ results offset
       //
       // order is decided by the declaration order of the in(reg) XXX
       ".insn r 0x0b, 0b111, 0b1111111, {2}, {0}, {1}",
@@ -72,9 +73,10 @@ pub fn hex_to_input(s: &str) -> [u8; INPUT_LENGTH] {
 #[no_mangle]
 fn main() -> ! {
 
-    let input = hex_to_input(INPUT_STRING);
+    // let input = hex_to_input(INPUT_STRING);
 
-    some_crap(input.as_ptr() as usize, input.len(), 0);
+    // in_line_assembly_poseidon_call(input.as_ptr() as usize, input.len(), 0);
+    in_line_assembly_poseidon_call(0, 48, 48);
 
     // Encode the 5 codes into a single exit code (e.g. 0000 for all pass, 1000 for 1st test failing, etc.)
     exit(0);

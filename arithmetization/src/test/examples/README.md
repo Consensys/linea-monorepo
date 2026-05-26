@@ -40,14 +40,14 @@ Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 zkc-test() {
     case "$1" in
         clean-all)
-            make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" clean-all
+            make -f "path/to/Makefile" clean-all
             ;;
         exec|debug|compile|clean)
             local target="$1"; shift
-            make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" "$target" TEST="$1" "${@:2}"
+            make -f "path/to/Makefile" "$target" TEST="$1" "${@:2}"
             ;;
         *)
-            make -f "path/to/linea-monorepo/arithmetization/src/test/examples/Makefile" TEST="$1" "${@:2}"
+            make -f "path/to/Makefile" TEST="$1" "${@:2}"
             ;;
     esac
 }

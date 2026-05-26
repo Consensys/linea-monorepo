@@ -1,0 +1,21 @@
+// the koalabear prime is defined as
+// KOALABEAR_PRIME = 2^31 - 2^24 + 1 ≡ 0x7F000001 ≡ 2130706433
+const KOALABEAR_PRIME:u32 = 0x7F000001
+const ALPHA:u2 = 3
+const BYTES_PER_FELT:u8 = 3
+const BYTES_PER_BLOCK:u32 = (BYTES_PER_FELT * RATE) as u32
+const BYTES_PER_FELT_as_u32:u32 = BYTES_PER_FELT as u32
+
+const STATE_WIDTH:u8 = RATE + CAPACITY
+const RATE:u8 = 15
+const CAPACITY:u8 = 1
+const OUTPUT_LENGTH:u8 = RATE
+
+// Poseidon does
+//  - FULL_ROUNDS_HALF full rounds
+//  - PRTL_ROUNDS      prtl rounds
+//  - FULL_ROUNDS_HALF full rounds
+// whence
+const TOTAL_ROUNDS:u8 = FULL_ROUNDS_HALF + PRTL_ROUNDS + FULL_ROUNDS_HALF
+const FULL_ROUNDS_HALF:u8 = 4 // 8 = 4 + 4 full rounds
+const PRTL_ROUNDS:u8 = 20

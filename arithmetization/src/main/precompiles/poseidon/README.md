@@ -1,11 +1,12 @@
 # Generating data
 
-The Poseidon hash function requires two pieces of data besides the (nonempty) input byte slice:
+The Poseidon hash function requires two pieces of data besides a _nonempty_ input byte slice:
+
 - the mds matrix of size t×t
 - the round constants a matrix of size r×t
-where t ≡ state width t and r ≡ total rounds.
 
-This data can be generated using the [poseidon-tools](https://github.com/khovratovich/poseidon-tools) library.
+where t ≡ state width t and r ≡ total rounds. This data can be generated using the
+[poseidon-tools](https://github.com/khovratovich/poseidon-tools) library.
 
 ## Generatring an mds matrix
 
@@ -38,4 +39,3 @@ For the round constants I used `_KB_ROUND_CONSTANTS_16` from the tests of that r
 [584229223, 1225903167, 435734976, 745693090, 1580884015, 1393870516, 1514786559, 1416327482, 401740899, 305698337, 123847430, 1985271412, 660999169, 1953826170, 1390527262]
 # 1 and 15 are the the respectve output_size's, which have to be ≤ rate
 ```
-
