@@ -9,6 +9,7 @@ include "utils/bit_flip.zkc"
 include "utils/signed_comparisons.zkc"
 include "utils/sign_bit.zkc"
 include "utils/negative.zkc"
+include "utils/register_utils.zkc"
 include "memory.zkc"
 
 // TODO @Ghost
@@ -36,12 +37,11 @@ fn main<ram, registers>() {
 
     // We interpret pc == MAX_UINT_64 as the stop signal, which is set by the ecall instruction
     while pc != MAX_UINT_64 {
-        printf "PC=%x\n", pc
         instruction = read_32(pc) as Instruction
 
         // clock cycle starts at 1
         clock_cycle = clock_cycle + 1
-        printf "clock cycle: %d\n", clock_cycle
+        printf "----------------------------------------------------------------- PC=%d, clock cycle: %d\n", pc, clock_cycle
 
         pc = interpreter(instruction, pc)
     }
