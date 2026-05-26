@@ -34,6 +34,12 @@ const SmokeInput = struct {
 
 const raw_input_len = @sizeOf(SmokeInput);
 
+// The main entry point for the verifier ray smoke test. This is separate from
+// the main verifier entry point in `verifier.zig` because we want to be able to
+// run this smoke test in both native and R5 zkVM environments, and the way we load
+// input and exit differs between those environments. The actual verifier logic
+// being tested is still in `verifier.zig`, and this main function just serves as a
+// thin wrapper around it to handle environment-specific details.
 pub fn main() noreturn {
     if (comptime is_r5_zkvm) {
         // this entry point should only be called from native build (`make build` or `make build-release`)
@@ -43,31 +49,55 @@ pub fn main() noreturn {
         @compileError("native verifier syscall path currently supports x86_64-linux only");
     }
 
+    // load the input into memory using Linux syscalls (to avoid depending on stdlib for file I/O and memory mapping)
     const fd = nativeSyscall3(sys_open, @intFromPtr(native_input_path.ptr), o_rdonly, 0);
     if (isNativeSyscallError(fd)) exitNative(1);
 
     const mapped_addr = nativeSyscall6(sys_mmap, 0, raw_input_len, prot_read, map_private, fd, 0);
     if (isNativeSyscallError(mapped_addr)) exitNative(1);
 
+    // unsafe pointer cast from the raw mapped memory to our structured input type
     const input: *const SmokeInput = @ptrCast(@alignCast(@as([*]const u8, @ptrFromInt(mapped_addr))));
-    exitNative(runVerifierSmoke(input));
+
+    // run the verifier smoke test with the loaded input
+    const res = runVerifierSmoke(input);
+    exitNative(res);
 }
 
+// The main entry point for the R5 zkVM smoke test. This is separate from the
+// native main function because we need to use a different method for loading input
+// and exiting in the R5 zkVM environment. The actual verifier logic being tested
+// is still in `verifier.zig`, and this main function just serves as a thin wrapper
+// around it to handle R5-specific details.
 pub export fn r5_main() noreturn {
     if (comptime !is_r5_zkvm) {
         // this entry point should only be called from R5 zkVM build (`make build-r5` or `make build-r5-release`)
         unreachable;
     }
+
+    // the input is linked into the binary at compile time using the
+    // `_input_start` symbol defined in the linker script, so we can just take its
+    // address and cast it to our structured input type
     const input: *const SmokeInput = @ptrCast(@alignCast(&_input_start));
+
+    // run the verifier smoke test with the loaded input
     const res = runVerifierSmoke(input);
     exitR5(res);
 }
 
 fn runVerifierSmoke(input: *const SmokeInput) u8 {
+    // some temporary work to exercise the zkVM trace with a realistic
+    // polynomial evaluation and Fiat-Shamir transcript interaction, before we have
+    // a real proof to verify. This will be removed once we have a real proof and
+    // can test the full verifier end-to-end in the smoke test.
     if (!exerciseTemporaryTraceWork(input)) {
         return 1;
     }
 
+    // run the actual verifier logic being tested, using the input loaded from
+    // either the native file or the R5 zkVM linked input. The verifier logic is
+    // the same in both environments, and any errors it returns will cause the
+    // smoke test to fail.
     verifier_ray.verify(.{
         .commitments = input.commitments[0..],
         .public_inputs = input.public_inputs[0..],
