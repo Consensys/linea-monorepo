@@ -76,7 +76,7 @@ fn main() -> ! {
     // let input = hex_to_input(INPUT_STRING);
 
     // in_line_assembly_poseidon_call(input.as_ptr() as usize, input.len(), 0);
-    in_line_assembly_poseidon_call(0, 48, 48);
+    in_line_assembly_poseidon_call(4096, 48, 4096 + 64);
 
     // Encode the 5 codes into a single exit code (e.g. 0000 for all pass, 1000 for 1st test failing, etc.)
     exit(0);

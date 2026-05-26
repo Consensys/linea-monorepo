@@ -343,7 +343,7 @@ fn process_R_type_instruction<ram, registers, poseidon_state>(opcode:Opcode, ins
                 // address:Address, size_in_bytes:u32, destination:Address, apply_mds_initially:u1
                 v2_upper::v2_lower = v2
                 var vd : DoubleWord = registers[rd]
-                poseidon(v1, v2_lower, rd as Address, 0)
+                poseidon(v1, v2_lower, vd as Address, 0)
                 printf "Poseidon done!\n"
             }
         }
