@@ -24,9 +24,6 @@ on:
         required: false
         default: false
         type: boolean
-  push: #TODO: to be removed
-    branches:
-      - ci/feat-maru-manual-and-milestone-release
 
 concurrency:
   group: maru-release-${{ github.ref }}
