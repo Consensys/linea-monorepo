@@ -195,13 +195,13 @@ func printJson(blobs []memoryBlob, entryPoint uint64) {
 	var (
 		entryPointString   = fmt.Sprintf("%016x", entryPoint)
 		blobsCountString   = fmt.Sprintf("%016x", len(blobs))
-		entryPointAndBlobs = entryPointString + blobsCountString
+		entryPointAndBlobs = entryPointString + "_" + blobsCountString
 		blobMetadata       []string
 		blobData           []string
 	)
 
 	for _, blob := range blobs {
-		blobMetadata = append(blobMetadata, fmt.Sprintf("%016x%016x", blob.offset, len(blob.data)))
+		blobMetadata = append(blobMetadata, fmt.Sprintf("%016x_%016x", blob.offset, len(blob.data)))
 		if len(blob.data) > 0 {
 			blobData = append(blobData, hex.EncodeToString(blob.data))
 		}
@@ -209,7 +209,7 @@ func printJson(blobs []memoryBlob, entryPoint uint64) {
 
 	fmt.Println("{")
 	fmt.Printf("\t\"%s\": \"0x%s\",\n", ENTRY_POINT_AND_BLOBS_COUNT, entryPointAndBlobs)
-	fmt.Printf("\t\"%s\": \"0x%s\",\n", BLOBS_OFFSET_AND_SIZE, strings.Join(blobMetadata, "_"))
-	fmt.Printf("\t\"%s\": \"0x%s\"\n", BLOBS_DATA, strings.Join(blobData, "_"))
+	fmt.Printf("\t\"%s\": \"0x%s\",\n", BLOBS_OFFSET_AND_SIZE, strings.Join(blobMetadata, "____"))
+	fmt.Printf("\t\"%s\": \"0x%s\"\n", BLOBS_DATA, strings.Join(blobData, "____"))
 	fmt.Println("}")
 }
