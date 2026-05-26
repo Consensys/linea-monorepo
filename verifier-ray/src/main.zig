@@ -24,7 +24,7 @@ const native_input_path: [:0]const u8 = "zig-out/input.bin";
 
 extern const _input_start: u8;
 
-const SmokeInput = struct {
+const Input = struct {
     commitments: [commitment_count]Commitment,
     public_inputs: [public_input_count]field.Element,
     proof_bytes: [proof_byte_count]u8,
@@ -33,7 +33,7 @@ const SmokeInput = struct {
     expected_challenge: ext.Ext,
 };
 
-const raw_input_len = @sizeOf(SmokeInput);
+const raw_input_len = @sizeOf(Input);
 
 // The main entry point for the verifier ray smoke test. This is separate from
 // the main verifier entry point in `verifier.zig` because we want to be able to
@@ -58,7 +58,7 @@ pub fn main() noreturn {
     if (isNativeSyscallError(mapped_addr)) exitNative(1);
 
     // unsafe pointer cast from the raw mapped memory to our structured input type
-    const input: *const SmokeInput = @ptrCast(@alignCast(@as([*]const u8, @ptrFromInt(mapped_addr))));
+    const input: *const Input = @ptrCast(@alignCast(@as([*]const u8, @ptrFromInt(mapped_addr))));
 
     // run the verifier smoke test with the loaded input
     const res = runVerifierSmoke(input);
@@ -79,14 +79,14 @@ pub export fn r5_main() noreturn {
     // the input is linked into the binary at compile time using the
     // `_input_start` symbol defined in the linker script, so we can just take its
     // address and cast it to our structured input type
-    const input: *const SmokeInput = @ptrCast(@alignCast(&_input_start));
+    const input: *const Input = @ptrCast(@alignCast(&_input_start));
 
     // run the verifier smoke test with the loaded input
     const res = runVerifierSmoke(input);
     exitR5(res);
 }
 
-fn runVerifierSmoke(input: *const SmokeInput) u8 {
+fn runVerifierSmoke(input: *const Input) u8 {
     // some temporary work to exercise the zkVM trace with a realistic
     // polynomial evaluation and Fiat-Shamir transcript interaction, before we have
     // a real proof to verify. This will be removed once we have a real proof and
@@ -111,7 +111,7 @@ fn runVerifierSmoke(input: *const SmokeInput) u8 {
     return 0;
 }
 
-fn exerciseTemporaryTraceWork(input: *const SmokeInput) bool {
+fn exerciseTemporaryTraceWork(input: *const Input) bool {
     // Temporary zkVM trace exercise. Remove this once main verifies a realistic proof.
     const evaluation = polynomial.evaluateBaseCanonical(input.coefficients[0..], input.point);
 
