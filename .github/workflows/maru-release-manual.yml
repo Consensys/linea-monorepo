@@ -41,6 +41,6 @@ jobs:
       include-path: maru/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
       release_tag_suffix: ${{ inputs.release_tag_suffix }}
-      draft_release: ${{ !inputs.pre_release }}
-      pre_release: ${{ inputs.pre_release }}
+      draft_release: ${{ !inputs.pre_release || false }} #TODO: default will be removed
+      pre_release: ${{ inputs.pre_release || true }} #TODO: default will be removed
     secrets: inherit
