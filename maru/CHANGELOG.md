@@ -1,3 +1,8 @@
+## [1.0.1-mrc1] - 2026-05-26
+
+### 🐛 Bug Fixes
+
+- *(maru)* Address PR 3126 workflow follow-ups (#3164)
 # Changelog
 
 ### Upcoming Breaking Changes
