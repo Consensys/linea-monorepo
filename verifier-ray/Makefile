@@ -1,16 +1,21 @@
 SHELL := /bin/bash
 
-.PHONY: ci help fmt fmt-zig fmt-codegen fmt-testdata-generate build build-zig build-release build-r5 run test test-zig test-generated-zig test-codegen generate-testdata verify-testdata zkc-build zkc-verify clean
+.PHONY: ci help fmt fmt-zig fmt-codegen fmt-testdata-generate build build-zig build-release build-r5 run run-passing run-failing test test-zig test-generated-zig test-codegen generate-testdata verify-testdata zkc-build zkc-verify zkc-verify-passing zkc-verify-failing clean
 
 R5_BIN := zig-out/bin/verifier-ray
 R5_JSON := $(R5_BIN).json
 ELF_TO_JSON := ../arithmetization/src/test/examples/main.go
 ZKC_MAIN := ../arithmetization/src/main/riscv/main.zkc
 
-IN_BYTES ?=
+PASSING_INPUT_FILE := testdata/inputs/passing.bin
+FAILING_INPUT_FILE := testdata/inputs/failing.bin
+INPUT_FILE ?= $(PASSING_INPUT_FILE)
+# Encode the binary fixture for the ELF-to-JSON helper; the verifier sees decoded bytes.
+IN_BYTES ?= 0x$(shell xxd -p -c 256 $(INPUT_FILE))
 PROGRAM_OFFSET ?= 0x00000000
 IN_BYTES_OFFSET ?= 0x08800000
 ENTRY_POINT ?= $(PROGRAM_OFFSET)
+NATIVE_INPUT_FILE := zig-out/input.bin
 
 ci: fmt build test zkc-verify
 
@@ -25,16 +30,24 @@ help:
 		'  build                 Build verifier-ray natively' \
 		'  build-release         Build verifier-ray natively with ReleaseSmall and stripped symbols' \
 		'  build-r5              Build verifier-ray for the Linea R5 zkVM target' \
-		'  run                   Run verifier-ray natively' \
+		'  run                   Run verifier-ray natively with INPUT_FILE' \
+		'  run-passing           Run verifier-ray natively with the passing fixture' \
+		'  run-failing           Run verifier-ray natively with the failing fixture (exits non-zero)' \
 		'  test                  Run Zig tests and Go codegen tests' \
 		'  test-zig              Generate/verify testdata and run Zig tests' \
 		'  test-codegen          Run Go codegen tests' \
 		'  zkc-build             Build the R5 ELF and generate the zkc JSON input' \
-		'  zkc-verify            Run verifier-ray through the zkc RISC-V interpreter' \
+		'  zkc-verify            Run verifier-ray through the zkc RISC-V interpreter with INPUT_FILE' \
+		'  zkc-verify-passing    Run zkc with the passing fixture' \
+		'  zkc-verify-failing    Run zkc with the failing fixture (exits non-zero)' \
 		'  clean                 Remove Zig build artifacts' \
 		'' \
+		'input variables:' \
+		'  INPUT_FILE            Binary input fixture for native and zkc runs, default testdata/inputs/passing.bin' \
+		'  IN_BYTES              0x transport string for zkc; defaults to encoded INPUT_FILE bytes' \
+		'  NATIVE_INPUT_FILE     Fixed native input path; must match main.zig' \
+		'' \
 		'zkc variables:' \
-		'  IN_BYTES              Input bytes copied into the interpreter input region' \
 		'  PROGRAM_OFFSET        Program load address, default 0x00000000' \
 		'  IN_BYTES_OFFSET       Input bytes address, default 0x08800000' \
 		'  ENTRY_POINT           Entry point, default PROGRAM_OFFSET'
@@ -64,13 +77,21 @@ build-zig:
 	zig build
 
 build-release:
-	zig build -Doptimize=ReleaseSmall -Dstrip=true
+	zig build --release=small -Dstrip=true
 
 build-r5:
-	zig build -Dr5=true --release=small -Dstrip=true
+	zig build --release=small -Dstrip=true -Dr5=true
 
 run:
+	mkdir -p $(dir $(NATIVE_INPUT_FILE))
+	cp $(INPUT_FILE) $(NATIVE_INPUT_FILE)
 	zig build run
+
+run-passing:
+	$(MAKE) run INPUT_FILE=$(PASSING_INPUT_FILE)
+
+run-failing:
+	$(MAKE) run INPUT_FILE=$(FAILING_INPUT_FILE)
 
 test: test-zig test-codegen
 
@@ -94,6 +115,12 @@ zkc-build: build-r5
 
 zkc-verify: zkc-build
 	zkc exec $(R5_JSON) $(ZKC_MAIN)
+
+zkc-verify-passing:
+	$(MAKE) zkc-verify INPUT_FILE=$(PASSING_INPUT_FILE)
+
+zkc-verify-failing:
+	$(MAKE) zkc-verify INPUT_FILE=$(FAILING_INPUT_FILE)
 
 clean:
 	rm -rf .zig-cache zig-out

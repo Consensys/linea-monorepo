@@ -2,4 +2,4 @@
 .global _start
 _start:
     la sp, _stack_start  # SP from linker script
-    call main
+    call r5_main
