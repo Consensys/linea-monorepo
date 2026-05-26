@@ -9,11 +9,12 @@ pub const Error = error{
     OutputTooSmall,
 };
 
-/// For the verifier, there are only two meaningful visibilty, the internal visisbilty
-/// of prover-ray is not relevant. The `oracle` visibility is for columns that are only visible to the prover, and the `public` visibility is for columns that are visible to both the prover and verifier.
+/// For the verifier, only oracle/public visibility values are meaningful; prover-ray's
+/// internal visibility is not relevant. The numeric tags intentionally match
+/// prover-ray's visibility encoding.
 pub const Visibility = enum(u8) {
-    oracle = 0,
-    public = 1,
+    oracle = 1,
+    public = 2,
 };
 
 pub const Vector = value.Vector;

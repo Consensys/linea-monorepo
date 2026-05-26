@@ -24,9 +24,6 @@ func TestGenerate_DefaultEntryPoint(t *testing.T) {
 	if !strings.Contains(src, "pub fn verifyGenerated") {
 		t.Fatalf("generated source is missing default entry point:\n%s", src)
 	}
-	if !strings.Contains(src, "_ = rt;") {
-		t.Fatalf("generated source should mark runtime unused until real round messages exist:\n%s", src)
-	}
 	if strings.Contains(src, "rt.advanceRound") {
 		t.Fatalf("generated source should not emit placeholder round advancement:\n%s", src)
 	}

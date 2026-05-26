@@ -334,7 +334,7 @@ const TraceRoundBacking = struct {
             };
 
             self.columns[column_count] = .{
-                .visibility = try visibility(column_case.visibility),
+                .visibility = @enumFromInt(column_case.visibility),
                 .assignment = assignment,
             };
             column_count += 1;
@@ -355,12 +355,3 @@ const TraceRoundBacking = struct {
         };
     }
 };
-
-/// Convert generated visibility tags into verifier runtime visibility values.
-fn visibility(value: u8) !runtime.Visibility {
-    return switch (value) {
-        1 => .oracle,
-        2 => .public,
-        else => error.InvalidVisibility,
-    };
-}

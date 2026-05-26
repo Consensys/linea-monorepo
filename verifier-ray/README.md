@@ -46,7 +46,16 @@ The verifier runtime is in `src/runtime.zig`.
 
 - `transcript`: the Fiat-Shamir transcript.
 - `current_round`: the round the verifier expects to process next.
-- `round_count`: the number of protocol rounds in the scripted protocol.
+- `total_rounds`: the total number of protocol rounds in the scripted protocol.
+
+`Visibility` contains only the verifier-relevant tags:
+
+- `oracle = 1`
+- `public = 2`
+
+These numeric values intentionally match `prover-ray`'s WIOP visibility
+encoding. The verifier runtime does not model `internal = 0`; callers should
+filter internal columns before constructing a `RoundMessage`.
 
 The main round API is:
 
@@ -55,27 +64,30 @@ pub fn advanceRoundWithMessage(
     self: *Runtime,
     expected_round: usize,
     message: RoundMessage,
-    out_coins: []ext.Ext,
-) Error![]const ext.Ext
+    out_coins: []Coin,
+) Error![]const Coin
 ```
 
 It mirrors the verifier-relevant behavior of `prover-ray/wiop/wiop_runtime.go`
 `AdvanceRound()`:
 
-1. Assert that the caller is advancing the expected round.
-2. Reject protocols with no rounds or attempts to advance past the last round.
-3. For columns, absorb only `oracle` and `public` visibility assignments.
-4. Reject missing `oracle` or `public` column assignments.
-5. Skip `internal` columns, since they are not verifier-visible.
-6. Absorb all cells, and reject missing cell assignments.
-7. Advance `current_round`.
-8. Squeeze the requested number of Koalabear E6 extension coins.
+1. Require the caller to advance the runtime's current round.
+2. Reject protocols with no rounds, invalid round indexes, or attempts to
+   advance the final round.
+3. Reject requests for more output coins than the caller-provided backing slice
+   can hold.
+4. Absorb every column assignment included in `message.columns`, in order.
+5. Absorb every public cell included in `message.cells`, in order.
+6. Advance `current_round`.
+7. Squeeze the requested number of Koalabear E6 extension coins into
+   `out_coins` and return the initialized prefix.
 
-`RoundMessage` is the verifier-visible message for one round. A column
-assignment is optional because tests need to represent "this column was not
-assigned"; the runtime turns that into an error when the column is verifier
-visible.
-
+`RoundMessage` is the already-filtered verifier-visible message for one round.
+Columns in the message are concrete assignments for `oracle` or `public`
+columns. The runtime does not receive internal columns and does not validate
+missing assignments for columns or cells that are not included in the message;
+that filtering and completeness check belongs to the caller or generated
+verifier code.
 
 ## Test Data Workflow
 
