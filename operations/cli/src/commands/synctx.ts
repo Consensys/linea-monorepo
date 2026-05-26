@@ -11,7 +11,8 @@ import {
   hasPendingTransactions,
   isLocalPort,
   isValidNodeTarget,
-  serializePendingTransaction,
+  parseTransactionsFileContent,
+  serializeVerifiedTxpoolTransaction,
   type Transaction,
   type TransactionPool,
   getClientType,
@@ -84,6 +85,10 @@ export default class Synctx extends Command {
     let pendingTransactionsToSync: Transaction[] = [];
     const concurrentCount = flags.concurrency as number;
 
+    if (concurrentCount <= 0) {
+      this.error("Invalid concurrency supplied; must be greater than 0");
+    }
+
     if ((filePath === "" && sourceNode === "") || (filePath !== "" && sourceNode !== "")) {
       this.error(
         "Invalid flag values are supplied; source and file are mutually exclusive, and at least one needs to be specified",
@@ -143,9 +148,13 @@ export default class Synctx extends Command {
       this.log(`Target pending transactions: ${targetPendingTransactions.length}`);
     }
 
-    pendingTransactionsToSync = sourceNode
-      ? getPendingTransactions(sourcePendingTransactions, targetPendingTransactions)
-      : JSON.parse(readFileSync(filePath, "utf-8"));
+    try {
+      pendingTransactionsToSync = sourceNode
+        ? getPendingTransactions(sourcePendingTransactions, targetPendingTransactions)
+        : parseTransactionsFileContent(readFileSync(filePath, "utf-8"), filePath);
+    } catch (error) {
+      this.error((error as Error).message);
+    }
 
     if (pendingTransactionsToSync.length === 0) {
       if (sourceNode) {
@@ -164,7 +173,7 @@ export default class Synctx extends Command {
 
     for (const tx of pendingTransactionsToSync) {
       try {
-        transactions.push(serializePendingTransaction(tx));
+        transactions.push(serializeVerifiedTxpoolTransaction(tx));
       } catch (error) {
         errorSerialization++;
         this.warn(`Error serializing transaction ${tx.hash}: ${(error as Error).message}`);

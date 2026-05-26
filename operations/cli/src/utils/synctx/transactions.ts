@@ -44,6 +44,21 @@ export const getPendingTransactions = (sourcePool: Transaction[], targetPool: Tr
   return sourcePool.filter((tx) => !targetPendingTransactions.has(tx.hash));
 };
 
+export const parseTransactionsFileContent = (content: string, filePath: string): Transaction[] => {
+  let transactions: unknown;
+  try {
+    transactions = JSON.parse(content);
+  } catch (error) {
+    throw new Error(`Invalid txs file ${filePath}: ${(error as Error).message}`);
+  }
+
+  if (!Array.isArray(transactions)) {
+    throw new Error(`Invalid txs file ${filePath}: expected a JSON array of transactions`);
+  }
+
+  return transactions as Transaction[];
+};
+
 const toBigInt = (value: Quantity | undefined, field: string, hash: Hash): bigint => {
   if (value === undefined) {
     throw new Error(`Missing required transaction field ${field} for ${hash}`);
@@ -164,40 +179,50 @@ const getBaseTransaction = (tx: Transaction) => ({
   value: toBigInt(tx.value, "value", tx.hash),
 });
 
-export const serializePendingTransaction = (tx: Transaction): Hex => {
+export const toSerializableTransaction = (tx: Transaction): [TransactionSerializable, Signature] => {
   const type = toTransactionType(tx.type, tx.hash);
   const baseTransaction = getBaseTransaction(tx);
-  let transaction: TransactionSerializable;
-  let signature: Signature;
 
   if (type === 0) {
-    transaction = {
-      ...baseTransaction,
-      type: "legacy",
-      gasPrice: toBigInt(tx.gasPrice, "gasPrice", tx.hash),
-    };
-    signature = getLegacySignature(tx);
-  } else if (type === 1) {
-    transaction = {
-      ...baseTransaction,
-      type: "eip2930",
-      chainId: toSafeNumber(tx.chainId, "chainId", tx.hash),
-      gasPrice: toBigInt(tx.gasPrice, "gasPrice", tx.hash),
-      accessList: getAccessList(tx),
-    };
-    signature = getTypedSignature(tx);
-  } else {
-    transaction = {
+    return [
+      {
+        ...baseTransaction,
+        type: "legacy",
+        gasPrice: toBigInt(tx.gasPrice, "gasPrice", tx.hash),
+        ...(tx.chainId !== undefined ? { chainId: toSafeNumber(tx.chainId, "chainId", tx.hash) } : {}),
+      },
+      getLegacySignature(tx),
+    ];
+  }
+
+  if (type === 1) {
+    return [
+      {
+        ...baseTransaction,
+        type: "eip2930",
+        chainId: toSafeNumber(tx.chainId, "chainId", tx.hash),
+        gasPrice: toBigInt(tx.gasPrice, "gasPrice", tx.hash),
+        accessList: getAccessList(tx),
+      },
+      getTypedSignature(tx),
+    ];
+  }
+
+  return [
+    {
       ...baseTransaction,
       type: "eip1559",
       chainId: toSafeNumber(tx.chainId, "chainId", tx.hash),
       maxFeePerGas: toBigInt(tx.maxFeePerGas, "maxFeePerGas", tx.hash),
       maxPriorityFeePerGas: toBigInt(tx.maxPriorityFeePerGas, "maxPriorityFeePerGas", tx.hash),
       accessList: getAccessList(tx),
-    };
-    signature = getTypedSignature(tx);
-  }
+    },
+    getTypedSignature(tx),
+  ];
+};
 
+export const serializeVerifiedTxpoolTransaction = (tx: Transaction): Hex => {
+  const [transaction, signature] = toSerializableTransaction(tx);
   const rawTransaction = serializeTransaction(transaction, signature);
   const serializedHash = keccak256(rawTransaction);
   if (serializedHash !== tx.hash) {
