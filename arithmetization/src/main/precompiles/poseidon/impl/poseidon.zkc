@@ -155,7 +155,7 @@ fn update_state<ram, poseidon_state>(input_address:Address, block_size:u32) {
 fn get_full_felt<ram>(offset:Address) -> (felt:𝔽) {
     // // TODO: this crashes:
     // felt = (ram[(offset + 2) as Address]::ram[(offset + 1) as Address]::ram[(offset + 0) as Address]) as 𝔽
-    felt =                        ram[(offset + 2) as Address] as 𝔽
+    felt = ram[(offset + 2) as Address] as 𝔽
     felt = (felt * (256 as 𝔽)) + (ram[(offset + 1) as Address] as 𝔽)
     felt = (felt * (256 as 𝔽)) + (ram[(offset + 0) as Address] as 𝔽)
 }
