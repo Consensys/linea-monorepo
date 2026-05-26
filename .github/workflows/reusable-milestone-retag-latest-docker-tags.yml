@@ -26,6 +26,9 @@ on:
       linea_besu_package_metadata:
         required: true
         type: string
+      maru_metadata:
+        required: true
+        type: string
       coordinator_latest_docker_tag:
         required: true
         type: string
@@ -41,6 +44,9 @@ on:
       linea_besu_package_latest_docker_tag:
         required: true
         type: string
+      maru_latest_docker_tag:
+        required: true
+        type: string
     secrets:
       DOCKERHUB_USERNAME:
         required: true
@@ -53,7 +59,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu-package ]
+        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu-package, maru ]
         include:
           - component: coordinator
             image-name: linea-coordinator
@@ -75,6 +81,11 @@ jobs:
             image-name: linea-besu-package
             metadata: ${{ inputs.linea_besu_package_metadata }}
             latest-docker-tag: ${{ inputs.linea_besu_package_latest_docker_tag }}
+          - component: maru
+            # maru is published as consensys/maru rather than consensys/linea-maru.
+            image-name: maru
+            metadata: ${{ inputs.maru_metadata }}
+            latest-docker-tag: ${{ inputs.maru_latest_docker_tag }}
     steps:
       - name: Login to Docker Hub
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
