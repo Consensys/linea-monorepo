@@ -2,36 +2,26 @@ import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
 
-const REGISTRY_DIR = path.join(__dirname, "..", "..", "deployments", "addresses");
-
-const REGISTRY_NETWORKS = new Set(["mainnet", "sepolia", "hoodi", "linea_mainnet", "linea_sepolia"]);
-
-interface RegistryEntry {
-  address: string;
-  notes?: string;
-}
-
-interface NetworkRegistry {
-  network: string;
-  chainId: number;
-  contracts: Record<string, RegistryEntry>;
-}
-
-function loadRegistry(networkName: string): NetworkRegistry | undefined {
-  const filePath = path.join(REGISTRY_DIR, `${networkName}.json`);
-  if (!fs.existsSync(filePath)) {
-    return undefined;
-  }
-  const raw = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(raw) as NetworkRegistry;
-}
+import {
+  getPopulatedAddresses,
+  isMultiRegistryEntry,
+  loadRegistry,
+  lookupRegistryEntry,
+  parseEnvAddressList,
+  REGISTRY_NETWORKS,
+  sameAddressSet,
+} from "./addressRegistry";
 
 /**
- * Reads a contract address from the per-network registry file.
- * Returns `undefined` if the network has no registry, the key is missing, or the
- * address is the zero address (used as a placeholder for entries not yet populated).
+ * Reads a single contract address from the per-network registry file.
+ * Returns `undefined` if the network has no registry, the key is missing, the entry is
+ * multi-address, or the address is the zero address placeholder.
  */
-export function getAddressFromRegistry(networkName: string, contractKey: string): string | undefined {
+export function getAddressFromRegistry(
+  networkName: string,
+  contractKey: string,
+  envVarName?: string,
+): string | undefined {
   if (!REGISTRY_NETWORKS.has(networkName)) {
     return undefined;
   }
@@ -39,23 +29,34 @@ export function getAddressFromRegistry(networkName: string, contractKey: string)
   if (!registry) {
     return undefined;
   }
-  const entry = registry.contracts[contractKey];
+  const entry = lookupRegistryEntry(registry, contractKey, envVarName);
+  if (!entry || isMultiRegistryEntry(entry)) {
+    return undefined;
+  }
+  return getPopulatedAddresses(entry)?.[0];
+}
+
+/**
+ * Reads multiple contract addresses from the per-network registry file.
+ * Single-address entries are returned as a one-item array.
+ */
+export function getAddressesFromRegistry(
+  networkName: string,
+  contractKey: string,
+  envVarName?: string,
+): string[] | undefined {
+  if (!REGISTRY_NETWORKS.has(networkName)) {
+    return undefined;
+  }
+  const registry = loadRegistry(networkName);
+  if (!registry) {
+    return undefined;
+  }
+  const entry = lookupRegistryEntry(registry, contractKey, envVarName);
   if (!entry) {
     return undefined;
   }
-  if (!ethers.isAddress(entry.address)) {
-    throw new Error(
-      `Registry entry for "${contractKey}" on "${networkName}" has an invalid address: "${entry.address}". ` +
-        `Fix contracts/deployments/addresses/${networkName}.json.`,
-    );
-  }
-  const checksummed = ethers.getAddress(entry.address);
-  // Treat the zero address as "not populated" — registry entries are initialised with
-  // address(0) as a placeholder until the real address is known.
-  if (checksummed === ethers.ZeroAddress) {
-    return undefined;
-  }
-  return checksummed;
+  return getPopulatedAddresses(entry);
 }
 
 /**
@@ -74,24 +75,11 @@ export function getAddressFromRegistry(networkName: string, contractKey: string)
  * Networks without a registry file (custom, zkevm_dev, l2) bypass registry lookup
  * entirely and fall back to the env var only.
  *
- * @param networkName  Hardhat network name (e.g. "mainnet", "sepolia", "custom")
- * @param contractKey  Key in the registry JSON (e.g. "LineaRollup", "L1_SECURITY_COUNCIL")
- * @param envVarName   Optional env var to cross-check / fall back to
+ * Lookup tries `contractKey` first, then `envVarName` when they differ.
  */
-export function requireAddressOrRegistry(networkName: string, contractKey: string, envVarName?: string): string {
-  const registryAddress = getAddressFromRegistry(networkName, contractKey);
-  const rawEnvValue = envVarName ? process.env[envVarName] : undefined;
-
-  const envAddress = (() => {
-    if (!rawEnvValue) return undefined;
-    if (!ethers.isAddress(rawEnvValue)) {
-      throw new Error(
-        `Environment variable "${envVarName}" is not a valid EVM address. Got: "${rawEnvValue}". ` +
-          `Expected a 0x-prefixed 40-hex-character address.`,
-      );
-    }
-    return ethers.getAddress(rawEnvValue);
-  })();
+export function requireAddressFromRegistryOrEnv(networkName: string, contractKey: string, envVarName?: string): string {
+  const registryAddress = getAddressFromRegistry(networkName, contractKey, envVarName);
+  const envAddress = envVarName ? parseEnvAddressList(envVarName)?.[0] : undefined;
 
   if (registryAddress !== undefined) {
     if (envAddress !== undefined && envAddress !== registryAddress) {
@@ -118,6 +106,48 @@ export function requireAddressOrRegistry(networkName: string, contractKey: strin
     : ` Set env var ${envVarName ?? "<env var>"}.`;
 
   throw new Error(`No address found for "${contractKey}" on network "${networkName}".${registryNote}`);
+}
+
+/**
+ * Resolves multiple addresses for deployment, combining the registry with a comma-delimited env var.
+ * Registry entries may use either a single `address` or an `addresses` array.
+ * Env var conflicts are detected using order-independent set comparison.
+ */
+export function requireAddressesFromRegistryOrEnv(
+  networkName: string,
+  contractKey: string,
+  envVarName: string,
+): string[] {
+  const registryAddresses = getAddressesFromRegistry(networkName, contractKey, envVarName);
+  const envAddresses = parseEnvAddressList(envVarName);
+
+  if (registryAddresses !== undefined) {
+    if (envAddresses !== undefined && !sameAddressSet(registryAddresses, envAddresses)) {
+      throw new Error(
+        `Address conflict for "${contractKey}" on network "${networkName}":\n` +
+          `  Registry (contracts/deployments/addresses/${networkName}.json): ${registryAddresses.join(", ")}\n` +
+          `  Environment variable ${envVarName}: ${envAddresses.join(", ")}\n` +
+          `Either remove the env var override or update the registry to match.`,
+      );
+    }
+    console.log(
+      `Using registry addresses for ${contractKey} on ${networkName}: ${registryAddresses.join(", ")}${envAddresses ? " (matches env var)" : ""}`,
+    );
+    return registryAddresses;
+  }
+
+  if (envAddresses !== undefined) {
+    console.log(
+      `Using environment variable ${envVarName}=${envAddresses.join(", ")} for ${contractKey} (no registry entry)`,
+    );
+    return envAddresses;
+  }
+
+  const registryNote = REGISTRY_NETWORKS.has(networkName)
+    ? ` Add it to contracts/deployments/addresses/${networkName}.json, or set env var ${envVarName}.`
+    : ` Set env var ${envVarName}.`;
+
+  throw new Error(`No addresses found for "${contractKey}" on network "${networkName}".${registryNote}`);
 }
 
 /**

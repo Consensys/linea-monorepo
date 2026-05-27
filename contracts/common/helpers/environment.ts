@@ -49,7 +49,7 @@ export function getOptionalEnvVar(name: string): string | undefined {
  *
  * Use this for addresses that are not tracked in the deployed address registry
  * (e.g. ephemeral operator addresses, newly configured roles).
- * For registry-tracked addresses prefer `requireAddressOrRegistry` from readAddress.ts.
+ * For registry-tracked addresses prefer `requireAddressFromRegistryOrEnv` from readAddress.ts.
  */
 export function validateAddressEnvVar(name: string): string {
   const raw = getRequiredEnvVar(name);

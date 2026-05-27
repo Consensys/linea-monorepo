@@ -3,7 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import {
   LogContractDeployment,
-  requireAddressOrRegistry,
+  requireAddressFromRegistryOrEnv,
   tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
@@ -16,7 +16,7 @@ const func: DeployFunction = withSignerUiSession(
     const signer = await getUiSigner(hre);
 
     // This should be the LineaRollup
-    const targetAddress = requireAddressOrRegistry(hre.network.name, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
+    const targetAddress = requireAddressFromRegistryOrEnv(hre.network.name, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
 
     const contract = await deployFromFactory(contractName, signer, targetAddress);
 

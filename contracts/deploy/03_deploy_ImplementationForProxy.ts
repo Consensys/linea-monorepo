@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
-import { getRequiredEnvVar, tryVerifyContract } from "../common/helpers";
+import { getRequiredEnvVar, requireAddressFromRegistryOrEnv, tryVerifyContract } from "../common/helpers";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
 const func: DeployFunction = withSignerUiSession(
@@ -11,7 +11,13 @@ const func: DeployFunction = withSignerUiSession(
     const signer = await getUiSigner(hre);
     const contractName = getRequiredEnvVar("CONTRACT_NAME");
 
-    const proxyAddress = getRequiredEnvVar("PROXY_ADDRESS");
+    const registryKey =
+      contractName === "TokenBridge"
+        ? process.env.TOKEN_BRIDGE_L1 === "true"
+          ? "TokenBridge_L1"
+          : "TokenBridge_L2"
+        : contractName;
+    const proxyAddress = requireAddressFromRegistryOrEnv(hre.network.name, registryKey, "PROXY_ADDRESS");
 
     const factory = await ethers.getContractFactory(contractName, signer);
 

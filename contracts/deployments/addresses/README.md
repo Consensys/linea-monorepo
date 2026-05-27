@@ -15,7 +15,10 @@ This directory contains the manually-maintained, per-network deployed address re
 
 ## How Addresses Are Used
 
-Deploy scripts call `requireAddressOrRegistry(networkName, contractKey, envVarName)`. The resolution order is:
+Deploy scripts call `requireAddressFromRegistryOrEnv(networkName, contractKey, envVarName)` for single
+addresses, or `requireAddressesFromRegistryOrEnv(...)` for comma-delimited env vars such as operator lists.
+Lookup tries `contractKey` first, then `envVarName` when they differ (so exports keyed by env var name
+also work). The resolution order is:
 
 | Registry entry | Env var set | Outcome |
 |---|---|---|
@@ -37,6 +40,10 @@ and fall back to requiring the env var.
 
 ## Address Entry Format
 
+Each contract key may use either a single address or an address list.
+
+Single address:
+
 ```json
 {
   "ContractKey": {
@@ -46,10 +53,36 @@ and fall back to requiring the env var.
 }
 ```
 
-- `address` must be a valid EIP-55 checksummed Ethereum address.
+Multiple addresses (for env vars such as `LINEA_ROLLUP_OPERATORS`):
+
+```json
+{
+  "LINEA_ROLLUP_OPERATORS": {
+    "addresses": [
+      { "address": "0x...", "notes": "L1 Finalization Operator EOA" },
+      { "address": "0x...", "notes": "L1 Data Submission Operator EOA" }
+    ]
+  }
+}
+```
+
+- `address` / each `addresses[].address` must be a valid EIP-55 checksummed Ethereum address.
+- An entry must define either `address` or `addresses`, not both.
 - Zero address (`0x0000...0000`) is treated as a placeholder meaning "not yet populated".
   Registry entries initialised with the zero address are ignored and env vars are used instead.
+  For `addresses` arrays, either every item is zero (placeholder) or every item must be non-zero.
 - `notes` is free-form text for context (proxy type, multisig info, etc.).
+
+## Validation
+
+After editing registry files (or exporting from an external source of truth), run:
+
+```shell
+pnpm -F contracts run validate:address-registry
+```
+
+This validates JSON shape, network/chainId metadata, EIP-55 checksums, duplicate list entries, and
+zero/non-zero consistency before deploy scripts consume the data.
 
 ## Contract Key Mapping
 
@@ -72,5 +105,8 @@ The following keys are recognised by deploy scripts:
 | `VAULT_HUB` | `VAULT_HUB` | Lido VaultHub proxy (L1) |
 | `VAULT_FACTORY` | `VAULT_FACTORY` | Lido Staking Vault Factory (L1) |
 | `STETH` | `STETH` | Lido stETH token proxy (L1) |
+| `LINEA_ROLLUP_OPERATORS` | `LINEA_ROLLUP_OPERATORS` | Comma-delimited L1 operator EOAs |
+| `VALIDIUM_OPERATORS` | `VALIDIUM_OPERATORS` | Comma-delimited Validium operator EOAs |
 
-> **Note:** `PLONKVERIFIER_ADDRESS` is env-var-only — it rotates with each proof system upgrade and is not tracked in the registry.
+> **Note:** `PLONKVERIFIER_ADDRESS` rotates with each proof system upgrade. It may appear in exported
+> registry files but deploy scripts treat it as env-var-only validation today.

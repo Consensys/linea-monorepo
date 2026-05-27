@@ -3,7 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 
 import {
   tryVerifyContract,
-  requireAddressOrRegistry,
+  requireAddressFromRegistryOrEnv,
   validateAddressEnvVar,
   LogContractDeployment,
 } from "../common/helpers";
@@ -14,7 +14,7 @@ const func: DeployFunction = withSignerUiSession("10_deploy_RecoverFunds.ts", as
   const contractName = "RecoverFunds";
 
   // RecoverFunds DEPLOYED AS UPGRADEABLE PROXY
-  const RecoverFunds_securityCouncil = requireAddressOrRegistry(
+  const RecoverFunds_securityCouncil = requireAddressFromRegistryOrEnv(
     network.name,
     "L1_SECURITY_COUNCIL",
     "L1_SECURITY_COUNCIL",

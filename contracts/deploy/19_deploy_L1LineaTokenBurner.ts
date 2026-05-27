@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import {
-  requireAddressOrRegistry,
+  requireAddressFromRegistryOrEnv,
   validateAddressEnvVar,
   LogContractDeployment,
   tryVerifyContractWithConstructorArgs,
@@ -16,7 +16,7 @@ const func: DeployFunction = withSignerUiSession(
     const contractName = "L1LineaTokenBurner";
     const signer = await getUiSigner(hre);
 
-    const messageService = requireAddressOrRegistry(hre.network.name, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
+    const messageService = requireAddressFromRegistryOrEnv(hre.network.name, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
     const lineaToken = validateAddressEnvVar("LINEA_TOKEN_BURNER_LINEA_TOKEN");
 
     const factory = await ethers.getContractFactory(contractName, signer);

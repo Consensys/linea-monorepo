@@ -13,7 +13,8 @@ import {
   generateRoleAssignments,
   getEnvVarOrDefault,
   getRequiredEnvVar,
-  requireAddressOrRegistry,
+  requireAddressFromRegistryOrEnv,
+  requireAddressesFromRegistryOrEnv,
   validateAddressEnvVar,
   tryVerifyContract,
   LogContractDeployment,
@@ -28,8 +29,12 @@ const func: DeployFunction = withSignerUiSession("03_deploy_Validium.ts", async 
   const verifierAddress = validateAddressEnvVar("PLONKVERIFIER_ADDRESS");
   const validiumInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
   const validiumInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
-  const validiumSecurityCouncil = requireAddressOrRegistry(network.name, "L1_SECURITY_COUNCIL", "L1_SECURITY_COUNCIL");
-  const validiumOperators = getRequiredEnvVar("VALIDIUM_OPERATORS").split(",");
+  const validiumSecurityCouncil = requireAddressFromRegistryOrEnv(
+    network.name,
+    "L1_SECURITY_COUNCIL",
+    "L1_SECURITY_COUNCIL",
+  );
+  const validiumOperators = requireAddressesFromRegistryOrEnv(network.name, "VALIDIUM_OPERATORS", "VALIDIUM_OPERATORS");
   const validiumRateLimitPeriodInSeconds = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_PERIOD");
   const validiumRateLimitAmountInWei = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_AMOUNT");
   const validiumGenesisTimestamp = getRequiredEnvVar("L2_GENESIS_TIMESTAMP");

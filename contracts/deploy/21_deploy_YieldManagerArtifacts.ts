@@ -38,7 +38,7 @@ import {
   getEnvVarOrDefault,
   getInitializerData,
   getRequiredEnvVar,
-  requireAddressOrRegistry,
+  requireAddressFromRegistryOrEnv,
 } from "../common/helpers";
 import {
   contractName as LidoStVaultYieldProviderFactoryContractName,
@@ -68,20 +68,20 @@ const func: DeployFunction = withSignerUiSession(
     const signer = await getUiSigner(hre);
 
     // YieldManager DEPLOYED AS UPGRADEABLE PROXY
-    const lineaRollupAddress = requireAddressOrRegistry(hre.network.name, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
-    const lineaRollupSecurityCouncil = requireAddressOrRegistry(
+    const lineaRollupAddress = requireAddressFromRegistryOrEnv(hre.network.name, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
+    const lineaRollupSecurityCouncil = requireAddressFromRegistryOrEnv(
       hre.network.name,
       "L1_SECURITY_COUNCIL",
       "L1_SECURITY_COUNCIL",
     );
-    const nativeYieldAutomationServiceAddress = requireAddressOrRegistry(
+    const nativeYieldAutomationServiceAddress = requireAddressFromRegistryOrEnv(
       hre.network.name,
       "NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS",
       "NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS",
     );
-    const vaultHub = requireAddressOrRegistry(hre.network.name, "VAULT_HUB", "VAULT_HUB");
-    const vaultFactory = requireAddressOrRegistry(hre.network.name, "VAULT_FACTORY", "VAULT_FACTORY");
-    const steth = requireAddressOrRegistry(hre.network.name, "STETH", "STETH");
+    const vaultHub = requireAddressFromRegistryOrEnv(hre.network.name, "VAULT_HUB", "VAULT_HUB");
+    const vaultFactory = requireAddressFromRegistryOrEnv(hre.network.name, "VAULT_FACTORY", "VAULT_FACTORY");
+    const steth = requireAddressFromRegistryOrEnv(hre.network.name, "STETH", "STETH");
     const initialMinimumWithdrawalReservePercentageBps = parseInt(
       getRequiredEnvVar("MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS"),
     );

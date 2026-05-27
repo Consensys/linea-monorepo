@@ -8,7 +8,7 @@ import { join } from "node:path";
 import {
   LogContractDeployment,
   getOptionalEnvVar,
-  getRequiredEnvVar,
+  requireAddressFromRegistryOrEnv,
   tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
@@ -53,7 +53,11 @@ const func: DeployFunction = withSignerUiSession(
     const contractName = "AddressFilter";
     const signer = await getUiSigner(hre);
 
-    const councilAddress = ethers.getAddress(getRequiredEnvVar("L1_SECURITY_COUNCIL"));
+    const councilAddress = requireAddressFromRegistryOrEnv(
+      hre.network.name,
+      "L1_SECURITY_COUNCIL",
+      "L1_SECURITY_COUNCIL",
+    );
     const deployerAddress = ethers.getAddress(await signer.getAddress());
     const filteredAddresses = loadAddressFilterFilteredAddressesFromFile();
 

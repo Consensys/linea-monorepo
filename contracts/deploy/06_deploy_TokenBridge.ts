@@ -11,7 +11,7 @@ import {
   generateRoleAssignments,
   getEnvVarOrDefault,
   validateAddressEnvVar,
-  requireAddressOrRegistry,
+  requireAddressFromRegistryOrEnv,
   tryVerifyContract,
   getRequiredEnvVar,
   LogContractDeployment,
@@ -30,12 +30,12 @@ const func: DeployFunction = withSignerUiSession(
     const signer = await getUiSigner(hre);
     const contractName = "TokenBridge";
 
-    const l2MessageServiceAddress = requireAddressOrRegistry(
+    const l2MessageServiceAddress = requireAddressFromRegistryOrEnv(
       network.name,
       "L2MessageService",
       "L2_MESSAGE_SERVICE_ADDRESS",
     );
-    const lineaRollupAddress = requireAddressOrRegistry(network.name, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
+    const lineaRollupAddress = requireAddressFromRegistryOrEnv(network.name, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
     const remoteChainId = getRequiredEnvVar("REMOTE_CHAIN_ID");
     const pauseTypeRoles = getEnvVarOrDefault("TOKEN_BRIDGE_PAUSE_TYPES_ROLES", TOKEN_BRIDGE_PAUSE_TYPES_ROLES);
     const unpauseTypeRoles = getEnvVarOrDefault("TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES", TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES);
@@ -53,7 +53,11 @@ const func: DeployFunction = withSignerUiSession(
       : [];
 
     if (process.env.TOKEN_BRIDGE_L1 === "true") {
-      securityCouncilAddress = requireAddressOrRegistry(network.name, "L1_SECURITY_COUNCIL", "L1_SECURITY_COUNCIL");
+      securityCouncilAddress = requireAddressFromRegistryOrEnv(
+        network.name,
+        "L1_SECURITY_COUNCIL",
+        "L1_SECURITY_COUNCIL",
+      );
       console.log(
         `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES environment variable`,
       );
@@ -62,7 +66,11 @@ const func: DeployFunction = withSignerUiSession(
         ? process.env.L1_RESERVED_TOKEN_ADDRESSES.split(",")
         : [];
     } else {
-      securityCouncilAddress = requireAddressOrRegistry(network.name, "L2_SECURITY_COUNCIL", "L2_SECURITY_COUNCIL");
+      securityCouncilAddress = requireAddressFromRegistryOrEnv(
+        network.name,
+        "L2_SECURITY_COUNCIL",
+        "L2_SECURITY_COUNCIL",
+      );
       console.log(
         `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES environment variable`,
       );

@@ -12,7 +12,7 @@ import {
   generateRoleAssignments,
   getEnvVarOrDefault,
   getRequiredEnvVar,
-  requireAddressOrRegistry,
+  requireAddressFromRegistryOrEnv,
   validateAddressEnvVar,
   tryVerifyContract,
   LogContractDeployment,
@@ -23,7 +23,7 @@ import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 const func: DeployFunction = withSignerUiSession("04_deploy_L2MessageService.ts", async function () {
   const contractName = "L2MessageService";
 
-  const l2MessageServiceSecurityCouncil = requireAddressOrRegistry(
+  const l2MessageServiceSecurityCouncil = requireAddressFromRegistryOrEnv(
     network.name,
     "L2_SECURITY_COUNCIL",
     "L2_SECURITY_COUNCIL",
