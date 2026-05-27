@@ -64,10 +64,14 @@ jobs:
           app-id: ${{ secrets.RELEASE_BOT_APP_ID }}
           private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
       
-      - name: Sanity check App permissions
+      - name: Show installation token permissions
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: gh api /repos/${{ github.repository }}/installation --jq '.permissions'
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          INSTALLATION_ID: ${{ steps.app-token.outputs.installation-id }}
+        run: |
+          # The /installation/repositories endpoint accepts an installation token
+          # and confirms the token works against the repo.
+          gh api /installation/repositories --jq '.repositories[].full_name' -H "Authorization: token ${APP_TOKEN}"
 
       - name: Checkout main
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
