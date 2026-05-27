@@ -14,12 +14,12 @@ jobs:
       profile-files: ${{ steps.list-profiles.outputs.files }}
     steps:
       - name: checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Split and list profiles
         id: list-profiles
         run: |
-          files=$(ls linea-besu-package/linea-besu/profiles/* | xargs -n 1 basename | sed 's/\.[^.]*$//')
+          files=$(ls linea-besu/package/linea-besu/profiles/* | xargs -n 1 basename | sed 's/\.[^.]*$//')
           files_json=$(echo "$files" | tr ' ' '\n' | jq -R -s -c 'split("\n") | map(select(length > 0))')
           echo "files=$files_json" >> "$GITHUB_OUTPUT"
           echo "Files: $files_json"
@@ -38,10 +38,10 @@ jobs:
       DOCKER_IMAGE: ${{ inputs.dockerimage }}
     steps:
       - name: Check repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Download local docker image artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           pattern: linea-besu-package
           path: ${{ github.workspace }}/tmp/artifacts
@@ -61,7 +61,7 @@ jobs:
           eval $COMMAND
 
       - name: Verify besu container
-        run: bash linea-besu-package/scripts/besu-container-verify.sh
+        run: bash linea-besu/package/scripts/besu-container-verify.sh
         env:
           CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
 

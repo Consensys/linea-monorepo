@@ -7,13 +7,13 @@
 | Tool | Version | Purpose |
 |------|---------|---------|
 | Node.js | >= 24.14.1 (see `.nvmrc`) | TypeScript projects |
-| pnpm | v10.28+ | Package management |
+| pnpm | v10.32.1+ | Package management |
 | Docker | v24+ | Container runtime |
 | Docker Compose | v2.19+ | Multi-container orchestration |
 | Make | v3.81+ | Build automation |
-| JDK | 21 | Kotlin/Java projects |
-| Gradle | 8.5+ | JVM build system |
-| Go | 1.21+ | Prover |
+| JDK | 25 | Kotlin/Java projects |
+| Gradle | 9.4+ | JVM build system |
+| Go | 1.25.7+ | Prover |
 
 ### Resource Requirements
 
@@ -121,7 +121,7 @@ make start-env COMPOSE_PROFILES=l1,l2,debug
 pnpm run build
 
 # Build specific package
-cd sdk && pnpm run build
+pnpm -F "./ts-libs/sdk/*" run build
 cd contracts && pnpm run build
 cd postman && pnpm run build
 
@@ -142,7 +142,7 @@ pnpm run test
 # Build specific project
 ./gradlew :coordinator:app:build
 ./gradlew :tracer:arithmetization:build
-./gradlew :besu-plugins:linea-sequencer:build
+./gradlew :linea-besu:plugins:linea-sequencer:build
 
 # Test
 ./gradlew test
@@ -320,16 +320,16 @@ export L1_ROLLUP_CONTRACT_ADDRESS=0x...
 
 | File | Location | Purpose |
 |------|----------|---------|
-| Coordinator config | `config/coordinator/` | Main coordinator settings |
+| Coordinator config | `docker/config/coordinator/` | Main coordinator settings |
 | Prover config | `config/prover/` | Prover settings |
-| Traces limits | `config/common/traces-limits-v2.toml` | Conflation limits |
-| Gas multipliers | `config/common/gas-price-cap-time-of-day-multipliers.toml` | Gas pricing |
+| Traces limits | `docker/config/common/traces-limits-v2.toml` | Conflation limits |
+| Gas multipliers | `docker/config/common/gas-price-cap-time-of-day-multipliers.toml` | Gas pricing |
 | L1 node | `docker/config/l1-node/` | L1 Besu/Teku config |
 | L2 sequencer | `docker/config/linea-besu-sequencer/` | Sequencer config |
 
 ### Tuning Conflation
 
-Edit `config/coordinator/coordinator-docker.config.toml`:
+Edit `docker/config/coordinator/coordinator-docker.config.toml`:
 
 ```toml
 [conflation]
@@ -468,7 +468,7 @@ pnpm clean
 
 1. Open project root
 2. Import Gradle project
-3. Set JDK 21
+3. Set JDK 25
 4. Install Kotlin plugin
 
 ### VS Code (TypeScript)

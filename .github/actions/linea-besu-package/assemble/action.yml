@@ -28,7 +28,7 @@ runs:
       shell: bash
       run: |
         echo "local_tracer_dist_path=$GITHUB_WORKSPACE/tracer/plugins/build/install/linea-tracer" >> $GITHUB_OUTPUT
-        echo "local_sequencer_dist_path=$GITHUB_WORKSPACE/besu-plugins/linea-sequencer/sequencer/build/install/sequencer" >> $GITHUB_OUTPUT
+        echo "local_sequencer_dist_path=$GITHUB_WORKSPACE/linea-besu/plugins/linea-sequencer/sequencer/build/install/sequencer" >> $GITHUB_OUTPUT
         echo "local_besu_zip_path=$GITHUB_WORKSPACE/tmp/besu-eth/build/distributions/besu-${{ inputs.local_besu_version }}.tar.gz" >> $GITHUB_OUTPUT
 
     - name: assemble the packages to linea-besu
@@ -39,32 +39,32 @@ runs:
         LOCAL_SEQUENCER_DIST_PATH: ${{ steps.set_local_zip_paths.outputs.local_sequencer_dist_path }}
         LOCAL_BESU_ZIP_PATH: ${{ steps.set_local_zip_paths.outputs.local_besu_zip_path }}
       run: |
-        cd linea-besu-package
+        cd linea-besu/package
         BESU_VERSION="$LOCAL_BESU_VERSION" LOCAL_BESU_ZIP_PATH="$LOCAL_BESU_ZIP_PATH" LOCAL_TRACER_DIST_FOLDER="$LOCAL_TRACER_DIST_PATH" LOCAL_SEQUENCER_DIST_FOLDER="$LOCAL_SEQUENCER_DIST_PATH" make assemble
         mv ./tmp/besu ./linea-besu
     
     - name: generate token to fetch artifacts from private besu-fleet-plugin
       id: generate_token
       if: ${{ inputs.fetch_besu_fleet_plugin == 'true' }}
-      uses: getsentry/action-github-app-token@v3
+      uses: getsentry/action-github-app-token@d4b5da6c5e37703f8c3b3e43abb5705b46e159cc #v3
       with:
         private_key: ${{ inputs.fleet_github_app_private_key }}
         app_id: ${{ inputs.fleet_github_app_id }}
 
     - name: get plugins from private besu-fleet-plugin
       if: ${{ inputs.fetch_besu_fleet_plugin == 'true' }}
-      uses: dsaltares/fetch-gh-release-asset@master
+      uses: dsaltares/fetch-gh-release-asset@aa2ab1243d6e0d5b405b973c89fa4d06a2d0fff7 #1.1.2
       with:
         repo: 'Consensys/besu-fleet-plugin'
         version: 'tags/${{ inputs.besu_fleet_plugin_version }}'
-        target: './linea-besu-package/linea-besu/besu/plugins/besu-fleet-plugin-${{ inputs.besu_fleet_plugin_version }}.jar'
+        target: './linea-besu/package/linea-besu/besu/plugins/besu-fleet-plugin-${{ inputs.besu_fleet_plugin_version }}.jar'
         file: 'besu-fleet-plugin-${{ inputs.besu_fleet_plugin_version }}.jar'
         token: ${{ steps.generate_token.outputs.token }}
     
     - name: show folder structure
       shell: bash
       run: |
-        cd linea-besu-package
+        cd linea-besu/package
         sudo apt update
         sudo apt-get install --no-install-recommends --assume-yes tree
         tree .
