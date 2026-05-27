@@ -78,15 +78,15 @@ jobs:
           BASE_REF="${{ inputs.base_ref || github.base_ref }}"
           OPTIM_REF="${{ inputs.optim_ref || github.event.pull_request.head.sha || github.sha }}"
           git fetch origin "${BASE_REF}":refs/bench/base
-          git fetch origin "${OPTIM_REF}":refs/bench/optim
+          git fetch origin "${OPTIM_REF}":refs/bench/opt
           git worktree add /tmp/wt-base refs/bench/base
-          git worktree add /tmp/wt-optim refs/bench/optim
+          git worktree add /tmp/wt-opt  refs/bench/opt
 
-      - name: Build ELFs, helpers, and per-vector JSONs once (on optim worktree)
+      - name: Build ELFs, helpers, and per-vector JSONs once (on opt worktree)
         run: |
           set -eux
           mkdir -p /tmp/bench/logs /tmp/bench/json/blake
-          cd /tmp/wt-optim/arithmetization/src/test/examples
+          cd /tmp/wt-opt/arithmetization/src/test/examples
           # Keccak: one batched JSON at a stable workflow-controlled path.
           make keccak-rust-json \
             KECCAK_N_VECTORS=${{ inputs.n_vectors_keccak || 10 }} \
@@ -174,7 +174,7 @@ jobs:
           log ""
 
           log "### Worktree zkc mains"
-          check_path zkc_main_opt /tmp/wt-optim/arithmetization/src/main/riscv/main.zkc
+          check_path zkc_main_opt  /tmp/wt-opt/arithmetization/src/main/riscv/main.zkc
           check_path zkc_main_base /tmp/wt-base/arithmetization/src/main/riscv/main.zkc
           log ""
 
@@ -182,7 +182,7 @@ jobs:
             log "### Smoke test (exact benchmark command, single timed run)"
             set +e
             /usr/bin/time -v zkc execute -v -q /tmp/keccak.json \
-              /tmp/wt-optim/arithmetization/src/main/riscv/main.zkc \
+              /tmp/wt-opt/arithmetization/src/main/riscv/main.zkc \
               >/tmp/bench/logs/preflight_smoke.log 2>&1
             smoke_rc=$?
             set -e
@@ -218,43 +218,41 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p /tmp/bench/logs
-          /usr/bin/time -v zkc execute -v -q /tmp/keccak.json /tmp/wt-base/arithmetization/src/main/riscv/main.zkc
 
-          #reset_state() {
-          #  sync || true
-          #  #sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches' || true
-          #  /tmp/bench/cache_thrasher 256 >/dev/null 2>&1 || true
-          #  sleep 5
-          #}
+          reset_state() {
+            sync || true
+            # sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches' || true
+            /tmp/bench/cache_thrasher 256 >/dev/null 2>&1 || true
+            sleep 5
+          }
 
+          run_keccak() {  # $1=variant (opt|base)  $2=label (warmup|iter#)
+            local zkc_main="/tmp/wt-${1}/arithmetization/src/main/riscv/main.zkc"
+            /usr/bin/time -v zkc execute -v -q /tmp/keccak.json "$zkc_main" \
+              > "/tmp/bench/logs/keccak_${1}_${2}.log" 2>&1
+          }
 
-          #run_keccak() {  # $1=variant (opt|base)  $2=label (warmup|iter#)
-          #  local zkc_main="/tmp/wt-${1}/arithmetization/src/main/riscv/main.zkc"
-          #  /usr/bin/time -v zkc execute -v -q /tmp/keccak.json "$zkc_main" \
-          #    > "/tmp/bench/logs/keccak_${1}_${2}.log" 2>&1
-          #}
+          run_blake() {   # $1=variant  $2=label. Runs all N vectors, one log file per vector.
+            local zkc_main="/tmp/wt-${1}/arithmetization/src/main/riscv/main.zkc"
+            for json in /tmp/bench/json/blake/*.json; do
+              local n
+              n=$(basename "$json" .json)
+              /usr/bin/time -v zkc execute -v -q "$json" "$zkc_main" \
+                > "/tmp/bench/logs/blake_${1}_${2}_${n}.log" 2>&1
+            done
+          }
 
-          #run_blake() {   # $1=variant  $2=label. Runs all N vectors, one log file per vector.
-          #  local zkc_main="/tmp/wt-${1}/arithmetization/src/main/riscv/main.zkc"
-          #  for json in /tmp/bench/json/blake/*.json; do
-          #    local n
-          #    n=$(basename "$json" .json)
-          #    /usr/bin/time -v zkc execute -v -q "$json" "$zkc_main" \
-          #      > "/tmp/bench/logs/blake_${1}_${2}_${n}.log" 2>&1
-          #  done
-          #}
-
-          # for wl in keccak blake; do
-            # Untimed warmup: optim then base. Primes the page cache and shared libs
+          for wl in keccak blake; do
+            # Untimed warmup: opt then base. Primes the page cache and shared libs
             # so both branches face an already-warm filesystem on iteration 1.
-          #  reset_state; run_${wl} opt  warmup || true
-          #  reset_state; run_${wl} base warmup || true
+            reset_state; run_${wl} opt  warmup || true
+            reset_state; run_${wl} base warmup || true
             # Timed runs: opt_i, base_i alternating, starting with opt.
-          #  for i in $(seq 1 ${{ inputs.iterations || 2 }}); do
-          #    reset_state; run_${wl} opt  "$i"
-          #    reset_state; run_${wl} base "$i"
-          #  done
-          #done
+            for i in $(seq 1 ${{ inputs.iterations || 2 }}); do
+              reset_state; run_${wl} opt  "$i"
+              reset_state; run_${wl} base "$i"
+            done
+          done
 
       - name: Parse logs and emit summary
         run: |
