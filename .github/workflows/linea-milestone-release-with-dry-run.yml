@@ -70,6 +70,30 @@ jobs:
         run: |
           gh api /installation/repositories --jq '.repositories[].full_name'
 
+      - name: Show installation permissions
+        env:
+          APP_ID: ${{ secrets.RELEASE_BOT_APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          INSTALLATION_ID: ${{ steps.app-token.outputs.installation-id }}
+          # gh requires GH_TOKEN even when we override Authorization with -H below.
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+
+          # Build a short-lived (≤10 min) JWT for App-level auth.
+          NOW=$(date +%s)
+          b64url() { base64 -w0 | tr -d '=' | tr '/+' '_-'; }
+          HEADER=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
+          PAYLOAD=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' "$((NOW-60))" "$((NOW+540))" "$APP_ID" | b64url)
+          SIG=$(printf '%s' "${HEADER}.${PAYLOAD}" \
+            | openssl dgst -sha256 -sign <(printf '%s' "$APP_PRIVATE_KEY") | b64url)
+          JWT="${HEADER}.${PAYLOAD}.${SIG}"
+
+          # /app/installations/{id} requires JWT auth and returns the permissions map.
+          gh api "/app/installations/${INSTALLATION_ID}" \
+            -H "Authorization: Bearer ${JWT}" \
+            --jq '{app_slug, target_type, permissions, events}'
+
       - name: Checkout main
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
