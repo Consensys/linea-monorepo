@@ -127,8 +127,8 @@ export default class Synctx extends Command {
       } else {
         this.log(`Skip fetching txs from source node as txs file is supplied`);
       }
-    } catch (err) {
-      this.error(`Invalid RPC provider(s) - ${err}`);
+    } catch {
+      this.error(`Failed to get transaction pool from source and target nodes.`);
     }
 
     if (sourceClientType && !hasPendingTransactions(sourceClientType, sourceTransactionPool)) {
