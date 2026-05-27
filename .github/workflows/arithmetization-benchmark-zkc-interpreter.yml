@@ -139,7 +139,7 @@ jobs:
             reset_state; run_${wl} opt  warmup || true
             reset_state; run_${wl} base warmup || true
             # Timed runs: opt_i, base_i alternating, starting with opt.
-            for i in $(seq 1 ${{ inputs.iterations || 2 }}); do
+            for i in $(seq 1 ${{ inputs.iterations || 1 }}); do
               reset_state; run_${wl} opt  "$i"
               reset_state; run_${wl} base "$i"
             done
@@ -153,7 +153,7 @@ jobs:
           mkdir -p /tmp/bench/logs
           /tmp/bench/render_bench_summary \
             -logs /tmp/bench/logs \
-            -iters ${{ inputs.iterations || 2 }} \
+            -iters ${{ inputs.iterations || 1 }} \
             -blake-n 1 \
             | tee -a "$GITHUB_STEP_SUMMARY" \
             | tee /tmp/bench/logs/summary.md
