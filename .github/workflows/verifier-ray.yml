@@ -66,8 +66,8 @@ jobs:
         with:
           version: ${{ env.ZIG_VERSION }}
 
-      - name: Install riscv64-unknown-elf-as
-        run: sudo apt-get update && sudo apt-get install -y binutils-riscv64-unknown-elf
+      - name: Install native tools
+        run: sudo apt-get update && sudo apt-get install -y binutils-riscv64-unknown-elf xxd
 
       - name: Install go-corset and zkc
         run: |
