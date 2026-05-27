@@ -116,6 +116,8 @@ riscv-test debug <name>.<ext>
 riscv-test debug <name>.<ext> IN_BYTES="0xAABB"
 # Compile and execute with input bytes at a custom offset
 riscv-test <name>.<ext> IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x08800008
+# Compile and execute using an already installed zkc
+SKIP_INSTALL_ZKC=true riscv-test <name>.<ext>
 # Compile only
 riscv-test compile <name>.<ext>
 # Convert an already compiled ELF to JSON
@@ -180,6 +182,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                      |
 | `SP`             | `0x08800000`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)         |
 | `VERIFY_ELF`     | `false`                                                                                 | Set to `true` to verify offsets, entry point and sp match the ELF ones          |
+| `SKIP_INSTALL_ZKC`| `false`                                                                                 | Set to `true` to skip `install-zkc` when `zkc` is already installed             |
 | `ACT4_BUILD_MODE`| `host`                                                                                  | Build ACT4 ELFs with `host` or `docker`                                         |
 | `ACT4_REF`       | `9798a554ce4139f472c9ccd3a18c9061d0f7024d`                                              | `riscv-arch-test` tag or commit used to build ACT4 ELFs                         |
 | `ACT4_REPO`      | `../riscv-arch-test`                                                                    | Local `riscv-arch-test` checkout used for ACT4 builds                           |

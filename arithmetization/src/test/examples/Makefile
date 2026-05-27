@@ -71,6 +71,7 @@ IN_BYTES_OFFSET_FROM_ELF = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _
 ENTRY_POINT_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) | grep 'Entry point' | awk '{print $$4}')
 SP_FROM_ELF              = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _stack_start | awk '{print "0x"$$1}')
 VERIFY_ELF               ?= false             
+SKIP_INSTALL_ZKC         ?= false
 
 # ACT4 testing framework specific variables
 ACT4_CONFIG_DIR := $(MAKEFILE_DIR)act4/config
@@ -171,7 +172,11 @@ elf-to-json: require-bin-ext
 	$(call ELF_TO_JSON,$(BIN_EXT),$(JSON_EXT))
 
 install-zkc:
+ifeq ($(SKIP_INSTALL_ZKC),true)
+	@echo "Skipping zkc installation because SKIP_INSTALL_ZKC=true"
+else
 	$(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc
+endif
 
 zkc-exec: require-test install-zkc
 	zkc exec $(JSON) $(ZKC_MAIN)
