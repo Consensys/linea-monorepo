@@ -63,6 +63,11 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_BOT_APP_ID }}
           private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+      
+      - name: Sanity check App permissions
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: gh api /repos/${{ github.repository }}/installation --jq '.permissions'
 
       - name: Checkout main
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
