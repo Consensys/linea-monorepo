@@ -1,6 +1,8 @@
+# Arcane compilation
+
 Arcane is the wizard-protocol (WIOP) compiler suite. This document describes its compilation pipeline, which lowers a wiop.System into a residue of polynomial commitments and evaluation queries through a sequence of atomic passes, each eliminating one class of query. The final lowering of that residue into a concrete protocol — the multi-point-to-single-point (MPTS) and polynomial-commitment-scheme (PCS) steps — is out of scope. The rest of the document first sketches the WIOP framework, then walks through the passes in pipeline order.
 
-# Overview of the WIOP framework
+## Overview of the WIOP framework
 
 A wiop.System is the static, declarative description of an Interactive Oracle Proof protocol — think of it as the blueprint of a proof, built once at setup time and reused across many proving sessions.
 
@@ -12,11 +14,11 @@ This split — spec vs. execution — is what lets compilers operate on a System
 
 Compilers do more than rewrite queries: they can also extend the System. A pass may register new columns in the PrecomputedRound (for example, the multiplicity column $M$ produced by the lookup compiler), and it may append new interactive Rounds when its reduction needs fresh verifier challenges.
 
-# Overview of the compiler suite
+## Overview of the compiler suite
 
 As mentioned above, the philosophy of the compiler suite is to incrementally eliminate classes of queries one after another.
 
-The initial polynomial-IOP may feature queries of type (1) Inclusion/Lookup, (2) Log-derivative Sum, (3) Vanishing constraints. The compilation pipeline is summed up as follows: 
+The initial polynomial-IOP may feature queries of type (1) Inclusion/Lookup, (2) Log-derivative Sum, (3) Vanishing constraints. The compilation pipeline is summed up in the figure below.
 
 ![Compilation pipeline](./compiler-architecture.png)
 
