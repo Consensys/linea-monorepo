@@ -8,15 +8,16 @@
  */
 package maru.syncing
 
+import linea.timer.TestablePeriodicTimerFactory
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.p2p.PeersHeadBlockProvider
+import maru.serialization.rlp.RLPSerializers
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import testutils.maru.TestablePeriodicTimerFactory
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -58,7 +59,10 @@ class PeerChainTrackerTest {
   private lateinit var config: PeerChainTracker.Config
   private lateinit var timerFactory: TestablePeriodicTimerFactory
   private lateinit var peerChainTracker: PeerChainTracker
-  private val beaconChain: BeaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(7uL))
+  private val beaconChain: BeaconChain =
+    InMemoryBeaconChain(
+      DataGenerators.randomBeaconState(7uL, headerHashFunction = RLPSerializers.DefaultHeaderHashFunction),
+    )
 
   @BeforeEach
   fun setUp() {

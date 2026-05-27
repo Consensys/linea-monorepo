@@ -8,7 +8,10 @@
  */
 package maru.consensus.qbft.adapters
 
+import maru.core.HashUtil
 import maru.core.ext.DataGenerators
+import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.bodyRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.ethereum.rlp.RLP
 import org.junit.jupiter.api.Test
@@ -16,7 +19,11 @@ import org.junit.jupiter.api.Test
 class QbftBlockCodecAdapterTest {
   @Test
   fun `can encode and decode same value`() {
-    val beaconBlock = DataGenerators.randomBeaconBlock(10U)
+    val beaconBlock = DataGenerators.randomBeaconBlock(
+      10U,
+      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+    )
     val testValue = QbftBlockAdapter(beaconBlock)
     val qbftBlockCodecAdapter = QbftBlockCodecAdapter
 

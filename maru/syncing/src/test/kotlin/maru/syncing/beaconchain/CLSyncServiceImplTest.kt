@@ -20,10 +20,12 @@ import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.DelayedQbftBlockCreator
 import maru.core.BeaconState
+import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.core.ext.DataGenerators
+import maru.core.ext.DataGenerators.randomExecutionPayload
 import maru.core.ext.metrics.TestMetrics.TestMetricsFacade
 import maru.core.ext.metrics.TestMetrics.TestMetricsSystemAdapter
 import maru.crypto.SecpCrypto
@@ -37,6 +39,7 @@ import maru.p2p.PeerLookup
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.stateRoot
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
 import net.consensys.linea.metrics.Counter
 import net.consensys.linea.metrics.MetricsFacade
@@ -128,7 +131,12 @@ class CLSyncServiceImplTest {
     validators = sortedSetOf(Validator(Util.publicKeyToAddress(keypair.publicKey).bytes.toArray()))
 
     val genesisTimestamp = DataGenerators.randomTimestamp()
-    val (genesisBeaconState, genesisBeaconBlock) = DataGenerators.genesisState(genesisTimestamp, validators)
+    val (genesisBeaconState, genesisBeaconBlock) = DataGenerators.genesisState(
+      genesisTimestamp,
+      validators,
+      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      stateRootFunction = { state -> HashUtil.stateRoot(state) },
+    )
     targetBeaconChain = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
     sourceBeaconChain = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
 
@@ -445,7 +453,7 @@ class CLSyncServiceImplTest {
     var parentSealedBeaconBlock = genesisBeaconBlock
     for (i in 1uL..BEACON_CHAIN_2_HEAD) {
       val parentElBlockNumber = parentSealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber
-      val executionPayload = DataGenerators.randomExecutionPayload().copy(blockNumber = parentElBlockNumber + 1u)
+      val executionPayload = randomExecutionPayload().copy(blockNumber = parentElBlockNumber + 1u)
 
       val beaconBlock =
         DelayedQbftBlockCreator.createBeaconBlock(

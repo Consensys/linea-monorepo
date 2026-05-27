@@ -45,12 +45,15 @@ import maru.api.node.PeerMetaData
 import maru.api.node.SyncingStatusData
 import maru.api.node.VersionData
 import maru.core.BeaconState
+import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
 import maru.extensions.encodeHex
 import maru.p2p.NetworkDataProvider
 import maru.p2p.PeerInfo
+import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.bodyRoot
 import maru.syncing.AlwaysSyncedController
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -99,8 +102,15 @@ class ApiServerTest {
 
   private val fakeChainDataProvider =
     object : ChainDataProvider {
-      val SEALED_BEACON_BLOCK = DataGenerators.randomSealedBeaconBlock(1u)
-      val BEACON_STATE = DataGenerators.randomBeaconState(1u)
+      val SEALED_BEACON_BLOCK = DataGenerators.randomSealedBeaconBlock(
+        1u,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+      )
+      val BEACON_STATE = DataGenerators.randomBeaconState(
+        1u,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      )
 
       override fun getLatestBeaconState(): BeaconState = BEACON_STATE
 
@@ -132,7 +142,14 @@ class ApiServerTest {
       }
     }
 
-  private val fakeBeaconChain = InMemoryBeaconChain(DataGenerators.randomBeaconState(number = 0u, timestamp = 0u))
+  private val fakeBeaconChain =
+    InMemoryBeaconChain(
+      DataGenerators.randomBeaconState(
+        number = 0u,
+        timestamp = 0u,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      ),
+    )
   private val fakeElOnlineProvider =
     object : () -> Boolean {
       var isElOnline: Boolean = false
@@ -276,7 +293,13 @@ class ApiServerTest {
   @Test
   fun `test GetSyncingStatus method`() {
     fakeBeaconChain.newBeaconChainUpdater().apply {
-      putBeaconState(DataGenerators.randomBeaconState(number = 100u, timestamp = 100u))
+      putBeaconState(
+        DataGenerators.randomBeaconState(
+          number = 100u,
+          timestamp = 100u,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        ),
+      )
       commit()
     }
     fakeElOnlineProvider.isElOnline = true
@@ -295,7 +318,13 @@ class ApiServerTest {
     )
 
     fakeBeaconChain.newBeaconChainUpdater().apply {
-      putBeaconState(DataGenerators.randomBeaconState(number = 200u, timestamp = 100u))
+      putBeaconState(
+        DataGenerators.randomBeaconState(
+          number = 200u,
+          timestamp = 100u,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        ),
+      )
       commit()
     }
     fakeElOnlineProvider.isElOnline = false

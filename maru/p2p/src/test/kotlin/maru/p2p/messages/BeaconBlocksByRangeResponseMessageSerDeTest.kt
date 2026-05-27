@@ -8,11 +8,13 @@
  */
 package maru.p2p.messages
 
+import maru.core.HashUtil
 import maru.core.ext.DataGenerators
 import maru.p2p.MessageData
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.bodyRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -26,7 +28,13 @@ class BeaconBlocksByRangeResponseMessageSerDeTest {
 
     val response =
       BeaconBlocksByRangeResponse(
-        blocks = listOf(DataGenerators.randomSealedBeaconBlock(number = 5UL)),
+        blocks = listOf(
+          DataGenerators.randomSealedBeaconBlock(
+            number = 5UL,
+            headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+            bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+          ),
+        ),
       )
     val message =
       MessageData(

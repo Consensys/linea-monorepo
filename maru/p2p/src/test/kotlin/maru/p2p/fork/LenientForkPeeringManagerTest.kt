@@ -13,9 +13,13 @@ import maru.consensus.ClFork
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.QbftConsensusConfig
+import maru.core.HashUtil
 import maru.core.Validator
+import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
+import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -57,7 +61,7 @@ class LenientForkPeeringManagerTest {
 
   @BeforeEach
   fun setup() {
-    beaconChain = InMemoryBeaconChain.Companion.fromGenesis(genesisTimestampSeconds = 100u)
+    beaconChain = inMemoryBeaconChainFromGenesis(genesisTimestampSeconds = 100u)
     forks = listOf(
       forkSpec(0UL, ElFork.Paris),
       forkSpec(1_000UL, ElFork.Shanghai),
@@ -88,6 +92,17 @@ class LenientForkPeeringManagerTest {
       peeringForkMismatchLeewayTime = peeringForkMismatchLeewayTime,
       clock = clock,
     )
+
+  private fun inMemoryBeaconChainFromGenesis(
+    genesisTimestampSeconds: ULong = 0UL,
+  ): InMemoryBeaconChain {
+    val (beaconState, sealedBlock) = DataGenerators.genesisState(
+      genesisTimestamp = genesisTimestampSeconds,
+      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      stateRootFunction = { state -> HashUtil.stateRoot(state) },
+    )
+    return InMemoryBeaconChain(beaconState, sealedBlock)
+  }
 
   @Test
   fun `currentFork should return correct fork`() {

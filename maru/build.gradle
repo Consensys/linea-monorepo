@@ -10,19 +10,6 @@
 // config. The monorepo doesn't enforce headers; maru retains them so the
 // licensing markers stay on every Kotlin and Java file.
 
-// Aggregate task that builds every :maru:* subproject (and via each subproject's
-// `check`, runs that subproject's tests + :maru:app:integrationTest). This is
-// CI's entry point. Standalone maru used `./gradlew build` for the same purpose
-// (it built every subproject because the standalone repo had no others); in the
-// monorepo we need an aggregate scoped to :maru:* so we don't trigger zkevm builds.
-// :maru already has a `build` task from zkevm root's `allprojects { apply plugin
-// 'java' }`. Wire it up to also depend on every :maru:* subproject's build, so
-// `./gradlew :maru:build` matches standalone Maru's build behavior.
-tasks.named('build') {
-  description = 'Aggregate: build every :maru:* subproject (compile + check + integrationTest).'
-  dependsOn(subprojects.collect { sp -> "${sp.path}:build" })
-}
-
 subprojects {
   // Maru runs on Vert.x 4 at test runtime because Besu 26.5's acceptance-tests-dsl
   // (and besu-ethereum-p2p / besu-metrics-core internals it loads via

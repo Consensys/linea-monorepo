@@ -22,6 +22,7 @@ import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
@@ -37,6 +38,7 @@ import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
 import java.math.BigInteger
+import maru.core.ext.DataGenerators as CoreDataGenerators
 
 class DelayedQbftBlockCreatorTest {
   private val executionLayerManager = Mockito.mock(ExecutionLayerManager::class.java)
@@ -47,9 +49,13 @@ class DelayedQbftBlockCreatorTest {
 
   @Test
   fun `can create block`() {
-    val parentBlock = DataGenerators.randomSealedBeaconBlock(10U)
+    val parentBlock = DataGenerators.randomSealedBeaconBlock(
+      10U,
+      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+    )
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlock.beaconBlockHeader)
-    val executionPayload = DataGenerators.randomExecutionPayload()
+    val executionPayload = CoreDataGenerators.randomExecutionPayload()
     whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlock.beaconBlockHeader.hash())).thenReturn(
       parentBlock,
     )
@@ -108,7 +114,11 @@ class DelayedQbftBlockCreatorTest {
 
   @Test
   fun `fails to create block if execution payload not available`() {
-    val parentBlock = DataGenerators.randomBeaconBlock(10U)
+    val parentBlock = DataGenerators.randomBeaconBlock(
+      10U,
+      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+    )
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlockHeader)
 
     whenever(
@@ -132,9 +142,13 @@ class DelayedQbftBlockCreatorTest {
 
   @Test
   fun `fails to create block if parent beacon block not available`() {
-    val parentBlock = DataGenerators.randomBeaconBlock(10U)
+    val parentBlock = DataGenerators.randomBeaconBlock(
+      10U,
+      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+    )
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlockHeader)
-    val executionPayload = DataGenerators.randomExecutionPayload()
+    val executionPayload = CoreDataGenerators.randomExecutionPayload()
 
     whenever(executionLayerManager.finishBlockBuilding()).thenReturn(completedFuture(executionPayload))
     whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlockHeader.hash())).thenReturn(null)
@@ -157,7 +171,14 @@ class DelayedQbftBlockCreatorTest {
 
   @Test
   fun `can create sealed block`() {
-    val block = QbftBlockAdapter(DataGenerators.randomBeaconBlock(10U))
+    val block =
+      QbftBlockAdapter(
+        DataGenerators.randomBeaconBlock(
+          10U,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+        ),
+      )
     val beaconBlock = block.toBeaconBlock()
     val seals = setOf(SECPSignature.create(BigInteger.ONE, BigInteger.TWO, 0x00, BigInteger.valueOf(4)))
     val round = 0

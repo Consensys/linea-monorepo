@@ -12,7 +12,10 @@ import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.getError
 import maru.consensus.validation.BlockValidator
 import maru.core.BeaconBlock
+import maru.core.HashUtil
 import maru.core.ext.DataGenerators
+import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.bodyRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 import org.junit.jupiter.api.Test
@@ -20,7 +23,11 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.Optional
 
 class QbftBlockValidatorAdapterTest {
-  private val newBlock = DataGenerators.randomBeaconBlock(10u)
+  private val newBlock = DataGenerators.randomBeaconBlock(
+    10u,
+    headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+    bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+  )
   private lateinit var blockValidator: BlockValidator
 
   @Test

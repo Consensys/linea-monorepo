@@ -15,6 +15,7 @@
 
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
+  id 'java-test-fixtures'
 }
 
 dependencies {
@@ -34,6 +35,6 @@ dependencies {
   implementation project(':jvm-libs:linea:core:metrics')
 
   testImplementation (group: 'tech.pegasys.teku.internal', name: 'spec', version: libs.versions.teku.get(), classifier: 'test-fixtures')
-  testImplementation(project(':maru:test-fixtures'))
+  testImplementation(testFixtures(project(':maru:core')))
   testImplementation(testFixtures(project(':jvm-libs:generic:extensions:kotlin')))
 }

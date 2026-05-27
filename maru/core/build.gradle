@@ -15,6 +15,7 @@
 
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
+  id 'java-test-fixtures'
 }
 
 dependencies {
@@ -24,6 +25,8 @@ dependencies {
   implementation project(':jvm-libs:linea:core:long-running-service')
   implementation "io.consensys.tuweni:tuweni-bytes:${libs.versions.tuweni.get()}"
   implementation "org.jetbrains.kotlin:kotlin-reflect:${libs.versions.kotlin.get()}"
-  testImplementation(project(':maru:serialization'))
-  testImplementation(project(':maru:test-fixtures'))
+  testFixturesImplementation("org.hyperledger.besu:besu-datatypes")
+  testFixturesImplementation("org.hyperledger.besu:besu-plugin-api")
+  testFixturesImplementation("org.hyperledger.besu.internal:besu-ethereum-core")
+  testFixturesImplementation("org.hyperledger.besu.internal:besu-crypto-algorithms")
 }

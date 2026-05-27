@@ -25,7 +25,8 @@ dependencies {
   implementation "tech.pegasys.teku.internal:storage:${libs.versions.teku.get()}"
   implementation "org.hyperledger.besu.internal:besu-metrics-core"
   implementation "org.hyperledger.besu:besu-plugin-api"
-  testImplementation (project(':maru:test-fixtures'))
+  testImplementation (testFixtures(project(':maru:core')))
   testImplementation (project(':maru:observability'))
+  testImplementation (testFixtures(project(':maru:observability')))
   testImplementation (project(':jvm-libs:linea:core:metrics'))
 }

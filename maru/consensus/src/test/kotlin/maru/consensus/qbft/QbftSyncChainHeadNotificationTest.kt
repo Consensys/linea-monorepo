@@ -9,9 +9,13 @@
 package maru.consensus.qbft
 
 import maru.consensus.qbft.adapters.QbftBlockchainAdapter
+import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
+import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.bodyRoot
+import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.qbft.core.types.QbftNewChainHead
@@ -29,7 +33,7 @@ import java.util.concurrent.TimeUnit
 class QbftSyncChainHeadNotificationTest {
   @Test
   fun `sync completion enqueues QbftNewChainHead with current chain head`() {
-    val beaconChain = InMemoryBeaconChain.fromGenesis()
+    val beaconChain = inMemoryBeaconChainFromGenesis()
     val blockChain = QbftBlockchainAdapter(beaconChain)
     val bftEventQueue = BftEventQueue(100).also { it.start() }
 
@@ -41,7 +45,11 @@ class QbftSyncChainHeadNotificationTest {
     // Simulate the sync pipeline advancing the chain to block 5
     var currentState = beaconChain.getLatestBeaconState()
     for (blockNumber in 1UL..5UL) {
-      val beaconBlock = DataGenerators.randomBeaconBlock(blockNumber)
+      val beaconBlock = DataGenerators.randomBeaconBlock(
+        blockNumber,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+      )
       val sealedBlock = SealedBeaconBlock(beaconBlock, emptySet())
       currentState = currentState.copy(beaconBlockHeader = beaconBlock.beaconBlockHeader)
       beaconChain.newBeaconChainUpdater().run {
@@ -57,5 +65,13 @@ class QbftSyncChainHeadNotificationTest {
     val event = bftEventQueue.poll(1, TimeUnit.SECONDS)
     assertThat(event).isInstanceOf(QbftNewChainHead::class.java)
     assertThat((event as QbftNewChainHead).newChainHeadHeader().number).isEqualTo(5L)
+  }
+
+  private fun inMemoryBeaconChainFromGenesis(): InMemoryBeaconChain {
+    val (beaconState, sealedBlock) = DataGenerators.genesisState(
+      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      stateRootFunction = { state -> HashUtil.stateRoot(state) },
+    )
+    return InMemoryBeaconChain(beaconState, sealedBlock)
   }
 }

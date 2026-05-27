@@ -12,6 +12,7 @@ import maru.consensus.qbft.ProposerSelectorImpl
 import maru.consensus.qbft.toAddress
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
+import maru.serialization.rlp.RLPSerializers
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.junit.jupiter.api.assertThrows
@@ -41,7 +42,10 @@ class ProposerSelectorAdapterTest {
     val beaconChain = mock<BeaconChain>()
     val currentBlockNumber = 3uL
     val previousBlockNumber = currentBlockNumber.dec()
-    val expectedState = DataGenerators.randomBeaconState(previousBlockNumber)
+    val expectedState = DataGenerators.randomBeaconState(
+      previousBlockNumber,
+      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+    )
     whenever(beaconChain.getBeaconState(previousBlockNumber)).thenReturn(expectedState)
     val proposerSelector = ProposerSelectorAdapter(beaconChain, ProposerSelectorImpl)
     val consensusRoundIdentifier = ConsensusRoundIdentifier(currentBlockNumber.toLong(), 0)

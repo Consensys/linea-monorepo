@@ -13,9 +13,13 @@ import maru.consensus.ClFork
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.QbftConsensusConfig
+import maru.core.HashUtil
 import maru.core.Validator
+import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
+import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import kotlin.random.Random
@@ -23,7 +27,7 @@ import kotlin.random.Random
 class RollingForwardForkIdDigestCalculatorTest {
   private fun createCalculator(
     chainId: UInt = 123u,
-    beaconChain: BeaconChain = InMemoryBeaconChain.fromGenesis(),
+    beaconChain: BeaconChain = inMemoryBeaconChainFromGenesis(),
   ): RollingForwardForkIdDigestCalculator =
     RollingForwardForkIdDigestCalculator(
       chainId = chainId,
@@ -62,17 +66,17 @@ class RollingForwardForkIdDigestCalculatorTest {
   @Test
   fun `should take genesis block hash into account`() {
     assertThat(
-      createCalculator(beaconChain = InMemoryBeaconChain.fromGenesis(genesisTimestampSeconds = 1u))
+      createCalculator(beaconChain = inMemoryBeaconChainFromGenesis(genesisTimestampSeconds = 1u))
         .calculateForkDigests(forks.take(1)),
     ).isNotEqualTo(
-      createCalculator(beaconChain = InMemoryBeaconChain.fromGenesis(genesisTimestampSeconds = 2u))
+      createCalculator(beaconChain = inMemoryBeaconChainFromGenesis(genesisTimestampSeconds = 2u))
         .calculateForkDigests(forks.take(1)),
     ).withFailMessage("digests should take genesis block hash into account")
   }
 
   @Test
   fun `should take genesis chainId into account`() {
-    val beaconChain = InMemoryBeaconChain.fromGenesis()
+    val beaconChain = inMemoryBeaconChainFromGenesis()
     assertThat(
       createCalculator(chainId = 1u, beaconChain = beaconChain)
         .calculateForkDigests(forks.take(1)),
@@ -84,7 +88,7 @@ class RollingForwardForkIdDigestCalculatorTest {
 
   @Test
   fun `should be deterministic`() {
-    val beaconChain = InMemoryBeaconChain.fromGenesis()
+    val beaconChain = inMemoryBeaconChainFromGenesis()
     assertThat(
       createCalculator(chainId = 1u, beaconChain = beaconChain)
         .calculateForkDigests(forks),
@@ -115,5 +119,16 @@ class RollingForwardForkIdDigestCalculatorTest {
     ).isNotEqualTo(
       calculator.calculateForkDigests(forksB).firstOrNull { it.forkSpec.configuration.fork.elFork == ElFork.Prague },
     ).withFailMessage("digests should take parent fork into account")
+  }
+
+  private fun inMemoryBeaconChainFromGenesis(
+    genesisTimestampSeconds: ULong = 0UL,
+  ): InMemoryBeaconChain {
+    val (beaconState, sealedBlock) = DataGenerators.genesisState(
+      genesisTimestamp = genesisTimestampSeconds,
+      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      stateRootFunction = { state -> HashUtil.stateRoot(state) },
+    )
+    return InMemoryBeaconChain(beaconState, sealedBlock)
   }
 }

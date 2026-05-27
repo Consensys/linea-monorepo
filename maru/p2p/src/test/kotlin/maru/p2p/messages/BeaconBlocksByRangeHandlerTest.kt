@@ -8,6 +8,7 @@
  */
 package maru.p2p.messages
 
+import maru.core.HashUtil
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.p2p.MaruPeer
@@ -17,6 +18,8 @@ import maru.p2p.RequestMessageAdapter
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
 import maru.p2p.messages.BeaconBlocksByRangeHandler.Companion.MAX_BLOCKS_PER_REQUEST
+import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.bodyRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -82,9 +85,21 @@ class BeaconBlocksByRangeHandlerTest {
 
     val blocks =
       listOf(
-        DataGenerators.randomSealedBeaconBlock(number = 100UL),
-        DataGenerators.randomSealedBeaconBlock(number = 101UL),
-        DataGenerators.randomSealedBeaconBlock(number = 102UL),
+        DataGenerators.randomSealedBeaconBlock(
+          number = 100UL,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+        ),
+        DataGenerators.randomSealedBeaconBlock(
+          number = 101UL,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+        ),
+        DataGenerators.randomSealedBeaconBlock(
+          number = 102UL,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+        ),
       )
 
     whenever(beaconChain.getSealedBeaconBlocks(100UL, 3UL)).thenReturn(blocks)
@@ -115,7 +130,11 @@ class BeaconBlocksByRangeHandlerTest {
     // Handler should limit to MAX_BLOCKS_PER_REQUEST
     val limitedBlocks =
       (0UL until MAX_BLOCKS_PER_REQUEST).map { i ->
-        DataGenerators.randomSealedBeaconBlock(number = i)
+        DataGenerators.randomSealedBeaconBlock(
+          number = i,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+        )
       }
 
     // handler should limit to MAX_BLOCKS_PER_REQUEST
@@ -152,7 +171,11 @@ class BeaconBlocksByRangeHandlerTest {
 
     val limitedBlocks =
       (0UL until 10UL).map { i ->
-        DataGenerators.randomSealedBeaconBlock(number = i)
+        DataGenerators.randomSealedBeaconBlock(
+          number = i,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+        )
       }
 
     var startBlockNumber = 0UL

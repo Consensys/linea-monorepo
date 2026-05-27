@@ -11,11 +11,14 @@ package maru.consensus.blockimport
 import maru.consensus.state.StateTransition
 import maru.core.BeaconBlock
 import maru.core.BeaconState
+import maru.core.HashUtil
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.p2p.ValidationResult
+import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.bodyRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -25,6 +28,7 @@ import org.mockito.Mockito.reset
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import maru.executionlayer.manager.ext.DataGenerators as ExecutionLayerDataGenerators
 
 class TransactionalSealedBeaconBlockImporterTest {
   private var executionLayerManager: ExecutionLayerManager = mock()
@@ -33,14 +37,18 @@ class TransactionalSealedBeaconBlockImporterTest {
 
   private lateinit var beaconChain: BeaconChain
   private var beaconBlockImporterResponse =
-    SafeFuture.completedFuture(DataGenerators.randomValidForkChoiceUpdatedResult())
+    SafeFuture.completedFuture(ExecutionLayerDataGenerators.randomValidForkChoiceUpdatedResult())
 
   private lateinit var qbftBlockImporter: TransactionalSealedBeaconBlockImporter
   private lateinit var initialBeaconState: BeaconState
 
   @BeforeEach
   fun setUp() {
-    initialBeaconState = DataGenerators.randomBeaconState(2UL)
+    initialBeaconState =
+      DataGenerators.randomBeaconState(
+        2UL,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      )
     beaconChain = InMemoryBeaconChain(initialBeaconState)
     qbftBlockImporter = TransactionalSealedBeaconBlockImporter(
       beaconChain = beaconChain,
@@ -62,13 +70,22 @@ class TransactionalSealedBeaconBlockImporterTest {
 
   @Test
   fun `importBlock returns success on successful import`() {
-    val sealedBeaconBlock = DataGenerators.randomSealedBeaconBlock(2UL)
-    val beaconState = DataGenerators.randomBeaconState(2UL)
+    val sealedBeaconBlock =
+      DataGenerators.randomSealedBeaconBlock(
+        2UL,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+      )
+    val beaconState =
+      DataGenerators.randomBeaconState(
+        2UL,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      )
 
     whenever(stateTransition.processBlock(any())).thenReturn(SafeFuture.completedFuture(beaconState))
     whenever(executionLayerManager.setHead(any(), any(), any())).thenReturn(
       SafeFuture.completedFuture(
-        DataGenerators
+        ExecutionLayerDataGenerators
           .randomValidForkChoiceUpdatedResult(),
       ),
     )
@@ -80,7 +97,12 @@ class TransactionalSealedBeaconBlockImporterTest {
 
   @Test
   fun `importBlock rolls the DB update back on state transition failure and returns failed future`() {
-    val sealedBeaconBlock = DataGenerators.randomSealedBeaconBlock(2UL)
+    val sealedBeaconBlock =
+      DataGenerators.randomSealedBeaconBlock(
+        2UL,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+      )
     val expectedException = RuntimeException("Test exception")
     whenever(stateTransition.processBlock(any())).thenThrow(expectedException)
     val stateBeforeTransition = beaconChain.getLatestBeaconState()
@@ -94,8 +116,17 @@ class TransactionalSealedBeaconBlockImporterTest {
 
   @Test
   fun `importBlock succeeds even with block import failure`() {
-    val sealedBeaconBlock = DataGenerators.randomSealedBeaconBlock(2UL)
-    val beaconState = DataGenerators.randomBeaconState(2UL)
+    val sealedBeaconBlock =
+      DataGenerators.randomSealedBeaconBlock(
+        2UL,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+      )
+    val beaconState =
+      DataGenerators.randomBeaconState(
+        2UL,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      )
     whenever(stateTransition.processBlock(any())).thenReturn(
       SafeFuture.completedFuture(
         beaconState,

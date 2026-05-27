@@ -15,17 +15,10 @@ import maru.core.BeaconState
 import maru.core.EMPTY_HASH
 import maru.core.ExecutionPayload
 import maru.core.GENESIS_EXECUTION_PAYLOAD
-import maru.core.HashUtil
+import maru.core.HeaderHashFunction
 import maru.core.Seal
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
-import maru.executionlayer.manager.ExecutionPayloadStatus
-import maru.executionlayer.manager.ForkChoiceUpdatedResult
-import maru.executionlayer.manager.PayloadStatus
-import maru.p2p.messages.Status
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
-import maru.serialization.rlp.stateRoot
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.crypto.SECP256K1
 import org.hyperledger.besu.datatypes.Address
@@ -52,9 +45,12 @@ object DataGenerators {
         .epochSecond
         .toULong(),
     validators: Set<Validator> = defaultValidatorSet,
+    headerHashFunction: HeaderHashFunction,
+    stateRootFunction: (BeaconState) -> ByteArray = { EMPTY_HASH },
   ): Pair<BeaconState, SealedBeaconBlock> {
     val genesisExecutionPayload = GENESIS_EXECUTION_PAYLOAD
     val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptySet(), executionPayload = genesisExecutionPayload)
+    val sortedValidators = validators.toSortedSet()
 
     val beaconBlockHeader =
       BeaconBlockHeader(
@@ -65,34 +61,24 @@ object DataGenerators {
         parentRoot = EMPTY_HASH,
         stateRoot = EMPTY_HASH,
         bodyRoot = EMPTY_HASH,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        headerHashFunction = headerHashFunction,
       )
 
-    val tmpGenesisStateRoot =
-      BeaconState(
-        beaconBlockHeader = beaconBlockHeader,
-        validators = validators.toSortedSet(),
+    val genesisBlockHeader =
+      beaconBlockHeader.copy(
+        stateRoot = stateRootFunction(BeaconState(beaconBlockHeader, sortedValidators)),
       )
-    val stateRootHash = HashUtil.stateRoot(tmpGenesisStateRoot)
-
-    val genesisBlockHeader = beaconBlockHeader.copy(stateRoot = stateRootHash)
     val genesisBlock = BeaconBlock(genesisBlockHeader, beaconBlockBody)
-    val genesisState = BeaconState(genesisBlockHeader, validators.toSortedSet())
+    val genesisState = BeaconState(genesisBlockHeader, sortedValidators)
     val genesisSealedBeaconBlock = SealedBeaconBlock(genesisBlock, emptySet())
 
     return Pair(genesisState, genesisSealedBeaconBlock)
   }
 
-  fun randomStatus(latestBlockNumber: ULong): Status =
-    Status(
-      forkIdHash = Random.nextBytes(32),
-      latestStateRoot = Random.nextBytes(32),
-      latestBlockNumber = latestBlockNumber,
-    )
-
   fun randomBeaconState(
     number: ULong,
     timestamp: ULong = randomTimestamp(),
+    headerHashFunction: HeaderHashFunction,
   ): BeaconState {
     val validators = randomValidators()
     val beaconBlockHeader =
@@ -104,7 +90,7 @@ object DataGenerators {
         parentRoot = Random.nextBytes(32),
         stateRoot = Random.nextBytes(32),
         bodyRoot = Random.nextBytes(32),
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        headerHashFunction = headerHashFunction,
       )
     return BeaconState(
       beaconBlockHeader = beaconBlockHeader,
@@ -112,11 +98,17 @@ object DataGenerators {
     )
   }
 
-  fun randomBeaconBlock(number: ULong): BeaconBlock {
+  fun randomBeaconBlock(
+    number: ULong,
+    headerHashFunction: HeaderHashFunction,
+    bodyRootFunction: (BeaconBlockBody) -> ByteArray = { Random.nextBytes(32) },
+  ): BeaconBlock {
     val beaconBlockBody = randomBeaconBlockBody()
     val beaconBlockHeader =
-      randomBeaconBlockHeader(number).copy(
-        bodyRoot = HashUtil.bodyRoot(beaconBlockBody),
+      randomBeaconBlockHeader(
+        number = number,
+        bodyRoot = bodyRootFunction(beaconBlockBody),
+        headerHashFunction = headerHashFunction,
       )
     return BeaconBlock(
       beaconBlockHeader = beaconBlockHeader,
@@ -124,14 +116,25 @@ object DataGenerators {
     )
   }
 
-  fun randomSealedBeaconBlock(number: ULong): SealedBeaconBlock =
-    SealedBeaconBlock(
-      beaconBlock = randomBeaconBlock(number),
+  fun randomSealedBeaconBlock(
+    number: ULong,
+    headerHashFunction: HeaderHashFunction,
+    bodyRootFunction: (BeaconBlockBody) -> ByteArray = { Random.nextBytes(32) },
+  ): SealedBeaconBlock {
+    val beaconBlock =
+      randomBeaconBlock(
+        number = number,
+        headerHashFunction = headerHashFunction,
+        bodyRootFunction = bodyRootFunction,
+      )
+    return SealedBeaconBlock(
+      beaconBlock = beaconBlock,
       commitSeals = (1..3)
         .map {
           Seal(Random.nextBytes(96))
         }.toSet(),
     )
+  }
 
   fun randomBeaconBlockBody(numSeals: Int = 3): BeaconBlockBody =
     BeaconBlockBody(
@@ -142,6 +145,8 @@ object DataGenerators {
   fun randomBeaconBlockHeader(
     number: ULong,
     proposer: Validator = Validator(Random.nextBytes(20)),
+    headerHashFunction: HeaderHashFunction,
+    bodyRoot: ByteArray = Random.nextBytes(32),
   ): BeaconBlockHeader =
     BeaconBlockHeader(
       number = number,
@@ -150,8 +155,8 @@ object DataGenerators {
       proposer = proposer,
       parentRoot = Random.nextBytes(32),
       stateRoot = Random.nextBytes(32),
-      bodyRoot = Random.nextBytes(32),
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      bodyRoot = bodyRoot,
+      headerHashFunction = headerHashFunction,
     )
 
   fun randomExecutionPayload(numberOfTransactions: Int = 5): ExecutionPayload {
@@ -190,22 +195,9 @@ object DataGenerators {
     )
   }
 
-  fun randomValidForkChoiceUpdatedResult(payloadId: ByteArray? = Random.nextBytes(8)): ForkChoiceUpdatedResult {
-    val expectedPayloadStatus =
-      PayloadStatus(
-        ExecutionPayloadStatus.VALID,
-        latestValidHash = Random.nextBytes(32),
-        validationError = null,
-      )
-    return ForkChoiceUpdatedResult(expectedPayloadStatus, payloadId)
-  }
-
   fun randomValidator(): Validator = Validator(Random.nextBytes(20))
 
   fun randomValidators(): SequencedSet<Validator> = List(3) { randomValidator() }.toSortedSet()
-
-  fun randomValidPayloadStatus(): PayloadStatus =
-    PayloadStatus(ExecutionPayloadStatus.VALID, latestValidHash = Random.nextBytes(32), validationError = null)
 
   // Generates a random timestamp restricted to 0..Long.MAX_VALUE because ForkSpec converts it to a Java long.
   fun randomTimestamp(): ULong = Random.nextLong(0, Long.MAX_VALUE).toULong()

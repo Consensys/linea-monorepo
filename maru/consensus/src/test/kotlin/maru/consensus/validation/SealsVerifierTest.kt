@@ -16,6 +16,7 @@ import maru.core.BeaconBlockHeader
 import maru.core.Seal
 import maru.core.Validator
 import maru.core.ext.DataGenerators
+import maru.serialization.rlp.RLPSerializers
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -36,7 +37,10 @@ class SealsVerifierTest {
   private val validSeal1 = Seal(ByteArray(32) { 10 })
   private val validSeal2 = Seal(ByteArray(32) { 11 })
 
-  private val beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(1u)
+  private val beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(
+    1u,
+    headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+  )
 
   @Test
   fun `test quorum threshold met`() {

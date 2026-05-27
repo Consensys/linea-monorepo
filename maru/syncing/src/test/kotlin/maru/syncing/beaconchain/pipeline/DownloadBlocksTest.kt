@@ -8,12 +8,15 @@
  */
 package maru.syncing.beaconchain.pipeline
 
+import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
-import maru.core.ext.DataGenerators.randomStatus
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
+import maru.p2p.ext.DataGenerators.randomStatus
 import maru.p2p.messages.BeaconBlocksByRangeResponse
+import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.bodyRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.Test
@@ -48,7 +51,19 @@ class DownloadBlocksTest {
   fun `downloads blocks successfully from peer`() {
     val peer = mock<MaruPeer>()
     val peerLookup = mock<PeerLookup>()
-    val blocks = listOf(randomSealedBeaconBlock(10u), randomSealedBeaconBlock(defaultEndBlock))
+    val blocks =
+      listOf(
+        randomSealedBeaconBlock(
+          10u,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+        ),
+        randomSealedBeaconBlock(
+          defaultEndBlock,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+        ),
+      )
     whenever(peer.sendBeaconBlocksByRange(10uL, 2uL)).thenReturn(completedFuture(BeaconBlocksByRangeResponse(blocks)))
     whenever(peerLookup.getPeers()).thenReturn(listOf(peer))
     whenever(peer.getStatus()).thenReturn(randomStatus(defaultEndBlock))
@@ -70,9 +85,24 @@ class DownloadBlocksTest {
     val endBlock = 12UL
     val peer = mock<MaruPeer>()
     val peerLookup = mock<PeerLookup>()
-    val block1 = randomSealedBeaconBlock(10uL)
-    val block2 = randomSealedBeaconBlock(11uL)
-    val block3 = randomSealedBeaconBlock(endBlock)
+    val block1 =
+      randomSealedBeaconBlock(
+        10uL,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+      )
+    val block2 =
+      randomSealedBeaconBlock(
+        11uL,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+      )
+    val block3 =
+      randomSealedBeaconBlock(
+        endBlock,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+      )
 
     // First call returns only block1, second call returns block2 and block3
     whenever(peer.sendBeaconBlocksByRange(10uL, 3uL))
@@ -204,7 +234,19 @@ class DownloadBlocksTest {
   fun `downloads blocks from a random peer`() {
     val peer = mock<MaruPeer>()
     val peerLookup = mock<PeerLookup>()
-    val blocks = listOf(randomSealedBeaconBlock(10u), randomSealedBeaconBlock(defaultEndBlock))
+    val blocks =
+      listOf(
+        randomSealedBeaconBlock(
+          10u,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+        ),
+        randomSealedBeaconBlock(
+          defaultEndBlock,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+        ),
+      )
     val response = mock<BeaconBlocksByRangeResponse>()
     whenever(response.blocks).thenReturn(blocks)
     whenever(peer.sendBeaconBlocksByRange(10u, 2u)).thenReturn(completedFuture(response))
@@ -224,7 +266,19 @@ class DownloadBlocksTest {
   @Test
   fun `downloads blocks from a random peer with acceptable status`() {
     val peerLookup = mock<PeerLookup>()
-    val blocks = listOf(randomSealedBeaconBlock(10u), randomSealedBeaconBlock(defaultEndBlock))
+    val blocks =
+      listOf(
+        randomSealedBeaconBlock(
+          10u,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+        ),
+        randomSealedBeaconBlock(
+          defaultEndBlock,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
+        ),
+      )
     val response = mock<BeaconBlocksByRangeResponse>()
     whenever(response.blocks).thenReturn(blocks)
     val acceptablePeer = mock<MaruPeer>()

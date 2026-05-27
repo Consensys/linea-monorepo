@@ -14,6 +14,7 @@ import maru.consensus.state.FinalizationProvider
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import maru.serialization.rlp.RLPSerializers
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.junit.jupiter.api.Test
@@ -33,7 +34,7 @@ class QbftBlockCreatorFactoryTest {
 
   private fun createFactory(): QbftBlockCreatorFactory {
     whenever(beaconChain.getLatestBeaconState()).thenReturn(
-      DataGenerators.randomBeaconState(0u),
+      DataGenerators.randomBeaconState(0u, headerHashFunction = RLPSerializers.DefaultHeaderHashFunction),
     )
     return QbftBlockCreatorFactory(
       manager = executionLayerManager,

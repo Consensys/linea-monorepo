@@ -30,6 +30,7 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.PayloadStatus
 import maru.extensions.encodeHex
+import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions.assertThat
@@ -39,6 +40,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.SequencedSet
+import maru.executionlayer.manager.ext.DataGenerators as ExecutionLayerDataGenerators
 
 class BlockValidatorTest {
   private val validators = (1..3).map { DataGenerators.randomValidator() }
@@ -49,7 +51,10 @@ class BlockValidatorTest {
 
   private val validCurrBlockBody = DataGenerators.randomBeaconBlockBody(numSeals = validators.size)
   private val validCurrBlockHeader =
-    DataGenerators.randomBeaconBlockHeader(currBlockNumber).copy(
+    DataGenerators.randomBeaconBlockHeader(
+      currBlockNumber,
+      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+    ).copy(
       proposer = validators[0],
       bodyRoot = HashUtil.bodyRoot(validCurrBlockBody),
     )
@@ -70,7 +75,10 @@ class BlockValidatorTest {
       )
     }
   private val validNewBlockStateRootHeader =
-    DataGenerators.randomBeaconBlockHeader(newBlockNumber).copy(
+    DataGenerators.randomBeaconBlockHeader(
+      newBlockNumber,
+      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+    ).copy(
       proposer = validators[1],
       parentRoot = validCurrBlockHeader.hash,
       timestamp = validCurrBlockHeader.timestamp + 1u,
@@ -117,7 +125,7 @@ class BlockValidatorTest {
       mock<ExecutionLayerManager> {
         on { newPayload(any()) }.thenReturn(
           SafeFuture.completedFuture(
-            DataGenerators.randomValidPayloadStatus(),
+            ExecutionLayerDataGenerators.randomValidPayloadStatus(),
           ),
         )
       }

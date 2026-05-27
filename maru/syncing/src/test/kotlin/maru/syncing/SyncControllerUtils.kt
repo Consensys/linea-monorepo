@@ -10,6 +10,7 @@ package maru.syncing
 
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
+import maru.serialization.rlp.RLPSerializers
 
 /**
  * Fake implementation of CLSyncService for testing purposes.
@@ -41,7 +42,10 @@ fun createSyncController(
   desyncTolerance: ULong,
   elSyncEnabled: Boolean = true,
 ): BeaconSyncControllerImpl {
-  val state = DataGenerators.randomBeaconState(blockNumber)
+  val state = DataGenerators.randomBeaconState(
+    blockNumber,
+    headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+  )
   val beaconChain = InMemoryBeaconChain(state)
   return BeaconSyncControllerImpl(
     beaconChain = beaconChain,
