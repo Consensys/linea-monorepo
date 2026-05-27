@@ -2,11 +2,11 @@
 #![no_main]
 
 // Note:
-// 500 = 0x01f4 (big-endian) = 0xf401 (little-endian)
-// IN_BYTES should be passed as little-endian
+// 500 = 0x01f4 (big-endian), written as 0xf401 in RAM
+// IN_BYTES should be passed as big-endian
 //
 // To run:
-// riscv-test test.rs IN_BYTES="0xf401" (pass)
+// riscv-test test.rs IN_BYTES="0x01f4" (pass)
 // riscv-test test.rs IN_BYTES="0x4242" (fail)
 include!("custom_std.rs");
 

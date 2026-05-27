@@ -3,12 +3,12 @@
 # 
 # v0 = 0x0000000000000400
 # v1 = 0x0000000000000800
-# v3 = IN_BYTES = 0x0000000000000c00 (big-endian) = 0x000c000000000000 (little-endian)
+# v3 = IN_BYTES = 0x0000000000000c00 (big-endian), written as 0x000c000000000000 in RAM
 # v0 + v1 ?= v2
 #
 # To run:
-# riscv-test test.s IN_BYTES="0x000c000000000000" (pass)
-# riscv-test test.s IN_BYTES="0x000c000000000042" (fail)
+# riscv-test test.s IN_BYTES="0x0000000000000c00" (pass)
+# riscv-test test.s IN_BYTES="0x0000000000000042" (fail)
 .section .data
 v0:
     .dword 0x0000000000000400
