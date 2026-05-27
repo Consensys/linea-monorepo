@@ -15,10 +15,14 @@ import maru.core.BeaconState
 import maru.core.EMPTY_HASH
 import maru.core.ExecutionPayload
 import maru.core.GENESIS_EXECUTION_PAYLOAD
+import maru.core.HashUtil
 import maru.core.HeaderHashFunction
 import maru.core.Seal
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
+import maru.serialization.rlp.RLPSerializers
+import maru.serialization.rlp.bodyRoot
+import maru.serialization.rlp.stateRoot
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.crypto.SECP256K1
 import org.hyperledger.besu.datatypes.Address
@@ -45,8 +49,8 @@ object DataGenerators {
         .epochSecond
         .toULong(),
     validators: Set<Validator> = defaultValidatorSet,
-    headerHashFunction: HeaderHashFunction,
-    stateRootFunction: (BeaconState) -> ByteArray = { EMPTY_HASH },
+    headerHashFunction: HeaderHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+    stateRootFunction: (BeaconState) -> ByteArray = HashUtil::stateRoot,
   ): Pair<BeaconState, SealedBeaconBlock> {
     val genesisExecutionPayload = GENESIS_EXECUTION_PAYLOAD
     val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptySet(), executionPayload = genesisExecutionPayload)
@@ -118,8 +122,8 @@ object DataGenerators {
 
   fun randomSealedBeaconBlock(
     number: ULong,
-    headerHashFunction: HeaderHashFunction,
-    bodyRootFunction: (BeaconBlockBody) -> ByteArray = { Random.nextBytes(32) },
+    headerHashFunction: HeaderHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+    bodyRootFunction: (BeaconBlockBody) -> ByteArray = HashUtil::bodyRoot,
   ): SealedBeaconBlock {
     val beaconBlock =
       randomBeaconBlock(

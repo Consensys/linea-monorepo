@@ -85,21 +85,9 @@ class BeaconBlocksByRangeHandlerTest {
 
     val blocks =
       listOf(
-        DataGenerators.randomSealedBeaconBlock(
-          number = 100UL,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
-        ),
-        DataGenerators.randomSealedBeaconBlock(
-          number = 101UL,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
-        ),
-        DataGenerators.randomSealedBeaconBlock(
-          number = 102UL,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
-        ),
+        DataGenerators.randomSealedBeaconBlock(number = 100UL),
+        DataGenerators.randomSealedBeaconBlock(number = 101UL),
+        DataGenerators.randomSealedBeaconBlock(number = 102UL),
       )
 
     whenever(beaconChain.getSealedBeaconBlocks(100UL, 3UL)).thenReturn(blocks)
