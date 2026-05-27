@@ -56,8 +56,10 @@ pub fn verify(
     vanishing_evals: []const ext.Ext,
     quotient_evals: []const ext.Ext,
 ) Error!void {
-    // A prover-supplied n=0 would make ann=0 and trivially satisfy any P_agg.
-    if (n == 0) return Error.GlobalConstraintFailed;
+    // n must be a positive power of two (valid NTT domain). A prover-supplied
+    // n=0 or non-power-of-two domain has no corresponding quotient decomposition,
+    // so it must be rejected regardless of whether cancelled positions are present.
+    if (!field.isPowerOfTwo(n)) return Error.GlobalConstraintFailed;
     const r_pow_n = r.pow(@intCast(n));
     const ann = r_pow_n.sub(ext.Ext.one()); // r^n - 1
 
