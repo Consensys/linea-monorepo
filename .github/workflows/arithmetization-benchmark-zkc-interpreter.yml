@@ -218,7 +218,7 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p /tmp/bench/logs
-          /usr/bin/time -v zkc execute -v -q /tmp/keccak.json /tmp/wt-${1}/arithmetization/src/main/riscv/main.zkc
+          /usr/bin/time -v zkc execute -v -q /tmp/keccak.json /tmp/wt-base/arithmetization/src/main/riscv/main.zkc
 
           #reset_state() {
           #  sync || true
