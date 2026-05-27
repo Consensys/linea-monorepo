@@ -66,12 +66,9 @@ jobs:
       
       - name: Show installation token permissions
         env:
-          APP_TOKEN: ${{ steps.app-token.outputs.token }}
-          INSTALLATION_ID: ${{ steps.app-token.outputs.installation-id }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          # The /installation/repositories endpoint accepts an installation token
-          # and confirms the token works against the repo.
-          gh api /installation/repositories --jq '.repositories[].full_name' -H "Authorization: token ${APP_TOKEN}"
+          gh api /installation/repositories --jq '.repositories[].full_name'
 
       - name: Checkout main
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
