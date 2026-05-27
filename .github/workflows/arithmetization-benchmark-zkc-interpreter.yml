@@ -108,7 +108,7 @@ jobs:
 
           reset_state() {
             sync || true
-            sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches' || true
+            #sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches' || true
             /tmp/bench/cache_thrasher 256 >/dev/null 2>&1 || true
             sleep 5
           }
