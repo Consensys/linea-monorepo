@@ -10,11 +10,10 @@
 // Each log is `/usr/bin/time -v zkc execute -v <json> <main.zkc>` output. The
 // fields we extract are:
 //
-//   - "Constraint execution took Xs"            -> constraint_s        (float)
-//   - "Constraint execution (N steps) ..."      -> steps               (int, invariant)
-//   - "Elapsed (wall clock) time ... : M:SS.ss" -> wall_s              (float)
-//   - "Maximum resident set size (kbytes): N"   -> rss_kb              (int)
-//   - "TOTAL clock cycles: N"                   -> cycles              (int, invariant)
+//   - `Machine execution (N steps) took Xs`     -> steps + machine_s  (uint + float; steps is invariant)
+//   - "Elapsed (wall clock) time ... : M:SS.ss" -> wall_s             (float)
+//   - "Maximum resident set size (kbytes): N"   -> rss_kb             (int)
+//   - "TOTAL clock cycles: N"                   -> cycles             (int, invariant)
 //
 // Aggregation per (variant, iter):
 //   - Keccak: identity (1 log per (variant, iter)).
@@ -58,8 +57,7 @@ type workload struct {
 }
 
 var (
-	reConstraintS   = regexp.MustCompile(`Constraint execution took ([\d.]+)s`)
-	reSteps         = regexp.MustCompile(`Constraint execution \((\d+) steps\)`)
+	reMachineExec   = regexp.MustCompile(`Machine execution \((\d+) steps\) took ([\d.]+)s`)
 	reWall          = regexp.MustCompile(`Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): (\S+)`)
 	reRSS           = regexp.MustCompile(`Maximum resident set size \(kbytes\): (\d+)`)
 	reCycles        = regexp.MustCompile(`TOTAL clock cycles: (\d+)`)
@@ -106,23 +104,19 @@ func parseLog(path string) (metrics, error) {
 	}
 	body := string(data)
 
-	if mm := reConstraintS.FindStringSubmatch(body); mm != nil {
-		if v, err := strconv.ParseFloat(mm[1], 64); err == nil {
-			m.constraintS = v
-		} else {
-			return m, fmt.Errorf("%s: parse constraint_s: %w", path, err)
-		}
-	} else {
-		return m, fmt.Errorf("%s: constraint_s line not found", path)
-	}
-	if mm := reSteps.FindStringSubmatch(body); mm != nil {
-		if v, err := strconv.ParseUint(mm[1], 10, 64); err == nil {
-			m.steps = v
-		} else {
+	if mm := reMachineExec.FindStringSubmatch(body); mm != nil {
+		steps, err := strconv.ParseUint(mm[1], 10, 64)
+		if err != nil {
 			return m, fmt.Errorf("%s: parse steps: %w", path, err)
 		}
+		secs, err := strconv.ParseFloat(mm[2], 64)
+		if err != nil {
+			return m, fmt.Errorf("%s: parse machine_s: %w", path, err)
+		}
+		m.steps = steps
+		m.constraintS = secs
 	} else {
-		return m, fmt.Errorf("%s: steps line not found", path)
+		return m, fmt.Errorf("%s: machine execution line not found", path)
 	}
 	if mm := reWall.FindStringSubmatch(body); mm != nil {
 		v, err := parseWall(mm[1])
