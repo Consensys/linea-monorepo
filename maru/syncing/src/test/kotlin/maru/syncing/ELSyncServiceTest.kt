@@ -10,14 +10,10 @@ package maru.syncing
 
 import linea.timer.TestablePeriodicTimerFactory
 import maru.consensus.NewBlockHandler
-import maru.core.HashUtil
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
-import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -45,8 +41,6 @@ class ELSyncServiceTest {
         .genesisState(
           0uL,
           emptySet(),
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          stateRootFunction = { state -> HashUtil.stateRoot(state) },
         ).let {
           InMemoryBeaconChain(initialBeaconState = it.first, initialBeaconBlock = it.second)
         }
@@ -95,8 +89,6 @@ class ELSyncServiceTest {
         .genesisState(
           0uL,
           emptySet(),
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          stateRootFunction = { state -> HashUtil.stateRoot(state) },
         ).let {
           InMemoryBeaconChain(initialBeaconState = it.first, initialBeaconBlock = it.second)
         }
@@ -135,14 +127,11 @@ class ELSyncServiceTest {
         DataGenerators.randomBeaconState(
           number = 3uL,
           timestamp = switchTimestamp,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         ),
       )
       .putSealedBeaconBlock(
         DataGenerators.randomSealedBeaconBlock(
           3UL,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         ),
       )
       .commit()

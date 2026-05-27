@@ -11,7 +11,6 @@ package maru.consensus.qbft
 import maru.core.BeaconState
 import maru.core.Validator
 import maru.core.ext.DataGenerators
-import maru.serialization.rlp.RLPSerializers
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.junit.jupiter.api.Test
@@ -81,7 +80,6 @@ class ProposerSelectorImplTest {
     val latestBlockHeader = DataGenerators.randomBeaconBlockHeader(
       expectedBlockNumber,
       proposer = expectedProposer,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
     return BeaconState(latestBlockHeader, expectedValidators)
   }

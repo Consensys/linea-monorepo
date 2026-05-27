@@ -8,15 +8,12 @@
  */
 package maru.syncing.beaconchain.pipeline
 
-import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
 import maru.p2p.MaruPeer
 import maru.p2p.PeerLookup
 import maru.p2p.ext.DataGenerators.randomStatus
 import maru.p2p.messages.BeaconBlocksByRangeResponse
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.Test
@@ -55,13 +52,9 @@ class DownloadBlocksTest {
       listOf(
         randomSealedBeaconBlock(
           10u,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         ),
         randomSealedBeaconBlock(
           defaultEndBlock,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         ),
       )
     whenever(peer.sendBeaconBlocksByRange(10uL, 2uL)).thenReturn(completedFuture(BeaconBlocksByRangeResponse(blocks)))
@@ -88,20 +81,14 @@ class DownloadBlocksTest {
     val block1 =
       randomSealedBeaconBlock(
         10uL,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
       )
     val block2 =
       randomSealedBeaconBlock(
         11uL,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
       )
     val block3 =
       randomSealedBeaconBlock(
         endBlock,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
       )
 
     // First call returns only block1, second call returns block2 and block3
@@ -238,13 +225,9 @@ class DownloadBlocksTest {
       listOf(
         randomSealedBeaconBlock(
           10u,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         ),
         randomSealedBeaconBlock(
           defaultEndBlock,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         ),
       )
     val response = mock<BeaconBlocksByRangeResponse>()
@@ -270,13 +253,9 @@ class DownloadBlocksTest {
       listOf(
         randomSealedBeaconBlock(
           10u,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         ),
         randomSealedBeaconBlock(
           defaultEndBlock,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         ),
       )
     val response = mock<BeaconBlocksByRangeResponse>()

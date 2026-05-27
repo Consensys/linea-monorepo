@@ -8,11 +8,8 @@
  */
 package maru.consensus.blockimport
 
-import maru.core.HashUtil
 import maru.core.ext.DataGenerators
 import maru.p2p.SealedBeaconBlockHandler
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -31,8 +28,6 @@ class NewSealedBeaconBlockHandlerMultiplexerTest {
   fun `should invoke all handlers for SealedBeaconBlock`() {
     val sealedBlock = DataGenerators.randomSealedBeaconBlock(
       1u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val handler1 =
       mock<SealedBeaconBlockHandler<Unit>> {
@@ -59,8 +54,6 @@ class NewSealedBeaconBlockHandlerMultiplexerTest {
   fun `should log and throw error if sealed handler throws`() {
     val sealedBlock = DataGenerators.randomSealedBeaconBlock(
       1u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val handler =
       mock<SealedBeaconBlockHandler<Unit>> {

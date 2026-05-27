@@ -13,7 +13,6 @@ import maru.core.Seal
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.crypto.SecpCrypto
-import maru.serialization.rlp.RLPSerializers
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.ethereum.core.Util
@@ -29,7 +28,6 @@ class SCEP256SealVerifierTest {
   fun `test extract validator`() {
     val beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(
       101u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
     val signature = signatureAlgorithm.sign(Bytes32.wrap(beaconBlockHeader.hash), keypair)
     val seal = Seal(signature.encodedBytes().toArray())

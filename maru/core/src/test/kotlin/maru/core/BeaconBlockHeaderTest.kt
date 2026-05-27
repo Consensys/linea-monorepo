@@ -24,7 +24,7 @@ class BeaconBlockHeaderTest {
 
     val header =
       DataGenerators
-        .randomBeaconBlockHeader(1u, headerHashFunction = { Random.nextBytes(32) })
+        .randomBeaconBlockHeader(1u)
         .copy(headerHashFunction = headerHashFunction)
     verify(headerHashFunction, Mockito.never()).invoke(header)
   }
@@ -34,7 +34,7 @@ class BeaconBlockHeaderTest {
     val headerHashFunction = Mockito.mock(HeaderHashFunction::class.java)
     val header =
       DataGenerators
-        .randomBeaconBlockHeader(1u, headerHashFunction = { Random.nextBytes(32) })
+        .randomBeaconBlockHeader(1u)
         .copy(headerHashFunction = headerHashFunction)
     whenever(headerHashFunction.invoke(header)).thenReturn(Random.nextBytes(32))
 

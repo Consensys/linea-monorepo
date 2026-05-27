@@ -9,13 +9,10 @@
 package maru.database.kv
 
 import maru.core.BeaconState
-import maru.core.HashUtil
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
 import maru.metrics.BesuMetricsCategoryAdapter
 import maru.metrics.MaruMetricsCategory
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -39,7 +36,6 @@ class KvDatabaseTest {
       (1..10).map {
         DataGenerators.randomBeaconState(
           it.toULong(),
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         )
       }
     createDatabase(databasePath).use { db ->
@@ -68,7 +64,6 @@ class KvDatabaseTest {
       (1..10).map {
         DataGenerators.randomBeaconState(
           it.toULong(),
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         )
       }
     createDatabase(databasePath).use { db ->
@@ -107,8 +102,6 @@ class KvDatabaseTest {
       (1..10).map {
         DataGenerators.randomSealedBeaconBlock(
           it.toULong(),
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         )
       }
     createDatabase(databasePath).use { db ->
@@ -141,8 +134,6 @@ class KvDatabaseTest {
   ) {
     val testBeaconBlock = DataGenerators.randomSealedBeaconBlock(
       1uL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     createDatabase(databasePath).use { db ->
       db.newBeaconChainUpdater().use {
@@ -168,15 +159,11 @@ class KvDatabaseTest {
   ) {
     val testBeaconBlock1 = DataGenerators.randomSealedBeaconBlock(
       1uL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val testBeaconBlock1Number = testBeaconBlock1.beaconBlock.beaconBlockHeader.number
     val testBeaconBlock1Root = testBeaconBlock1.beaconBlock.beaconBlockHeader.hash
     val testBeaconBlock2 = DataGenerators.randomSealedBeaconBlock(
       2uL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val testBeaconBlock2Number = testBeaconBlock2.beaconBlock.beaconBlockHeader.number
     val testBeaconBlock2Root = testBeaconBlock2.beaconBlock.beaconBlockHeader.hash
@@ -215,8 +202,6 @@ class KvDatabaseTest {
     val testBlocks = (0uL..5uL).map {
       DataGenerators.randomSealedBeaconBlock(
         it,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
       )
     }
 
@@ -252,8 +237,6 @@ class KvDatabaseTest {
   ) {
     val testBlock = DataGenerators.randomSealedBeaconBlock(
       1uL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
 
     createDatabase(databasePath).use { db ->
@@ -281,19 +264,13 @@ class KvDatabaseTest {
   ) {
     val block1 = DataGenerators.randomSealedBeaconBlock(
       1uL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val block2 = DataGenerators.randomSealedBeaconBlock(
       2uL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     // Skip block 3
     val block4 = DataGenerators.randomSealedBeaconBlock(
       4uL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
 
     createDatabase(databasePath).use { db ->
@@ -329,8 +306,6 @@ class KvDatabaseTest {
     val testBlocks = (1uL..3uL).map {
       DataGenerators.randomSealedBeaconBlock(
         it,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
       )
     }
 

@@ -13,15 +13,12 @@ import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconState
 import maru.core.ExecutionPayload
-import maru.core.HashUtil
 import maru.core.ext.DataGenerators
 import maru.core.ext.DataGenerators.randomExecutionPayload
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.executionlayer.manager.LatestBlockMetadata
 import maru.executionlayer.manager.PayloadStatus
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.junit.jupiter.api.BeforeEach
@@ -63,12 +60,9 @@ class FollowerBeaconBlockImporterTest {
     shouldBuildNextBlock = true
     val randomBeaconBlock = DataGenerators.randomBeaconBlock(
       1UL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val randomBeaconState = DataGenerators.randomBeaconState(
       1UL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
 
     val result = beaconBlockImporter.importBlock(randomBeaconState, randomBeaconBlock)
@@ -90,12 +84,9 @@ class FollowerBeaconBlockImporterTest {
     shouldBuildNextBlock = false
     val randomBeaconBlock = DataGenerators.randomBeaconBlock(
       1UL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val randomBeaconState = DataGenerators.randomBeaconState(
       1UL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
 
     val result = beaconBlockImporter.importBlock(randomBeaconState, randomBeaconBlock)
@@ -114,12 +105,9 @@ class FollowerBeaconBlockImporterTest {
   fun `importBlock should pass last block timestamp and next block's round identifier`() {
     val randomBeaconBlock = DataGenerators.randomBeaconBlock(
       1UL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val randomBeaconState = DataGenerators.randomBeaconState(
       1UL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
     val expectedConsensusRoundIdentifier = ConsensusRoundIdentifier(2, 0)
 

@@ -15,7 +15,6 @@ import maru.config.P2PConfig
 import maru.consensus.ForkIdManagerFactory.createForkIdHashManager
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
-import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.core.ext.metrics.TestMetrics
@@ -29,8 +28,6 @@ import maru.p2p.testutils.NetworkUtil.findFreePort
 import maru.p2p.testutils.NetworkUtil.findFreePorts
 import maru.p2p.topics.BesuMessageDataSerDe
 import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
-import maru.serialization.rlp.stateRoot
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
@@ -111,8 +108,6 @@ class P2PTest {
       val (beaconState, sealedBlock) =
         DataGenerators.genesisState(
           genesisTimestamp = genesisTimestampSeconds,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          stateRootFunction = { state -> HashUtil.stateRoot(state) },
         )
       return InMemoryBeaconChain(beaconState, sealedBlock)
     }
@@ -261,7 +256,6 @@ class P2PTest {
         DataGenerators.randomBeaconState(
           number = 0u,
           timestamp = 0u,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         ),
       )
     val p2pNetworkImpl1 = createAndStartP2PNetwork(privateKey = key1)
@@ -334,7 +328,6 @@ class P2PTest {
         DataGenerators.randomBeaconState(
           number = 0u,
           timestamp = 0u,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         ),
       )
     val beaconChain3 =
@@ -342,7 +335,6 @@ class P2PTest {
         DataGenerators.randomBeaconState(
           number = 0u,
           timestamp = 0u,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         ),
       )
     val p2pNetworkImpl1 = createAndStartP2PNetwork(privateKey = key1, staticPeers = emptyList())
@@ -438,15 +430,12 @@ class P2PTest {
         initialBeaconState = DataGenerators.randomBeaconState(
           number = 0u,
           timestamp = 0u,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         ),
       )
     val storedBlocks =
       (0UL..10UL).map { blockNumber ->
         DataGenerators.randomSealedBeaconBlock(
           number = blockNumber,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         )
       }
 
@@ -598,7 +587,6 @@ class P2PTest {
           initialBeaconState = DataGenerators.randomBeaconState(
             number = 0u,
             timestamp = 0u,
-            headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
           ),
         ),
         discovery = P2PConfig.Discovery(
@@ -619,7 +607,6 @@ class P2PTest {
           initialBeaconState = DataGenerators.randomBeaconState(
             number = 0u,
             timestamp = 0u,
-            headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
           ),
         ),
         discovery = P2PConfig.Discovery(
@@ -704,7 +691,6 @@ class P2PTest {
           initialBeaconState = DataGenerators.randomBeaconState(
             number = 0u,
             timestamp = 0u,
-            headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
           ),
         ),
         staticPeers = listOf(createPeerAddress(p2pNetworkImpl1.port, PEER_ID_NODE_1)),
@@ -768,7 +754,6 @@ class P2PTest {
           initialBeaconState = DataGenerators.randomBeaconState(
             number = 0u,
             timestamp = 0u,
-            headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
           ),
         ),
         reconnectDelay = 100.milliseconds,

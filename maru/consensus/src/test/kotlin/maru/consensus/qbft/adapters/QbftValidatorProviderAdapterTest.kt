@@ -11,7 +11,6 @@ package maru.consensus.qbft.adapters
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.toAddress
 import maru.core.ext.DataGenerators
-import maru.serialization.rlp.RLPSerializers
 import org.assertj.core.api.Assertions.assertThat
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
@@ -26,11 +25,11 @@ class QbftValidatorProviderAdapterTest {
     val validators2 = DataGenerators.randomValidators()
     val header1 =
       QbftBlockHeaderAdapter(
-        DataGenerators.randomBeaconBlockHeader(10U, headerHashFunction = RLPSerializers.DefaultHeaderHashFunction),
+        DataGenerators.randomBeaconBlockHeader(10U),
       )
     val header2 =
       QbftBlockHeaderAdapter(
-        DataGenerators.randomBeaconBlockHeader(11U, headerHashFunction = RLPSerializers.DefaultHeaderHashFunction),
+        DataGenerators.randomBeaconBlockHeader(11U),
       )
     whenever(
       validatorProvider.getValidatorsAfterBlock(header1.beaconBlockHeader.number),
@@ -56,11 +55,11 @@ class QbftValidatorProviderAdapterTest {
     val validators2 = DataGenerators.randomValidators()
     val header1 =
       QbftBlockHeaderAdapter(
-        DataGenerators.randomBeaconBlockHeader(10U, headerHashFunction = RLPSerializers.DefaultHeaderHashFunction),
+        DataGenerators.randomBeaconBlockHeader(10U),
       )
     val header2 =
       QbftBlockHeaderAdapter(
-        DataGenerators.randomBeaconBlockHeader(11U, headerHashFunction = RLPSerializers.DefaultHeaderHashFunction),
+        DataGenerators.randomBeaconBlockHeader(11U),
       )
     whenever(
       validatorProvider.getValidatorsForBlock(header1.beaconBlockHeader.number),

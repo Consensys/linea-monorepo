@@ -22,7 +22,6 @@ import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
-import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
@@ -51,8 +50,6 @@ class DelayedQbftBlockCreatorTest {
   fun `can create block`() {
     val parentBlock = DataGenerators.randomSealedBeaconBlock(
       10U,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlock.beaconBlockHeader)
     val executionPayload = CoreDataGenerators.randomExecutionPayload()
@@ -116,8 +113,6 @@ class DelayedQbftBlockCreatorTest {
   fun `fails to create block if execution payload not available`() {
     val parentBlock = DataGenerators.randomBeaconBlock(
       10U,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlockHeader)
 
@@ -144,8 +139,6 @@ class DelayedQbftBlockCreatorTest {
   fun `fails to create block if parent beacon block not available`() {
     val parentBlock = DataGenerators.randomBeaconBlock(
       10U,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlockHeader)
     val executionPayload = CoreDataGenerators.randomExecutionPayload()
@@ -175,8 +168,6 @@ class DelayedQbftBlockCreatorTest {
       QbftBlockAdapter(
         DataGenerators.randomBeaconBlock(
           10U,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         ),
       )
     val beaconBlock = block.toBeaconBlock()

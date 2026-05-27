@@ -13,7 +13,6 @@ import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.p2p.PeersHeadBlockProvider
-import maru.serialization.rlp.RLPSerializers
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -61,7 +60,7 @@ class PeerChainTrackerTest {
   private lateinit var peerChainTracker: PeerChainTracker
   private val beaconChain: BeaconChain =
     InMemoryBeaconChain(
-      DataGenerators.randomBeaconState(7uL, headerHashFunction = RLPSerializers.DefaultHeaderHashFunction),
+      DataGenerators.randomBeaconState(7uL),
     )
 
   @BeforeEach

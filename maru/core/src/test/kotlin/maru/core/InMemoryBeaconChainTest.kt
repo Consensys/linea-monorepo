@@ -251,12 +251,10 @@ class InMemoryBeaconChainTest {
     DataGenerators.randomBeaconState(
       number = number,
       timestamp = timestamp,
-      headerHashFunction = headerHashFunction,
     )
 
   private fun randomSealedBeaconBlock(number: ULong): SealedBeaconBlock =
     DataGenerators.randomSealedBeaconBlock(
       number = number,
-      headerHashFunction = headerHashFunction,
     )
 }

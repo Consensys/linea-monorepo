@@ -10,12 +10,9 @@ package maru.consensus.qbft
 
 import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
-import maru.core.HashUtil
 import maru.core.ext.DataGenerators
 import maru.crypto.PrivateKeyGenerator
 import maru.crypto.SecpCrypto
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
@@ -94,8 +91,6 @@ class MinimalQbftMessageDecoderTest {
     val beaconBlock =
       DataGenerators.randomBeaconBlock(
         sequenceNumber.toULong(),
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
       )
     val qbftBlock = QbftBlockAdapter(beaconBlock)
     val proposalPayload = ProposalPayload(roundIdentifier, qbftBlock, QbftBlockCodecAdapter)

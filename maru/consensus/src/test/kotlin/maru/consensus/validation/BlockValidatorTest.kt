@@ -30,7 +30,6 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.PayloadStatus
 import maru.extensions.encodeHex
-import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions.assertThat
@@ -53,7 +52,6 @@ class BlockValidatorTest {
   private val validCurrBlockHeader =
     DataGenerators.randomBeaconBlockHeader(
       currBlockNumber,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     ).copy(
       proposer = validators[0],
       bodyRoot = HashUtil.bodyRoot(validCurrBlockBody),
@@ -77,7 +75,6 @@ class BlockValidatorTest {
   private val validNewBlockStateRootHeader =
     DataGenerators.randomBeaconBlockHeader(
       newBlockNumber,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     ).copy(
       proposer = validators[1],
       parentRoot = validCurrBlockHeader.hash,

@@ -10,10 +10,7 @@ package maru.consensus.state
 
 import maru.consensus.ValidatorProvider
 import maru.core.BeaconState
-import maru.core.HashUtil
 import maru.core.ext.DataGenerators
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.eq
@@ -26,8 +23,6 @@ class StateTransitionImplTest {
   fun `processBlock should return ok`() {
     val newBlock = DataGenerators.randomBeaconBlock(
       10uL,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val validators = List(3) { DataGenerators.randomValidator() }.toSortedSet()
     val expectedPostState =

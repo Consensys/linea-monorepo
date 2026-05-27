@@ -8,11 +8,8 @@
  */
 package maru.consensus
 
-import maru.core.HashUtil
 import maru.core.ext.DataGenerators
 import maru.extensions.encodeHex
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -31,8 +28,6 @@ class NewBlockHandlerMultiplexerTest {
   fun `should invoke all handlers for BeaconBlock`() {
     val block = DataGenerators.randomBeaconBlock(
       1u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val handler1 =
       mock<NewBlockHandler<Unit>> {
@@ -59,8 +54,6 @@ class NewBlockHandlerMultiplexerTest {
   fun `should log and throw error if handler throws`() {
     val block = DataGenerators.randomBeaconBlock(
       1u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val handler =
       mock<NewBlockHandler<Unit>> {

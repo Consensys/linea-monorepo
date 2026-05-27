@@ -14,15 +14,12 @@ import linea.timer.JvmTimerFactory
 import maru.config.P2PConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkIdManagerFactory.createForkIdHashManager
-import maru.core.HashUtil
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
 import maru.database.InMemoryP2PState
 import maru.database.P2PState
 import maru.p2p.discovery.MaruDiscoveryService.Companion.FORK_ID_HASH_FIELD_NAME
 import maru.p2p.discovery.MaruDiscoveryService.Companion.isValidNodeRecord
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.stateRoot
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.crypto.SECP256K1
 import org.assertj.core.api.Assertions.assertThat
@@ -76,8 +73,6 @@ class MaruDiscoveryServiceTest {
     ): InMemoryBeaconChain {
       val (beaconState, sealedBlock) = DataGenerators.genesisState(
         genesisTimestamp = genesisTimestampSeconds,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        stateRootFunction = { state -> HashUtil.stateRoot(state) },
       )
       return InMemoryBeaconChain(beaconState, sealedBlock)
     }

@@ -37,7 +37,6 @@ class BeaconStateSerializerTest {
     val beaconBLockHeader =
       DataGenerators.randomBeaconBlockHeader(
         Random.nextULong(),
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
     val testValue =
       BeaconState(

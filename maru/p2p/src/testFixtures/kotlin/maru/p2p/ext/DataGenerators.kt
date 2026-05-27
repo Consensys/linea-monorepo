@@ -8,15 +8,12 @@
  */
 package maru.p2p.ext
 
-import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.p2p.GossipMessageType
 import maru.p2p.Message
 import maru.p2p.MessageData
 import maru.p2p.Version
 import maru.p2p.messages.Status
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
 import kotlin.random.Random
 import maru.core.ext.DataGenerators as CoreDataGenerators
 
@@ -32,8 +29,6 @@ object DataGenerators {
     val sealedBeaconBlock =
       CoreDataGenerators.randomSealedBeaconBlock(
         blockNumber,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
       )
     return MessageData(GossipMessageType.BEACON_BLOCK, Version.V1, sealedBeaconBlock)
   }

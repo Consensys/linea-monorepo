@@ -9,13 +9,9 @@
 package maru.consensus.qbft
 
 import maru.consensus.qbft.adapters.QbftBlockchainAdapter
-import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
-import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.qbft.core.types.QbftNewChainHead
@@ -47,8 +43,6 @@ class QbftSyncChainHeadNotificationTest {
     for (blockNumber in 1UL..5UL) {
       val beaconBlock = DataGenerators.randomBeaconBlock(
         blockNumber,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
       )
       val sealedBlock = SealedBeaconBlock(beaconBlock, emptySet())
       currentState = currentState.copy(beaconBlockHeader = beaconBlock.beaconBlockHeader)
@@ -68,10 +62,7 @@ class QbftSyncChainHeadNotificationTest {
   }
 
   private fun inMemoryBeaconChainFromGenesis(): InMemoryBeaconChain {
-    val (beaconState, sealedBlock) = DataGenerators.genesisState(
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      stateRootFunction = { state -> HashUtil.stateRoot(state) },
-    )
+    val (beaconState, sealedBlock) = DataGenerators.genesisState()
     return InMemoryBeaconChain(beaconState, sealedBlock)
   }
 }

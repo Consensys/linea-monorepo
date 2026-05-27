@@ -12,7 +12,6 @@ import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.consensus.qbft.adapters.QbftBlockchainAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
-import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.crypto.PrivateKeyGenerator
@@ -20,9 +19,6 @@ import maru.crypto.SecpCrypto
 import maru.database.InMemoryBeaconChain
 import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResultCode
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
-import maru.serialization.rlp.stateRoot
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes.EMPTY
 import org.apache.tuweni.bytes.Bytes32
@@ -77,8 +73,6 @@ class QbftMessageProcessorTest {
     for (blockNumber in 1UL..targetHeight) {
       val beaconBlock = DataGenerators.randomBeaconBlock(
         blockNumber,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
       )
       val sealedBlock = SealedBeaconBlock(beaconBlock, emptySet())
       currentState = currentState.copy(beaconBlockHeader = beaconBlock.beaconBlockHeader)
@@ -94,10 +88,7 @@ class QbftMessageProcessorTest {
   }
 
   private fun inMemoryBeaconChainFromGenesis(): InMemoryBeaconChain {
-    val (beaconState, sealedBlock) = DataGenerators.genesisState(
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      stateRootFunction = { state -> HashUtil.stateRoot(state) },
-    )
+    val (beaconState, sealedBlock) = DataGenerators.genesisState()
     return InMemoryBeaconChain(beaconState, sealedBlock)
   }
 
@@ -187,8 +178,6 @@ class QbftMessageProcessorTest {
     val beaconBlock =
       DataGenerators.randomBeaconBlock(
         sequenceNumber.toULong(),
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
       )
     val qbftBlock = QbftBlockAdapter(beaconBlock)
 

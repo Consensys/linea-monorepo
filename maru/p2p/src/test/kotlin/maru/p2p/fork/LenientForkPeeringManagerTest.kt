@@ -13,13 +13,10 @@ import maru.consensus.ClFork
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.QbftConsensusConfig
-import maru.core.HashUtil
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -98,8 +95,6 @@ class LenientForkPeeringManagerTest {
   ): InMemoryBeaconChain {
     val (beaconState, sealedBlock) = DataGenerators.genesisState(
       genesisTimestamp = genesisTimestampSeconds,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      stateRootFunction = { state -> HashUtil.stateRoot(state) },
     )
     return InMemoryBeaconChain(beaconState, sealedBlock)
   }

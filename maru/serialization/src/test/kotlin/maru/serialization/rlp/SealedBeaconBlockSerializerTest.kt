@@ -48,7 +48,6 @@ class SealedBeaconBlockSerializerTest {
     val beaconBlockHeader =
       DataGenerators.randomBeaconBlockHeader(
         Random.nextULong(),
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
     val beaconBlockBody =
       BeaconBlockBody(

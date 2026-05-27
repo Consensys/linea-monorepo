@@ -20,7 +20,6 @@ import maru.consensus.QbftConsensusConfig
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.DelayedQbftBlockCreator
 import maru.core.BeaconState
-import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.SealedBeaconBlock
 import maru.core.Validator
@@ -39,7 +38,6 @@ import maru.p2p.PeerLookup
 import maru.p2p.fork.ForkPeeringManager
 import maru.p2p.messages.StatusManager
 import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.stateRoot
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
 import net.consensys.linea.metrics.Counter
 import net.consensys.linea.metrics.MetricsFacade
@@ -134,8 +132,6 @@ class CLSyncServiceImplTest {
     val (genesisBeaconState, genesisBeaconBlock) = DataGenerators.genesisState(
       genesisTimestamp,
       validators,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      stateRootFunction = { state -> HashUtil.stateRoot(state) },
     )
     targetBeaconChain = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))
     sourceBeaconChain = spy(InMemoryBeaconChain(genesisBeaconState, genesisBeaconBlock))

@@ -14,11 +14,8 @@ import com.github.michaelbull.result.Result
 import maru.consensus.validation.BeaconBlockValidatorFactory
 import maru.consensus.validation.BlockValidator
 import maru.consensus.validation.SealsVerifier
-import maru.core.HashUtil
 import maru.core.ext.DataGenerators
 import maru.p2p.ValidationResult
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -27,17 +24,12 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class ValidatingSealedBeaconBlockImporterTest {
   private val blockHeader = DataGenerators.randomBeaconBlockHeader(
     1u,
-    headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
   )
   private val beaconBlock = DataGenerators.randomBeaconBlock(
     blockHeader.number,
-    headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-    bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
   )
   private val sealedBeaconBlock = DataGenerators.randomSealedBeaconBlock(
     beaconBlock.beaconBlockHeader.number,
-    headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-    bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
   )
 
   private fun blockValidator(result: Result<Unit, BlockValidator.BlockValidationError>) =

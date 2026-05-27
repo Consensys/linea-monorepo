@@ -15,7 +15,6 @@ import maru.p2p.MessageData
 import maru.p2p.RequestMessageAdapter
 import maru.p2p.RpcMessageType
 import maru.p2p.Version
-import maru.serialization.rlp.RLPSerializers
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
@@ -33,7 +32,6 @@ class StatusHandlerTest {
     val statusManager = mock<StatusManager>()
     val localBeaconState = DataGenerators.randomBeaconState(
       0U,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
     val forkIdHash = Random.nextBytes(32)
     val localStatusMessage =
@@ -54,7 +52,6 @@ class StatusHandlerTest {
     val statusHandler = StatusHandler(statusManager)
     val remoteBeaconState = DataGenerators.randomBeaconState(
       0U,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
     val remoteStatusMessage =
       RequestMessageAdapter(
@@ -82,7 +79,6 @@ class StatusHandlerTest {
     val status = Status(forkIdHash, blockHash, blockNumber)
     val remoteBeaconState = DataGenerators.randomBeaconState(
       0U,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
     val payload =
       Status(
@@ -123,7 +119,6 @@ class StatusHandlerTest {
     val status = Status(forkIdHash, blockHash, blockNumber)
     val remoteBeaconState = DataGenerators.randomBeaconState(
       0U,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
     val payload =
       Status(
@@ -165,7 +160,6 @@ class StatusHandlerTest {
     val statusHandler = StatusHandler(statusManager)
     val remoteBeaconState = DataGenerators.randomBeaconState(
       0U,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
     val remoteStatusMessage =
       RequestMessageAdapter(
@@ -202,7 +196,6 @@ class StatusHandlerTest {
     val status = Status(forkIdHash, blockHash, blockNumber)
     val remoteBeaconState = DataGenerators.randomBeaconState(
       0U,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
     val payload =
       Status(
@@ -244,7 +237,6 @@ class StatusHandlerTest {
     val statusHandler = StatusHandler(statusManager)
     val remoteBeaconState = DataGenerators.randomBeaconState(
       0U,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
     val remoteStatusMessage =
       RequestMessageAdapter(
@@ -274,7 +266,6 @@ class StatusHandlerTest {
     val statusManager = mock<StatusManager>()
     val localBeaconState = DataGenerators.randomBeaconState(
       0U,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
     val forkIdHash = Random.nextBytes(32)
     val localStatusMessage =
@@ -295,7 +286,6 @@ class StatusHandlerTest {
     val statusHandler = StatusHandler(statusManager)
     val remoteBeaconState = DataGenerators.randomBeaconState(
       0U,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
     )
     val remoteStatusMessage =
       RequestMessageAdapter(

@@ -9,7 +9,6 @@
 package maru.syncing.beaconchain.pipeline
 
 import maru.consensus.blockimport.SealedBeaconBlockImporter
-import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators
 import maru.p2p.MaruPeer
@@ -17,8 +16,6 @@ import maru.p2p.ValidationResult
 import maru.p2p.ValidationResult.Companion.Ignore
 import maru.p2p.ValidationResult.Companion.Invalid
 import maru.p2p.ValidationResult.Companion.Valid
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
@@ -46,18 +43,12 @@ class ImportBlocksStepTest {
   fun `successfully imports all blocks when all are accepted`() {
     val block1 = DataGenerators.randomSealedBeaconBlock(
       1u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val block2 = DataGenerators.randomSealedBeaconBlock(
       2u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val block3 = DataGenerators.randomSealedBeaconBlock(
       3u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val blocks = listOf(block1, block2, block3)
 
@@ -82,18 +73,12 @@ class ImportBlocksStepTest {
   fun `stops processing on REJECT result`() {
     val block1 = DataGenerators.randomSealedBeaconBlock(
       1u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val block2 = DataGenerators.randomSealedBeaconBlock(
       2u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val block3 = DataGenerators.randomSealedBeaconBlock(
       3u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val blocks = listOf(block1, block2, block3)
 
@@ -114,18 +99,12 @@ class ImportBlocksStepTest {
   fun `stops processing on IGNORE result`() {
     val block1 = DataGenerators.randomSealedBeaconBlock(
       1u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val block2 = DataGenerators.randomSealedBeaconBlock(
       2u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val block3 = DataGenerators.randomSealedBeaconBlock(
       3u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val blocks = listOf(block1, block2, block3)
 
@@ -150,8 +129,6 @@ class ImportBlocksStepTest {
   fun `propagates exception when block import fails`() {
     val block1 = DataGenerators.randomSealedBeaconBlock(
       1u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val blocks = listOf(block1)
 
@@ -172,18 +149,12 @@ class ImportBlocksStepTest {
   fun `processes blocks sequentially in order`() {
     val block1 = DataGenerators.randomSealedBeaconBlock(
       1u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val block2 = DataGenerators.randomSealedBeaconBlock(
       2u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val block3 = DataGenerators.randomSealedBeaconBlock(
       3u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val blocks = listOf(block1, block2, block3)
 
@@ -205,23 +176,15 @@ class ImportBlocksStepTest {
   fun `handles mixed results correctly`() {
     val block1 = DataGenerators.randomSealedBeaconBlock(
       1u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val block2 = DataGenerators.randomSealedBeaconBlock(
       2u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val block3 = DataGenerators.randomSealedBeaconBlock(
       3u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val block4 = DataGenerators.randomSealedBeaconBlock(
       4u,
-      headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-      bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
     )
     val blocks = listOf(block1, block2, block3, block4)
 

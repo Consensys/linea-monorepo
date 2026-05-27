@@ -28,7 +28,6 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.executionlayer.manager.LatestBlockMetadata
 import maru.mappers.Mappers.toDomain
-import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
@@ -168,7 +167,6 @@ class EagerQbftBlockCreatorTest {
       BeaconBlock(
         beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(
           0U,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         ),
         beaconBlockBody = DataGenerators
           .randomBeaconBlockBody()
@@ -244,7 +242,6 @@ class EagerQbftBlockCreatorTest {
       BeaconBlock(
         beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(
           0U,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         ),
         beaconBlockBody = DataGenerators
           .randomBeaconBlockBody()
@@ -300,7 +297,6 @@ class EagerQbftBlockCreatorTest {
       BeaconBlock(
         beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(
           0U,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
         ), // Genesis block has number 0
         beaconBlockBody = DataGenerators
           .randomBeaconBlockBody()

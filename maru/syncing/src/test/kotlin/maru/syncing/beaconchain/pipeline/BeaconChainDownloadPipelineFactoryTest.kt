@@ -9,7 +9,6 @@
 package maru.syncing.beaconchain.pipeline
 
 import maru.consensus.blockimport.SealedBeaconBlockImporter
-import maru.core.HashUtil
 import maru.core.SealedBeaconBlock
 import maru.core.ext.DataGenerators.randomSealedBeaconBlock
 import maru.p2p.MaruPeer
@@ -17,8 +16,6 @@ import maru.p2p.PeerLookup
 import maru.p2p.ValidationResult
 import maru.p2p.ext.DataGenerators.randomStatus
 import maru.p2p.messages.BeaconBlocksByRangeResponse
-import maru.serialization.rlp.RLPSerializers
-import maru.serialization.rlp.bodyRoot
 import maru.syncing.beaconchain.pipeline.BeaconChainDownloadPipelineFactory.Config
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -87,24 +84,18 @@ class BeaconChainDownloadPipelineFactoryTest {
       (100uL..109uL).map {
         randomSealedBeaconBlock(
           it,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         )
       }
     rangeResponses[110uL to 10uL] =
       (110uL..119uL).map {
         randomSealedBeaconBlock(
           it,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         )
       }
     rangeResponses[120uL to 6uL] =
       (120uL..125uL).map {
         randomSealedBeaconBlock(
           it,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         )
       }
 
@@ -144,24 +135,18 @@ class BeaconChainDownloadPipelineFactoryTest {
       (100uL..109uL).map {
         randomSealedBeaconBlock(
           it,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         )
       }
     rangeResponses[110uL to 10uL] =
       (110uL..119uL).map {
         randomSealedBeaconBlock(
           it,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         )
       }
     rangeResponses[120uL to 6uL] =
       (120uL..125uL).map {
         randomSealedBeaconBlock(
           it,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         )
       }
 
@@ -199,8 +184,6 @@ class BeaconChainDownloadPipelineFactoryTest {
       listOf(
         randomSealedBeaconBlock(
           42uL,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         ),
       )
     val response = mock<BeaconBlocksByRangeResponse>()
@@ -242,8 +225,6 @@ class BeaconChainDownloadPipelineFactoryTest {
       (0uL..50uL).map {
         randomSealedBeaconBlock(
           it,
-          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-          bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
         )
       }
     val response = mock<BeaconBlocksByRangeResponse>()
@@ -298,14 +279,10 @@ class BeaconChainDownloadPipelineFactoryTest {
     val block1 =
       randomSealedBeaconBlock(
         ULong.MAX_VALUE - 2uL,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
       )
     val block2 =
       randomSealedBeaconBlock(
         ULong.MAX_VALUE - 1uL,
-        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
-        bodyRootFunction = { body -> HashUtil.bodyRoot(body) },
       )
 
     // Test with a range very close to ULong.MAX_VALUE
