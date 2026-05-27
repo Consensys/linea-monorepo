@@ -67,10 +67,10 @@ SP              ?= 0x08800000
 
 # Parsed values are just to verify that the generated ELF is correct (lazy evaluation allows to parse the ELF only after it is generated)
 PROGRAM_OFFSET_FROM_ELF  = $(shell LANG=C riscv64-unknown-elf-readelf -S $(BIN) | grep '\.text' | awk '{print "0x"$$5}')
-IN_BYTES_OFFSET_FROM_ELF = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _input_start | awk '{print "0x"$$1}') 
+IN_BYTES_OFFSET_FROM_ELF = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _input_start | awk '{print "0x"$$1}')
 ENTRY_POINT_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) | grep 'Entry point' | awk '{print $$4}')
 SP_FROM_ELF              = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _stack_start | awk '{print "0x"$$1}')
-VERIFY_ELF               ?= false             
+VERIFY_ELF               ?= false
 
 # ACT4 testing framework specific variables
 ACT4_CONFIG_DIR := $(MAKEFILE_DIR)act4/config
@@ -272,7 +272,7 @@ blake-rust-exec: install-zkc
 	echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
 	if [ "$$fail" -ne 0 ]; then echo "error: $$fail blake vector(s) failed" >&2; exit 1; fi
 
-# Build the ACT4 self-checking ELFs with the Linea ACT4 config 
+# Build the ACT4 self-checking ELFs with the Linea ACT4 config
 # Note: build if needed
 # Note: clone https://github.com/riscv/riscv-arch-test.git if needed
 build-act4:

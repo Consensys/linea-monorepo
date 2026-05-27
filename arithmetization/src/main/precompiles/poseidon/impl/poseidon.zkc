@@ -9,10 +9,12 @@ include "state.zkc"
 
 // poseidon performs the Poseidon1 hash of the nonempty byte range
 //
-//    sa..ea
+//    ram[sa..ea]
 //
-// with sa := address, ea := address + size and copies the results over to
-// destination
+// with sa := start_address, ea := end_address ≡ start_address + size
+// and copies the FULL results over to destination.
+// Note. FULL means the full state: STATE_WIDTH many bytes rather than OUTPUT_LEN many bytes.
+// Note. As is standard, the address range is inclusive of sa and exclusive of ea
 fn poseidon<ram, poseidon_state>(input_offset:Address, input_size:u32, output_offset:Address, apply_mds_initially:u1) {
 
     if input_size == 0 {
@@ -45,9 +47,10 @@ fn poseidon<ram, poseidon_state>(input_offset:Address, input_size:u32, output_of
     // for cleaner tests
     wipe_tmp()
 
-    // we write OUTPUT_LENGTH many output bytes to the provided output offset
+    // we write the full final state to RAM i.e. STATE_WIDTH many bytes.
+    // Note. Only the first OUTPUT_LENGTH many output bytes determine the output.
     curr_address = output_offset
-    for i:u8 = 0; i<OUTPUT_LENGTH; i = i + 1 {
+    for i:u8 = 0; i<STATE_WIDTH; i = i + 1 {
         curr_address = state_to_ram(curr_address, i)
     }
 }

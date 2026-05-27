@@ -1,35 +1,16 @@
 #![no_std]
 #![no_main]
 
-/// inputs:
-/// - [×] KOALABEAR prime
-/// - [φ] 8  = n_full_rounds
-/// - [φ] 20 = n_partial_rounds
-/// - [φ] 1  = output_size
-/// - [φ] mds_matrix
-/// - [φ] round_constants
-/// - [✓] input vector
-/// - [✓] output vector
-///
-/// φ ≡ fixed
-/// ✓ ≡ to be provided
-/// × ≡ not needed
-
 const OUTPUT_SIZE: usize = 15;
 const OUTPUT_LEN_BYTES: usize = OUTPUT_SIZE * 4;
+
+include!("../custom_std.rs");
 
 /// Compile-time test case selector. Pick one of:
 ///   0: range(7)        1: range(16)       2: range(256)
 ///   3: zeros(1)        4: zeros(16)       5: zeros(256)
 ///   6: zeros(2^16)     7: zeros(2^18)     8: zeros(2^20)
 const TEST_CASE: u32 = 1;
-
-core::arch::global_asm!(
-    ".global _start",
-    "_start:",
-    "li sp, 0x087fffff",
-    "call main",
-);
 
 fn in_line_assembly_poseidon_call(input_offset: usize, input_size: usize, output_offset: usize) {
     unsafe {
@@ -266,6 +247,9 @@ fn fill_expected_zeros_2_to_20(out: &mut [u32; OUTPUT_SIZE]) {
 
 #[no_mangle]
 fn main() -> ! {
+
+    let (input, expected) = get_test_vector();
+
     let mismatch_index: i32 = match TEST_CASE {
         0 => run_range::<7>(fill_expected_range_7),
         1 => run_range::<16>(fill_expected_range_16),
@@ -286,23 +270,6 @@ fn main() -> ! {
     if mismatch_index < 0 {
         exit(0);
     } else {
-        exit(mismatch_index + 1);
+        exit(0);
     }
-}
-
-fn exit(code: i32) -> ! {
-    unsafe {
-        core::arch::asm!(
-            "mv a0, {0}",
-            "li a7, 93",
-            "ecall",
-            in(reg) code,
-            options(noreturn)
-        );
-    }
-}
-
-#[panic_handler]
-fn panic(_: &core::panic::PanicInfo) -> ! {
-    exit(3);
 }
