@@ -45,7 +45,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "error decoding hex input bytes: %v\n", err)
 			os.Exit(1)
 		}
-		// Hex IN_BYTES is provided as big-endian and written to RAM in little-endian byte order.
+		// Hex IN_BYTES is provided as big-endian and written to RAM in little-endian byte order
 		for i, j := 0, len(inBytes)-1; i < j; i, j = i+1, j-1 {
 			inBytes[i], inBytes[j] = inBytes[j], inBytes[i]
 		}
