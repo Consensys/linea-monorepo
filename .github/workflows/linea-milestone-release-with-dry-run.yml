@@ -111,7 +111,7 @@ jobs:
         run: |
           set -euo pipefail
           TIMESTAMP=$(date -u +%Y%m%d%H%M%S)
-          BRANCH="ci/milestone-release-${TIMESTAMP}"
+          BRANCH="ci/milestone-dry-run-${TIMESTAMP}"
           git fetch origin main
           git checkout -b "${BRANCH}" origin/main
           git push origin "${BRANCH}"
