@@ -55,6 +55,7 @@ type Runtime struct {
 //
 // Panics if sys has no interactive rounds (len(sys.Rounds) == 0).
 func NewRuntime(sys *System) Runtime {
+
 	run := Runtime{
 		System:       sys,
 		fs:           fiatshamir.NewFiatShamir(),
@@ -130,7 +131,7 @@ func (run *Runtime) AdvanceRound() {
 	// Feed all cell values into the Fiat-Shamir state. Lazily-assigned cells
 	// are resolved here if they have not been read yet.
 	for _, cell := range run.currentRound.Cells {
-		v, ok := run.resolveLazyCell(cell)
+		v, ok := run.cells[cell.Context.ID]
 		if !ok {
 			panic(fmt.Sprintf(
 				"wiop: AdvanceRound: cell %q not assigned before advancing round",
