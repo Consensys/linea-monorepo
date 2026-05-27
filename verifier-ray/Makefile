@@ -12,9 +12,7 @@ FAILING_INPUT_FILE := testdata/inputs/failing.bin
 INPUT_FILE ?= $(PASSING_INPUT_FILE)
 # Encode the binary fixture for the ELF-to-JSON helper; the verifier sees decoded bytes.
 IN_BYTES ?= 0x$(shell xxd -p -c 256 $(INPUT_FILE))
-PROGRAM_OFFSET ?= 0x00000000
 IN_BYTES_OFFSET ?= 0x08800000
-ENTRY_POINT ?= $(PROGRAM_OFFSET)
 NATIVE_INPUT_FILE := zig-out/input.bin
 
 ci: fmt build-release run-passing run-failing-expected test zkc-verify-passing zkc-verify-failing-expected
@@ -50,9 +48,7 @@ help:
 		'  NATIVE_INPUT_FILE     Fixed native input path; must match main.zig' \
 		'' \
 		'zkc variables:' \
-		'  PROGRAM_OFFSET        Program load address, default 0x00000000' \
-		'  IN_BYTES_OFFSET       Input bytes address, default 0x08800000' \
-		'  ENTRY_POINT           Entry point, default PROGRAM_OFFSET'
+		'  IN_BYTES_OFFSET       Input bytes address, default 0x08800000'
 
 fmt: fmt-zig fmt-codegen fmt-testdata-generate
 
@@ -121,7 +117,7 @@ verify-testdata: generate-testdata
 
 zkc-build: build-r5
 	@echo "Generating $(R5_JSON)"
-	go run $(ELF_TO_JSON) $(R5_BIN) "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(R5_JSON)
+	go run $(ELF_TO_JSON) $(R5_BIN) "$(IN_BYTES)" $(IN_BYTES_OFFSET) > $(R5_JSON)
 
 zkc-verify: zkc-build
 	zkc exec $(R5_JSON) $(ZKC_MAIN)
