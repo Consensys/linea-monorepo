@@ -68,13 +68,8 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_BOT_APP_ID }}
           private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
-      
-      - name: Show installation token permissions
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          gh api /installation/repositories --jq '.repositories[].full_name'
-
+ 
+      # TODO: the following step can be removed, for debug purpose
       - name: Show installation permissions
         env:
           APP_ID: ${{ secrets.RELEASE_BOT_APP_ID }}
@@ -99,21 +94,23 @@ jobs:
             -H "Authorization: Bearer ${JWT}" \
             --jq '{app_slug, target_type, permissions, events}'
 
-      - name: Checkout main
+      - name: Checkout current branch
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           token: ${{ steps.app-token.outputs.token }}
-          ref: main
+          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
 
-      - name: Create and push branch off latest origin/main
+      - name: Create and push branch off latest tip of the current branch
         id: mkbranch
+        env:
+          SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
           TIMESTAMP=$(date -u +%Y%m%d%H%M%S)
           BRANCH="ci/milestone-dry-run-${TIMESTAMP}"
-          git fetch origin main
-          git checkout -b "${BRANCH}" origin/main
+          git fetch origin "${SOURCE_BRANCH}"
+          git checkout -b "${BRANCH}" "origin/${SOURCE_BRANCH}"
           git push origin "${BRANCH}"
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
