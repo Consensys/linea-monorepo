@@ -192,6 +192,7 @@ jobs:
       - name: Wait for dispatched milestone run to finish
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
           RUN_ID: ${{ needs.create-temp-branch-and-dispatch-release.outputs.run_id }}
         run: |
           set -euo pipefail
