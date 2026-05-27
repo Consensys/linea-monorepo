@@ -1,9 +1,9 @@
 const std = @import("std");
 
-const fixtures = @import("rollup_zevm_guest_fixtures");
-const guest = @import("rollup_zevm_guest");
-const precompile = @import("zevm_precompile");
-const rollup_guest_allocator = @import("rollup_guest_allocator");
+const fixtures = @import("evm_execution_fixtures");
+const guest = @import("evm_execution_guest");
+const precompile = @import("zesu_precompile");
+const evm_guest_allocator = @import("evm_guest_allocator");
 
 test "guest program executes two meaningful execution witnesses in one payload" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
@@ -31,7 +31,6 @@ test "guest program executes two meaningful execution witnesses in one payload" 
 
     const result = try guest.runPayload(allocator, bundle.payload);
     try std.testing.expectEqual(@as(usize, 2), result.execution_witness_count);
-    try std.testing.expectEqual(bundle.extension_a + bundle.extension_b, result.extension_sum);
 }
 
 test "guest parser rejects truncated witness list entries" {
@@ -52,18 +51,6 @@ test "guest parser rejects truncated witness list entries" {
     );
 }
 
-test "guest parser rejects bad extension arithmetic after valid witnesses" {
-    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-
-    const bundle = try fixtures.loadPayload(allocator, fixtures.embedded.contract_creation_then_ecrecover);
-    const payload = try allocator.dupe(u8, bundle.payload);
-    payload[payload.len - 1] = 1;
-
-    try std.testing.expectError(error.ExtensionCheckFailed, guest.runPayload(allocator, payload));
-}
-
 test "guest parser rejects trailing bytes after payload" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -82,7 +69,7 @@ test "native ecrecover precompile returns the expected signer" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-    rollup_guest_allocator.init(allocator);
+    evm_guest_allocator.init(allocator);
 
     const ec_rec = (precompile.PrecompileId{ .EcRec = {} }).precompile(.Berlin).?;
     const result = ec_rec.execute(try hexToOwnedBytes(allocator, fixtures.vectors.ecrecover_input), 3_000);

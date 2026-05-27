@@ -9,7 +9,7 @@ pub fn init(allocator: std.mem.Allocator) void {
 
 pub fn get() std.mem.Allocator {
     if (builtin.cpu.arch == .riscv64) {
-        return active_allocator orelse @panic("rollup guest allocator not initialized");
+        return active_allocator orelse @panic("EVM execution guest allocator not initialized");
     }
 
     return active_allocator orelse std.heap.page_allocator;

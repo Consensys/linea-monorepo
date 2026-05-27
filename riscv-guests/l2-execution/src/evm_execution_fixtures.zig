@@ -1,12 +1,11 @@
 const std = @import("std");
 
-const rollup_guest_allocator = @import("rollup_guest_allocator");
-const fixture_data = @import("rollup_zevm_guest_fixture_data");
-const stateless_rlp = @import("zevm_stateless_rlp");
-const zevm = @import("zevm_stateless");
-
-const executor = zevm.executor;
-const mpt = zevm.mpt;
+const evm_guest_allocator = @import("evm_guest_allocator");
+const fixture_data = @import("evm_execution_fixture_data");
+const executor = @import("zesu_executor");
+const input = @import("zesu_input");
+const mpt = @import("zesu_mpt");
+const rlp_decode = @import("zesu_rlp_decode");
 
 const EMPTY_TRIE_HASH: [32]u8 = .{
     0x56, 0xe8, 0x1f, 0x17, 0x1b, 0xcc, 0x55, 0xa6,
@@ -79,8 +78,6 @@ pub const BlockFixture = struct {
 pub const PayloadFixture = struct {
     payload: []const u8,
     blocks: []const BlockFixture,
-    extension_a: u64,
-    extension_b: u64,
 };
 
 pub const BlockSpec = struct {
@@ -94,8 +91,6 @@ pub const BlockSpec = struct {
 
 pub const Scenario = struct {
     description: []const u8,
-    extension_a: u64 = 2,
-    extension_b: u64 = 2,
     blocks: []const BlockSpec,
 };
 
@@ -120,7 +115,7 @@ pub const scenarios = struct {
     };
 
     pub const contract_creation_then_ecrecover = Scenario{
-        .description = "rollup_zevm_guest payload with contract creation and ecrecover precompile execution witnesses",
+        .description = "evm_execution_guest payload with vanilla EVM contract creation and ecrecover witnesses",
         .blocks = &contract_creation_then_ecrecover_blocks,
     };
 };
@@ -176,8 +171,12 @@ const HeaderSpec = struct {
 
 const PayloadEnvelope = struct {
     witnesses: []const []const u8,
-    extension_a: u64,
-    extension_b: u64,
+};
+
+const ParsedBlock = struct {
+    header: input.BlockHeader,
+    transactions: []const input.Transaction,
+    withdrawals: []const input.Withdrawal,
 };
 
 pub fn loadPayload(allocator: std.mem.Allocator, fixture_json: []const u8) !PayloadFixture {
@@ -216,13 +215,11 @@ pub fn loadPayload(allocator: std.mem.Allocator, fixture_json: []const u8) !Payl
     return .{
         .payload = payload,
         .blocks = blocks,
-        .extension_a = envelope.extension_a,
-        .extension_b = envelope.extension_b,
     };
 }
 
 pub fn buildPayload(allocator: std.mem.Allocator, scenario: Scenario) !PayloadFixture {
-    rollup_guest_allocator.init(allocator);
+    evm_guest_allocator.init(allocator);
 
     const blocks = try allocator.alloc(BlockFixture, scenario.blocks.len);
     const witnesses = try allocator.alloc([]const u8, scenario.blocks.len);
@@ -232,10 +229,8 @@ pub fn buildPayload(allocator: std.mem.Allocator, scenario: Scenario) !PayloadFi
     }
 
     return .{
-        .payload = try buildGuestPayload(allocator, witnesses, scenario.extension_a, scenario.extension_b),
+        .payload = try buildGuestPayload(allocator, witnesses),
         .blocks = blocks,
-        .extension_a = scenario.extension_a,
-        .extension_b = scenario.extension_b,
     };
 }
 
@@ -329,7 +324,7 @@ fn buildBlockFixture(allocator: std.mem.Allocator, request: DecodedBlockSpec) !B
         .timestamp = request.timestamp,
     });
     const placeholder_block = try blockRlp(allocator, placeholder_header, request.raw_transaction);
-    const parsed = try stateless_rlp.json.parseBlockFromRlp(allocator, placeholder_block);
+    const parsed = try decodeBlockRlp(allocator, placeholder_block);
 
     var node_index = try mpt.buildNodeIndex(allocator, pre_state.nodes);
     defer node_index.deinit();
@@ -346,11 +341,12 @@ fn buildBlockFixture(allocator: std.mem.Allocator, request: DecodedBlockSpec) !B
         pre_state.root,
         try singlePreAlloc(allocator, request.sender),
         &node_index,
-        parsed.header,
-        parsed.transactions,
-        parsed.withdrawals,
+        .{
+            .execution_payload = input.payloadFromBlock(parsed.header, parsed.transactions, parsed.withdrawals),
+            .parent_beacon_block_root = parsed.header.parent_beacon_block_root orelse @splat(0),
+        },
         block_hashes.items,
-        null,
+        "Cancun",
     );
 
     const gas_used = if (proof.receipts.len == 0)
@@ -507,6 +503,58 @@ fn blockRlp(allocator: std.mem.Allocator, header: []const u8, raw_tx: []const u8
     return rlpList(allocator, &body);
 }
 
+fn decodeBlockRlp(allocator: std.mem.Allocator, raw: []const u8) !ParsedBlock {
+    const outer = mpt.rlp.decodeItem(raw) catch return error.InvalidBlock;
+    const block_payload = switch (outer.item) {
+        .list => |payload| payload,
+        .bytes => return error.InvalidBlock,
+    };
+
+    const header_item = mpt.rlp.decodeItem(block_payload) catch return error.InvalidBlock;
+    const header_payload = switch (header_item.item) {
+        .list => |payload| payload,
+        .bytes => return error.InvalidBlock,
+    };
+    const header = try rlp_decode.decodeBlockHeader(allocator, header_payload);
+
+    const after_header = block_payload[header_item.consumed..];
+    const txs_item = mpt.rlp.decodeItem(after_header) catch return error.InvalidBlock;
+    const txs_payload = switch (txs_item.item) {
+        .list => |payload| payload,
+        .bytes => return error.InvalidBlock,
+    };
+    const transactions = try rlp_decode.decodeTxList(allocator, txs_payload);
+
+    var withdrawals: []const input.Withdrawal = &.{};
+    const after_txs = after_header[txs_item.consumed..];
+    if (after_txs.len > 0) {
+        const ommers_item = mpt.rlp.decodeItem(after_txs) catch return .{
+            .header = header,
+            .transactions = transactions,
+            .withdrawals = &.{},
+        };
+        const after_ommers = after_txs[ommers_item.consumed..];
+        if (after_ommers.len > 0) {
+            const withdrawals_item = mpt.rlp.decodeItem(after_ommers) catch return .{
+                .header = header,
+                .transactions = transactions,
+                .withdrawals = &.{},
+            };
+            const withdrawals_payload = switch (withdrawals_item.item) {
+                .list => |payload| payload,
+                .bytes => &.{},
+            };
+            withdrawals = rlp_decode.decodeWithdrawals(allocator, withdrawals_payload) catch &.{};
+        }
+    }
+
+    return .{
+        .header = header,
+        .transactions = transactions,
+        .withdrawals = withdrawals,
+    };
+}
+
 fn executionWitnessBytes(
     allocator: std.mem.Allocator,
     block: []const u8,
@@ -527,16 +575,12 @@ fn executionWitnessBytes(
 fn buildGuestPayload(
     allocator: std.mem.Allocator,
     witnesses: []const []const u8,
-    extension_a: u64,
-    extension_b: u64,
 ) ![]const u8 {
     var out = std.ArrayListUnmanaged(u8).empty;
     try appendU64(&out, allocator, witnesses.len);
     for (witnesses) |witness| {
         try appendLenPrefixedBytes(&out, allocator, witness);
     }
-    try appendU64(&out, allocator, extension_a);
-    try appendU64(&out, allocator, extension_b);
     return out.toOwnedSlice(allocator);
 }
 
@@ -573,14 +617,10 @@ fn parsePayloadEnvelope(allocator: std.mem.Allocator, payload: []const u8) !Payl
     for (witnesses) |*witness| {
         witness.* = try readLenPrefixedBytes(payload, &pos);
     }
-    const extension_a = try readU64(payload, &pos);
-    const extension_b = try readU64(payload, &pos);
     if (pos != payload.len) return error.InvalidFixture;
 
     return .{
         .witnesses = witnesses,
-        .extension_a = extension_a,
-        .extension_b = extension_b,
     };
 }
 
