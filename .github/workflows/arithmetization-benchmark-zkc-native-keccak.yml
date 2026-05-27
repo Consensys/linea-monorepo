@@ -13,6 +13,13 @@ name: Arithmetization native zkc benchmark - Keccak (base vs optim)
 # to keep CPU cache state comparable across timed runs.
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'arithmetization/**'
+      - '.github/actions/setup-arithmetization-riscv/**'
+      - '.github/workflows/arithmetization-*.yml'
   workflow_dispatch:
     inputs:
       zkc_base_ref:
