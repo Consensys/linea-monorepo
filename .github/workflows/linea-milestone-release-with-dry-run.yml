@@ -121,12 +121,12 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           BRANCH: ${{ steps.mkbranch.outputs.branch }}
-          IMAGE_TAG_SUFFIX: 'branch_run'
-          RELEASE_TAG_SUFFIX: 'branch-run'
+          IMAGE_TAG_SUFFIX: 'dry_run'
+          RELEASE_TAG_SUFFIX: 'dry-run'
           PRE_RELEASE: false
         run: |
           set -euo pipefail
-          TIMESTAMP=$(date -u +%Y%m%d%%H%M%S)
+          TIMESTAMP=$(date -u +%Y%m%d%H%M%S)
           gh workflow run linea-milestone-release.yml \
             --ref "${BRANCH}" \
             -f image_tag_suffix="${IMAGE_TAG_SUFFIX}" \
