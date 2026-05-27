@@ -72,6 +72,17 @@ permissions:
   contents: read
   actions: read
 
+env:
+  BENCH_ROOT: ${{ runner.temp }}/zkc-bench
+  WT_BASE: ${{ runner.temp }}/zkc-bench/wt-base
+  WT_OPTIM: ${{ runner.temp }}/zkc-bench/wt-optim
+  BENCH_LOGS: ${{ runner.temp }}/zkc-bench/logs
+  KECCAK_JSON: ${{ runner.temp }}/zkc-bench/keccak.json
+  BLAKE_JSON_DIR: ${{ runner.temp }}/zkc-bench/json/blake
+  KECCAK_N_VECTORS: ${{ inputs.n_vectors_keccak || 10 }}
+  BENCH_ITERS: ${{ inputs.iterations || 2 }}
+  BLAKE_N_VECTORS: ${{ inputs.n_vectors_blake || 3 }}
+
 jobs:
   bench:
     runs-on: gha-lfdt-lineth-ss-ubuntu-24-amd64-large
@@ -118,8 +129,8 @@ jobs:
             BLAKE_N_VECTORS=1 \
             BLAKE_JSON_DIR=/tmp/bench/json/blake
           # Helper binaries used by the timing loop and the summary step.
-          go build -o /tmp/bench/cache_thrasher       ./scripts/cache_thrasher/main.go
-          go build -o /tmp/bench/render_bench_summary ./scripts/render_bench_summary/main.go
+          go build -o "${BENCH_ROOT}/cache_thrasher"       ./scripts/cache_thrasher/main.go
+          go build -o "${BENCH_ROOT}/render_bench_summary" ./scripts/render_bench_summary/main.go
 
       - name: Preflight benchmark dependencies
         shell: bash
@@ -142,11 +153,43 @@ jobs:
             fi
           }
 
+          smoke_zkc() {
+            local label="$1"
+            local zkc_main="$2"
+            local log_file="${BENCH_LOGS}/preflight_smoke_${label}.log"
+            set +e
+            /usr/bin/time -v zkc execute -v -q "${KECCAK_JSON}" "${zkc_main}" \
+              >"${log_file}" 2>&1
+            local rc=$?
+            set -e
+            if [ "${rc}" -eq 0 ]; then
+              log "OK   smoke ${label}: zkc execute (rc=${rc})"
+            else
+              log "FAIL smoke ${label}: zkc execute (rc=${rc})"
+              if [ "${rc}" -eq 127 ]; then
+                log "     rc=127 usually means /usr/bin/time or zkc was not found"
+              elif [ "${rc}" -eq 3 ]; then
+                log "     rc=3 usually means zkc could not read a .zkc source file"
+              elif [ "${rc}" -eq 4 ]; then
+                log "     rc=4 usually means zkc execution failed (guest exit / IR panic)"
+              fi
+              log "     zkc errors from ${log_file}:"
+              grep -E 'level=error|machine panic|EXIT CODE|no such file' "${log_file}" \
+                | tail -10 | sed 's/^/     /' | tee -a "${GITHUB_STEP_SUMMARY}" || true
+              log "     last 20 lines of ${log_file}:"
+              tail -20 "${log_file}" | sed 's/^/     /' | tee -a "${GITHUB_STEP_SUMMARY}"
+              failures=$((failures + 1))
+            fi
+          }
+
           log "## Benchmark preflight"
           log ""
           log "Checking commands and files required by the timing loop."
           log ""
           log '```'
+          log "BENCH_ROOT=${BENCH_ROOT}"
+          log "KECCAK_N_VECTORS=${KECCAK_N_VECTORS}"
+          log "BENCH_ITERS=${BENCH_ITERS}"
           log "PATH=${PATH}"
           log "GOPATH=$(go env GOPATH)"
           log "GOBIN=$(go env GOBIN)"
@@ -182,47 +225,27 @@ jobs:
           log ""
 
           log "### Helper binaries and inputs"
-          check_path cache_thrasher /tmp/bench/cache_thrasher
-          check_path render_bench_summary /tmp/bench/render_bench_summary
-          check_path keccak_json /tmp/keccak.json
-          check_path blake_json_dir /tmp/bench/json/blake
-          blake_count="$(find /tmp/bench/json/blake -maxdepth 1 -name '*.json' | wc -l)"
+          check_path cache_thrasher "${BENCH_ROOT}/cache_thrasher"
+          check_path render_bench_summary "${BENCH_ROOT}/render_bench_summary"
+          check_path keccak_json "${KECCAK_JSON}"
+          check_path blake_json_dir "${BLAKE_JSON_DIR}"
+          blake_count="$(find "${BLAKE_JSON_DIR}" -maxdepth 1 -name '*.json' | wc -l)"
           log "     blake JSON count: ${blake_count}"
           if [ "${blake_count}" -eq 0 ]; then
-            log "FAIL blake JSONs: expected at least one file under /tmp/bench/json/blake"
+            log "FAIL blake JSONs: expected at least one file under ${BLAKE_JSON_DIR}"
             failures=$((failures + 1))
           fi
           log ""
 
           log "### Worktree zkc mains"
-          check_path zkc_main_opt /tmp/wt-optim/arithmetization/src/main/riscv/main.zkc
-          check_path zkc_main_base /tmp/wt-base/arithmetization/src/main/riscv/main.zkc
+          check_path zkc_main_opt "${WT_OPTIM}/arithmetization/src/main/riscv/main.zkc"
+          check_path zkc_main_base "${WT_BASE}/arithmetization/src/main/riscv/main.zkc"
           log ""
 
           if [ "${failures}" -eq 0 ] && command -v zkc >/dev/null 2>&1 && [ -x /usr/bin/time ]; then
-            log "### Smoke test (exact benchmark command, single timed run)"
-            set +e
-            /usr/bin/time -v zkc execute -v -q /tmp/keccak.json \
-              /tmp/wt-optim/arithmetization/src/main/riscv/main.zkc \
-              >/tmp/bench/logs/preflight_smoke.log 2>&1
-            smoke_rc=$?
-            set -e
-            if [ "${smoke_rc}" -eq 0 ]; then
-              log "OK   /usr/bin/time -v zkc execute ... (rc=${smoke_rc})"
-            else
-              log "FAIL /usr/bin/time -v zkc execute ... (rc=${smoke_rc})"
-              if [ "${smoke_rc}" -eq 127 ]; then
-                log "     rc=127 usually means /usr/bin/time or zkc was not found"
-              elif [ "${smoke_rc}" -eq 4 ]; then
-                log "     rc=4 usually means zkc execution failed (guest exit / IR panic)"
-              fi
-              log "     zkc errors from /tmp/bench/logs/preflight_smoke.log:"
-              grep -E 'level=error|machine panic|EXIT CODE' /tmp/bench/logs/preflight_smoke.log \
-                | tail -10 | sed 's/^/     /' | tee -a "${GITHUB_STEP_SUMMARY}" || true
-              log "     last 20 lines of /tmp/bench/logs/preflight_smoke.log:"
-              tail -20 /tmp/bench/logs/preflight_smoke.log | sed 's/^/     /' | tee -a "${GITHUB_STEP_SUMMARY}"
-              failures=$((failures + 1))
-            fi
+            log "### Smoke tests (exact benchmark command, single timed run each)"
+            smoke_zkc optim "${WT_OPTIM}/arithmetization/src/main/riscv/main.zkc"
+            smoke_zkc base  "${WT_BASE}/arithmetization/src/main/riscv/main.zkc"
           fi
 
           log ""
@@ -252,19 +275,29 @@ jobs:
           }
 
           run_keccak() {  # $1=variant (opt|base)  $2=label (warmup|iter#)
-            local zkc_main="/tmp/wt-${1}/arithmetization/src/main/riscv/main.zkc"
-            /usr/bin/time -v zkc execute -v -q /tmp/keccak.json "$zkc_main" \
-              > "/tmp/bench/logs/keccak_${1}_${2}.log" 2>&1
+            local zkc_main
+            case "$1" in
+              opt)  zkc_main="${WT_OPTIM}/arithmetization/src/main/riscv/main.zkc" ;;
+              base) zkc_main="${WT_BASE}/arithmetization/src/main/riscv/main.zkc" ;;
+            esac
+            /usr/bin/time -v zkc execute -v -q "${KECCAK_JSON}" "${zkc_main}" \
+              > "${BENCH_LOGS}/keccak_${1}_${2}.log" 2>&1
           }
 
           run_blake() {   # $1=variant  $2=label. Runs all N vectors, one log file per vector.
-            local zkc_main="/tmp/wt-${1}/arithmetization/src/main/riscv/main.zkc"
-            for json in /tmp/bench/json/blake/*.json; do
+            local zkc_main
+            case "$1" in
+              opt)  zkc_main="${WT_OPTIM}/arithmetization/src/main/riscv/main.zkc" ;;
+              base) zkc_main="${WT_BASE}/arithmetization/src/main/riscv/main.zkc" ;;
+            esac
+            local rc=0
+            for json in "${BLAKE_JSON_DIR}"/*.json; do
               local n
               n=$(basename "$json" .json)
-              /usr/bin/time -v zkc execute -v -q "$json" "$zkc_main" \
-                > "/tmp/bench/logs/blake_${1}_${2}_${n}.log" 2>&1
+              /usr/bin/time -v zkc execute -v -q "$json" "${zkc_main}" \
+                > "${BENCH_LOGS}/blake_${1}_${2}_${n}.log" 2>&1 || rc=$?
             done
+            return "${rc}"
           }
 
           for wl in keccak blake; do
@@ -280,6 +313,12 @@ jobs:
             done
           done
           log "all workloads done"
+
+          if [ "${failures}" -ne 0 ]; then
+            echo "Benchmark failed: ${failures} timed run(s) returned non-zero" >&2
+            echo "Check logs under ${BENCH_LOGS}" >&2
+          fi
+          exit "${failures}"
 
       - name: Parse logs and emit summary
         if: always()
@@ -304,4 +343,4 @@ jobs:
         if: always()
         with:
           name: zkc-bench-logs
-          path: /tmp/bench/logs
+          path: ${{ env.BENCH_LOGS }}
