@@ -19,6 +19,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
+	invalidity "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -243,7 +244,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// TINY-STUFFS
 		//
-		{BaseSize: 1, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecDataSchwarzZipfelX},
+		{BaseSize: 1, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.ExecDataSchwarzZipfelX},
 		// BaseSize increased to match limit_large=2048 to guarantee 1 segment worst case.
 		{BaseSize: 2048, Cluster: TinyStuffsModuleName, Regexp: `^romlex\.`},
 		{BaseSize: 512, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.CodeHashConsistency.RomKeccak.Hi[0]},
@@ -259,13 +260,13 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Regexp: `^logdata\.`},
 		{BaseSize: 8192, Cluster: TinyStuffsModuleName, Regexp: `^rlpaddr\.`},
 		{BaseSize: 8192, Cluster: TinyStuffsModuleName, Regexp: `^blockdata\.`},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.BlockDataFetcher.LastTimestamp[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedL2L1.Data[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedRollingHash.Data[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.FetchedRollingMsg.Data[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.RollingHashFetcher.ExistsMsg},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.BlockTxnMetadata.BlockID},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.TxnDataFetcher.AbsTxNum},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.BlockDataFetcher.LastTimestamp[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.FetchedL2L1.Data[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.FetchedRollingHash.Data[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.FetchedRollingMsg.Data[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.RollingHashFetcher.ExistsMsg},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.BlockTxnMetadata.BlockID},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.TxnDataFetcher.AbsTxNum},
 		{BaseSize: 16384, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.StateSummary.WorldStateRoot[0]},
 		// BaseSize increased to match limit_large to guarantee 1 segment worst case.
 		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Regexp: `^rlptxrcpt\.`},
@@ -274,15 +275,15 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp_integer_u256\.`},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp\.`},
 		{BaseSize: 65536, Cluster: TinyStuffsModuleName, Regexp: `^txndata\.`},
-		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.RlpTxnFetcher.NBytes},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.ExecDataCollector.AbsTxID},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.PadderPacker.CounterColumnPadded},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.PadderPacker.OneColumn},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.PadderPacker.SplitOuter[0]},
-		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecPoseidonHasher.Hash[0]},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ChainIDFetcher.NBytesChainID},
-		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.L2L1LogCompacter.CompactifiedSelector},
-		distributed.SameSizeAdvice(TinyStuffsModuleName, zkevm.PublicInput.ExecDataSchwarzZipfelEval.Pol),
+		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.RlpTxnFetcher.NBytes},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.ExecDataCollector.AbsTxID},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.PadderPacker.CounterColumnPadded},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.PadderPacker.OneColumn},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.Aux.PadderPacker.SplitOuter[0]},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.ExecPoseidonHasher.Hash[0]},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.ChainIDFetcher.NBytesChainID},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecutionPI.L2L1LogCompacter.CompactifiedSelector},
+		distributed.SameSizeAdvice(TinyStuffsModuleName, zkevm.PublicInput.ExecutionPI.ExecDataSchwarzZipfelEval.Pol),
 
 		// ECDSA
 		// BaseSize increased from 16384 to 32768 for gnark columns to fit ~25K rows in 1 segment.
@@ -471,25 +472,10 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 		ExtraData[publicInput.PublicInputExtractorMetadata] = zkevm.
 		InitialCompiledIOP.ExtraData[publicInput.PublicInputExtractorMetadata]
 
-	return &LimitlessZkEVM{
-		Zkevm:      zkevm,
-		DistWizard: dw,
+	if invExt, ok := zkevm.InitialCompiledIOP.ExtraData[invalidity.InvalidityPIExtractorMetadata]; ok {
+		dw.CompiledConglomeration.RecursionCompBLS.
+			ExtraData[invalidity.InvalidityPIExtractorMetadata] = invExt
 	}
-}
-
-// NewLimitlessRawZkEVM returns a new LimitlessZkEVM object without any
-// compilation.
-func NewLimitlessRawZkEVM(cfg *config.Config) *LimitlessZkEVM {
-
-	var (
-		traceLimits = cfg.TracesLimits
-		zkevm       = FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
-		disc        = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 1 << 29,
-			Advices:      DiscoveryAdvices(zkevm),
-		}
-		dw = distributed.DistributeWizard(zkevm.InitialCompiledIOP, disc)
-	)
 
 	return &LimitlessZkEVM{
 		Zkevm:      zkevm,
@@ -573,7 +559,9 @@ func (lz *LimitlessZkEVM) RunStatRecords(cfg *config.Config, witness *Witness) [
 // the segmentation and then the sanity checks for all the segments. The
 // check of the LPP module is done using a deterministic pseudo-random number
 // generator and will yield the same result every time.
-func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
+//
+// Returns the bootstrapper runtime which can be used for outer proof checking.
+func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) *wizard.ProverRuntime {
 
 	runtimeBoot := runBootstrapperWithRescaling(
 		cfg,
@@ -1023,6 +1011,8 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 	}
 
 	logrus.Infof("All conglomeration completion checks passed (segment-counts, LPP-column-consistency)")
+
+	return runtimeBoot
 }
 
 // runBootstrapperWithRescaling runs the bootstrapper and returns the resulting
@@ -1321,42 +1311,6 @@ func (lz *LimitlessZkEVM) LoadBlueprints(cfg *config.Config) error {
 	return nil
 }
 
-// LoadCompiledGL loads the compiled GL from disk
-func LoadCompiledGL(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.RecursedSegmentCompilation, error) {
-
-	var (
-		assetDir = cfg.PathForSetup(executionLimitlessPath)
-		filePath = path.Join(assetDir, fmt.Sprintf(compileGlTemplate, moduleName))
-		res      = &distributed.RecursedSegmentCompilation{}
-	)
-
-	closer, err := serde.LoadFromDisk(filePath, res, true)
-	if err != nil {
-		return nil, err
-	}
-	defer closer.Close()
-
-	return res, nil
-}
-
-// LoadCompiledLPP loads the compiled LPP from disk
-func LoadCompiledLPP(cfg *config.Config, moduleNames distributed.ModuleName) (*distributed.RecursedSegmentCompilation, error) {
-
-	var (
-		assetDir = cfg.PathForSetup(executionLimitlessPath)
-		filePath = path.Join(assetDir, fmt.Sprintf(compileLppTemplate, moduleNames))
-		res      = &distributed.RecursedSegmentCompilation{}
-	)
-
-	closer, err := serde.LoadFromDisk(filePath, res, true)
-	if err != nil {
-		return nil, err
-	}
-	defer closer.Close()
-
-	return res, nil
-}
-
 // LoadCompiledGLMmap loads the compiled GL into mmap-backed memory for explicit release.
 // The caller must call buf.Release() when done, after nilling all references to res.
 func LoadCompiledGLMmap(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.RecursedSegmentCompilation, *serde.MmapBackedBuffer, error) {
@@ -1411,60 +1365,6 @@ func LoadCompiledLPPMmap(cfg *config.Config, moduleNames distributed.ModuleName)
 	}
 
 	return res, buf, nil
-}
-
-// LoadDebugGL loads the debug GL from disk
-func LoadDebugGL(cfg *config.Config, moduleName distributed.ModuleName) (*distributed.ModuleGL, error) {
-
-	var (
-		assetDir = cfg.PathForSetup(executionLimitlessPath)
-		filePath = path.Join(assetDir, fmt.Sprintf(debugGlTemplate, moduleName))
-		res      = &distributed.ModuleGL{}
-	)
-
-	closer, err := serde.LoadFromDisk(filePath, res, true)
-	if err != nil {
-		return nil, err
-	}
-	defer closer.Close()
-
-	return res, nil
-}
-
-// LoadDebugLPP loads the debug LPP from disk
-func LoadDebugLPP(cfg *config.Config, moduleName []distributed.ModuleName) (*distributed.ModuleLPP, error) {
-
-	var (
-		assetDir = cfg.PathForSetup(executionLimitlessPath)
-		filePath = path.Join(assetDir, fmt.Sprintf(debugLppTemplate, moduleName))
-		res      = &distributed.ModuleLPP{}
-	)
-
-	closer, err := serde.LoadFromDisk(filePath, res, true)
-	if err != nil {
-		return nil, err
-	}
-	defer closer.Close()
-
-	return res, nil
-}
-
-// LoadCompiledConglomeration loads the conglomeration assets from disk
-func LoadCompiledConglomeration(cfg *config.Config) (*distributed.RecursedSegmentCompilation, error) {
-
-	var (
-		assetDir = cfg.PathForSetup(executionLimitlessPath)
-		filePath = path.Join(assetDir, conglomerationFile)
-		conglo   = &distributed.RecursedSegmentCompilation{}
-	)
-
-	closer, err := serde.LoadFromDisk(filePath, conglo, true)
-	if err != nil {
-		return nil, err
-	}
-	defer closer.Close()
-
-	return conglo, nil
 }
 
 // LoadCompiledConglomerationMmap loads the conglomeration assets into mmap-backed memory.

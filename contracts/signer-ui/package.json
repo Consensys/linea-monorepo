@@ -15,12 +15,12 @@
     "start": "next start"
   },
   "dependencies": {
-    "@tanstack/react-query": "5.91.2",
-    "next": "16.2.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
+    "@tanstack/react-query": "5.100.9",
+    "next": "16.2.6",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "viem": "catalog:",
-    "wagmi": "3.5.0"
+    "wagmi": "3.6.11"
   },
   "devDependencies": {
     "@consensys/eslint-config": "workspace:*",

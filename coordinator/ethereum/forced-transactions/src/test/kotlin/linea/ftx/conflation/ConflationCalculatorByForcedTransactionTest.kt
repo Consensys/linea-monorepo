@@ -1,12 +1,11 @@
 package linea.ftx.conflation
 
+import linea.conflation.calculators.ConflationCounters
+import linea.conflation.calculators.ConflationTriggerCalculator
+import linea.domain.BlockCounters
+import linea.domain.ConflationTrigger
 import linea.forcedtx.ForcedTransactionInclusionResult
-import linea.forcedtx.ForcedTransactionInclusionStatus
 import net.consensys.linea.traces.TracesCountersV4
-import net.consensys.zkevm.domain.BlockCounters
-import net.consensys.zkevm.domain.ConflationTrigger
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCalculator
-import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCounters
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -19,11 +18,11 @@ import kotlin.time.Instant
 
 class ConflationCalculatorByForcedTransactionTest {
 
-  private lateinit var queue: Queue<ForcedTransactionInclusionStatus>
+  private lateinit var queue: Queue<FtxConflationInfo>
   private lateinit var calculator: ConflationCalculatorByForcedTransaction
 
   private val timestamp = Instant.parse("2024-01-01T00:00:00Z")
-  private val ftxOverflowTrigger = ConflationCalculator.OverflowTrigger(
+  private val ftxOverflowTrigger = ConflationTriggerCalculator.OverflowTrigger(
     trigger = ConflationTrigger.FORCED_TRANSACTION,
     singleBlockOverSized = false,
   )
@@ -38,13 +37,10 @@ class ConflationCalculatorByForcedTransactionTest {
     ftx: ULong,
     blockNumber: ULong,
     inclusionResult: ForcedTransactionInclusionResult,
-  ) = ForcedTransactionInclusionStatus(
+  ) = FtxConflationInfo(
     ftxNumber = ftx,
     blockNumber = blockNumber,
-    blockTimestamp = timestamp,
     inclusionResult = inclusionResult,
-    ftxHash = ByteArray(32),
-    from = ByteArray(20),
   )
 
   private fun blockCounters(blockNumber: ULong) = BlockCounters(
@@ -60,13 +56,13 @@ class ConflationCalculatorByForcedTransactionTest {
   }
 
   @Test
-  fun `does not consume items from the queue`() {
+  fun `appendBlock polls entries from the queue`() {
     queue.add(ftx(ftx = 1UL, blockNumber = 10UL, inclusionResult = ForcedTransactionInclusionResult.BadNonce))
 
-    calculator.checkOverflow(blockCounters(blockNumber = 9UL))
     calculator.appendBlock(blockCounters(blockNumber = 9UL))
-
-    assertThat(queue).hasSize(1)
+    assertThat(queue).isNotEmpty // not polled yet
+    calculator.appendBlock(blockCounters(blockNumber = 10UL))
+    assertThat(queue).isEmpty()
   }
 
   @Test
@@ -87,24 +83,9 @@ class ConflationCalculatorByForcedTransactionTest {
       assertThat(calculator.checkOverflow(blockCounters(blockNumber = 10UL))).isNull()
     }
 
-    @Test
-    fun `returns null when all FTXs are Included`() {
-      queue.add(ftx(ftx = 1UL, blockNumber = 10UL, inclusionResult = ForcedTransactionInclusionResult.Included))
-      queue.add(ftx(ftx = 2UL, blockNumber = 20UL, inclusionResult = ForcedTransactionInclusionResult.Included))
-
-      assertThat(calculator.checkOverflow(blockCounters(blockNumber = 9UL))).isNull()
-      assertThat(calculator.checkOverflow(blockCounters(blockNumber = 10UL))).isNull()
-      assertThat(calculator.checkOverflow(blockCounters(blockNumber = 11UL))).isNull()
-      assertThat(calculator.checkOverflow(blockCounters(blockNumber = 19UL))).isNull()
-      assertThat(calculator.checkOverflow(blockCounters(blockNumber = 20UL))).isNull()
-      assertThat(calculator.checkOverflow(blockCounters(blockNumber = 21UL))).isNull()
-    }
-
     @ParameterizedTest(name = "inclusionResult={0}")
     @EnumSource(
       value = ForcedTransactionInclusionResult::class,
-      names = ["Included"],
-      mode = EnumSource.Mode.EXCLUDE,
     )
     fun `triggers conflation at ftxBlockNumber for all non-Included results`(
       result: ForcedTransactionInclusionResult,
@@ -122,15 +103,6 @@ class ConflationCalculatorByForcedTransactionTest {
       queue.add(ftx(ftx = 2UL, blockNumber = 20UL, inclusionResult = ForcedTransactionInclusionResult.BadBalance))
 
       assertThat(calculator.checkOverflow(blockCounters(blockNumber = 10UL))).isEqualTo(ftxOverflowTrigger)
-      assertThat(calculator.checkOverflow(blockCounters(blockNumber = 20UL))).isEqualTo(ftxOverflowTrigger)
-    }
-
-    @Test
-    fun `only triggers for non-Included FTXs when mixed with Included ones`() {
-      queue.add(ftx(ftx = 1UL, blockNumber = 10UL, inclusionResult = ForcedTransactionInclusionResult.Included))
-      queue.add(ftx(ftx = 2UL, blockNumber = 20UL, inclusionResult = ForcedTransactionInclusionResult.BadNonce))
-
-      assertThat(calculator.checkOverflow(blockCounters(blockNumber = 10UL))).isNull()
       assertThat(calculator.checkOverflow(blockCounters(blockNumber = 20UL))).isEqualTo(ftxOverflowTrigger)
     }
 

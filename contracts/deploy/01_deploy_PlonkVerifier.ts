@@ -1,10 +1,10 @@
-import { Mimc } from "contracts/typechain-types";
 import { toBeHex } from "ethers";
 import { ethers } from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 
 import {
+  getOptionalEnvVar,
   getRequiredEnvVar,
   requireAddressOrRegistry,
   LogContractDeployment,
@@ -29,9 +29,25 @@ const func: DeployFunction = withSignerUiSession(
       "L2_MESSAGE_SERVICE_ADDRESS",
     );
 
-    const mimc = (await deployFromFactory("Mimc", signer)) as Mimc;
+    const optionalMimcAddress = getOptionalEnvVar("VERIFIER_MIMC_ADDRESS")?.trim();
+    let mimcAddress: string;
 
-    await tryVerifyContract(await mimc.getAddress());
+    if (optionalMimcAddress) {
+      if (!ethers.isAddress(optionalMimcAddress)) {
+        throw new Error(`VERIFIER_MIMC_ADDRESS must be a valid address, got "${optionalMimcAddress}"`);
+      }
+      mimcAddress = ethers.getAddress(optionalMimcAddress);
+      const code = await ethers.provider.getCode(mimcAddress);
+      if (code === "0x") {
+        throw new Error(
+          `VERIFIER_MIMC_ADDRESS ${mimcAddress} has no contract bytecode on this network; deploy Mimc first or unset VERIFIER_MIMC_ADDRESS to deploy a new library.`,
+        );
+      }
+      console.log(`Reusing existing Mimc library at ${mimcAddress} (VERIFIER_MIMC_ADDRESS)`);
+    } else {
+      mimcAddress = await (await deployFromFactory("Mimc", signer)).getAddress();
+      await tryVerifyContract(mimcAddress);
+    }
 
     const constructorArgs = [
       [
@@ -58,7 +74,7 @@ const func: DeployFunction = withSignerUiSession(
       contractName,
       signer,
       {
-        libraries: { Mimc: await mimc.getAddress() },
+        libraries: { Mimc: mimcAddress },
       },
       ...constructorArgs,
     );
@@ -76,7 +92,7 @@ const func: DeployFunction = withSignerUiSession(
     console.log("setVerifierAddress calldata:", setVerifierAddress);
 
     await tryVerifyContractWithConstructorArgs(contractAddress, contractName, constructorArgs, {
-      Mimc: await mimc.getAddress(),
+      Mimc: mimcAddress,
     });
   },
 );

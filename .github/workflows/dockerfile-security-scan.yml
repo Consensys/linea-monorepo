@@ -1,8 +1,16 @@
 name: Weekly Dockerfile Security Scan
 
+# DISABLED 2026-04-22: Checkmarx KICS supply chain compromise.
+# Malicious artifacts found in KICS Docker images (v2.1.20, v2.1.21, alpine)
+# and VS Code extensions (v1.17.0, v1.19.0). Poisoned binaries exfiltrate
+# scanned IaC secrets. Although we pin v2.1.19 by SHA, we are disabling this
+# workflow as a precaution until Checkmarx confirms the incident is fully resolved.
+# Reference: https://socket.dev/blog/checkmarx-supply-chain-compromise
+# TODO: Re-enable once Checkmarx publishes a post-mortem and verified-clean release.
+
 on:
-  schedule:
-    - cron: '0 6 * * 1' # Every Monday at 06:00 UTC
+  # schedule:
+  #   - cron: '0 6 * * 1' # Every Monday at 06:00 UTC
   workflow_dispatch:
 
 permissions:
@@ -11,11 +19,12 @@ permissions:
 
 jobs:
   kics-scan:
-    name: KICS Dockerfile Scan
+    name: KICS Dockerfile Scan (disabled)
     runs-on: ubuntu-latest
+    if: false # Disabled — Checkmarx KICS supply chain compromise (2026-04-22)
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Run KICS
         uses: checkmarx/kics-github-action@4063ea7186bec9fed1bf055e095a4658693f9998 # v2.1.19
@@ -29,7 +38,7 @@ jobs:
       - name: Upload SARIF to GitHub Security
         if: ${{ !cancelled() && hashFiles('kics-results/results.sarif') != '' }}
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
         with:
           sarif_file: kics-results/results.sarif
           category: kics-dockerfiles

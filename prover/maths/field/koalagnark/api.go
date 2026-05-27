@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/gnark/std/selector"
 )
 
 // VType indicates whether the API is operating in native or emulated mode.
@@ -54,17 +53,7 @@ func (a *API) IsNative() bool {
 	return a.emulatedAPI == nil
 }
 
-// Frontend returns the underlying gnark frontend API.
-func (a *API) Frontend() frontend.API {
-	return a.nativeAPI
-}
-
-// EmulatedField returns the emulated field API, or nil if in native mode.
-func (a *API) EmulatedField() *emulated.Field[emulated.KoalaBear] {
-	return a.emulatedAPI
-}
-
-// GetFrontendVariable extracts a frontend.Variable from a Var.
+// GetFrontendVariable extracts a frontend.Variable from an Element.
 func (a *API) GetFrontendVariable(v Element) frontend.Variable {
 	if a.emulatedAPI == nil {
 		return v.V
@@ -182,11 +171,6 @@ func (a *API) MulConst(x Element, c *big.Int) Element {
 	return Element{EV: *a.emulatedAPI.MulConst(x.Emulated(), c)}
 }
 
-// MulConstInt returns x * c where c is an int64 constant.
-func (a *API) MulConstInt(x Element, c int64) Element {
-	return a.MulConst(x, big.NewInt(c))
-}
-
 // Inverse returns 1/x.
 func (a *API) Inverse(x Element) Element {
 	if a.IsNative() {
@@ -205,50 +189,12 @@ func (a *API) Div(x, y Element) Element {
 
 // --- Comparison and Selection ---
 
-// IsZero returns 1 if x == 0, 0 otherwise.
-func (a *API) IsZero(x Element) frontend.Variable {
-	if a.IsNative() {
-		return a.nativeAPI.IsZero(x.Native())
-	}
-	return a.emulatedAPI.IsZero(x.Emulated())
-}
-
 // Select returns x if sel=1, y otherwise.
 func (a *API) Select(sel frontend.Variable, x, y Element) Element {
 	if a.IsNative() {
 		return Element{V: a.nativeAPI.Select(sel, x.Native(), y.Native())}
 	}
 	return Element{EV: *a.emulatedAPI.Select(sel, x.Emulated(), y.Emulated())}
-}
-
-// Lookup2 returns i0 if (b0,b1)=(0,0), i1 if (0,1), i2 if (1,0), i3 if (1,1).
-func (a *API) Lookup2(b0, b1 frontend.Variable, i0, i1, i2, i3 Element) Element {
-	if a.IsNative() {
-		return Element{V: a.nativeAPI.Lookup2(
-			b0, b1,
-			i0.Native(), i1.Native(), i2.Native(), i3.Native())}
-	}
-	return Element{EV: *a.emulatedAPI.Lookup2(
-		b0, b1,
-		i0.Emulated(), i1.Emulated(), i2.Emulated(), i3.Emulated())}
-}
-
-// Mux returns inputs[sel].
-func (a *API) Mux(sel frontend.Variable, inputs ...Element) Element {
-	if a.IsNative() {
-		nativeInputs := make([]frontend.Variable, len(inputs))
-		for i := range nativeInputs {
-			nativeInputs[i] = inputs[i].Native()
-		}
-		res := selector.Mux(a.nativeAPI, sel, nativeInputs...)
-		return Element{V: res}
-	}
-	emulatedInputs := make([]*emulated.Element[emulated.KoalaBear], len(inputs))
-	for i := range emulatedInputs {
-		emulatedInputs[i] = inputs[i].Emulated()
-	}
-	res := a.emulatedAPI.Mux(sel, emulatedInputs...)
-	return Element{EV: *res}
 }
 
 // --- Assertions ---
@@ -259,24 +205,6 @@ func (a *API) AssertIsEqual(x, y Element) {
 		a.nativeAPI.AssertIsEqual(x.Native(), y.Native())
 	} else {
 		a.emulatedAPI.AssertIsEqual(x.Emulated(), y.Emulated())
-	}
-}
-
-// AssertIsDifferent constrains x != y.
-func (a *API) AssertIsDifferent(x, y Element) {
-	if a.IsNative() {
-		a.nativeAPI.AssertIsDifferent(x.Native(), y.Native())
-	} else {
-		a.emulatedAPI.AssertIsDifferent(x.Emulated(), y.Emulated())
-	}
-}
-
-// AssertIsLessOrEqual constrains x <= y.
-func (a *API) AssertIsLessOrEqual(x, y Element) {
-	if a.IsNative() {
-		a.nativeAPI.AssertIsLessOrEqual(x.Native(), y.Native())
-	} else {
-		a.emulatedAPI.AssertIsLessOrEqual(x.Emulated(), y.Emulated())
 	}
 }
 
@@ -305,21 +233,6 @@ func (a *API) FromBinary(bits ...frontend.Variable) Element {
 		return Element{V: a.nativeAPI.FromBinary(bits...)}
 	}
 	return Element{EV: *a.emulatedAPI.FromBits(bits...)}
-}
-
-// And returns a AND b (bitwise).
-func (a *API) And(x, y frontend.Variable) frontend.Variable {
-	return a.nativeAPI.And(x, y)
-}
-
-// Or returns a OR b (bitwise).
-func (a *API) Or(x, y frontend.Variable) frontend.Variable {
-	return a.nativeAPI.Or(x, y)
-}
-
-// Xor returns a XOR b (bitwise).
-func (a *API) Xor(x, y frontend.Variable) frontend.Variable {
-	return a.nativeAPI.Xor(x, y)
 }
 
 // --- Hints ---
@@ -359,19 +272,92 @@ func (a *API) NewHint(f solver.Hint, nbOutputs int, inputs ...Element) ([]Elemen
 
 // --- Debug ---
 
-// Println prints variables for debugging.
-func (a *API) Println(vars ...Element) {
-	if a.IsNative() {
-		for i := range vars {
-			a.nativeAPI.Println(vars[i].Native())
-		}
+// AssertOctupletEqual constrains two octuplets to be equal element-wise.
+func (a *API) AssertOctupletEqual(x, y Octuplet) {
+	for i := 0; i < len(x); i++ {
+		a.AssertIsEqual(x[i], y[i])
+	}
+}
+
+// AssertOctupletEqualIf constrains x == y element-wise, conditioned on cond.
+// When cond == 0, the constraint is trivially satisfied.
+func (a *API) AssertOctupletEqualIf(cond Element, x, y Octuplet) {
+	for i := 0; i < len(x); i++ {
+		a.AssertIsEqual(a.Mul(cond, x[i]), a.Mul(cond, y[i]))
+	}
+}
+
+// AssertOctupletIsLess constrains x < y via lexicographic comparison,
+// mirroring KoalaOctuplet.Cmp used in the accumulator's ReadZero.
+// The first differing element determines the result.
+func (a *API) AssertOctupletIsLess(x, y Octuplet) {
+	a.assertOctupletIsLessInternal(nil, x, y)
+}
+
+// AssertOctupletIsLessIf constrains x < y when cond == 1.
+// When cond == 0, the constraint is trivially satisfied.
+func (a *API) AssertOctupletIsLessIf(cond frontend.Variable, x, y Octuplet) {
+
+	a.assertOctupletIsLessInternal(&cond, x, y)
+}
+
+// assertOctupletIsLessInternal implements lexicographic x < y.
+// If condFV is non-nil the assertion is conditional on *condFV == 1.
+//
+// Uses a hint to get per-element isLess booleans, verifies each with a
+// range check, and tracks equality across elements. The first differing
+// element determines the result.
+func (a *API) assertOctupletIsLessInternal(cond *frontend.Variable, x, y Octuplet) {
+	api := a.nativeAPI
+
+	hintInputs := make([]frontend.Variable, 16)
+	for i := 0; i < 8; i++ {
+		hintInputs[2*i] = a.GetFrontendVariable(x[i])
+		hintInputs[2*i+1] = a.GetFrontendVariable(y[i])
+	}
+	isLtHint, err := api.NewHint(octupletElementIsLessHint, 8, hintInputs...)
+	if err != nil {
+		panic(err)
+	}
+
+	isLess := frontend.Variable(0)
+	allEq := frontend.Variable(1)
+
+	for i := 0; i < 8; i++ {
+		xi, yi := a.GetFrontendVariable(x[i]), a.GetFrontendVariable(y[i])
+		diff := api.Sub(yi, xi)
+		isEq := api.IsZero(diff)
+
+		api.AssertIsBoolean(isLtHint[i])
+		// If isLt=1: posDiff = y-x > 0; if isLt=0: posDiff = x-y >= 0.
+		// Range check proves the hint is consistent with the actual values.
+		posDiff := api.Select(isLtHint[i], diff, api.Neg(diff))
+		api.ToBinary(posDiff, 31)
+
+		isLess = api.Add(isLess, api.Mul(allEq, isLtHint[i]))
+		allEq = api.Mul(allEq, isEq)
+	}
+
+	if cond != nil {
+		api.AssertIsEqual(api.Mul(*cond, api.Sub(1, isLess)), 0)
 	} else {
-		for i := range vars {
-			v := vars[i]
-			reduced := a.emulatedAPI.Reduce(&v.EV) // Use the return value!
-			for j := 0; j < len(reduced.Limbs); j++ {
-				a.nativeAPI.Println(reduced.Limbs[j])
-			}
+		api.AssertIsEqual(isLess, 1)
+	}
+}
+
+func octupletElementIsLessHint(_ *big.Int, inputs []*big.Int, outputs []*big.Int) error {
+	for i := 0; i < 8; i++ {
+		if inputs[2*i].Cmp(inputs[2*i+1]) < 0 {
+			outputs[i].SetInt64(1)
+		} else {
+			outputs[i].SetInt64(0)
 		}
+	}
+	return nil
+}
+
+func (a *API) AssetOctupletEqual(x, y Octuplet) {
+	for i := 0; i < 8; i++ {
+		a.AssertIsEqual(x[i], y[i])
 	}
 }

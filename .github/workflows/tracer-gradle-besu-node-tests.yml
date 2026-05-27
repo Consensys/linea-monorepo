@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   unit-tests-with-besu-node:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-xxl
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -40,7 +40,7 @@ jobs:
 
       - name: Upload proof request and conflation files
         if: always()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: traces-proof-requests-${{ github.sha }}
           path: tracer/arithmetization/build/besu/traces/**/*

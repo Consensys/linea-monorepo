@@ -43,3 +43,13 @@ It runs on **push** and **pull_request** to `main` when relevant paths change, i
 - `.github/workflows/arithmetization-*.yml`
 
 It is also available via **workflow_dispatch** and **workflow_call**.
+
+### Install Sail for ACT4 host builds
+
+The `install-sail` target downloads Sail.
+
+```bash
+make -C arithmetization install-sail
+```
+
+See [src/test/examples/README.md](src/test/examples/README.md) for ACT4 prerequisites, build, and run commands.

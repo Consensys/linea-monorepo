@@ -9,9 +9,8 @@ dependencies {
   api ("org.web3j:core:${libs.versions.web3j.get()}") {
     exclude group: 'org.slf4j', module: 'slf4j-nop'
   }
+  implementation project(':coordinator:core-interfaces')
   implementation "io.vertx:vertx-core"
-  implementation project(':coordinator:core')
-  implementation project(':coordinator:ethereum:common')
 
   testImplementation "io.vertx:vertx-junit5"
 }

@@ -7,6 +7,13 @@ import org.apache.logging.log4j.Logger
 /**
  * Tracks the highest safe block number (inclusive) that can be conflated.
  *
+ * Lock-release decisions are split across two methods so each carries a single
+ * piece of state:
+ *  - [caughtUpWithChainHeadAfterStartUp] only marks the L1 startup scan as finished;
+ *  - [unprocessedFtxQueueIsEmpty] performs the actual release, and must only be
+ *    invoked by the caller once the L1-events queue is genuinely drained
+ *    (otherwise conflation could advance past the L2 block where an in-flight
+ *    FTX will eventually execute).
  */
 internal class ForcedTransactionsSafeBlockNumberManager(
   private val listener: SafeBlockNumberUpdateListener,
@@ -17,13 +24,18 @@ internal class ForcedTransactionsSafeBlockNumberManager(
   private val ftxInSequencerForProcessing: MutableList<ULong> = mutableListOf()
 
   private fun updateSafeBlockNumber(value: ULong?) {
-    safeBlockNumber = value
-    listener.onSafeBlockNumberUpdate(safeBlockNumber)
+    if (safeBlockNumber != value) {
+      if (value == null) {
+        log.info("releasing safeBlockNumber lock: safeBlockNumber={} --> null", safeBlockNumber)
+      }
+      safeBlockNumber = value
+      listener.onSafeBlockNumberUpdate(safeBlockNumber)
+    }
   }
 
   @Synchronized
   fun lockSafeBlockNumberBeforeSendingToSequencer(headBlockNumber: ULong) {
-    if (safeBlockNumber != null && safeBlockNumber!! > 0UL) {
+    if (safeBlockNumber?.let { it > 0UL } == true) {
       log.info(
         "conflation already locked at safeBlockNumber={}, will not lock block={}",
         safeBlockNumber,
@@ -51,10 +63,10 @@ internal class ForcedTransactionsSafeBlockNumberManager(
    */
   @Synchronized
   fun ftxProcessedBySequencer(ftxNumber: ULong, simulatedExecutionBlockNumber: ULong) {
-    if (safeBlockNumber != null && simulatedExecutionBlockNumber < safeBlockNumber!!) {
+    if (safeBlockNumber?.let { simulatedExecutionBlockNumber < it } == true) {
       throw IllegalStateException(
-        "simulatedExecutionBlockNumber must be greater than or equal to safeBlockNumber" +
-          "simulatedExecutionBlockNumber=$simulatedExecutionBlockNumber, safeBlockNumber=$safeBlockNumber",
+        "ftx=$ftxNumber simulatedExecutionBlockNumber=$simulatedExecutionBlockNumber " +
+          "must be greater than or equal to safeBlockNumber=$safeBlockNumber",
       )
     }
 
@@ -85,13 +97,15 @@ internal class ForcedTransactionsSafeBlockNumberManager(
     if (!startUpScanFinished) {
       return
     }
-    log.info("releasing Safe Block Number lock")
     updateSafeBlockNumber(null)
   }
 
   /**
-   * Releases Safe Block Number lock after startup
-   * it's idempotent
+   * Marks the L1 startup scan as finished. It does not release the lock on its own:
+   * the L1 fetcher catching up only proves there are no further L1 events to discover,
+   * not that the sequencer has confirmed every FTX already queued. The caller of
+   * [unprocessedFtxQueueIsEmpty] is responsible for the actual release.
+   * Idempotent.
    */
   @Synchronized
   fun caughtUpWithChainHeadAfterStartUp() {
@@ -99,14 +113,7 @@ internal class ForcedTransactionsSafeBlockNumberManager(
       return
     }
     startUpScanFinished = true
-    if (this.ftxInSequencerForProcessing.isNotEmpty()) {
-      return
-    }
-    if (safeBlockNumber == 0UL) {
-      // still locked at 0 from start, no events on L1, release lock
-      log.info("releasing Safe Block Number lock after startup")
-      updateSafeBlockNumber(null)
-    }
+    log.info("L1 startup scan finished; safeBlockNumber={}", safeBlockNumber)
   }
 
   @Synchronized

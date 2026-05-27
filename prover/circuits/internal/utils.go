@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	snarkHash "github.com/consensys/gnark/std/hash"
-	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -61,11 +60,24 @@ type Range struct {
 
 type NewRangeOption func(*bool)
 
-func NoCheck(b *bool) {
-	*b = false
-}
-
-func NewRange(api frontend.API, n frontend.Variable, max int, opts ...NewRangeOption) *Range {
+// NewRange creates a Range struct to help work with variable-length arrays in circuits.
+// Given an 'actualLength' (the actual length) and 'max' (the maximum possible length), it computes
+// three boolean indicator arrays:
+//
+//   - InRange[i]:       1 if i < actualLength, 0 otherwise (marks valid/active indices)
+//   - IsLast[i]:        1 if i == actualLength-1, 0 otherwise (marks the last valid index)
+//   - IsFirstBeyond[i]: 1 if i == actualLength, 0 otherwise (marks the first index beyond the range)
+//
+// Example: if actualLength=3 and max=5:
+//
+//	InRange       = [1, 1, 1, 0, 0]
+//	IsLast        = [0, 0, 1, 0, 0]
+//	IsFirstBeyond = [0, 0, 0, 1, 0]
+//
+// This is useful for conditionally applying constraints only to real entries
+// by multiplying constraint expressions by InRange[i].
+// It also implicitly checks that actualLength <= max
+func NewRange(api frontend.API, actualLength frontend.Variable, max int, opts ...NewRangeOption) *Range {
 
 	if max < 0 {
 		panic("negative maximum not allowed")
@@ -78,7 +90,7 @@ func NewRange(api frontend.API, n frontend.Variable, max int, opts ...NewRangeOp
 
 	if max == 0 {
 		if check {
-			api.AssertIsEqual(n, 0)
+			api.AssertIsEqual(actualLength, 0)
 		}
 		return &Range{api: api}
 	}
@@ -89,18 +101,18 @@ func NewRange(api frontend.API, n frontend.Variable, max int, opts ...NewRangeOp
 
 	prevInRange := frontend.Variable(1)
 	for i := range isFirstBeyond {
-		isFirstBeyond[i] = api.IsZero(api.Sub(i, n))
+		isFirstBeyond[i] = api.IsZero(api.Sub(i, actualLength))
 		prevInRange = api.Sub(prevInRange, isFirstBeyond[i])
 		inRange[i] = prevInRange
 		if i != 0 {
 			isLast[i-1] = isFirstBeyond[i]
 		}
 	}
-	isLast[max-1] = api.IsZero(api.Sub(max, n))
+	isLast[max-1] = api.IsZero(api.Sub(max, actualLength))
 
 	if check {
-		// if the last element is still in range, it must be the last, meaning isLast = 1 = inRange, otherwise n > max
-		// if the last element is not in range, it already means n is in range and we don't need to check anything, but isLast = 0 = inRange will be the case anyway
+		// if the last element is still in range, it must be the last, meaning isLast = 1 = inRange, otherwise actualLength > max
+		// if the last element is not in range, it already means actualLength is in range and we don't need to check anything, but isLast = 0 = inRange will be the case anyway
 		api.AssertIsEqual(isLast[max-1], inRange[max-1])
 	}
 
@@ -184,6 +196,15 @@ func toCrumbsHint(_ *big.Int, ins, outs []*big.Int) error {
 	return nil
 }
 
+func readNumLittleEndian(api frontend.API, c []frontend.Variable, radix frontend.Variable) frontend.Variable {
+	res := frontend.Variable(0)
+	for i := len(c) - 1; i >= 0; i-- {
+		res = api.Mul(radix, res)
+		res = api.Add(res, c[i])
+	}
+	return res
+}
+
 // TODO add to gnark: bits.ToBase
 // ToCrumbs decomposes scalar v into nbCrumbs 2-bit digits.
 // It uses Little Endian order for compatibility with gnark, even though we use Big Endian order in the circuit
@@ -195,6 +216,9 @@ func ToCrumbs(api frontend.API, v frontend.Variable, nbCrumbs int) []frontend.Va
 	for _, c := range res {
 		api.AssertIsCrumb(c)
 	}
+
+	// Prove the hinted crumbs recompose to v (little-endian, Horner scan from MSB).
+	api.AssertIsEqual(v, readNumLittleEndian(api, res, 4))
 	return res
 }
 
@@ -243,24 +267,11 @@ func (r *Range) StaticLength() int {
 	return len(r.InRange)
 }
 
-func MimcHash(api frontend.API, e ...frontend.Variable) frontend.Variable {
-	hsh, err := mimc.NewMiMC(api)
-	if err != nil {
-		panic(err)
-	}
-	hsh.Write(e...)
-	return hsh.Sum()
-}
-
 type Slice[T any] struct {
 
 	// @reviewer: better for slice to be non-generic with frontend.Variable type and just duplicate the funcs for the few [32]frontend.Variable applications?
 	Values []T // Values[:Length] contains the data
 	Length frontend.Variable
-}
-
-func (s VarSlice) Range(api frontend.API) *Range {
-	return NewRange(api, s.Length, len(s.Values))
 }
 
 // Concat does not range check the slice lengths individually, but it does their sum
@@ -327,30 +338,6 @@ func concatHint(_ *big.Int, ins, outs []*big.Int) error {
 
 type VarSlice Slice[frontend.Variable]
 type Var32Slice Slice[[32]frontend.Variable]
-
-// Checksum is the SNARK equivalent of ChecksumSlice
-// TODO consider doing (r *Range) f (slice []frontend.Variable)
-func (s VarSlice) Checksum(api frontend.API, hsh snarkHash.FieldHasher) frontend.Variable {
-	if len(s.Values) == 0 {
-		panic("zero-length input")
-	}
-	api.AssertIsDifferent(s.Length, 0)
-
-	r := NewRange(api, s.Length, len(s.Values))
-
-	hsh.Reset()
-	sum := s.Values[0]
-	for i := 1; i < len(s.Values); i++ {
-		hsh.Reset()
-		hsh.Write(sum, s.Values[i])
-		sum = api.Select(r.InRange[i], hsh.Sum(), sum)
-	}
-
-	hsh.Reset()
-	hsh.Write(s.Length, sum)
-
-	return hsh.Sum()
-}
 
 // MerkleDamgardChecksumSubSlices checks the correctness of given Merkle-Damgard hashes of consecutive sub-slices.
 // NB! User must ensure that no sub-slice is empty.
@@ -509,23 +496,6 @@ func Pack(api frontend.API, words []frontend.Variable, bitsPerElem, bitsPerWord 
 	return res
 }
 
-func flatten(s [][32]frontend.Variable) []frontend.Variable {
-	res := make([]frontend.Variable, len(s)*32)
-	for i := range s {
-		for j := range s[i] {
-			res[i*32+j] = s[i][j]
-		}
-	}
-	return res
-}
-
-func (s Var32Slice) Checksum(api frontend.API) frontend.Variable {
-	values := PackFull(api, flatten(s.Values), 8)
-	valsAndLen := make([]frontend.Variable, 1, len(values)+1)
-	valsAndLen[0] = s.Length
-	return MimcHash(api, append(valsAndLen, values...)...)
-}
-
 func CombineBytesIntoElements(api frontend.API, b [32]frontend.Variable) [2]frontend.Variable {
 	r := big.NewInt(256)
 	return [2]frontend.Variable{
@@ -564,26 +534,6 @@ func PartialSums(api frontend.API, s []frontend.Variable) []frontend.Variable {
 	return res
 }
 
-func Differences(api frontend.API, s []frontend.Variable) []frontend.Variable {
-	res := make([]frontend.Variable, len(s))
-	prev := frontend.Variable(0)
-	for i := range s {
-		res[i] = api.Sub(s[i], prev)
-		prev = s[i]
-	}
-	return res
-}
-
-func Sum[T constraints.Integer](x ...T) T {
-	var res T
-
-	for _, xI := range x {
-		res += xI
-	}
-
-	return res
-}
-
 func Uint64To32Bytes(i uint64) [32]byte {
 	var b [32]byte
 	binary.BigEndian.PutUint64(b[24:], i)
@@ -617,19 +567,6 @@ func Truncate(api frontend.API, slice []frontend.Variable, n frontend.Variable) 
 		res[i] = api.MulAcc(api.Mul(1, slice[i]), slice[i], api.Neg(nYet))
 	}
 	return res
-}
-
-// RotateLeft rotates the slice v by n positions to the left, so that res[i] becomes v[(i+n)%len(v)]
-func RotateLeft(api frontend.API, v []frontend.Variable, n frontend.Variable) (res []frontend.Variable) {
-	res = make([]frontend.Variable, len(v))
-	t := SliceToTable(api, v)
-	for _, x := range v {
-		t.Insert(x)
-	}
-	for i := range res {
-		res[i] = t.Lookup(api.Add(i, n))[0]
-	}
-	return
 }
 
 // PartitionSlice populates sub-slices subs[0], ... where subs[i] contains the elements s[j] with selectors[j] = i
@@ -819,6 +756,7 @@ func DivEuclidean(api frontend.API, a, b frontend.Variable) (quotient, remainder
 	quotient, remainder = outs[0], outs[1]
 	api.AssertIsLessOrEqual(remainder, api.Sub(b, 1))
 	api.AssertIsLessOrEqual(quotient, a)
+	api.AssertIsEqual(api.Sub(a, remainder), api.Mul(quotient, b))
 
 	return
 }
@@ -835,4 +773,13 @@ func divEuclideanHint(_ *big.Int, ins, outs []*big.Int) error {
 	remainder.Mod(a, b)
 
 	return nil
+}
+
+// FromBytesToElements converts a slice of bytes to a slice of field elements, with no range check.
+func FromBytesToElements(b []byte) []frontend.Variable {
+	var res = make([]frontend.Variable, len(b))
+	for i := range b {
+		res[i] = b[i]
+	}
+	return res
 }

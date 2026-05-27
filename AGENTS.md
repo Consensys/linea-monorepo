@@ -13,6 +13,13 @@
 - Claude Code: `CLAUDE.md`, then `AGENTS.md`
 - GitHub Copilot: `.github/copilot-instructions.md`, then `AGENTS.md`
 
+## Local Agent Workflows
+
+- `squash-bugbot`: canonical skill at `.agents/skills/squash-bugbot/SKILL.md`.
+- Use `/squash-bugbot <PR_NUMBER>` locally in Codex, Cursor, or Claude Code to triage unresolved bot PR comments.
+- Claude Code exposes the same workflow through `.claude/commands/squash-bugbot.md`, a symlink to the canonical skill.
+- Requires an authenticated `gh` CLI with access to read PR comments, write PR comments, resolve review threads, and push the current branch.
+
 ## Discoverability Index
 
 - Repository overview: `README.md`
@@ -21,7 +28,7 @@
 - Architecture: `docs/architecture-description.md`
 - Engineering guidelines: `docs/development-guidelines.md`
 - Security and audits: `docs/security.md`, `docs/audits.md`
-- Package-specific agent rules: `*/AGENTS.md` (`contracts/`, `coordinator/`, `prover/`, `tracer/`, `sdk/`, `besu-plugins/`, `transaction-exclusion-api/`, `e2e/`)
+- Package-specific agent rules: `*/AGENTS.md` (`contracts/`, `coordinator/`, `prover/`, `tracer/`, `ts-libs/sdk/`, `linea-besu/plugins/`, `transaction-exclusion-api/`, `e2e/`)
 
 ## Project Guidelines
 
@@ -52,9 +59,9 @@ Linea zkEVM monorepo — the principal repository for [Linea](https://linea.buil
 |------|---------|-------|
 | Node.js | >= 24.14.1 | See `.nvmrc` |
 | pnpm | >= 10.32.1 | Enforced via `preinstall` |
-| JDK | 21 | Coordinator, Besu plugins, transaction-exclusion-api |
+| JDK | 25 | Coordinator, Besu plugins, transaction-exclusion-api — enforced by Gradle; JDK 25+ required |
 | Gradle | 9.4+ | use ./gradlew <task> |
-| Go | 1.24.6 | Prover |
+| Go | 1.25.7 | Prover |
 | Docker | 24+ | Local stack, CI |
 | Docker Compose | 2.19+ | Multi-service orchestration |
 | Make | 3.81+ | Environment management |
@@ -127,13 +134,53 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 
 - TypeScript packages: typecheck is part of build (`tsc`)
 
+## Code Intelligence (LSP)
+
+LSP provides precise navigation (go-to-definition, find-references, diagnostics) and is far more reliable than text search. Use it as the primary navigation strategy when LSP tools are available.
+
+### Setup
+
+#### Step 1 — install language server binaries
+
+| Language | macOS | Linux/Windows |
+|----------|-------|---------------|
+| TypeScript / JS | `npm install -g typescript-language-server typescript` | same |
+| Go | `go install golang.org/x/tools/gopls@latest` (ensure `$GOPATH/bin` is in `$PATH`) | same |
+| Java | `brew install jdtls` | download from [eclipse-jdtls releases](https://github.com/eclipse-jdtls/eclipse.jdt.ls/releases), symlink `bin/jdtls` into `$PATH` |
+| Kotlin | `brew install JetBrains/utils/kotlin-lsp` | download from [kotlin-lsp releases](https://github.com/Kotlin/kotlin-lsp/releases), add `bin/` to `$PATH` |
+
+#### Step 2 — install plugins in Claude Code
+
+Run `/plugins` and install `typescript-lsp`, `gopls-lsp`, `jdtls-lsp`, and `kotlin-lsp` from the
+`claude-plugins-official` marketplace.  The project's `.claude/settings.json` already enables them
+and sets `ENABLE_LSP_TOOL=1`, so no changes to your personal settings are needed.
+
+Restart Claude Code after installing.
+
+### Usage
+
+Prefer LSP tools over Grep/Glob/Read for code navigation:
+
+- `goToDefinition` / `goToImplementation` — jump to source instead of grepping
+- `findReferences` — find all call sites before renaming or changing a signature
+- `workspaceSymbol` — locate where a type or function is defined
+- `documentSymbol` — list all symbols in the current file
+- `hover` — get type info without opening the file
+- `incomingCalls` / `outgoingCalls` — trace call hierarchy
+
+Use Grep/Glob only for text/pattern searches (comments, string literals, config values) where LSP doesn't apply.
+
+**Important:** Every LSP operation requires a `filePath` pointing to a **file**, never a directory.  The file routes the request to the correct language server — pass any relevant file in the project if you don't have a specific one in mind.
+
+After writing or editing code, check LSP diagnostics and fix any type errors or missing imports before moving on.
+
 ## Code Conventions
 
 ### Style
 
-- **Formatter:** Prettier 3.7.4 — `prettier.config.mjs`
-- **Linter (TS/JS):** ESLint 9.39.2 flat config — `ts-libs/eslint-config/`
-- **Linter (Solidity):** Solhint 6.0.3 + Prettier plugin
+- **Formatter:** Prettier 3.8.1 — `prettier.config.mjs`
+- **Linter (TS/JS):** ESLint 9.39.4 flat config — `ts-libs/eslint-config/`
+- **Linter (Solidity):** Solhint 6.2.1 + Prettier plugin
 - **Linter (Kotlin/Java):** Spotless with ktlint + Google Java Format
 - **Linter (Go):** gofmt + golangci-lint
 - **Line length:** 120 characters
@@ -176,7 +223,7 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 |------|----------|-------|
 | Contracts (Hardhat) | Hardhat + ethers.js | `pnpm -F contracts run test` |
 | Contracts (Foundry) | Forge | `test/foundry/*` |
-| TypeScript packages | Jest 29.7.0 + ts-jest | `pnpm -F <pkg> run test` |
+| TypeScript packages | Jest 30.3.0 + ts-jest | `pnpm -F <pkg> run test` |
 | Coordinator | JUnit 5 + Mockito + WireMock | `./gradlew :coordinator:app:test` |
 | Prover | Go test | `go test ./... -tags nocorset,fuzzlight` |
 | E2E (protocol) | Jest | `pnpm -F e2e run test:local` |
@@ -241,6 +288,9 @@ Prettier config: `prettier.config.mjs`. Formatting is integrated into `lint:fix`
 - **Dependabot:** Configured for GitHub Actions dependencies (weekly, Monday 03:00 UTC)
 - **Engine strict:** `engine-strict=true` in `.npmrc`
 
+Additions to `pnpm.onlyBuiltDependencies` require a security review of the package's install script, including its
+network, filesystem, and process execution surface, publisher reputation, and recent npm publish history.
+
 ### Irreversible Operations
 
 These require human approval and follow the release process:
@@ -297,19 +347,19 @@ These require human approval and follow the release process:
 |------|------|-------|---------|
 | `contracts` | Smart contracts | Solidity 0.8.33, Hardhat, Foundry | Core protocol contracts (rollup, messaging, bridge, tokens) |
 | `coordinator` | Backend service | Kotlin 2.3.0, Gradle, Vertx | Orchestrates proof submission, blob submission, finalization |
-| `prover` | Backend service | Go 1.24.6 | ZK proof generation (gnark, gnark-crypto) |
+| `prover` | Backend service | Go 1.25.7 | ZK proof generation (gnark, gnark-crypto) |
 | `postman` | Backend service | TypeScript, Express, TypeORM | Bridge message execution service |
-| `sdk/sdk-core` | Library | TypeScript, tsup | Core SDK utilities and types |
-| `sdk/sdk-ethers` | Library | TypeScript, ethers.js 6 | SDK for ethers.js integration |
-| `sdk/sdk-viem` | Library | TypeScript, tsup, Viem | SDK for Viem integration |
+| `ts-libs/sdk/sdk-core` | Library | TypeScript, tsup | Core SDK utilities and types |
+| `ts-libs/sdk/sdk-ethers` | Library | TypeScript, ethers.js 6 | SDK for ethers.js integration |
+| `ts-libs/sdk/sdk-viem` | Library | TypeScript, tsup, Viem | SDK for Viem integration |
 | `e2e` | Tests | TypeScript, Jest | Protocol-level end-to-end tests |
-| `operations` | CLI tool | TypeScript, oclif | Operations management CLI |
+| `operations/cli` | CLI tool | TypeScript, oclif | Operations management CLI |
 | `ts-libs/eslint-config` | Config | ESLint 9 flat config | Shared ESLint configuration |
 | `ts-libs/linea-native-libs` | Library | TypeScript, Koffi (FFI) | Native library bindings |
 | `ts-libs/linea-shared-utils` | Library | TypeScript, Express, Viem | Shared utilities (server, metrics, logging) |
-| `native-yield-operations/automation-service` | Backend service | TypeScript, Apollo | Automated native yield operations |
-| `native-yield-operations/lido-governance-monitor` | Backend service | TypeScript, Prisma | Lido governance proposal monitoring |
-| `besu-plugins` | Plugins | Kotlin, Gradle | Besu blockchain client plugins (sequencer, state recovery) |
+| `operations/native-yield/automation-service` | Backend service | TypeScript, Apollo | Automated native yield operations |
+| `operations/native-yield/lido-governance-monitor` | Backend service | TypeScript, Prisma | Lido governance proposal monitoring |
+| `linea-besu/plugins` | Plugins | Kotlin, Gradle | Besu blockchain client plugins (sequencer, state recovery) |
 | `jvm-libs` | Libraries | Kotlin, Gradle | Shared JVM libraries (JSON-RPC, HTTP, persistence, metrics) |
 | `transaction-exclusion-api` | Backend service | Kotlin, Gradle, Vertx | Transaction exclusion tracking API |
 | `tracer` | Backend service | Java/Go Corset, Gradle | EVM trace generation and arithmetization |
@@ -323,22 +373,23 @@ coordinator/             Kotlin coordinator service
 prover/                  Go ZK prover
 corset/                  Rust constraint compiler
 postman/                 TypeScript bridge message executor
-sdk/                     TypeScript SDKs (core, ethers, viem)
+ts-libs/sdk/             TypeScript SDKs (core, ethers, viem)
 e2e/                     Protocol E2E tests
-operations/              Operations CLI tool
+operations/              Operations tools
+operations/cli/          Operations CLI tool
 ts-libs/                 Shared TypeScript libraries
-native-yield-operations/ Native yield services
-besu-plugins/            Besu client plugins
+operations/native-yield/ Native yield services
+linea-besu/plugins/      Besu client plugins
 jvm-libs/                Shared Kotlin/Java libraries
 transaction-exclusion-api/ Transaction exclusion API
 tracer/                  EVM tracer
-config/                  Service configuration files (TOML, JSON, XML)
+docker/config/           Service configuration files (TOML, JSON, XML)
 docker/                  Docker Compose files for local stack
 docs/                    Project documentation
 .github/workflows/       CI/CD workflows
 .github/actions/         Custom GitHub Actions
 .cursor/rules/           Cursor IDE rules
-.agents/skills/          Agent skills (smart contract development)
+.agents/skills/          Agent skills (smart contract, dependency maintenance, local PR workflows)
 ```
 
 ### CI/CD
@@ -359,12 +410,18 @@ docs/                    Project documentation
 postman -> @consensys/linea-sdk-viem -> @consensys/linea-sdk-core
 postman -> @consensys/linea-native-libs, @consensys/linea-shared-utils
 e2e -> @consensys/linea-shared-utils
-operations -> (standalone, uses ethers + viem)
-native-yield-operations/* -> @consensys/linea-shared-utils
+operations/cli -> (standalone, uses ethers + viem)
+operations/native-yield/* -> @consensys/linea-shared-utils
 coordinator -> jvm-libs/*
 transaction-exclusion-api -> jvm-libs/*
-besu-plugins -> jvm-libs/*
+linea-besu/plugins -> jvm-libs/*
 ```
+
+### External Docs
+
+| Dependency | Documentation | Notes |
+|------------|--------------|-------|
+| Hyperledger Besu | [besu/docs](https://github.com/besu-eth/besu/tree/main/docs) | Besu APIs, plugin interfaces, and internals — prefer this over grepping compiled JARs or decompressing artifacts |
 
 ### Internal Docs
 

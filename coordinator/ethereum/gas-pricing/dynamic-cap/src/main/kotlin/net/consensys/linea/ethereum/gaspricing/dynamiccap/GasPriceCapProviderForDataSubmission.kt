@@ -1,9 +1,9 @@
 package net.consensys.linea.ethereum.gaspricing.dynamiccap
 
 import linea.domain.gas.GasPriceCaps
-import net.consensys.linea.metrics.LineaMetricsCategory
+import linea.gaspricing.GasPriceCapProvider
+import linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.atomic.AtomicReference
 
@@ -20,18 +20,6 @@ class GasPriceCapProviderForDataSubmission(
   private var lastGasPriceCap: AtomicReference<GasPriceCaps?> = AtomicReference(null)
 
   init {
-    require(config.maxPriorityFeePerGasCap >= 0uL) {
-      "maxPriorityFeePerGasCap must be no less than 0. Value=${config.maxPriorityFeePerGasCap}"
-    }
-
-    require(config.maxFeePerGasCap >= 0uL) {
-      "maxFeePerGasCap must be no less than 0. Value=${config.maxFeePerGasCap}"
-    }
-
-    require(config.maxFeePerBlobGasCap >= 0uL) {
-      "maxFeePerBlobGasCap must be no less than 0. Value=${config.maxFeePerBlobGasCap}"
-    }
-
     metricsFacade.createGauge(
       category = LineaMetricsCategory.GAS_PRICE_CAP,
       name = "l1.blobsubmission.maxpriorityfeepergascap",
@@ -52,24 +40,20 @@ class GasPriceCapProviderForDataSubmission(
     )
   }
 
+  private fun ULong.coerceWithFallback(cap: ULong): ULong = coerceAtMost(cap).let { if (it <= 0uL) cap else it }
+
   private fun coerceGasPriceCaps(gasPriceCaps: GasPriceCaps): GasPriceCaps {
     val maxPriorityFeePerGasCap = gasPriceCaps.maxPriorityFeePerGasCap
-      .coerceAtMost(config.maxPriorityFeePerGasCap)
-      .run { if (this <= 0uL) config.maxPriorityFeePerGasCap else this }
+      .coerceWithFallback(config.maxPriorityFeePerGasCap)
 
     val maxFeePerGasCap = (
-      if (gasPriceCaps.maxBaseFeePerGasCap != null) {
-        gasPriceCaps.maxBaseFeePerGasCap!! + maxPriorityFeePerGasCap
-      } else {
-        gasPriceCaps.maxFeePerGasCap
-      }
+      gasPriceCaps.maxBaseFeePerGasCap?.let { it + maxPriorityFeePerGasCap }
+        ?: gasPriceCaps.maxFeePerGasCap
       )
-      .coerceAtMost(config.maxFeePerGasCap)
-      .run { if (this <= 0uL) config.maxFeePerGasCap else this }
+      .coerceWithFallback(config.maxFeePerGasCap)
 
     val maxFeePerBlobGasCap = gasPriceCaps.maxFeePerBlobGasCap
-      .coerceAtMost(config.maxFeePerBlobGasCap)
-      .run { if (this <= 0uL) config.maxFeePerBlobGasCap else this }
+      .coerceWithFallback(config.maxFeePerBlobGasCap)
 
     return GasPriceCaps(
       maxFeePerGasCap = maxFeePerGasCap,
