@@ -130,11 +130,11 @@ jobs:
           # Format per entry: <tag>|<version>|<json-array-of-include-paths>
           components=(
             "coordinator|${COORDINATOR_VERSION}|[\"coordinator/**\"]"
+            "maru|${MARU_VERSION}|[\"maru/**\"]"
             "postman|${POSTMAN_VERSION}|[\"postman/**\"]"
             "prover|${PROVER_VERSION}|[\"prover/**\"]"
             "tx-exclusion-api|${TX_EXCLUSION_API_VERSION}|[\"transaction-exclusion-api/**\"]"
             "linea-besu-package|${LINEA_BESU_VERSION}|[\"tracer/**\",\"tracer-constraints/**\",\"linea-besu/plugins/linea-sequencer/**\",\"linea-besu/besu/**\",\"linea-besu/package/**\",\"gradle/libs.versions.toml\"]"
-            "maru|${MARU_VERSION}|[\"maru/**\"]"
           )
 
           for (( i=${#components[@]}-1; i>=0; i-- )); do

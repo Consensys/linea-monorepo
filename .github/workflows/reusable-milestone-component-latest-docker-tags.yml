@@ -76,11 +76,15 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        component: [ coordinator, prover, postman, tx-exclusion-api, linea-besu-package, maru ]
+        component: [ coordinator, maru, prover, postman, tx-exclusion-api, linea-besu-package ]
         include:
           - component: coordinator
             image-name: linea-coordinator
             metadata: ${{ inputs.coordinator_metadata }}
+          - component: maru
+            # maru is published as consensys/maru rather than consensys/linea-maru.
+            image-name: maru
+            metadata: ${{ inputs.maru_metadata }}
           - component: prover
             image-name: linea-prover
             metadata: ${{ inputs.prover_metadata }}
@@ -93,10 +97,6 @@ jobs:
           - component: linea-besu-package
             image-name: linea-besu-package
             metadata: ${{ inputs.linea_besu_package_metadata }}
-          - component: maru
-            # maru is published as consensys/maru rather than consensys/linea-maru.
-            image-name: maru
-            metadata: ${{ inputs.maru_metadata }}
     outputs:
       coordinator: ${{ steps.latest-docker-tag.outputs.coordinator-latest-docker-tag }}
       prover: ${{ steps.latest-docker-tag.outputs.prover-latest-docker-tag }}

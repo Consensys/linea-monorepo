@@ -36,8 +36,8 @@ jobs:
       component-name: maru
       folder-name: maru
       include-path: maru/**
-      image_tag_suffix: ${{ inputs.image_tag_suffix || 'mrc1_test' }} #TODO: default will be removed
-      release_tag_suffix: ${{ inputs.release_tag_suffix || 'mrc1' }} #TODO: default will be removed
-      draft_release: ${{ !inputs.pre_release || false }} #TODO: default will be removed
-      pre_release: ${{ inputs.pre_release || true }} #TODO: default will be removed
+      image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      release_tag_suffix: ${{ inputs.release_tag_suffix }}
+      draft_release: ${{ !inputs.pre_release }}
+      pre_release: ${{ inputs.pre_release }}
     secrets: inherit

@@ -34,10 +34,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component-name: [ coordinator, prover, postman, tx-exclusion-api, linea-besu-package, maru ]
+        component-name: [ coordinator, maru, prover, postman, tx-exclusion-api, linea-besu-package ]
         include:
           - component-name: coordinator
             include-path: coordinator/**
+          - component-name: maru
+            include-path: maru/**
           - component-name: prover
             include-path: prover/**
           - component-name: postman
@@ -52,15 +54,13 @@ jobs:
               linea-besu/besu/**
               linea-besu/package/**
               gradle/libs.versions.toml
-          - component-name: maru
-            include-path: maru/**
     outputs:
       coordinator: ${{ steps.changelog-outputs.outputs.coordinator }}
+      maru: ${{ steps.changelog-outputs.outputs.maru }}
       prover: ${{ steps.changelog-outputs.outputs.prover }}
       postman: ${{ steps.changelog-outputs.outputs.postman }}
       tx-exclusion-api: ${{ steps.changelog-outputs.outputs.tx-exclusion-api }}
       linea-besu-package: ${{ steps.changelog-outputs.outputs.linea-besu-package }}
-      maru: ${{ steps.changelog-outputs.outputs.maru }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6
