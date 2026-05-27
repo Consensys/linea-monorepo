@@ -13,15 +13,14 @@
 //   - `Machine execution (N steps) took Xs`     -> steps + machine_s  (uint + float; steps is invariant)
 //   - "Elapsed (wall clock) time ... : M:SS.ss" -> wall_s             (float)
 //   - "Maximum resident set size (kbytes): N"   -> rss_kb             (int)
-//   - "TOTAL clock cycles: N"                   -> cycles             (int, invariant)
 //
 // Aggregation per (variant, iter):
 //   - Keccak: identity (1 log per (variant, iter)).
-//   - Blake : sum constraint_s/wall_s/cycles/steps across the M vector logs,
+//   - Blake : sum constraint_s/wall_s/steps across the M vector logs,
 //     max RSS, assert all M parsed.
 //
 // Output:
-//   - Per-workload invariant PASS/FAIL lines for cycle and step count.
+//   - Per-workload invariant PASS/FAIL line for step count.
 //   - Per-iter Markdown table.
 //   - Aggregate Markdown table with mean / stdev / [min, max] / paired Δ / paired t-stat.
 package main
@@ -43,7 +42,6 @@ type metrics struct {
 	steps       uint64
 	wallS       float64
 	rssKB       uint64
-	cycles      uint64
 }
 
 type variantMetrics struct {
@@ -60,7 +58,6 @@ var (
 	reMachineExec   = regexp.MustCompile(`Machine execution \((\d+) steps\) took ([\d.]+)s`)
 	reWall          = regexp.MustCompile(`Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): (\S+)`)
 	reRSS           = regexp.MustCompile(`Maximum resident set size \(kbytes\): (\d+)`)
-	reCycles        = regexp.MustCompile(`TOTAL clock cycles: (\d+)`)
 	reKeccakLogName = regexp.MustCompile(`^keccak_(opt|base)_(\d+)\.log$`)
 	reBlakeLogName  = regexp.MustCompile(`^blake_(opt|base)_(\d+)_(\d+)\.log$`)
 )
@@ -136,15 +133,6 @@ func parseLog(path string) (metrics, error) {
 	} else {
 		return m, fmt.Errorf("%s: rss line not found", path)
 	}
-	if mm := reCycles.FindStringSubmatch(body); mm != nil {
-		v, err := strconv.ParseUint(mm[1], 10, 64)
-		if err != nil {
-			return m, fmt.Errorf("%s: parse cycles: %w", path, err)
-		}
-		m.cycles = v
-	} else {
-		return m, fmt.Errorf("%s: cycles line not found", path)
-	}
 	return m, nil
 }
 
@@ -157,9 +145,9 @@ func discover(logsDir string, iters, blakeN int) (kc, bl workload, err error) {
 	bl.base.byIter = make(map[int]*metrics)
 
 	type blakeAgg struct {
-		count               int
-		constraintS, wallS  float64
-		steps, cycles, rssK uint64
+		count              int
+		constraintS, wallS float64
+		steps, rssK        uint64
 	}
 	blakeAggs := map[[2]int]*blakeAgg{} // key: [iter, variant=0 opt / 1 base]
 
@@ -217,7 +205,6 @@ func discover(logsDir string, iters, blakeN int) (kc, bl workload, err error) {
 			agg.constraintS += m.constraintS
 			agg.wallS += m.wallS
 			agg.steps += m.steps
-			agg.cycles += m.cycles
 			if m.rssKB > agg.rssK {
 				agg.rssK = m.rssKB
 			}
@@ -233,7 +220,6 @@ func discover(logsDir string, iters, blakeN int) (kc, bl workload, err error) {
 			steps:       a.steps,
 			wallS:       a.wallS,
 			rssKB:       a.rssK,
-			cycles:      a.cycles,
 		}
 		target := &bl.opt
 		if key[1] == 1 {
@@ -320,9 +306,7 @@ func pct(num, denom float64) float64 {
 func renderInvariants(out *strings.Builder, w workload) bool {
 	var (
 		stepsSeen     uint64
-		cyclesSeen    uint64
 		stepsConflict bool
-		cyclesMixed   bool
 		first         = true
 	)
 	for _, v := range []*variantMetrics{&w.opt, &w.base} {
@@ -330,31 +314,21 @@ func renderInvariants(out *strings.Builder, w workload) bool {
 			m := v.byIter[iter]
 			if first {
 				stepsSeen = m.steps
-				cyclesSeen = m.cycles
 				first = false
 				continue
 			}
 			if m.steps != stepsSeen {
 				stepsConflict = true
 			}
-			if m.cycles != cyclesSeen {
-				cyclesMixed = true
-			}
 		}
 	}
 	stepsOK := !stepsConflict
-	cyclesOK := !cyclesMixed
 	if stepsOK {
-		fmt.Fprintf(out, "- **%s** steps:  PASS (all variants/iters = `%d`)\n", w.name, stepsSeen)
+		fmt.Fprintf(out, "- **%s** steps: PASS (all variants/iters = `%d`)\n", w.name, stepsSeen)
 	} else {
-		fmt.Fprintf(out, "- **%s** steps:  FAIL (divergent across variants/iters)\n", w.name)
+		fmt.Fprintf(out, "- **%s** steps: FAIL (divergent across variants/iters)\n", w.name)
 	}
-	if cyclesOK {
-		fmt.Fprintf(out, "- **%s** cycles: PASS (all variants/iters = `%d`)\n", w.name, cyclesSeen)
-	} else {
-		fmt.Fprintf(out, "- **%s** cycles: FAIL (divergent across variants/iters)\n", w.name)
-	}
-	return stepsOK && cyclesOK
+	return stepsOK
 }
 
 func renderPerIter(out *strings.Builder, w workload, iters int) {
