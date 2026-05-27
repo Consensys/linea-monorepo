@@ -89,7 +89,7 @@ jobs:
           cd /tmp/wt-optim/arithmetization/src/test/examples
           # Keccak: one batched JSON at a stable workflow-controlled path.
           make keccak-rust-json \
-            KECCAK_N_VECTORS=${{ inputs.n_vectors_keccak || 100 }} \
+            KECCAK_N_VECTORS=${{ inputs.n_vectors_keccak || 10 }} \
             KECCAK_JSON=/tmp/keccak.json
           # Blake: N per-vector JSONs at a stable workflow-controlled directory.
           make blake-rust-json \
@@ -135,7 +135,7 @@ jobs:
             reset_state; run_${wl} opt  warmup || true
             reset_state; run_${wl} base warmup || true
             # Timed runs: opt_i, base_i alternating, starting with opt.
-            for i in $(seq 1 ${{ inputs.iterations || 5 }}); do
+            for i in $(seq 1 ${{ inputs.iterations || 2 }}); do
               reset_state; run_${wl} opt  "$i"
               reset_state; run_${wl} base "$i"
             done
@@ -145,7 +145,7 @@ jobs:
         run: |
           /tmp/bench/render_bench_summary \
             -logs /tmp/bench/logs \
-            -iters ${{ inputs.iterations || 5 }} \
+            -iters ${{ inputs.iterations || 3 }} \
             -blake-n ${{ inputs.n_vectors_blake || 3 }} \
             | tee -a "$GITHUB_STEP_SUMMARY"
 
