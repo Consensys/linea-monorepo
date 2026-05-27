@@ -13,6 +13,7 @@ fixture generation may import `prover-ray`, but the Zig verifier library under
 - `src/field/` implements Koalabear base and extension field arithmetic.
 - `src/crypto/` implements Poseidon2 and the Fiat-Shamir transcript.
 - `src/pcs/` implements polynomial helpers used by verifier logic.
+- `src/query/` contains query-type verifiers (e.g. global constraint check).
 - `src/runtime.zig` holds the verifier-side runtime state, currently the
   Fiat-Shamir transcript and round counter.
 - `src/generated/` contains generated verifier stubs.
@@ -122,10 +123,10 @@ From `verifier-ray/`:
 
 ```bash
 make fmt
+make verify-testdata
 make build
 zig build test
 cd codegen && go test ./...
-cd testdata/generate && go test ./...
 ```
 
 The broader check is:
@@ -134,8 +135,7 @@ The broader check is:
 make test
 ```
 
-`make test` first verifies generated test data, then runs Zig tests and Go
-codegen tests.
+`make test` first verifies generated test data and the generated stub, then runs Zig tests and Go codegen tests.
 
 ## Current Scope
 
@@ -147,6 +147,7 @@ Implemented and golden-tested:
 - Poseidon2 compression and Merkle-Damgard hashing
 - Fiat-Shamir transcript updates and random field/extension squeezes
 - per-round verifier random coin derivation for extension-field coins
+- global constraint check: `P_agg(r) = (r^n − 1) · Q(r)`
 
 Still incomplete or placeholder:
 

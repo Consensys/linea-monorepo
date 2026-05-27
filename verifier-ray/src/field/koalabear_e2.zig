@@ -49,10 +49,10 @@ pub const E2 = struct {
     }
 
     /// Invert in F_p[u]/(u^2 - 3): norm = a0^2 - 3*a1^2
-    pub fn inverse(self: E2) E2 {
+    pub fn inverse(self: E2) base.Error!E2 {
         const three = base.Element.init(3);
         const norm = self.a0.mul(self.a0).sub(self.a1.mul(self.a1).mul(three));
-        const norm_inv = norm.inverse();
+        const norm_inv = try norm.inverse();
         return .{
             .a0 = self.a0.mul(norm_inv),
             .a1 = self.a1.neg().mul(norm_inv),

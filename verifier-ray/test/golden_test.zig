@@ -30,10 +30,10 @@ test "koalabear base field matches prover-ray golden cases" {
         try std.testing.expectEqualSlices(u8, &case.bytes_a, &a.toBytes());
 
         if (case.has_inv_a) {
-            try expectElem(a.inverse(), case.inv_a);
+            try expectElem(try a.inverse(), case.inv_a);
         }
         if (case.has_div_ab) {
-            try expectElem(a.div(b), case.div_ab);
+            try expectElem(try a.div(b), case.div_ab);
         }
     }
 }
@@ -53,7 +53,7 @@ test "koalabear extension field matches prover-ray golden cases" {
         try std.testing.expectEqualSlices(u8, &case.bytes_a, &a.toBytes());
 
         if (case.has_inv_a) {
-            try expectExt(a.inverse(), uintsToExt(case.inv_a));
+            try expectExt(try a.inverse(), uintsToExt(case.inv_a));
         }
     }
 }

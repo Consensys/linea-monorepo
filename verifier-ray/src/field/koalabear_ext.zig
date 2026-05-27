@@ -55,8 +55,8 @@ pub const Ext = struct {
         return .{ .B0 = self.B0.mulByBase(rhs), .B1 = self.B1.mulByBase(rhs), .B2 = self.B2.mulByBase(rhs) };
     }
 
-    pub fn divByBase(self: Ext, rhs: base.Element) Ext {
-        return self.mulByBase(rhs.inverse());
+    pub fn divByBase(self: Ext, rhs: base.Element) base.Error!Ext {
+        return self.mulByBase(try rhs.inverse());
     }
 
     pub fn mul(self: Ext, rhs: Ext) Ext {
@@ -74,8 +74,8 @@ pub const Ext = struct {
         return self.mul(self);
     }
 
-    pub fn inverse(self: Ext) Ext {
-        if (self.isZero()) unreachable;
+    pub fn inverse(self: Ext) base.Error!Ext {
+        if (self.isZero()) return base.Error.NonCanonicalEncoding;
 
         // Adjugate elements for the cubic extension inverse:
         //   A = b0^2 - (u+1)*b1*b2
@@ -87,13 +87,13 @@ pub const Ext = struct {
 
         // Norm: d = b0*A + (u+1)*(b2*B + b1*C)
         const d = self.B0.mul(cap_a).add(self.B2.mul(cap_b).add(self.B1.mul(cap_c)).mulByNonResidue());
-        const d_inv = d.inverse();
+        const d_inv = try d.inverse();
 
         return .{ .B0 = cap_a.mul(d_inv), .B1 = cap_b.mul(d_inv), .B2 = cap_c.mul(d_inv) };
     }
 
-    pub fn div(self: Ext, rhs: Ext) Ext {
-        return self.mul(rhs.inverse());
+    pub fn div(self: Ext, rhs: Ext) base.Error!Ext {
+        return self.mul(try rhs.inverse());
     }
 
     pub fn pow(self: Ext, exponent: u256) Ext {

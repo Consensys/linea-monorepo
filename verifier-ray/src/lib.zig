@@ -31,6 +31,10 @@ pub const vortex = struct {
     pub const verifier = @import("vortex/verifier.zig");
 };
 
+pub const query = struct {
+    pub const global_constraint = @import("query/global_constraint.zig");
+};
+
 pub const generated = struct {
     pub const stub = @import("generated/stub.zig");
 };

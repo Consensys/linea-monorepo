@@ -8,7 +8,7 @@ pub fn evaluateBaseAtBase(values: []const field.Element, point: field.Element) E
     const n = try checkedCardinality(values.len);
 
     const omega = try field.rootOfUnityBy(values.len);
-    const inv_n = field.Element.init(n).inverse();
+    const inv_n = try field.Element.init(n).inverse();
     const vanishing = point.pow(n).sub(field.Element.one());
 
     var omega_i = field.Element.one();
@@ -16,7 +16,7 @@ pub fn evaluateBaseAtBase(values: []const field.Element, point: field.Element) E
     for (values) |value| {
         if (point.eql(omega_i)) return value;
         const weighted = omega_i.mul(inv_n).mul(value);
-        const inv_denom = point.sub(omega_i).inverse();
+        const inv_denom = try point.sub(omega_i).inverse();
         sum = sum.add(weighted.mul(inv_denom));
         omega_i = omega_i.mul(omega);
     }
@@ -29,7 +29,7 @@ pub fn evaluateBaseAtExt(values: []const field.Element, point: ext.Ext) Error!ex
     const n = try checkedCardinality(values.len);
 
     const omega = try field.rootOfUnityBy(values.len);
-    const inv_n = field.Element.init(n).inverse();
+    const inv_n = try field.Element.init(n).inverse();
     const vanishing = point.pow(n).sub(ext.Ext.one());
 
     var omega_i = field.Element.one();
@@ -39,7 +39,7 @@ pub fn evaluateBaseAtExt(values: []const field.Element, point: ext.Ext) Error!ex
         if (point.eql(domain_point)) return ext.Ext.lift(value);
         const weighted = omega_i.mul(inv_n).mul(value);
         const denom = point.sub(domain_point);
-        sum = sum.add(denom.inverse().mulByBase(weighted));
+        sum = sum.add((try denom.inverse()).mulByBase(weighted));
         omega_i = omega_i.mul(omega);
     }
 
@@ -51,7 +51,7 @@ pub fn evaluateExtAtBase(values: []const ext.Ext, point: field.Element) Error!ex
     const n = try checkedCardinality(values.len);
 
     const omega = try field.rootOfUnityBy(values.len);
-    const inv_n = field.Element.init(n).inverse();
+    const inv_n = try field.Element.init(n).inverse();
     const vanishing = point.pow(n).sub(field.Element.one());
 
     var omega_i = field.Element.one();
@@ -59,7 +59,7 @@ pub fn evaluateExtAtBase(values: []const ext.Ext, point: field.Element) Error!ex
     for (values) |value| {
         if (point.eql(omega_i)) return value;
         const weighted = value.mulByBase(omega_i.mul(inv_n));
-        const inv_denom = point.sub(omega_i).inverse();
+        const inv_denom = try point.sub(omega_i).inverse();
         sum = sum.add(weighted.mulByBase(inv_denom));
         omega_i = omega_i.mul(omega);
     }
@@ -72,7 +72,7 @@ pub fn evaluateExtAtExt(values: []const ext.Ext, point: ext.Ext) Error!ext.Ext {
     const n = try checkedCardinality(values.len);
 
     const omega = try field.rootOfUnityBy(values.len);
-    const inv_n = field.Element.init(n).inverse();
+    const inv_n = try field.Element.init(n).inverse();
     const vanishing = point.pow(n).sub(ext.Ext.one());
 
     var omega_i = field.Element.one();
@@ -82,7 +82,7 @@ pub fn evaluateExtAtExt(values: []const ext.Ext, point: ext.Ext) Error!ext.Ext {
         if (point.eql(domain_point)) return value;
         const weighted = value.mulByBase(omega_i.mul(inv_n));
         const denom = point.sub(domain_point);
-        sum = sum.add(weighted.mul(denom.inverse()));
+        sum = sum.add(weighted.mul(try denom.inverse()));
         omega_i = omega_i.mul(omega);
     }
 

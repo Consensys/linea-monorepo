@@ -37,7 +37,9 @@ func main() {
 
 	data := out.Bytes()
 	zigfmt, err := runZigFmt(data)
-	if err == nil {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: zig fmt failed: %v\n", err)
+	} else {
 		data = zigfmt
 	}
 

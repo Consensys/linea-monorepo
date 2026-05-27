@@ -105,13 +105,13 @@ pub const Element = struct {
         return result;
     }
 
-    pub fn inverse(self: Element) Element {
-        if (self.isZero()) unreachable;
+    pub fn inverse(self: Element) Error!Element {
+        if (self.isZero()) return Error.NonCanonicalEncoding;
         return self.pow(modulus - 2);
     }
 
-    pub fn div(self: Element, rhs: Element) Element {
-        return self.mul(rhs.inverse());
+    pub fn div(self: Element, rhs: Element) Error!Element {
+        return self.mul(try rhs.inverse());
     }
 
     pub fn mul2ExpNegN(self: Element, n: u32) Element {

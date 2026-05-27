@@ -237,10 +237,10 @@ func compileModule(
 		}
 	}
 	evalRound.RegisterVerifierAction(&Verifier{
-		m:             m,
-		mergeCoin:     mergeCoin,
-		evalCoin:      evalCoin,
-		witnessViews:  views,
+		Module:        m,
+		MergeCoin:     mergeCoin,
+		EvalCoin:      evalCoin,
+		WitnessViews:  views,
 		witnessClaims: witnessClaims,
 		viewKeyToIdx:  viewKeyToIdx,
 		buckets:       vBuckets,
@@ -538,33 +538,67 @@ func (a *EvalProverAction) Run(rt wiop.Runtime) {
 
 // Verifier checks the PLONK quotient identity for one module.
 // It runs in evalRound.
+//
+// Module, MergeCoin, EvalCoin, and WitnessViews are exported so the
+// verifier-ray codegen package can inspect them at build time.
+// Unexported fields are accessed through ExportedBuckets and
+// WitnessClaimEvalCellPos.
 type Verifier struct {
-	m             *wiop.Module
-	mergeCoin     *wiop.CoinField
-	evalCoin      *wiop.CoinField
-	witnessViews  []*wiop.ColumnView
+	Module        *wiop.Module
+	MergeCoin     *wiop.CoinField
+	EvalCoin      *wiop.CoinField
+	WitnessViews  []*wiop.ColumnView
 	witnessClaims []*wiop.Cell
 	viewKeyToIdx  map[colViewKey]int
 	buckets       []verifierBucket
 }
 
+// VerifierBucketExport is the codegen-visible description of one ratio bucket.
+type VerifierBucketExport struct {
+	Vanishings     []*wiop.Vanishing
+	QuotientClaims []*wiop.Cell
+}
+
+// ExportedBuckets returns the verifier buckets for use by codegen.
+func (gv *Verifier) ExportedBuckets() []VerifierBucketExport {
+	result := make([]VerifierBucketExport, len(gv.buckets))
+	for i, b := range gv.buckets {
+		result[i] = VerifierBucketExport{
+			Vanishings:     b.vanishings,
+			QuotientClaims: b.quotientClaims,
+		}
+	}
+	return result
+}
+
+// WitnessClaimEvalCellPos returns the position in proof.eval_cells for the
+// witness claim corresponding to column view cv. Returns -1 if not found.
+func (gv *Verifier) WitnessClaimEvalCellPos(cv *wiop.ColumnView) int {
+	key := colViewKey{id: cv.Column.Context.ID, shift: cv.ShiftingOffset}
+	idx, ok := gv.viewKeyToIdx[key]
+	if !ok {
+		return -1
+	}
+	return gv.witnessClaims[idx].Context.ID.Position()
+}
+
 // Check verifies the PLONK quotient identity for the module using the runtime's claimed values.
 func (gv *Verifier) Check(rt wiop.Runtime) error {
-	n := gv.m.RuntimeSize(rt)
+	n := gv.Module.RuntimeSize(rt)
 
-	if !gv.m.IsDynamic() && n != gv.m.Size() {
+	if !gv.Module.IsDynamic() && n != gv.Module.Size() {
 		panic(fmt.Sprintf(
 			"wiop/compilers: global quotient Check called with runtime size %d but module size is %d",
 			n,
-			gv.m.Size(),
+			gv.Module.Size(),
 		))
 	}
-	r := rt.GetCoinValue(gv.evalCoin)
-	coinExt := rt.GetCoinValue(gv.mergeCoin).Ext
+	r := rt.GetCoinValue(gv.EvalCoin)
+	coinExt := rt.GetCoinValue(gv.MergeCoin).Ext
 
 	// Build the map from column-view key → evaluation at r.
-	viewEvals := make(map[colViewKey]field.Gen, len(gv.witnessViews))
-	for i, cv := range gv.witnessViews {
+	viewEvals := make(map[colViewKey]field.Gen, len(gv.WitnessViews))
+	for i, cv := range gv.WitnessViews {
 		key := colViewKey{id: cv.Column.Context.ID, shift: cv.ShiftingOffset}
 		viewEvals[key] = rt.GetCellValue(gv.witnessClaims[i])
 	}
@@ -575,14 +609,11 @@ func (gv *Verifier) Check(rt wiop.Runtime) error {
 	for _, bkt := range gv.buckets {
 		// --- Recombine quotient shares: Q(r) = Σ_k r^{kn} · Q_k(r) ---
 		qr := field.ElemZero()
-		rPowKN := field.ElemOne() // r^{kn}, starts at r^0 = 1
-		for k, claim := range bkt.quotientClaims {
-			_ = k
+		rPowN := annihilator.Add(field.ElemOne()) // r^n = (r^n − 1) + 1
+		rPowKN := field.ElemOne()                 // r^{kn}, starts at r^0 = 1
+		for _, claim := range bkt.quotientClaims {
 			qk := rt.GetCellValue(claim) // Q_k(r)
 			qr = qr.Add(rPowKN.Mul(qk))
-			// Advance: r^{(k+1)n} = r^{kn} · r^n
-			rPowN := computeAnnihilator(r, n) // r^n − 1 + 1 = r^n ... just compute r^n
-			rPowN = rPowN.Add(field.ElemOne())
 			rPowKN = rPowKN.Mul(rPowN)
 		}
 
