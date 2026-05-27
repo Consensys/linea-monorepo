@@ -131,14 +131,18 @@ export default class Synctx extends Command {
       this.error(`Failed to get transaction pool from source and target nodes.`);
     }
 
-    if (sourceClientType && !hasPendingTransactions(sourceClientType, sourceTransactionPool)) {
-      this.log("No pending transactions found on source node");
-      return;
-    }
-
     let sourcePendingTransactions: Transaction[] = [];
     let targetPendingTransactions: Transaction[] = [];
-    if (sourceClientType) {
+    if (sourceNode) {
+      if (!sourceClientType) {
+        this.error("Failed to determine source node client type");
+      }
+
+      if (!hasPendingTransactions(sourceClientType, sourceTransactionPool)) {
+        this.log("No pending transactions found on source node");
+        return;
+      }
+
       sourcePendingTransactions = getTransactionsFromPool(sourceClientType, sourceTransactionPool);
       targetPendingTransactions = getTransactionsFromPool(targetClientType, targetTransactionPool);
     }
