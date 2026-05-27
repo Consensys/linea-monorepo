@@ -8,7 +8,7 @@
 #
 # To run:
 # riscv-test test.s IN_BYTES="0x000c000000000000" (pass)
-# riscv-test test.s IN_BYTES="0x000c000000000000" (fail)
+# riscv-test test.s IN_BYTES="0x000c000000000042" (fail)
 .section .data
 v0:
     .dword 0x0000000000000400
