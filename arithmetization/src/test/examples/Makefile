@@ -56,6 +56,9 @@ JSON := $(BIN).json
 # Inputs and offsets for the program
 IN_BYTES        ?= ""
 
+# Keccak guest: compile-time vector count
+KECCAK_N_VECTORS ?= 10
+
 # Values to generate the linker script
 # 128 MiB (0x00000000 -> 0x07FFFFFF)
 PROGRAM_OFFSET  ?= 0x00000000
@@ -112,14 +115,25 @@ compile: require-src linker-script
 		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dpath=$(BASENAME); \
 	elif [ "$(EXT)" = ".rs" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
-		cargo +nightly rustc \
-			--manifest-path $(MAKEFILE_DIR)rust/Cargo.toml \
-			--target $(MAKEFILE_DIR)rust/riscv64im-unknown-none-elf.json \
-			-Z build-std=core \
-			-Z json-target-spec \
-			--bin $(NAME) \
-			--release \
-			-- -C link-arg=-T$(LINKER_SCRIPT); \
+		if [ "$(NAME)" = "keccak" ]; then \
+			env KECCAK_N_VECTORS="$(KECCAK_N_VECTORS)" cargo +nightly rustc \
+				--manifest-path $(MAKEFILE_DIR)rust/Cargo.toml \
+				--target $(MAKEFILE_DIR)rust/riscv64im-unknown-none-elf.json \
+				-Z build-std=core \
+				-Z json-target-spec \
+				--bin $(NAME) \
+				--release \
+				-- -C link-arg=-T$(LINKER_SCRIPT); \
+		else \
+			cargo +nightly rustc \
+				--manifest-path $(MAKEFILE_DIR)rust/Cargo.toml \
+				--target $(MAKEFILE_DIR)rust/riscv64im-unknown-none-elf.json \
+				-Z build-std=core \
+				-Z json-target-spec \
+				--bin $(NAME) \
+				--release \
+				-- -C link-arg=-T$(LINKER_SCRIPT); \
+		fi; \
 	else \
 		echo "Unsupported file extension: $(EXT)"; \
 		exit 1; \

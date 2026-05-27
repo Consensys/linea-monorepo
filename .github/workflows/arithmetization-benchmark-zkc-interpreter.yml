@@ -213,7 +213,12 @@ jobs:
               log "FAIL /usr/bin/time -v zkc execute ... (rc=${smoke_rc})"
               if [ "${smoke_rc}" -eq 127 ]; then
                 log "     rc=127 usually means /usr/bin/time or zkc was not found"
+              elif [ "${smoke_rc}" -eq 4 ]; then
+                log "     rc=4 usually means zkc execution failed (guest exit / IR panic)"
               fi
+              log "     zkc errors from /tmp/bench/logs/preflight_smoke.log:"
+              grep -E 'level=error|machine panic|EXIT CODE' /tmp/bench/logs/preflight_smoke.log \
+                | tail -10 | sed 's/^/     /' | tee -a "${GITHUB_STEP_SUMMARY}" || true
               log "     last 20 lines of /tmp/bench/logs/preflight_smoke.log:"
               tail -20 /tmp/bench/logs/preflight_smoke.log | sed 's/^/     /' | tee -a "${GITHUB_STEP_SUMMARY}"
               failures=$((failures + 1))
