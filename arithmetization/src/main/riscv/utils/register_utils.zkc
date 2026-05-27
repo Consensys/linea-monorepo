@@ -37,39 +37,105 @@ fn print_register_values<registers>() -> () {
 
 fn print_register_name(r:Register) {
     switch r {
-        case 0: { printf "zero" }
-        case 1: { printf "ra" }
-        case 2: { printf "sp" }
-        case 3: { printf "gp" }
-        case 4: { printf "tp" }
-        case 5: { printf "t0" }
-        case 6: { printf "t1" }
-        case 7: { printf "t2" }
-        case 8: { printf "s0" }
-        case 9: { printf "s1" }
-        case 10: { printf "a0" }
-        case 11: { printf "a1" }
-        case 12: { printf "a2" }
-        case 13: { printf "a3" }
-        case 14: { printf "a4" }
-        case 15: { printf "a5" }
-        case 16: { printf "a6" }
-        case 17: { printf "a7" }
-        case 18: { printf "s2" }
-        case 19: { printf "s3" }
-        case 20: { printf "s4" }
-        case 21: { printf "s5" }
-        case 22: { printf "s6" }
-        case 23: { printf "s7" }
-        case 24: { printf "s8" }
-        case 25: { printf "s9" }
-        case 26: { printf "s10" }
-        case 27: { printf "s11" }
-        case 28: { printf "t3" }
-        case 29: { printf "t4" }
-        case 30: { printf "t5" }
-        case 31: { printf "t6" }
-        default: { printf "x%d", r }
+        case 0: {
+            printf "zero"
+        }
+        case 1: {
+            printf "ra"
+        }
+        case 2: {
+            printf "sp"
+        }
+        case 3: {
+            printf "gp"
+        }
+        case 4: {
+            printf "tp"
+        }
+        case 5: {
+            printf "t0"
+        }
+        case 6: {
+            printf "t1"
+        }
+        case 7: {
+            printf "t2"
+        }
+        case 8: {
+            printf "s0"
+        }
+        case 9: {
+            printf "s1"
+        }
+        case 10: {
+            printf "a0"
+        }
+        case 11: {
+            printf "a1"
+        }
+        case 12: {
+            printf "a2"
+        }
+        case 13: {
+            printf "a3"
+        }
+        case 14: {
+            printf "a4"
+        }
+        case 15: {
+            printf "a5"
+        }
+        case 16: {
+            printf "a6"
+        }
+        case 17: {
+            printf "a7"
+        }
+        case 18: {
+            printf "s2"
+        }
+        case 19: {
+            printf "s3"
+        }
+        case 20: {
+            printf "s4"
+        }
+        case 21: {
+            printf "s5"
+        }
+        case 22: {
+            printf "s6"
+        }
+        case 23: {
+            printf "s7"
+        }
+        case 24: {
+            printf "s8"
+        }
+        case 25: {
+            printf "s9"
+        }
+        case 26: {
+            printf "s10"
+        }
+        case 27: {
+            printf "s11"
+        }
+        case 28: {
+            printf "t3"
+        }
+        case 29: {
+            printf "t4"
+        }
+        case 30: {
+            printf "t5"
+        }
+        case 31: {
+            printf "t6"
+        }
+        default: {
+            printf "x%d", r
+        }
     }
 }
 
