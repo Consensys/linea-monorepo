@@ -331,6 +331,12 @@ jobs:
   milestone-release-on-main:
     needs: [manual-run-release-on-main]
     if: ${{ always() && !cancelled() && (!inputs.dry_run_release_on_branch || needs.manual-run-release-on-main.result == 'success') }}
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+      packages: write
+      pull-requests: write
     uses: ./.github/workflows/linea-milestone-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
