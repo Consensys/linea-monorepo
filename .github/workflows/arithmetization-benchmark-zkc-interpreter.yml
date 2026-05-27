@@ -146,12 +146,17 @@ jobs:
           done
 
       - name: Parse logs and emit summary
+        if: always()
+        shell: bash
         run: |
+          set -o pipefail
+          mkdir -p /tmp/bench/logs
           /tmp/bench/render_bench_summary \
             -logs /tmp/bench/logs \
             -iters ${{ inputs.iterations || 2 }} \
             -blake-n 1 \
-            | tee -a "$GITHUB_STEP_SUMMARY"
+            | tee -a "$GITHUB_STEP_SUMMARY" \
+            | tee /tmp/bench/logs/summary.md
 
       - name: Upload benchmark logs
         uses: actions/upload-artifact@v4
