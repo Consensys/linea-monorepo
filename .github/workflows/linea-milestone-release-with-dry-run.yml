@@ -15,26 +15,20 @@ on:
   workflow_dispatch:
     inputs:
       dry_run_release_on_branch:
-        description: 'Run dry release on a temporary branch forked from latest main'
+        description: 'Dry run release on a temporary branch forked from latest main'
         required: false
         type: boolean
         default: true
       image_tag_suffix:
         description: 'Custom docker image tag suffix (passed through to linea-milestone-release)'
-        required: true
-        type: string
-      release_tag_suffix:
-        description: 'Custom release tag suffix (required for non-main runs)'
-        required: true
+        required: false
+        default: ''
         type: string
       pre_release:
         description: 'Pre Release if checked; Draft release otherwise'
         required: false
         type: boolean
         default: false
-  push: #TODO: to be removed
-    branches:
-      - ci/feat-milestone-release-with-dry-run
 
 concurrency:
   group: linea-milestone-release-with-dry-run-${{ github.ref }}
@@ -63,17 +57,17 @@ jobs:
       # The default GITHUB_TOKEN cannot trigger another workflow_dispatch run
       # (GitHub blocks token-initiated workflow chaining to prevent loops),
       # so we mint an App token that has actions:write + contents:write.
-      # - name: Mint App token (actions:write + contents:write)
-      #   id: app-token
-      #   uses: actions/create-github-app-token@v2
-      #   with:
-      #     app-id: ${{ secrets.RELEASE_BOT_APP_ID }}
-      #     private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+      - name: Mint App token (actions:write + contents:write)
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
 
       - name: Checkout main
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          # token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
           ref: main
           fetch-depth: 0
 
@@ -90,10 +84,10 @@ jobs:
 
       - name: Dispatch linea-milestone-release.yml on new branch
         env:
-          # GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           BRANCH: ${{ steps.mkbranch.outputs.branch }}
-          IMAGE_TAG_SUFFIX: '' # ${{ inputs.image_tag_suffix }}
-          RELEASE_TAG_SUFFIX: 'rc' # ${{ inputs.release_tag_suffix }}
+          IMAGE_TAG_SUFFIX: 'branch_run'
+          RELEASE_TAG_SUFFIX: 'branch-run'
           PRE_RELEASE: ${{ inputs.pre_release }}
         run: |
           set -euo pipefail
@@ -107,7 +101,7 @@ jobs:
       - name: Find dispatched run and report URL
         id: find-run
         env:
-          # GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           BRANCH: ${{ steps.mkbranch.outputs.branch }}
         run: |
           set -euo pipefail
@@ -229,6 +223,63 @@ jobs:
             git push origin ":refs/tags/${tag}" || true
           done <<< "${NEW_TAGS}"
 
+      - name: Delete Docker Hub tags created by this dry run
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          # Must match the image_tag_suffix passed to linea-milestone-release.yml above.
+          IMAGE_TAG_SUFFIX: branch_run
+        run: |
+          set -euo pipefail
+          if [ -z "${DOCKERHUB_USERNAME:-}" ] || [ -z "${DOCKERHUB_TOKEN:-}" ]; then
+            echo "Docker Hub credentials not set; skipping image tag cleanup."
+            exit 0
+          fi
+
+          # Exchange username/token for a short-lived JWT used by /v2/repositories/.../tags endpoints.
+          JWT=$(curl -fsS -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg u "$DOCKERHUB_USERNAME" --arg p "$DOCKERHUB_TOKEN" '{username:$u, password:$p}')" \
+            https://hub.docker.com/v2/users/login/ | jq -r .token)
+          if [ -z "${JWT}" ] || [ "${JWT}" = "null" ]; then
+            echo "Failed to obtain Docker Hub JWT; skipping image tag cleanup." >&2
+            exit 0
+          fi
+
+          # Every image the milestone release publishes, including the maru special case.
+          REPOS=(
+            consensys/linea-coordinator
+            consensys/linea-postman
+            consensys/linea-prover
+            consensys/linea-transaction-exclusion-api
+            consensys/linea-besu-package
+            consensys/maru
+          )
+
+          for repo in "${REPOS[@]}"; do
+            echo "── Scanning ${repo} for tags ending in -${IMAGE_TAG_SUFFIX}"
+            # page_size=100 is the Docker Hub max; for a single dry run this is more than enough.
+            tags=$(curl -fsS "https://hub.docker.com/v2/repositories/${repo}/tags?page_size=100" \
+              | jq -r --arg suffix "-${IMAGE_TAG_SUFFIX}" '.results[].name | select(endswith($suffix))' || true)
+
+            if [ -z "${tags}" ]; then
+              echo "  (no matching tags)"
+              continue
+            fi
+
+            while IFS= read -r tag; do
+              [ -z "${tag}" ] && continue
+              echo "  → Deleting ${repo}:${tag}"
+              http_code=$(curl -s -o /dev/null -w '%{http_code}' \
+                -X DELETE \
+                -H "Authorization: JWT ${JWT}" \
+                "https://hub.docker.com/v2/repositories/${repo}/tags/${tag}/" || true)
+              # 204 = deleted, 404 = already gone. Anything else, surface but don't fail the job.
+              if [ "${http_code}" != "204" ] && [ "${http_code}" != "404" ]; then
+                echo "    WARN: DELETE returned HTTP ${http_code} for ${repo}:${tag}" >&2
+              fi
+            done <<< "${tags}"
+          done
+
       - name: Delete temp branch
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -247,6 +298,5 @@ jobs:
     uses: ./.github/workflows/linea-milestone-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: ${{ inputs.release_tag_suffix }}
       pre_release: ${{ inputs.pre_release }}
     secrets: inherit
