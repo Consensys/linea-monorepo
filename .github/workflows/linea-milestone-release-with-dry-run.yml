@@ -131,7 +131,7 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     needs: [create-temp-branch-and-dispatch-release]
     if: ${{ always() && !cancelled() && (inputs.dry_run_release_on_branch || true) }}
-    environment: ${{ (inputs.dry_run_release_on_branch || true) && 'docker-build-and-e2e' || '' }} #TODO: temp use docker-build-and-e2e for environment
+    environment: ${{ (inputs.dry_run_release_on_branch || true) && 'run-release-on-main' || '' }}
     concurrency:
       group: manual-run-release-on-main-${{ github.ref }}
     steps:
