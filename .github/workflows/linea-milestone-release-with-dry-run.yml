@@ -22,8 +22,13 @@ on:
       image_tag_suffix:
         description: 'Custom docker image tag suffix (passed through to linea-milestone-release)'
         required: false
-        default: ''
         type: string
+        default: ''
+      release_tag_suffix: # TODO: to be removed 
+        description: 'Custom release tag suffix (required for non-main runs)'
+        required: false
+        type: string
+        default: ''
       pre_release:
         description: 'Pre Release if checked; Draft release otherwise'
         required: false
@@ -328,5 +333,6 @@ jobs:
     uses: ./.github/workflows/linea-milestone-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: to be removed
       pre_release: ${{ inputs.pre_release }}
     secrets: inherit
