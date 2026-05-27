@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/hash"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/utils"
 )
@@ -31,7 +32,7 @@ type Runtime struct {
 	// fs is the Fiat-Shamir state. It is updated with column and cell
 	// assignments at the end of each round and used to derive coin values for
 	// the next round.
-	fs *fiatshamir.FiatShamir
+	fs *fiatshamir.Transcript
 	// columns maps each column's [ObjectID] to its concrete vector assignment.
 	columns map[ObjectID]*ConcreteVector
 	// cells maps each cell's [ObjectID] to its concrete scalar value.
@@ -55,9 +56,10 @@ type Runtime struct {
 //
 // Panics if sys has no interactive rounds (len(sys.Rounds) == 0).
 func NewRuntime(sys *System) Runtime {
+	poseidon2Hasher := hash.NewPoseidon2SpongeHasher()
 	run := Runtime{
 		System:       sys,
-		fs:           fiatshamir.NewFiatShamir(),
+		fs:           fiatshamir.NewTranscript(&poseidon2Hasher),
 		columns:      make(map[ObjectID]*ConcreteVector),
 		cells:        make(map[ObjectID]field.Gen),
 		coins:        make(map[ObjectID]field.Gen),
