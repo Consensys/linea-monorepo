@@ -271,24 +271,6 @@ jobs:
       upload_changelog: true
     secrets: inherit
 
-  maru-gh-release:
-    needs: [component-release-metadata, run-e2e-tests]
-    if: >
-      always() && !cancelled() &&
-      needs.run-e2e-tests.result == 'success' &&
-      fromJson(needs.component-release-metadata.outputs.maru).tag_changed == 'true'
-    uses: ./.github/workflows/reusable-component-gh-release.yml
-    with:
-      component-name: maru
-      folder-name: maru
-      include-path: maru/**
-      image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: '' # no release tag suffix allowed for milestone component release
-      draft_release: ${{ !inputs.pre_release }}
-      pre_release: ${{ inputs.pre_release }}
-      upload_changelog: true
-    secrets: inherit
-
   linea-besu-gh-release:
     needs: [component-release-metadata, run-e2e-tests]
     if: >
