@@ -11,10 +11,7 @@
 //!
 //! ## Whole input region
 //! `vector_0 || vector_1 || … || vector_{N_VECTORS-1}` (no count prefix; no
-//! separator). Total = `N_VECTORS * 720` bytes. Build it with
-//! `scripts/build_keccak_in_bytes.py` against
-//! `testdata/zkc/bench/keccakf_with_padding.accepts` in go-corset (or
-//! against any other source that follows the same JSON-Lines shape).
+//! separator). Total = `N_VECTORS * 720` bytes. 
 //!
 //! Exit codes:
 //! - `0` : every vector's computed digest matched its expected digest.
