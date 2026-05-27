@@ -261,7 +261,7 @@ jobs:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           # Must match the image_tag_suffix passed to linea-milestone-release.yml above.
-          IMAGE_TAG_SUFFIX: branch_run
+          IMAGE_TAG_SUFFIX: dry_run
         run: |
           set -euo pipefail
           if [ -z "${DOCKERHUB_USERNAME:-}" ] || [ -z "${DOCKERHUB_TOKEN:-}" ]; then
