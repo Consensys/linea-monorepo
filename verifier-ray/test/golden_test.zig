@@ -17,6 +17,11 @@ const lagrange = verifier_ray.pcs.lagrange;
 const polynomial = verifier_ray.pcs.polynomial;
 const runtime = verifier_ray.runtime;
 
+test "runtime visibility tags match prover-ray" {
+    try std.testing.expectEqual(vectors.prover_visibility_oracle, @intFromEnum(runtime.Visibility.oracle));
+    try std.testing.expectEqual(vectors.prover_visibility_public, @intFromEnum(runtime.Visibility.public));
+}
+
 test "koalabear base field matches prover-ray golden cases" {
     for (vectors.field_cases) |case| {
         const a = elem(case.a);
@@ -315,7 +320,6 @@ const TraceRoundBacking = struct {
         var tampered = false;
         var column_count: usize = 0;
         for (round_case.columns, 0..) |column_case, i| {
-            if (column_case.visibility == 0) continue;
             try std.testing.expect(column_case.is_assigned);
 
             const assignment: runtime.Vector = if (column_case.is_ext) assignment: {

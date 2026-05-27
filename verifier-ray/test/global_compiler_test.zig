@@ -227,8 +227,8 @@ fn fillExts(out: []ext.Ext, values: []const [6]u32) void {
 
 fn visibility(value: u8) !runtime.Visibility {
     return switch (value) {
-        1 => .oracle,
-        2 => .public,
+        vectors.prover_visibility_oracle => .oracle,
+        vectors.prover_visibility_public => .public,
         else => error.InvalidVisibility,
     };
 }

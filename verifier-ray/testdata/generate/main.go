@@ -94,6 +94,9 @@ func writeHeader(out *bytes.Buffer) {
 	fmt.Fprintln(out, "pub const PoseidonMdCase = struct { message: []const u32, expected: [8]u32 };")
 	fmt.Fprintln(out, "pub const FiatShamirCase = struct { base_updates: []const u32, ext_updates: []const [6]u32, random_field: [8]u32, random_ext: [6]u32 };")
 	fmt.Fprintln(out)
+	fmt.Fprintf(out, "pub const prover_visibility_oracle: u8 = %d;\n", int(wiop.VisibilityOracle))
+	fmt.Fprintf(out, "pub const prover_visibility_public: u8 = %d;\n", int(wiop.VisibilityPublic))
+	fmt.Fprintln(out)
 	fmt.Fprintln(out, "pub const RuntimeTraceColumn = struct { visibility: u8, is_assigned: bool, is_ext: bool, base_values: []const u32, ext_values: []const [6]u32 };")
 	fmt.Fprintln(out, "pub const RuntimeTraceCell = struct { is_assigned: bool, is_ext: bool, base_value: u32, ext_value: [6]u32 };")
 	fmt.Fprintln(out, "pub const RuntimeTraceRound = struct { columns: []const RuntimeTraceColumn, cells: []const RuntimeTraceCell, expected_coins: []const [6]u32 };")
@@ -388,9 +391,9 @@ type runtimeTraceRound struct {
 	expectedCoins []field.Ext
 }
 
-// runtimeTraceColumn records enough information for the Zig runtime to replay
-// prover-ray's column absorption rules: internal columns are skipped, while
-// oracle and public columns must be assigned and absorbed into Fiat-Shamir.
+// runtimeTraceColumn records one verifier-visible column assignment. prover-ray
+// may have internal columns in the source protocol, but they are intentionally
+// not exported to verifier-ray traces.
 type runtimeTraceColumn struct {
 	visibility wiop.Visibility
 	assigned   bool
@@ -438,6 +441,8 @@ func buildRuntimeTraceCases() []runtimeTraceCase {
 
 	r0OracleBase := mod.NewColumn(sys.Context.Childf("r0-oracle-base"), wiop.VisibilityOracle, r0)
 	r0PublicExt := mod.NewExtensionColumn(sys.Context.Childf("r0-public-ext"), wiop.VisibilityPublic, r0)
+	// Keep an unassigned internal column in the prover-ray protocol. AdvanceRound
+	// ignores it, and the verifier trace below intentionally does not export it.
 	mod.NewColumn(sys.Context.Childf("r0-internal-unassigned"), wiop.VisibilityInternal, r0)
 	r0BaseCell := r0.NewCell(sys.Context.Childf("r0-base-cell"), false)
 	r0ExtCell := r0.NewCell(sys.Context.Childf("r0-ext-cell"), true)
@@ -499,7 +504,6 @@ func buildRuntimeTraceCases() []runtimeTraceCase {
 				columns: []runtimeTraceColumn{
 					{visibility: wiop.VisibilityOracle, assigned: true, baseValues: r0OracleBaseValues},
 					{visibility: wiop.VisibilityPublic, assigned: true, isExt: true, extValues: r0PublicExtValues},
-					{visibility: wiop.VisibilityInternal, assigned: false},
 				},
 				cells: []runtimeTraceCell{
 					{assigned: true, baseValue: r0BaseCellValue},
@@ -547,8 +551,19 @@ func writeRuntimeTraceColumn(out *bytes.Buffer, column runtimeTraceColumn) {
 	if column.assigned && column.isExt {
 		extValues = extSlice(column.extValues)
 	}
-	fmt.Fprintf(out, "                .{ .visibility = %d, .is_assigned = %t, .is_ext = %t, .base_values = &%s, .ext_values = &%s },\n",
-		int(column.visibility), column.assigned, column.isExt, baseValues, extValues)
+	fmt.Fprintf(out, "                .{ .visibility = %s, .is_assigned = %t, .is_ext = %t, .base_values = &%s, .ext_values = &%s },\n",
+		visibilityLiteral(column.visibility), column.assigned, column.isExt, baseValues, extValues)
+}
+
+func visibilityLiteral(visibility wiop.Visibility) string {
+	switch visibility {
+	case wiop.VisibilityOracle:
+		return "prover_visibility_oracle"
+	case wiop.VisibilityPublic:
+		return "prover_visibility_public"
+	default:
+		panic(fmt.Sprintf("unknown prover-ray visibility %v", visibility))
+	}
 }
 
 func writeRuntimeTraceCell(out *bytes.Buffer, cell runtimeTraceCell) {

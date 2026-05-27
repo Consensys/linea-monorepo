@@ -43,6 +43,9 @@ pub const PoseidonCompressCase = struct { left: [8]u32, right: [8]u32, expected:
 pub const PoseidonMdCase = struct { message: []const u32, expected: [8]u32 };
 pub const FiatShamirCase = struct { base_updates: []const u32, ext_updates: []const [6]u32, random_field: [8]u32, random_ext: [6]u32 };
 
+pub const prover_visibility_oracle: u8 = 1;
+pub const prover_visibility_public: u8 = 2;
+
 pub const RuntimeTraceColumn = struct { visibility: u8, is_assigned: bool, is_ext: bool, base_values: []const u32, ext_values: []const [6]u32 };
 pub const RuntimeTraceCell = struct { is_assigned: bool, is_ext: bool, base_value: u32, ext_value: [6]u32 };
 pub const RuntimeTraceRound = struct { columns: []const RuntimeTraceColumn, cells: []const RuntimeTraceCell, expected_coins: []const [6]u32 };
@@ -151,9 +154,8 @@ pub const runtime_trace_cases = [_]RuntimeTraceCase{
     .{ .rounds = &.{
         .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 3, 1, 4, 1 }, .ext_values = &.{} },
-                .{ .visibility = 2, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 5, 9, 2, 6, 5, 3 }, .{ 5, 8, 9, 7, 9, 3 }, .{ 2, 3, 8, 4, 6, 2 }, .{ 6, 4, 3, 3, 8, 3 } } },
-                .{ .visibility = 0, .is_assigned = false, .is_ext = false, .base_values = &.{}, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = false, .base_values = &.{ 3, 1, 4, 1 }, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_public, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 5, 9, 2, 6, 5, 3 }, .{ 5, 8, 9, 7, 9, 3 }, .{ 2, 3, 8, 4, 6, 2 }, .{ 6, 4, 3, 3, 8, 3 } } },
             },
             .cells = &.{
                 .{ .is_assigned = true, .is_ext = false, .base_value = 23, .ext_value = .{ 0, 0, 0, 0, 0, 0 } },
@@ -163,8 +165,8 @@ pub const runtime_trace_cases = [_]RuntimeTraceCase{
         },
         .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 101, 102, 103, 104, 105, 106 }, .{ 201, 202, 203, 204, 205, 206 }, .{ 301, 302, 303, 304, 305, 306 }, .{ 401, 402, 403, 404, 405, 406 } } },
-                .{ .visibility = 2, .is_assigned = true, .is_ext = false, .base_values = &.{ 11, 22, 33, 44 }, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 101, 102, 103, 104, 105, 106 }, .{ 201, 202, 203, 204, 205, 206 }, .{ 301, 302, 303, 304, 305, 306 }, .{ 401, 402, 403, 404, 405, 406 } } },
+                .{ .visibility = prover_visibility_public, .is_assigned = true, .is_ext = false, .base_values = &.{ 11, 22, 33, 44 }, .ext_values = &.{} },
             },
             .cells = &.{
                 .{ .is_assigned = true, .is_ext = false, .base_value = 77, .ext_value = .{ 0, 0, 0, 0, 0, 0 } },
@@ -197,13 +199,13 @@ pub const global_compiler_cases = [_]GlobalCompilerCase{
     }, .honest = .{
         .initial_round = .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 1, 0, 1 }, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 1, 0, 1 }, .ext_values = &.{} },
             },
             .cells = &.{},
         },
         .quotient_round = .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 1598029825, 0, 0, 0, 0, 0 }, .{ 1598029825, 0, 0, 0, 0, 0 }, .{ 1598029825, 0, 0, 0, 0, 0 }, .{ 1598029825, 0, 0, 0, 0, 0 } } },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 1598029825, 0, 0, 0, 0, 0 }, .{ 1598029825, 0, 0, 0, 0, 0 }, .{ 1598029825, 0, 0, 0, 0, 0 }, .{ 1598029825, 0, 0, 0, 0, 0 } } },
             },
             .cells = &.{},
         },
@@ -212,13 +214,13 @@ pub const global_compiler_cases = [_]GlobalCompilerCase{
     }, .invalid = .{
         .initial_round = .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 2, 0, 1 }, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 2, 0, 1 }, .ext_values = &.{} },
             },
             .cells = &.{},
         },
         .quotient_round = .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 1604296705, 0, 0, 0, 0, 0 }, .{ 958817896, 0, 0, 0, 0, 0 }, .{ 2124439554, 0, 0, 0, 0, 0 }, .{ 1331691521, 0, 0, 0, 0, 0 } } },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 1604296705, 0, 0, 0, 0, 0 }, .{ 958817896, 0, 0, 0, 0, 0 }, .{ 2124439554, 0, 0, 0, 0, 0 }, .{ 1331691521, 0, 0, 0, 0, 0 } } },
             },
             .cells = &.{},
         },
@@ -242,13 +244,13 @@ pub const global_compiler_cases = [_]GlobalCompilerCase{
     }, .honest = .{
         .initial_round = .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 1, 1, 2, 3, 5, 8, 13, 21 }, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = false, .base_values = &.{ 1, 1, 2, 3, 5, 8, 13, 21 }, .ext_values = &.{} },
             },
             .cells = &.{},
         },
         .quotient_round = .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 552753386, 0, 0, 0, 0, 0 }, .{ 1170422654, 0, 0, 0, 0, 0 }, .{ 1520879065, 0, 0, 0, 0, 0 }, .{ 1398117480, 0, 0, 0, 0, 0 }, .{ 1740509171, 0, 0, 0, 0, 0 }, .{ 1122839903, 0, 0, 0, 0, 0 }, .{ 772383492, 0, 0, 0, 0, 0 }, .{ 895145077, 0, 0, 0, 0, 0 } } },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 552753386, 0, 0, 0, 0, 0 }, .{ 1170422654, 0, 0, 0, 0, 0 }, .{ 1520879065, 0, 0, 0, 0, 0 }, .{ 1398117480, 0, 0, 0, 0, 0 }, .{ 1740509171, 0, 0, 0, 0, 0 }, .{ 1122839903, 0, 0, 0, 0, 0 }, .{ 772383492, 0, 0, 0, 0, 0 }, .{ 895145077, 0, 0, 0, 0, 0 } } },
             },
             .cells = &.{},
         },
@@ -257,13 +259,13 @@ pub const global_compiler_cases = [_]GlobalCompilerCase{
     }, .invalid = .{
         .initial_round = .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 1, 1, 2, 3, 5, 8, 13, 22 }, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = false, .base_values = &.{ 1, 1, 2, 3, 5, 8, 13, 22 }, .ext_values = &.{} },
             },
             .cells = &.{},
         },
         .quotient_round = .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 1039702195, 0, 0, 0, 0, 0 }, .{ 1441997329, 0, 0, 0, 0, 0 }, .{ 1381606708, 0, 0, 0, 0, 0 }, .{ 769807354, 0, 0, 0, 0, 0 }, .{ 1164221666, 0, 0, 0, 0, 0 }, .{ 761926532, 0, 0, 0, 0, 0 }, .{ 822317153, 0, 0, 0, 0, 0 }, .{ 1135626563, 0, 0, 0, 0, 0 } } },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 1039702195, 0, 0, 0, 0, 0 }, .{ 1441997329, 0, 0, 0, 0, 0 }, .{ 1381606708, 0, 0, 0, 0, 0 }, .{ 769807354, 0, 0, 0, 0, 0 }, .{ 1164221666, 0, 0, 0, 0, 0 }, .{ 761926532, 0, 0, 0, 0, 0 }, .{ 822317153, 0, 0, 0, 0, 0 }, .{ 1135626563, 0, 0, 0, 0, 0 } } },
             },
             .cells = &.{},
         },
@@ -290,15 +292,15 @@ pub const global_compiler_cases = [_]GlobalCompilerCase{
     }, .honest = .{
         .initial_round = .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 5, 1, 17, 5, 13, 0, 0 }, .ext_values = &.{} },
-                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 3, 0, 15, 4, 5, 0, 0 }, .ext_values = &.{} },
-                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 4, 1, 8, 3, 12, 0, 0 }, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 5, 1, 17, 5, 13, 0, 0 }, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 3, 0, 15, 4, 5, 0, 0 }, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 4, 1, 8, 3, 12, 0, 0 }, .ext_values = &.{} },
             },
             .cells = &.{},
         },
         .quotient_round = .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 518081830, 0, 0, 0, 0, 0 }, .{ 789740332, 0, 0, 0, 0, 0 }, .{ 453184355, 0, 0, 0, 0, 0 }, .{ 1857154566, 0, 0, 0, 0, 0 }, .{ 643251762, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 } } },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 518081830, 0, 0, 0, 0, 0 }, .{ 789740332, 0, 0, 0, 0, 0 }, .{ 453184355, 0, 0, 0, 0, 0 }, .{ 1857154566, 0, 0, 0, 0, 0 }, .{ 643251762, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 } } },
             },
             .cells = &.{},
         },
@@ -307,15 +309,15 @@ pub const global_compiler_cases = [_]GlobalCompilerCase{
     }, .invalid = .{
         .initial_round = .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 5, 1, 17, 5, 13, 0, 0 }, .ext_values = &.{} },
-                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 3, 0, 15, 4, 5, 0, 0 }, .ext_values = &.{} },
-                .{ .visibility = 1, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 5, 1, 8, 3, 12, 0, 0 }, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 5, 1, 17, 5, 13, 0, 0 }, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 3, 0, 15, 4, 5, 0, 0 }, .ext_values = &.{} },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = false, .base_values = &.{ 0, 5, 1, 8, 3, 12, 0, 0 }, .ext_values = &.{} },
             },
             .cells = &.{},
         },
         .quotient_round = .{
             .columns = &.{
-                .{ .visibility = 1, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 1992899991, 0, 0, 0, 0, 0 }, .{ 2092905736, 0, 0, 0, 0, 0 }, .{ 393839656, 0, 0, 0, 0, 0 }, .{ 712211300, 0, 0, 0, 0, 0 }, .{ 1186587689, 0, 0, 0, 0, 0 }, .{ 776420915, 0, 0, 0, 0, 0 }, .{ 147332501, 0, 0, 0, 0, 0 }, .{ 2121306113, 0, 0, 0, 0, 0 } } },
+                .{ .visibility = prover_visibility_oracle, .is_assigned = true, .is_ext = true, .base_values = &.{}, .ext_values = &.{ .{ 1992899991, 0, 0, 0, 0, 0 }, .{ 2092905736, 0, 0, 0, 0, 0 }, .{ 393839656, 0, 0, 0, 0, 0 }, .{ 712211300, 0, 0, 0, 0, 0 }, .{ 1186587689, 0, 0, 0, 0, 0 }, .{ 776420915, 0, 0, 0, 0, 0 }, .{ 147332501, 0, 0, 0, 0, 0 }, .{ 2121306113, 0, 0, 0, 0, 0 } } },
             },
             .cells = &.{},
         },
