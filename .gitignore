@@ -76,11 +76,11 @@ proving_key.bin
 **/.direnv
 
 # Prisma generated clients
-/operations/native-yield-operations/lido-governance-monitor/prisma/client/
+/operations/native-yield/lido-governance-monitor/prisma/client/
 
 bin/
-!/operations/operations-cli/bin/
-!/operations/operations-cli/bin/**
+!/operations/cli/bin/
+!/operations/cli/bin/**
 build/
 cache_forge/
 coverage/
@@ -94,9 +94,13 @@ tmp/
 typechain/
 typechain-types/
 generated/
+!/verifier-ray/src/generated/
+!/verifier-ray/src/generated/**
+!/verifier-ray/testdata/generated/
+!/verifier-ray/testdata/generated/**
 __pycache__/
 
-/besu-plugins/linea-sequencer/**/site
+/linea-besu/plugins/linea-sequencer/**/site
 
 /contracts/.env~
 /contracts/coverage.json
@@ -175,8 +179,11 @@ contracts/.claude/settings.local.json
 e2e/e2e-runtime-report.html
 e2e/e2e-runtime-report-summary.json
 .zig-cache/
+arithmetization/src/test/examples/linker_script.ld
 
 # Runtime sequencer deny-list, seeded empty by Makefile/gradle before each env start
 # and mutated by E2E tests via withDenyListAddresses. Never commit.
 docker/config/linea-besu-sequencer/deny-list.txt
 docker/config/linea-besu-sequencer/deny-list.txt.lock
+
+**/.venv

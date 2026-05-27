@@ -13,6 +13,13 @@
 - Claude Code: `CLAUDE.md`, then `AGENTS.md`
 - GitHub Copilot: `.github/copilot-instructions.md`, then `AGENTS.md`
 
+## Local Agent Workflows
+
+- `squash-bugbot`: canonical skill at `.agents/skills/squash-bugbot/SKILL.md`.
+- Use `/squash-bugbot <PR_NUMBER>` locally in Codex, Cursor, or Claude Code to triage unresolved bot PR comments.
+- Claude Code exposes the same workflow through `.claude/commands/squash-bugbot.md`, a symlink to the canonical skill.
+- Requires an authenticated `gh` CLI with access to read PR comments, write PR comments, resolve review threads, and push the current branch.
+
 ## Discoverability Index
 
 - Repository overview: `README.md`
@@ -21,7 +28,7 @@
 - Architecture: `docs/architecture-description.md`
 - Engineering guidelines: `docs/development-guidelines.md`
 - Security and audits: `docs/security.md`, `docs/audits.md`
-- Package-specific agent rules: `*/AGENTS.md` (`contracts/`, `coordinator/`, `prover/`, `tracer/`, `ts-libs/sdk/`, `besu-plugins/`, `transaction-exclusion-api/`, `e2e/`)
+- Package-specific agent rules: `*/AGENTS.md` (`contracts/`, `coordinator/`, `prover/`, `tracer/`, `ts-libs/sdk/`, `linea-besu/plugins/`, `transaction-exclusion-api/`, `e2e/`)
 
 ## Project Guidelines
 
@@ -171,9 +178,9 @@ After writing or editing code, check LSP diagnostics and fix any type errors or 
 
 ### Style
 
-- **Formatter:** Prettier 3.7.4 — `prettier.config.mjs`
-- **Linter (TS/JS):** ESLint 9.39.2 flat config — `ts-libs/eslint-config/`
-- **Linter (Solidity):** Solhint 6.0.3 + Prettier plugin
+- **Formatter:** Prettier 3.8.1 — `prettier.config.mjs`
+- **Linter (TS/JS):** ESLint 9.39.4 flat config — `ts-libs/eslint-config/`
+- **Linter (Solidity):** Solhint 6.2.1 + Prettier plugin
 - **Linter (Kotlin/Java):** Spotless with ktlint + Google Java Format
 - **Linter (Go):** gofmt + golangci-lint
 - **Line length:** 120 characters
@@ -216,7 +223,7 @@ After writing or editing code, check LSP diagnostics and fix any type errors or 
 |------|----------|-------|
 | Contracts (Hardhat) | Hardhat + ethers.js | `pnpm -F contracts run test` |
 | Contracts (Foundry) | Forge | `test/foundry/*` |
-| TypeScript packages | Jest 29.7.0 + ts-jest | `pnpm -F <pkg> run test` |
+| TypeScript packages | Jest 30.3.0 + ts-jest | `pnpm -F <pkg> run test` |
 | Coordinator | JUnit 5 + Mockito + WireMock | `./gradlew :coordinator:app:test` |
 | Prover | Go test | `go test ./... -tags nocorset,fuzzlight` |
 | E2E (protocol) | Jest | `pnpm -F e2e run test:local` |
@@ -346,13 +353,13 @@ These require human approval and follow the release process:
 | `ts-libs/sdk/sdk-ethers` | Library | TypeScript, ethers.js 6 | SDK for ethers.js integration |
 | `ts-libs/sdk/sdk-viem` | Library | TypeScript, tsup, Viem | SDK for Viem integration |
 | `e2e` | Tests | TypeScript, Jest | Protocol-level end-to-end tests |
-| `operations/operations-cli` | CLI tool | TypeScript, oclif | Operations management CLI |
+| `operations/cli` | CLI tool | TypeScript, oclif | Operations management CLI |
 | `ts-libs/eslint-config` | Config | ESLint 9 flat config | Shared ESLint configuration |
 | `ts-libs/linea-native-libs` | Library | TypeScript, Koffi (FFI) | Native library bindings |
 | `ts-libs/linea-shared-utils` | Library | TypeScript, Express, Viem | Shared utilities (server, metrics, logging) |
-| `operations/native-yield-operations/automation-service` | Backend service | TypeScript, Apollo | Automated native yield operations |
-| `operations/native-yield-operations/lido-governance-monitor` | Backend service | TypeScript, Prisma | Lido governance proposal monitoring |
-| `besu-plugins` | Plugins | Kotlin, Gradle | Besu blockchain client plugins (sequencer, state recovery) |
+| `operations/native-yield/automation-service` | Backend service | TypeScript, Apollo | Automated native yield operations |
+| `operations/native-yield/lido-governance-monitor` | Backend service | TypeScript, Prisma | Lido governance proposal monitoring |
+| `linea-besu/plugins` | Plugins | Kotlin, Gradle | Besu blockchain client plugins (sequencer, state recovery) |
 | `jvm-libs` | Libraries | Kotlin, Gradle | Shared JVM libraries (JSON-RPC, HTTP, persistence, metrics) |
 | `transaction-exclusion-api` | Backend service | Kotlin, Gradle, Vertx | Transaction exclusion tracking API |
 | `tracer` | Backend service | Java/Go Corset, Gradle | EVM trace generation and arithmetization |
@@ -369,10 +376,10 @@ postman/                 TypeScript bridge message executor
 ts-libs/sdk/             TypeScript SDKs (core, ethers, viem)
 e2e/                     Protocol E2E tests
 operations/              Operations tools
-operations/operations-cli/ Operations CLI tool
+operations/cli/          Operations CLI tool
 ts-libs/                 Shared TypeScript libraries
-operations/native-yield-operations/ Native yield services
-besu-plugins/            Besu client plugins
+operations/native-yield/ Native yield services
+linea-besu/plugins/      Besu client plugins
 jvm-libs/                Shared Kotlin/Java libraries
 transaction-exclusion-api/ Transaction exclusion API
 tracer/                  EVM tracer
@@ -382,7 +389,7 @@ docs/                    Project documentation
 .github/workflows/       CI/CD workflows
 .github/actions/         Custom GitHub Actions
 .cursor/rules/           Cursor IDE rules
-.agents/skills/          Agent skills (smart contract development)
+.agents/skills/          Agent skills (smart contract, dependency maintenance, local PR workflows)
 ```
 
 ### CI/CD
@@ -403,12 +410,18 @@ docs/                    Project documentation
 postman -> @consensys/linea-sdk-viem -> @consensys/linea-sdk-core
 postman -> @consensys/linea-native-libs, @consensys/linea-shared-utils
 e2e -> @consensys/linea-shared-utils
-operations/operations-cli -> (standalone, uses ethers + viem)
-operations/native-yield-operations/* -> @consensys/linea-shared-utils
+operations/cli -> (standalone, uses ethers + viem)
+operations/native-yield/* -> @consensys/linea-shared-utils
 coordinator -> jvm-libs/*
 transaction-exclusion-api -> jvm-libs/*
-besu-plugins -> jvm-libs/*
+linea-besu/plugins -> jvm-libs/*
 ```
+
+### External Docs
+
+| Dependency | Documentation | Notes |
+|------------|--------------|-------|
+| Hyperledger Besu | [besu/docs](https://github.com/besu-eth/besu/tree/main/docs) | Besu APIs, plugin interfaces, and internals — prefer this over grepping compiled JARs or decompressing artifacts |
 
 ### Internal Docs
 

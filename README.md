@@ -39,6 +39,52 @@ For AI coding agents and developer tools:
 - Cursor documentation index: [.cursor/rules/documentation.mdc](.cursor/rules/documentation.mdc)
 - Cursor review/rule set: [.cursor/BUGBOT.md](.cursor/BUGBOT.md)
 
+## Release workflows
+
+Releases are driven by GitHub Actions workflows under `.github/workflows`. There are two flavors: **per-component releases** and **milestone releases**.
+
+### Release tag and version
+
+Release tag of each component is in the format of `releases/[component]/v[semver]` and the semver version is computed from the relevant Git history commit messages [using Conventional Commits format](#commit-message-format) by using [git-cliff](https://github.com/orhun/git-cliff)
+
+### Per-component release
+
+Each component has its own release workflow. Run the one that matches the component you want to ship:
+
+| Component        | Workflow                                         | Release tag pattern              |
+| ---------------- | ------------------------------------------------ | -------------------------------- |
+| linea-besu       | [.github/workflows/linea-besu-release.yml](https://github.com/Consensys/linea-monorepo/actions/workflows/linea-besu-release.yml)       | `releases/linea-besu-package/v[semver]` |
+| coordinator      | [.github/workflows/coordinator-release.yml](https://github.com/Consensys/linea-monorepo/actions/workflows/coordinator-release.yml)      | `releases/coordinator/v[semver]`        |
+| postman          | [.github/workflows/postman-release.yml](https://github.com/Consensys/linea-monorepo/actions/workflows/postman-release.yml)          | `releases/postman/v[semver]`            |
+| prover           | [.github/workflows/prover-release.yml](https://github.com/Consensys/linea-monorepo/actions/workflows/prover-release.yml)           | `releases/prover/v[semver]`             |
+| tx-exclusion-api | [.github/workflows/tx-exclusion-api-release.yml](https://github.com/Consensys/linea-monorepo/actions/workflows/tx-exclusion-api-release.yml) | `releases/tx-exclusion-api/v[semver]`   |
+
+Notes:
+
+- **Branches.** A per-component release can be cut from either `main` or a feature branch (e.g. for a hot-fix release).
+- **Feature-branch restriction.** When the workflow is run from a feature branch, `release_tag_suffix` is **required** (e.g. producing `releases/coordinator/v1.2.3-hotfix`). Without a suffix the new tag could collide with tags produced from other branches.
+- **Docker image suffix.** `image_tag_suffix` is **optional**.
+- **GitHub Release page.** Each successful run publishes a GitHub Release containing the updated component `CHANGELOG.md` and the docker image pull instructions.
+
+### Milestone release
+
+Milestone releases bundle every component into a single Linea release.
+
+- **Workflow:** [.github/workflows/linea-milestone-release.yml](https://github.com/Consensys/linea-monorepo/actions/workflows/linea-milestone-release.yml)
+- **Release tag pattern:** `releases/linea/v[semver]`
+- **Branch:** can only be run from `main`.
+- **`release_tag_suffix`:** when set, the suffix is applied **only** to the milestone tag (e.g. `releases/linea/v1.2.3-rc1`). Per-component release tags are not affected.
+- **`image_tag_suffix`:** when set, every component's docker image gets an additional suffixed tag (alongside the unsuffixed one).
+
+#### Unified-cut behavior
+
+For each component, the milestone workflow decides between two paths based on whether the component's release version has bumped at the milestone commit:
+
+- **Bumped → release the component.** A new per-component release is cut as part of the milestone (new tag, docker image, GitHub Release page).
+- **Not bumped → re-tag only.** The existing docker image associated with the component's latest release tag is re-tagged with `image_tag_suffix` (if given). No new component release is cut.
+
+The milestone GitHub Release page aggregates the `CHANGELOG` entries from every component (newly released or carried over) and lists their docker image pull instructions.
+
 ## Looking for the Linea code?
 
 Linea's stack is made up of multiple repositories, these include:
@@ -92,6 +138,7 @@ All commits must follow the [Conventional Commits](https://www.conventionalcommi
 | Scope | Area |
 |---|---|
 | `coordinator` | Coordinator service |
+| `maru` | Maru consensus client |
 | `prover` | Prover |
 | `prover-ray` | Prover Ray (RISC-V) |
 | `postman` | Message bridging and executor |
@@ -139,6 +186,26 @@ Before contributing, ensure you're familiar with:
 - Our [code of conduct](docs/code-of-conduct.md)
 - The [Besu contribution guide](https://wiki.hyperledger.org/display/BESU/Coding+Conventions), for Besu:Linea related contributions
 - Our [security policy](docs/security.md)
+
+### PR title
+
+**PR titles must follow the same [Conventional Commits](https://www.conventionalcommits.org) format as commit messages** (see [Commit message format](#commit-message-format) above for the allowed `<type>(<scope>): <short description>` shape, types, and scopes).
+
+This matters because PRs are **squash-merged** into `main`: GitHub uses the PR title as the single resulting commit message on `main`. Our release tooling — [git-cliff](https://github.com/orhun/git-cliff), which drives automated version bumps and `CHANGELOG.md` generation in the [release workflows](#release-workflows) — parses those commit messages to decide the next semver bump and to categorize entries in the changelog. A non-conforming PR title turns into a non-conforming commit on `main`, which means:
+
+- **No automatic version bump** for the affected component (git-cliff will skip it).
+- **Missing or miscategorized changelog entry** on the next release.
+
+Examples of good PR titles:
+
+```
+feat(coordinator): add retry logic for L1 message sending
+fix(prover): correct integer overflow in trace builder
+chore(linea-besu,sequencer): bump dependency versions
+feat(coordinator)!: rename public API method (BREAKING CHANGE)
+```
+
+Please note that the linea-monorepo GitHub [CI](https://github.com/Consensys/linea-monorepo/actions/workflows/main.yml) will lint the PR title when new commits pushed to the PR branch, and the whole CI will fail if the PR title doesn't conform.
 
 ### Useful links
 

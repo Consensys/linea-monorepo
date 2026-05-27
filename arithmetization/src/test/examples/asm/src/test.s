@@ -1,22 +1,30 @@
 .section .rodata
 value:
-    .word 0x8000000
+    .word 0x00000042
+.section .data
+another_value:
+    .word 0x00000069
 
 .section .text
 .global _start
 _start:
-    # Set SP explicitly (default is 0)
-    li sp, 0x087fffff
-    # sd      ra, -16(sp)
+    # SP from linker script
+    la      sp, _stack_start
 
     # Load the address of value into t0
     la      t0, value
 
-    # Read the 32-bit word from memory into t1
-    lw      t1, 0(t0)
+    # Load the address of another_value into t1
+    la      t1, another_value
+
+    # Read 32-bit word from memory into t2 using t0 as offset
+    lw      t2, 0(t0)
+
+    # Read 32-bit word from memory into t3 using t1 as offset
+    lw      t3, 0(t1)
 
     # Exit via ecall: a0 = exit code, a7 = 93 (syscall number for exit)
-    mv      a0, t1
+    li      a0, 0
     li      a7, 93
     ecall
     

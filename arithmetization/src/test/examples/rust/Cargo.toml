@@ -5,16 +5,24 @@ edition = "2021"
 
 # Add a [[bin]] entry for each new .rs test file added to src/
 [[bin]]
-name = "blake"
-path = "src/blake.rs"
-
-[[bin]]
 name = "test"
 path = "src/test.rs"
 
 [[bin]]
 name = "poseidon1"
 path = "src/poseidon1.rs"
+
+[[bin]]
+name = "blake_with_in_embedded"
+path = "src/blake/blake_with_in_embedded.rs"
+
+[[bin]]
+name = "blake_with_in_bytes"
+path = "src/blake/blake_with_in_bytes.rs"
+
+[[bin]]
+name = "stack_load_test"
+path = "src/stack_load_test.rs"
 
 [profile.release]
 opt-level = 2
