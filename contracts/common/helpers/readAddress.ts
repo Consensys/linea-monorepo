@@ -7,6 +7,7 @@ import {
   isMultiRegistryEntry,
   loadRegistry,
   lookupRegistryEntry,
+  parseEnvAddress,
   parseEnvAddressList,
   REGISTRY_NETWORKS,
   sameAddressSet,
@@ -14,8 +15,8 @@ import {
 
 /**
  * Reads a single contract address from the per-network registry file.
- * Returns `undefined` if the network has no registry, the key is missing, the entry is
- * multi-address, or the address is the zero address placeholder.
+ * Returns `undefined` if the network has no registry, the key is missing, or the
+ * address is the zero address placeholder. Throws if the registry entry is multi-address.
  */
 export function getAddressFromRegistry(
   networkName: string,
@@ -30,8 +31,14 @@ export function getAddressFromRegistry(
     return undefined;
   }
   const entry = lookupRegistryEntry(registry, contractKey, envVarName);
-  if (!entry || isMultiRegistryEntry(entry)) {
+  if (!entry) {
     return undefined;
+  }
+  if (isMultiRegistryEntry(entry)) {
+    throw new Error(
+      `Registry entry for "${contractKey}" on "${networkName}" contains an addresses array. ` +
+        "Use getAddressesFromRegistry or requireAddressesFromRegistryOrEnv instead.",
+    );
   }
   return getPopulatedAddresses(entry)?.[0];
 }
@@ -79,7 +86,7 @@ export function getAddressesFromRegistry(
  */
 export function requireAddressFromRegistryOrEnv(networkName: string, contractKey: string, envVarName?: string): string {
   const registryAddress = getAddressFromRegistry(networkName, contractKey, envVarName);
-  const envAddress = envVarName ? parseEnvAddressList(envVarName)?.[0] : undefined;
+  const envAddress = envVarName ? parseEnvAddress(envVarName) : undefined;
 
   if (registryAddress !== undefined) {
     if (envAddress !== undefined && envAddress !== registryAddress) {

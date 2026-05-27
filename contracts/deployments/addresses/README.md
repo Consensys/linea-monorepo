@@ -82,7 +82,8 @@ pnpm -F contracts run validate:address-registry
 ```
 
 This validates JSON shape, network/chainId metadata, EIP-55 checksums, duplicate list entries, and
-zero/non-zero consistency before deploy scripts consume the data.
+zero/non-zero consistency before deploy scripts consume the data. It also scans the raw JSON for
+duplicate object keys, because `JSON.parse` would otherwise silently keep only the last value.
 
 ## Contract Key Mapping
 

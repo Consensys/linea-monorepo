@@ -44,6 +44,11 @@ export interface RegistryValidationIssue {
   message: string;
 }
 
+interface DuplicateJsonKey {
+  path: string;
+  key: string;
+}
+
 export function isMultiRegistryEntry(entry: RegistryContractEntry): entry is MultiRegistryEntry {
   return "addresses" in entry && Array.isArray(entry.addresses);
 }
@@ -118,6 +123,20 @@ export function parseEnvAddressList(envVarName: string): string[] | undefined {
   return raw.split(",").map((part, index) => parseChecksummedAddress(part.trim(), `${envVarName}[${index}]`));
 }
 
+export function parseEnvAddress(envVarName: string): string | undefined {
+  const addresses = parseEnvAddressList(envVarName);
+  if (addresses === undefined) {
+    return undefined;
+  }
+  if (addresses.length !== 1) {
+    throw new Error(
+      `Environment variable "${envVarName}" must contain exactly one address, got ${addresses.length}. ` +
+        "Use the multi-address registry helper for comma-delimited address lists.",
+    );
+  }
+  return addresses[0];
+}
+
 export function sameAddressSet(left: string[], right: string[]): boolean {
   if (left.length !== right.length) {
     return false;
@@ -125,6 +144,139 @@ export function sameAddressSet(left: string[], right: string[]): boolean {
   const sortedLeft = [...left].sort();
   const sortedRight = [...right].sort();
   return sortedLeft.every((value, index) => value === sortedRight[index]);
+}
+
+function findDuplicateJsonKeys(source: string): DuplicateJsonKey[] {
+  const duplicates: DuplicateJsonKey[] = [];
+  let index = 0;
+
+  const skipWhitespace = () => {
+    while (/\s/.test(source[index] ?? "")) {
+      index += 1;
+    }
+  };
+
+  const parseString = (): string => {
+    if (source[index] !== '"') {
+      throw new Error(`Expected string at offset ${index}.`);
+    }
+    let value = "";
+    index += 1;
+    while (index < source.length) {
+      const char = source[index];
+      if (char === '"') {
+        index += 1;
+        return value;
+      }
+      if (char === "\\") {
+        const escapeStart = index;
+        index += 1;
+        const escaped = source[index];
+        if (escaped === "u") {
+          const hex = source.slice(index + 1, index + 5);
+          if (!/^[0-9a-fA-F]{4}$/.test(hex)) {
+            throw new Error(`Invalid unicode escape at offset ${escapeStart}.`);
+          }
+          value += String.fromCharCode(parseInt(hex, 16));
+          index += 5;
+          continue;
+        }
+        const escapes: Record<string, string> = {
+          '"': '"',
+          "\\": "\\",
+          "/": "/",
+          b: "\b",
+          f: "\f",
+          n: "\n",
+          r: "\r",
+          t: "\t",
+        };
+        if (escaped === undefined || escapes[escaped] === undefined) {
+          throw new Error(`Invalid escape at offset ${escapeStart}.`);
+        }
+        value += escapes[escaped];
+        index += 1;
+        continue;
+      }
+      value += char;
+      index += 1;
+    }
+    throw new Error("Unterminated string.");
+  };
+
+  const parseValue = (pathParts: string[]): void => {
+    skipWhitespace();
+    const char = source[index];
+    if (char === "{") {
+      parseObject(pathParts);
+      return;
+    }
+    if (char === "[") {
+      parseArray(pathParts);
+      return;
+    }
+    if (char === '"') {
+      parseString();
+      return;
+    }
+    while (index < source.length && !/[,\]}]/.test(source[index])) {
+      index += 1;
+    }
+  };
+
+  const parseArray = (pathParts: string[]): void => {
+    index += 1;
+    skipWhitespace();
+    let itemIndex = 0;
+    while (source[index] !== "]") {
+      parseValue([...pathParts, `[${itemIndex}]`]);
+      itemIndex += 1;
+      skipWhitespace();
+      if (source[index] === ",") {
+        index += 1;
+        skipWhitespace();
+        continue;
+      }
+      if (source[index] !== "]") {
+        throw new Error(`Expected "," or "]" at offset ${index}.`);
+      }
+    }
+    index += 1;
+  };
+
+  const parseObject = (pathParts: string[]): void => {
+    index += 1;
+    skipWhitespace();
+    const seen = new Set<string>();
+    while (source[index] !== "}") {
+      const key = parseString();
+      const pathLabel = pathParts.length > 0 ? pathParts.join(".") : "$";
+      if (seen.has(key)) {
+        duplicates.push({ path: pathLabel, key });
+      }
+      seen.add(key);
+      skipWhitespace();
+      if (source[index] !== ":") {
+        throw new Error(`Expected ":" at offset ${index}.`);
+      }
+      index += 1;
+      parseValue([...pathParts, key]);
+      skipWhitespace();
+      if (source[index] === ",") {
+        index += 1;
+        skipWhitespace();
+        continue;
+      }
+      if (source[index] !== "}") {
+        throw new Error(`Expected "," or "}" at offset ${index}.`);
+      }
+    }
+    index += 1;
+  };
+
+  skipWhitespace();
+  parseValue([]);
+  return duplicates;
 }
 
 function validateRegistryEntryShape(
@@ -252,8 +404,16 @@ export function validateRegistryFile(fileName: string): RegistryValidationIssue[
   }
 
   let registry: NetworkRegistry;
+  const raw = fs.readFileSync(filePath, "utf-8");
   try {
-    registry = JSON.parse(fs.readFileSync(filePath, "utf-8")) as NetworkRegistry;
+    for (const duplicate of findDuplicateJsonKeys(raw)) {
+      issues.push({
+        file: fileName,
+        path: duplicate.path,
+        message: `Duplicate JSON key "${duplicate.key}". JSON parsers keep only the last value.`,
+      });
+    }
+    registry = JSON.parse(raw) as NetworkRegistry;
   } catch (error) {
     issues.push({
       file: fileName,
