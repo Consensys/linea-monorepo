@@ -134,7 +134,7 @@ riscv-test build-act4
 riscv-test run-act4
 # Run blake_with_in_embedded.rs (input bytes are embedded in main())
 riscv-test blake/blake_with_in_embedded.rs
-# Run blake_with_in_bytes.rs with the big-endian form of the 277-byte buffer
+# Run blake_with_in_bytes.rs
 # written in RAM as <213-byte input><64-byte expected output>
 riscv-test blake/blake_with_in_bytes.rs IN_BYTES="0x239900d4ed8623b95a92f1dba88ad31895cc3345ded552c22d79ab2a39c5877dd1a2ffdb6fbb124bb7c45a68142f214ce9f6129fb697276a0d4d1c983fa580ba010000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006362615be0cd19137e21791f83d9abfb41bd6b9b05688c2b3e6c1f510e527fade682d1a54ff53a5f1d36f13c6ef372fe94f82bbb67ae8584caa73b6a09e667f2bdc9480c000000"
 # Generate the linker script with custom input bytes offset
@@ -171,22 +171,22 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 
 ## Options
 
-| Variable         | Default                                                                                 | Description                                                                             |
-|------------------|-----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| `TEST`           | `""`                                                                                    | Source file path with extension, relative to the corresponding `src/` folder            |
-| `BIN_EXT`        | `""`                                                                                    | Already compiled ELF used by `elf-to-json` and `exec-elf`                               |
-| `JSON_EXT`       | `$(BIN_EXT).json`                                                                       | JSON output path used by `elf-to-json` and `exec-elf`                                   |
-| `IN_BYTES`       | `""`                                                                                    | Hex input provided as big-endian and written to memory at `IN_BYTES_OFFSET` as little-endian bytes |
-| `PROGRAM_OFFSET` | `0x00000000`                                                                            | Program address used by this Makefile's generated linker script (up to 128 MiB)         |
-| `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                              |
-| `SP`             | `0x08800000`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)                 |
-| `VERIFY_ELF`     | `false`                                                                                 | Set to `true` to verify offsets, entry point and sp match the ELF ones                  |
-| `ACT4_BUILD_MODE`| `host`                                                                                  | Build ACT4 ELFs with `host` or `docker`                                                 |
-| `ACT4_REF`       | `9798a554ce4139f472c9ccd3a18c9061d0f7024d`                                              | `riscv-arch-test` tag or commit used to build ACT4 ELFs                                 |
-| `ACT4_REPO`      | `../riscv-arch-test`                                                                    | Local `riscv-arch-test` checkout used for ACT4 builds                                   |
-| `ACT4_RISCV_DIR` | `~/riscv`                                                                               | Directory where `install-sail` installs `sail_riscv_sim`                                |
-| `ACT4_FAST`      | `false`                                                                                 | Set to `true` to skip ACT4 objdump generation for faster builds                         |
-| `ACT4_DEBUG`     | `true`                                                                                  | Set to `false` to skip ACT4 debug artifacts                                             |
+| Variable         | Default                                                                                 | Description                                                                                        |
+|------------------|-----------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+| `TEST`           | `""`                                                                                    | Source file path with extension, relative to the corresponding `src/` folder                       |
+| `BIN_EXT`        | `""`                                                                                    | Already compiled ELF used by `elf-to-json` and `exec-elf`                                          |
+| `JSON_EXT`       | `$(BIN_EXT).json`                                                                       | JSON output path used by `elf-to-json` and `exec-elf`                                              |
+| `IN_BYTES`       | `""`                                                                                    | Hex big-endian input written in RAM at `IN_BYTES_OFFSET` as little-endian bytes before execution   |
+| `PROGRAM_OFFSET` | `0x00000000`                                                                            | Program address used by this Makefile's generated linker script (up to 128 MiB)                    |
+| `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                                         |
+| `SP`             | `0x08800000`                                                                            | Top of the stack region, stack grows downward from this address (8 MiB)                            |
+| `VERIFY_ELF`     | `false`                                                                                 | Set to `true` to verify offsets, entry point and sp match the ELF ones                             |
+| `ACT4_BUILD_MODE`| `host`                                                                                  | Build ACT4 ELFs with `host` or `docker`                                                            |
+| `ACT4_REF`       | `9798a554ce4139f472c9ccd3a18c9061d0f7024d`                                              | `riscv-arch-test` tag or commit used to build ACT4 ELFs                                            |
+| `ACT4_REPO`      | `../riscv-arch-test`                                                                    | Local `riscv-arch-test` checkout used for ACT4 builds                                              |
+| `ACT4_RISCV_DIR` | `~/riscv`                                                                               | Directory where `install-sail` installs `sail_riscv_sim`                                           |
+| `ACT4_FAST`      | `false`                                                                                 | Set to `true` to skip ACT4 objdump generation for faster builds                                    |
+| `ACT4_DEBUG`     | `true`                                                                                  | Set to `false` to skip ACT4 debug artifacts                                                        |
 
 ## JSON input format
 
