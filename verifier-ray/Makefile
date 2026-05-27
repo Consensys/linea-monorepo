@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: ci help fmt fmt-zig fmt-codegen fmt-testdata-generate build build-zig build-release build-r5 run run-passing run-failing test test-zig test-generated-zig test-codegen generate-testdata verify-testdata zkc-build zkc-verify zkc-verify-passing zkc-verify-failing clean
+.PHONY: ci help fmt fmt-zig fmt-codegen fmt-testdata-generate build build-zig build-release build-r5 run run-passing run-failing run-failing-expected test test-zig test-generated-zig test-codegen generate-testdata verify-testdata zkc-build zkc-verify zkc-verify-passing zkc-verify-failing zkc-verify-failing-expected clean
 
 R5_BIN := zig-out/bin/verifier-ray
 R5_JSON := $(R5_BIN).json
@@ -17,7 +17,7 @@ IN_BYTES_OFFSET ?= 0x08800000
 ENTRY_POINT ?= $(PROGRAM_OFFSET)
 NATIVE_INPUT_FILE := zig-out/input.bin
 
-ci: fmt build test zkc-verify
+ci: fmt build-release run-passing run-failing-expected test zkc-verify-passing zkc-verify-failing-expected
 
 help:
 	@printf '%s\n' \
@@ -25,7 +25,7 @@ help:
 		'' \
 		'Common targets:' \
 		'  help                  Show this help message' \
-		'  ci                    Run fmt, native build, tests, and zkc verifier smoke test' \
+		'  ci                    Run fmt, release build, tests, and native/zkc smoke checks' \
 		'  fmt                   Run Zig and Go formatting checks' \
 		'  build                 Build verifier-ray natively' \
 		'  build-release         Build verifier-ray natively with ReleaseSmall and stripped symbols' \
@@ -33,6 +33,7 @@ help:
 		'  run                   Run verifier-ray natively with INPUT_FILE' \
 		'  run-passing           Run verifier-ray natively with the passing fixture' \
 		'  run-failing           Run verifier-ray natively with the failing fixture (exits non-zero)' \
+		'  run-failing-expected  Run native failing fixture and require it to fail' \
 		'  test                  Run Zig tests and Go codegen tests' \
 		'  test-zig              Generate/verify testdata and run Zig tests' \
 		'  test-codegen          Run Go codegen tests' \
@@ -40,6 +41,7 @@ help:
 		'  zkc-verify            Run verifier-ray through the zkc RISC-V interpreter with INPUT_FILE' \
 		'  zkc-verify-passing    Run zkc with the passing fixture' \
 		'  zkc-verify-failing    Run zkc with the failing fixture (exits non-zero)' \
+		'  zkc-verify-failing-expected  Require zkc failing fixture to fail' \
 		'  clean                 Remove Zig build artifacts' \
 		'' \
 		'input variables:' \
@@ -93,6 +95,14 @@ run-passing:
 run-failing:
 	$(MAKE) run INPUT_FILE=$(FAILING_INPUT_FILE)
 
+run-failing-expected:
+	@if $(MAKE) run-failing; then \
+		echo "expected run-failing to fail"; \
+		exit 1; \
+	else \
+		echo "run-failing failed as expected"; \
+	fi
+
 test: test-zig test-codegen
 
 test-zig: verify-testdata
@@ -121,6 +131,14 @@ zkc-verify-passing:
 
 zkc-verify-failing:
 	$(MAKE) zkc-verify INPUT_FILE=$(FAILING_INPUT_FILE)
+
+zkc-verify-failing-expected:
+	@if $(MAKE) zkc-verify-failing; then \
+		echo "expected zkc-verify-failing to fail"; \
+		exit 1; \
+	else \
+		echo "zkc-verify-failing failed as expected"; \
+	fi
 
 clean:
 	rm -rf .zig-cache zig-out
