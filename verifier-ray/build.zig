@@ -13,6 +13,9 @@ pub fn build(b: *std.Build) void {
     } else .{};
 
     const target = b.standardTargetOptions(.{ .default_target = default_target });
+    // TODO: consider adding a "release" option that sets optimize to ReleaseFast instead of ReleaseSmall.
+    // For R5 the ReleaseFast optimization causes 2x binary size increase but 1/3 reduction in execution time, so it may be worth having if the binary size is not a concern.
+    // For native execution we don't really care about the difference between ReleaseSmall and ReleaseFast, so we can just use ReleaseSmall for the optimized native build.
     const optimize = if (r5)
         b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSmall })
     else
