@@ -12,10 +12,34 @@ on:
     inputs:
       image_tag_suffix:
         description: 'Custom docker image tag suffix, i.e. All docker images would be retagged as [semver]-[YYYYMMDD]-[commit]-[suffix]'
-        required: true
+        required: false
         type: string
+        default: ''
       release_tag_suffix:
         description: 'Custom release tag suffix, i.e. release tag would be releases/[component]/v[semver]-[suffix]'
+        required: false
+        type: string
+        default: ''
+      without_besu_fleet_plugin:
+        description: 'Type "true" to exclude besu-fleet-plugin in the linea-besu-package release'
+        required: false
+        type: string
+        default: ''
+      pre_release:
+        description: 'Pre Release if checked; Draft release otherwise'
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      image_tag_suffix:
+        description: 'Custom docker image tag suffix, i.e. All docker images would be retagged as [semver]-[YYYYMMDD]-[commit]-[suffix]'
+        required: false
+        type: string
+        default: ''
+      release_tag_suffix:
+        description: 'Custom release tag suffix, i.e. release tag would be releases/[component]/v[semver]-[suffix]'
+        type: string
         required: false
         default: ''
       without_besu_fleet_plugin:
@@ -44,7 +68,7 @@ jobs:
     needs: [check-branch-and-compute-tag]
     uses: ./.github/workflows/reusable-milestone-component-release-metadata.yml
     with:
-      release_tag_suffix: '' # no release tag suffix allowed for milestone component release 
+      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: no release tag suffix allowed for milestone component release 
     secrets: inherit
 
   build-local-coordinator:
@@ -169,7 +193,7 @@ jobs:
       folder-name: coordinator
       include-path: coordinator/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: '' # no release tag suffix allowed for milestone component release 
+      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: no release tag suffix allowed for milestone component release 
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
       upload_changelog: true
@@ -187,7 +211,7 @@ jobs:
       folder-name: prover
       include-path: prover/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: '' # no release tag suffix allowed for milestone component release 
+      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: no release tag suffix allowed for milestone component release 
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
       upload_changelog: true
@@ -205,7 +229,7 @@ jobs:
       folder-name: postman
       include-path: postman/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: '' # no release tag suffix allowed for milestone component release 
+      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: no release tag suffix allowed for milestone component release 
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
       upload_changelog: true
@@ -223,7 +247,7 @@ jobs:
       folder-name: transaction-exclusion-api
       include-path: transaction-exclusion-api/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: '' # no release tag suffix allowed for milestone component release 
+      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: no release tag suffix allowed for milestone component release 
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
       upload_changelog: true
@@ -241,7 +265,7 @@ jobs:
       folder-name: maru
       include-path: maru/**
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: '' # no release tag suffix allowed for milestone component release
+      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: no release tag suffix allowed for milestone component release
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
       upload_changelog: true
@@ -256,7 +280,7 @@ jobs:
     uses: ./.github/workflows/reusable-linea-besu-package-gh-release.yml
     with:
       image_tag_suffix: ${{ inputs.image_tag_suffix }}
-      release_tag_suffix: '' # no release tag suffix allowed for milestone component release 
+      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: no release tag suffix allowed for milestone component release 
       without_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin }}
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
