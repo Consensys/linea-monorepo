@@ -58,7 +58,7 @@ type workload struct {
 }
 
 var (
-	reConstraintS   = regexp.MustCompile(`Constraint execution \(\d+ steps\) took ([\d.]+)s`)
+	reConstraintS   = regexp.MustCompile(`Constraint execution took ([\d.]+)s`)
 	reSteps         = regexp.MustCompile(`Constraint execution \((\d+) steps\)`)
 	reWall          = regexp.MustCompile(`Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): (\S+)`)
 	reRSS           = regexp.MustCompile(`Maximum resident set size \(kbytes\): (\d+)`)
