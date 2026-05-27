@@ -7,12 +7,16 @@
 //	keccak_{opt|base}_<i>.log          - 1 file per (variant, iter)
 //	blake_{opt|base}_<i>_<vec>.log     - M files per (variant, iter) where M = -blake-n
 //
-// Each log is `/usr/bin/time -v zkc execute -v <json> <main.zkc>` output. The
-// fields we extract are:
+// Each log is `/usr/bin/time -v <zkc> ... <prog>` output, where `<zkc>` is
+// either the RISC-V interpreter (`zkc execute`) or the native compiler/VM
+// (`zkc exec`). The fields we extract are:
 //
-//   - `Machine execution (N steps) took Xs`     -> steps + machine_s  (uint + float; steps is invariant)
-//   - "Elapsed (wall clock) time ... : M:SS.ss" -> wall_s             (float)
-//   - "Maximum resident set size (kbytes): N"   -> rss_kb             (int)
+//   - `(Machine|Constraint) execution (N steps) took Xs`
+//     -> steps + execution_s (uint + float; steps is invariant)
+//     The interpreter emits "Machine execution"; native zkc emits
+//     "Constraint execution". We match either.
+//   - "Elapsed (wall clock) time ... : M:SS.ss" -> wall_s (float)
+//   - "Maximum resident set size (kbytes): N"   -> rss_kb (int)
 //
 // Aggregation per (variant, iter):
 //   - Keccak: identity (1 log per (variant, iter)).
@@ -55,7 +59,9 @@ type workload struct {
 }
 
 var (
-	reMachineExec   = regexp.MustCompile(`Machine execution \((\d+) steps\) took ([\d.]+)s`)
+	// Matches both `zkc execute` (RISC-V interpreter, "Machine execution")
+	// and `zkc exec`    (native zkc,           "Constraint execution").
+	reExecution     = regexp.MustCompile(`(?:Machine|Constraint) execution \((\d+) steps\) took ([\d.]+)s`)
 	reWall          = regexp.MustCompile(`Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): (\S+)`)
 	reRSS           = regexp.MustCompile(`Maximum resident set size \(kbytes\): (\d+)`)
 	reKeccakLogName = regexp.MustCompile(`^keccak_(opt|base)_(\d+)\.log$`)
@@ -101,19 +107,19 @@ func parseLog(path string) (metrics, error) {
 	}
 	body := string(data)
 
-	if mm := reMachineExec.FindStringSubmatch(body); mm != nil {
+	if mm := reExecution.FindStringSubmatch(body); mm != nil {
 		steps, err := strconv.ParseUint(mm[1], 10, 64)
 		if err != nil {
 			return m, fmt.Errorf("%s: parse steps: %w", path, err)
 		}
 		secs, err := strconv.ParseFloat(mm[2], 64)
 		if err != nil {
-			return m, fmt.Errorf("%s: parse machine_s: %w", path, err)
+			return m, fmt.Errorf("%s: parse execution_s: %w", path, err)
 		}
 		m.steps = steps
 		m.constraintS = secs
 	} else {
-		return m, fmt.Errorf("%s: machine execution line not found", path)
+		return m, fmt.Errorf("%s: execution line not found (neither Machine nor Constraint)", path)
 	}
 	if mm := reWall.FindStringSubmatch(body); mm != nil {
 		v, err := parseWall(mm[1])
@@ -423,18 +429,45 @@ func formatFloat(v float64) string {
 	return fmt.Sprintf("%+.2f", v)
 }
 
+// parseWorkloads splits a comma-separated `-workloads` value into the set of
+// workloads we will render. Unknown entries are rejected.
+func parseWorkloads(s string) (wantKeccak, wantBlake bool, err error) {
+	for _, part := range strings.Split(s, ",") {
+		switch strings.TrimSpace(strings.ToLower(part)) {
+		case "":
+			continue
+		case "keccak":
+			wantKeccak = true
+		case "blake":
+			wantBlake = true
+		default:
+			return false, false, fmt.Errorf("unknown workload %q (allowed: keccak, blake)", part)
+		}
+	}
+	if !wantKeccak && !wantBlake {
+		return false, false, fmt.Errorf("no workloads requested (use -workloads keccak,blake)")
+	}
+	return wantKeccak, wantBlake, nil
+}
+
 func main() {
 	logsDir := flag.String("logs", "", "directory containing the per-iter benchmark logs")
 	iters := flag.Int("iters", 5, "number of timed iterations per (workload, variant)")
 	blakeN := flag.Int("blake-n", 3, "number of Blake vectors aggregated per (variant, iter)")
+	workloads := flag.String("workloads", "keccak,blake", "comma-separated list of workloads to render (keccak,blake)")
 	baseRef := flag.String("base-ref", "", "baseline branch/commit ref (informational)")
 	optimRef := flag.String("optim-ref", "", "optim-test branch/commit ref (informational)")
 	zkcVersion := flag.String("zkc-version", "", "go-corset ref used to build the zkc binary (informational)")
-	keccakNVectors := flag.Int("keccak-n-vectors", 0, "number of Keccak vectors batched into one zkc exec (informational)")
-	blakeRounds := flag.Int("blake-rounds", 0, "number of Blake2b compression rounds for the synthetic vector (informational)")
+	keccakNVectors := flag.Int("keccak-n-vectors", 0, "number of Keccak vectors batched into one zkc exec (informational, 0 = omit)")
+	blakeRounds := flag.Int("blake-rounds", 0, "number of Blake2b compression rounds (informational, 0 = omit)")
 	flag.Parse()
 	if *logsDir == "" {
 		fmt.Fprintln(os.Stderr, "error: -logs is required")
+		os.Exit(1)
+	}
+	wantKeccak, wantBlake, err := parseWorkloads(*workloads)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 
@@ -445,22 +478,32 @@ func main() {
 	}
 
 	var out strings.Builder
-	out.WriteString("## ZkC interpreter benchmark — base vs optim\n\n")
+	out.WriteString("## ZkC benchmark — base vs optim\n\n")
 
 	out.WriteString("### Workflow inputs\n\n")
-	fmt.Fprintf(&out, "- base branch ref: `%s`\n", *baseRef)
-	fmt.Fprintf(&out, "- optim branch ref: `%s`\n", *optimRef)
-	fmt.Fprintf(&out, "- zkc version (go-corset ref): `%s`\n", *zkcVersion)
-	fmt.Fprintf(&out, "- number of Keccak vectors: %d\n", *keccakNVectors)
-	fmt.Fprintf(&out, "- number of Blake compression rounds: %d\n", *blakeRounds)
+	if *baseRef != "" {
+		fmt.Fprintf(&out, "- base branch ref: `%s`\n", *baseRef)
+	}
+	if *optimRef != "" {
+		fmt.Fprintf(&out, "- optim branch ref: `%s`\n", *optimRef)
+	}
+	if *zkcVersion != "" {
+		fmt.Fprintf(&out, "- zkc version (go-corset ref): `%s`\n", *zkcVersion)
+	}
+	if wantKeccak && *keccakNVectors > 0 {
+		fmt.Fprintf(&out, "- number of Keccak vectors: %d\n", *keccakNVectors)
+	}
+	if wantBlake && *blakeRounds > 0 {
+		fmt.Fprintf(&out, "- number of Blake compression rounds: %d\n", *blakeRounds)
+	}
 	out.WriteString("\n")
 
 	out.WriteString("### First warm up run\n\n")
 	allOK := true
-	if !renderInvariants(&out, kc) {
+	if wantKeccak && !renderInvariants(&out, kc) {
 		allOK = false
 	}
-	if !renderInvariants(&out, bl) {
+	if wantBlake && !renderInvariants(&out, bl) {
 		allOK = false
 	}
 	if !allOK {
@@ -468,12 +511,20 @@ func main() {
 	}
 
 	out.WriteString("\n### Per-iteration timings\n")
-	renderPerIter(&out, kc, *iters)
-	renderPerIter(&out, bl, *iters)
+	if wantKeccak {
+		renderPerIter(&out, kc, *iters)
+	}
+	if wantBlake {
+		renderPerIter(&out, bl, *iters)
+	}
 
 	out.WriteString("\n### Aggregates")
-	renderAggregate(&out, kc)
-	renderAggregate(&out, bl)
+	if wantKeccak {
+		renderAggregate(&out, kc)
+	}
+	if wantBlake {
+		renderAggregate(&out, bl)
+	}
 
 	fmt.Print(out.String())
 }

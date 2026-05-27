@@ -1,0 +1,138 @@
+name: Arithmetization native zkc benchmark - Keccak (base vs optim)
+
+# Benchmark of native `zkc exec` on the batched Keccak-f program against two
+# `zkc` builds: a "base" version of zkc and an "optim" version. Both runs use
+# the same arithmetization source (`arithmetization/src/test/examples/zkc/keccakf/`);
+# only the `zkc` binary differs.
+#
+# Unlike the RISC-V interpreter benchmark we cannot alternate variants per
+# iteration: each variant requires its own `zkc` binary, and swapping binaries
+# every iteration is more expensive than the timed work itself. We instead do
+# one untimed warm-up + N timed iterations for the base variant, then the same
+# for the optim variant. Per-iteration `cache_thrasher` + sleep still attempt
+# to keep CPU cache state comparable across timed runs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      zkc_base_ref:
+        description: 'go-corset commit/branch/tag for the BASE zkc binary'
+        required: true
+        type: string
+      zkc_optim_ref:
+        description: 'go-corset commit/branch/tag for the OPTIM zkc binary'
+        required: true
+        type: string
+      iterations:
+        description: 'Number of timed iterations per variant'
+        required: false
+        type: number
+        default: 5
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  bench:
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-large
+    timeout-minutes: 120
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-arithmetization-riscv
+
+      - name: Build two zkc binaries (base + opt) via go install
+        run: |
+          set -eux
+          # `go install pkg@version` natively accepts tags, branches and full
+          # SHAs, which is the easiest way to materialise two zkc binaries
+          # from two refs of go-corset side by side. We collect each install
+          # into its own GOBIN and rename the output so they coexist on disk.
+          for variant in base opt; do
+            case "$variant" in
+              base) ref="${{ inputs.zkc_base_ref }}" ;;
+              opt)  ref="${{ inputs.zkc_optim_ref }}" ;;
+            esac
+            tmpbin=$(mktemp -d)
+            GOBIN="$tmpbin" go install "github.com/consensys/go-corset/cmd/zkc@${ref}"
+            mv "$tmpbin/zkc" "/tmp/zkc-${variant}"
+            rmdir "$tmpbin"
+            echo "::group::zkc-${variant} version (${ref})"
+            "/tmp/zkc-${variant}" --version || true
+            echo "::endgroup::"
+          done
+
+      - name: Build helpers and synthesize Keccak input JSON
+        run: |
+          set -eux
+          mkdir -p /tmp/bench/logs
+          cd arithmetization/src/test/examples
+          go build -o /tmp/bench/keccakf_accepts_to_input ./scripts/keccakf_accepts_to_input/main.go
+          go build -o /tmp/bench/cache_thrasher           ./scripts/cache_thrasher/main.go
+          go build -o /tmp/bench/render_bench_summary     ./scripts/render_bench_summary/main.go
+          # Strip the `result` WOM output from the .accepts fixture so the
+          # remaining ROM inputs (n_vectors, block_counts, blocks) can be fed
+          # to `zkc exec`.
+          /tmp/bench/keccakf_accepts_to_input \
+            "$PWD/zkc/keccakf/keccakf_batched.accepts" \
+            /tmp/keccakf_input.json
+
+      - name: Run benchmark (warmup + sequential timed iterations, base then opt)
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p /tmp/bench/logs
+          zkc_prog="$PWD/arithmetization/src/test/examples/zkc/keccakf/keccakf_batched.zkc"
+
+          reset_state() {
+            sync || true
+            # sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches' || true
+            /tmp/bench/cache_thrasher 256 >/dev/null 2>&1 || true
+            sleep 5
+          }
+
+          run_native_keccak() {  # $1=variant (base|opt)  $2=label (warmup|iter#)
+            local zkc_bin="/tmp/zkc-${1}"
+            /usr/bin/time -v "$zkc_bin" exec -v --field KOALABEAR_16 \
+              /tmp/keccakf_input.json "$zkc_prog" \
+              > "/tmp/bench/logs/keccak_${1}_${2}.log" 2>&1
+          }
+
+          # We must not alternate base/opt per iteration here: doing so would
+          # require switching zkc binaries (and their already-warm page-cache
+          # footprint) between every timed run. Instead, for each variant we
+          # warmup once (untimed) and then take N consecutive timed samples.
+          for variant in base opt; do
+            reset_state; run_native_keccak "$variant" warmup || true
+            for i in $(seq 1 ${{ inputs.iterations || 5 }}); do
+              reset_state; run_native_keccak "$variant" "$i"
+            done
+          done
+
+      - name: Parse logs and emit summary
+        if: always()
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/bench/logs
+          /tmp/bench/render_bench_summary \
+            -logs /tmp/bench/logs \
+            -iters ${{ inputs.iterations || 5 }} \
+            -workloads keccak \
+            -base-ref "${{ inputs.zkc_base_ref }}" \
+            -optim-ref "${{ inputs.zkc_optim_ref }}" \
+            | tee -a "$GITHUB_STEP_SUMMARY" \
+            | tee /tmp/bench/logs/summary.md
+
+      - name: Upload benchmark logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zkc-native-keccak-bench-logs
+          path: /tmp/bench/logs
