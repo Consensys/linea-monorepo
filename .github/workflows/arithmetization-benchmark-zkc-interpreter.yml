@@ -218,41 +218,43 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p /tmp/bench/logs
+          /usr/bin/time -v zkc execute -v -q /tmp/keccak.json /tmp/wt-${1}/arithmetization/src/main/riscv/main.zkc
 
-          reset_state() {
-            sync || true
-            #sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches' || true
-            /tmp/bench/cache_thrasher 256 >/dev/null 2>&1 || true
-            sleep 5
-          }
+          #reset_state() {
+          #  sync || true
+          #  #sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches' || true
+          #  /tmp/bench/cache_thrasher 256 >/dev/null 2>&1 || true
+          #  sleep 5
+          #}
 
-          run_keccak() {  # $1=variant (opt|base)  $2=label (warmup|iter#)
-            local zkc_main="/tmp/wt-${1}/arithmetization/src/main/riscv/main.zkc"
-            /usr/bin/time -v zkc execute -v -q /tmp/keccak.json "$zkc_main" \
-              > "/tmp/bench/logs/keccak_${1}_${2}.log" 2>&1
-          }
 
-          run_blake() {   # $1=variant  $2=label. Runs all N vectors, one log file per vector.
-            local zkc_main="/tmp/wt-${1}/arithmetization/src/main/riscv/main.zkc"
-            for json in /tmp/bench/json/blake/*.json; do
-              local n
-              n=$(basename "$json" .json)
-              /usr/bin/time -v zkc execute -v -q "$json" "$zkc_main" \
-                > "/tmp/bench/logs/blake_${1}_${2}_${n}.log" 2>&1
-            done
-          }
+          #run_keccak() {  # $1=variant (opt|base)  $2=label (warmup|iter#)
+          #  local zkc_main="/tmp/wt-${1}/arithmetization/src/main/riscv/main.zkc"
+          #  /usr/bin/time -v zkc execute -v -q /tmp/keccak.json "$zkc_main" \
+          #    > "/tmp/bench/logs/keccak_${1}_${2}.log" 2>&1
+          #}
 
-          for wl in keccak blake; do
+          #run_blake() {   # $1=variant  $2=label. Runs all N vectors, one log file per vector.
+          #  local zkc_main="/tmp/wt-${1}/arithmetization/src/main/riscv/main.zkc"
+          #  for json in /tmp/bench/json/blake/*.json; do
+          #    local n
+          #    n=$(basename "$json" .json)
+          #    /usr/bin/time -v zkc execute -v -q "$json" "$zkc_main" \
+          #      > "/tmp/bench/logs/blake_${1}_${2}_${n}.log" 2>&1
+          #  done
+          #}
+
+          # for wl in keccak blake; do
             # Untimed warmup: optim then base. Primes the page cache and shared libs
             # so both branches face an already-warm filesystem on iteration 1.
-            reset_state; run_${wl} opt  warmup || true
-            reset_state; run_${wl} base warmup || true
+          #  reset_state; run_${wl} opt  warmup || true
+          #  reset_state; run_${wl} base warmup || true
             # Timed runs: opt_i, base_i alternating, starting with opt.
-            for i in $(seq 1 ${{ inputs.iterations || 2 }}); do
-              reset_state; run_${wl} opt  "$i"
-              reset_state; run_${wl} base "$i"
-            done
-          done
+          #  for i in $(seq 1 ${{ inputs.iterations || 2 }}); do
+          #    reset_state; run_${wl} opt  "$i"
+          #    reset_state; run_${wl} base "$i"
+          #  done
+          #done
 
       - name: Parse logs and emit summary
         run: |
