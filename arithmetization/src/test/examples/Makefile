@@ -52,6 +52,9 @@ JSON := $(BIN).json
 # Inputs and offsets for the program
 IN_BYTES        ?= ""
 
+# Keccak guest: compile-time vector count
+KECCAK_N_VECTORS ?= 10
+
 # Values to generate the linker script
 # 128 MiB (0x00000000 -> 0x07FFFFFF)
 PROGRAM_OFFSET  ?= 0x00000000
@@ -133,14 +136,25 @@ compile: require-src linker-script
 		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dpath=$(BASENAME); \
 	elif [ "$(EXT)" = ".rs" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
-		cargo +nightly rustc \
-			--manifest-path $(MAKEFILE_DIR)rust/Cargo.toml \
-			--target $(MAKEFILE_DIR)rust/riscv64im-unknown-none-elf.json \
-			-Z build-std=core \
-			-Z json-target-spec \
-			--bin $(NAME) \
-			--release \
-			-- -C link-arg=-T$(LINKER_SCRIPT); \
+		if [ "$(NAME)" = "keccak" ]; then \
+			env KECCAK_N_VECTORS="$(KECCAK_N_VECTORS)" cargo +nightly rustc \
+				--manifest-path $(MAKEFILE_DIR)rust/Cargo.toml \
+				--target $(MAKEFILE_DIR)rust/riscv64im-unknown-none-elf.json \
+				-Z build-std=core \
+				-Z json-target-spec \
+				--bin $(NAME) \
+				--release \
+				-- -C link-arg=-T$(LINKER_SCRIPT); \
+		else \
+			cargo +nightly rustc \
+				--manifest-path $(MAKEFILE_DIR)rust/Cargo.toml \
+				--target $(MAKEFILE_DIR)rust/riscv64im-unknown-none-elf.json \
+				-Z build-std=core \
+				-Z json-target-spec \
+				--bin $(NAME) \
+				--release \
+				-- -C link-arg=-T$(LINKER_SCRIPT); \
+		fi; \
 	else \
 		echo "Unsupported file extension: $(EXT)"; \
 		exit 1; \
@@ -257,7 +271,6 @@ verify-elf: require-test
 #                       `zkc exec` on the produced JSON.
 ######################################################
 KECCAK_ACCEPTS      ?= $(MAKEFILE_DIR)rust/src/keccak/keccak.accepts
-KECCAK_N_VECTORS    ?= 100
 
 KECCAK_ELF          := $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/keccak
 KECCAK_JSON         ?= $(KECCAK_ELF).json
@@ -266,7 +279,8 @@ KECCAK_ACCEPTS2HEX  := $(MAKEFILE_DIR)rust/target/keccak_accepts2hex
 KECCAK_IN_BYTES_HEX := /tmp/keccak_in_bytes.hex
 
 keccak-rust-build:
-	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=keccak/keccak.rs IN_BYTES=0x00
+	cargo clean -p keccak --manifest-path $(MAKEFILE_DIR)rust/Cargo.toml 2>/dev/null || true
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=keccak/keccak.rs IN_BYTES=0x00 KECCAK_N_VECTORS=$(KECCAK_N_VECTORS)
 	@echo "building keccak_elf2json..."
 	go build -o $(KECCAK_ELF2JSON) $(GO_MAIN)
 	@echo "building keccak_accepts2hex..."
