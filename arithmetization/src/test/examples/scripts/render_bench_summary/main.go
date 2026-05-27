@@ -303,6 +303,27 @@ func pct(num, denom float64) float64 {
 	return 100 * num / denom
 }
 
+// formatThousands renders an unsigned integer with comma thousands separators
+// (e.g. 173005454 -> "173,005,454"). Avoids pulling in golang.org/x/text just
+// for this; the helper scripts deliberately have zero external deps.
+func formatThousands(n uint64) string {
+	s := strconv.FormatUint(n, 10)
+	if len(s) <= 3 {
+		return s
+	}
+	var b strings.Builder
+	first := len(s) % 3
+	if first == 0 {
+		first = 3
+	}
+	b.WriteString(s[:first])
+	for i := first; i < len(s); i += 3 {
+		b.WriteByte(',')
+		b.WriteString(s[i : i+3])
+	}
+	return b.String()
+}
+
 func renderInvariants(out *strings.Builder, w workload) bool {
 	var (
 		stepsSeen     uint64
@@ -324,9 +345,9 @@ func renderInvariants(out *strings.Builder, w workload) bool {
 	}
 	stepsOK := !stepsConflict
 	if stepsOK {
-		fmt.Fprintf(out, "- **%s** steps: PASS (all variants/iters = `%d`)\n", w.name, stepsSeen)
+		fmt.Fprintf(out, "- **%s** steps: PASS with machine exec steps = %s\n", w.name, formatThousands(stepsSeen))
 	} else {
-		fmt.Fprintf(out, "- **%s** steps: FAIL (divergent across variants/iters)\n", w.name)
+		fmt.Fprintf(out, "- **%s** steps: FAIL — machine exec steps diverge across variants/iters\n", w.name)
 	}
 	return stepsOK
 }
@@ -406,6 +427,11 @@ func main() {
 	logsDir := flag.String("logs", "", "directory containing the per-iter benchmark logs")
 	iters := flag.Int("iters", 5, "number of timed iterations per (workload, variant)")
 	blakeN := flag.Int("blake-n", 3, "number of Blake vectors aggregated per (variant, iter)")
+	baseRef := flag.String("base-ref", "", "baseline branch/commit ref (informational)")
+	optimRef := flag.String("optim-ref", "", "optim-test branch/commit ref (informational)")
+	zkcVersion := flag.String("zkc-version", "", "go-corset ref used to build the zkc binary (informational)")
+	keccakNVectors := flag.Int("keccak-n-vectors", 0, "number of Keccak vectors batched into one zkc exec (informational)")
+	blakeRounds := flag.Int("blake-rounds", 0, "number of Blake2b compression rounds for the synthetic vector (informational)")
 	flag.Parse()
 	if *logsDir == "" {
 		fmt.Fprintln(os.Stderr, "error: -logs is required")
@@ -420,7 +446,16 @@ func main() {
 
 	var out strings.Builder
 	out.WriteString("## ZkC interpreter benchmark — base vs optim\n\n")
-	out.WriteString("### Invariant sanity checks\n\n")
+
+	out.WriteString("### Workflow inputs\n\n")
+	fmt.Fprintf(&out, "- base branch ref: `%s`\n", *baseRef)
+	fmt.Fprintf(&out, "- optim branch ref: `%s`\n", *optimRef)
+	fmt.Fprintf(&out, "- zkc version (go-corset ref): `%s`\n", *zkcVersion)
+	fmt.Fprintf(&out, "- number of Keccak vectors: %d\n", *keccakNVectors)
+	fmt.Fprintf(&out, "- number of Blake compression rounds: %d\n", *blakeRounds)
+	out.WriteString("\n")
+
+	out.WriteString("### First warm up run\n\n")
 	allOK := true
 	if !renderInvariants(&out, kc) {
 		allOK = false
@@ -429,7 +464,7 @@ func main() {
 		allOK = false
 	}
 	if !allOK {
-		out.WriteString("\n> NOTE: at least one invariant check FAILED — the optim branch may have changed semantics, not just performance.\n")
+		out.WriteString("\n> NOTE: machine exec steps differ across variants/iters — the optim branch may have changed semantics, not just performance.\n")
 	}
 
 	out.WriteString("\n### Per-iteration timings\n")

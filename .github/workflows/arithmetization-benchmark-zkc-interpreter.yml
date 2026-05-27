@@ -44,7 +44,7 @@ on:
         type: number
         default: 100
       rounds_blake:
-        description: 'Blake compression rounds for the single synthetic vector (default 12 = canonical Blake2b)'
+        description: 'Blake compression rounds'
         required: false
         type: number
         default: 12
@@ -87,7 +87,7 @@ jobs:
           set -eux
           mkdir -p /tmp/bench/logs /tmp/bench/json/blake
           cd /tmp/wt-opt/arithmetization/src/test/examples
-          # Keccak: one batched JSON at a stable workflow-controlled path.
+          # Keccak: one batched JSON.
           make keccak-rust-json \
             KECCAK_N_VECTORS=${{ inputs.n_vectors_keccak || 10 }} \
             KECCAK_JSON=/tmp/keccak.json
@@ -155,6 +155,11 @@ jobs:
             -logs /tmp/bench/logs \
             -iters ${{ inputs.iterations || 1 }} \
             -blake-n 1 \
+            -base-ref "${{ inputs.base_ref || github.base_ref }}" \
+            -optim-ref "${{ inputs.optim_ref || github.event.pull_request.head.sha || github.sha }}" \
+            -zkc-version "${{ inputs.go_corset_ref || 'main' }}" \
+            -keccak-n-vectors ${{ inputs.n_vectors_keccak || 10 }} \
+            -blake-rounds ${{ inputs.rounds_blake || 12 }} \
             | tee -a "$GITHUB_STEP_SUMMARY" \
             | tee /tmp/bench/logs/summary.md
 
