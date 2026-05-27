@@ -8,7 +8,7 @@ pub const mont_constant_inv: u32 = 1_057_030_144;
 
 pub const Error = error{NonCanonicalEncoding};
 
-pub const Element = struct {
+pub const Element = extern struct {
     value: u32,
 
     pub fn init(raw: u64) Element {

@@ -1,7 +1,7 @@
 const base = @import("koalabear.zig");
 
 /// Quadratic extension F_{p^2} = F_p[u]/(u^2 - 3).
-pub const E2 = struct {
+pub const E2 = extern struct {
     a0: base.Element,
     a1: base.Element,
 

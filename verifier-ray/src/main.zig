@@ -24,7 +24,9 @@ const native_input_path: [:0]const u8 = "zig-out/input.bin";
 
 extern const _input_start: u8;
 
-const Input = struct {
+// Input is cast directly from raw bytes in both native mmap and R5 linked-memory paths.
+// Keep declaration-order layout stable for the binary fixtures.
+const Input = extern struct {
     commitments: [commitment_count]Commitment,
     public_inputs: [public_input_count]field.Element,
     proof_bytes: [proof_byte_count]u8,
