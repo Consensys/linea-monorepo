@@ -37,9 +37,7 @@ dependencies {
   implementation "tech.pegasys.teku.internal:p2p:${libs.versions.teku.get()}"
   implementation "tech.pegasys.teku.internal:eth2:${libs.versions.teku.get()}"
 
-  testImplementation project(':maru:config')
   testImplementation project(':maru:crypto')
-  testImplementation project(':maru:observability')
   testImplementation project(':maru:serialization')
   testImplementation(testFixtures(project(':maru:core')))
   testImplementation(testFixtures(project(':maru:executionlayer')))
@@ -49,6 +47,5 @@ dependencies {
   testImplementation "org.mockito:mockito-core:${libs.versions.mockito.get()}"
   testImplementation "org.mockito.kotlin:mockito-kotlin:${libs.versions.mockitoKotlin.get()}"
   testImplementation "org.assertj:assertj-core:${libs.versions.assertj.get()}"
-  testImplementation project(':jvm-libs:linea:core:metrics')
   testImplementation 'org.hyperledger.besu.internal:besu-ethereum-core'
 }
