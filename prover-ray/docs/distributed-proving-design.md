@@ -121,11 +121,13 @@ directly. The prover never sees a `wizard.ProverRuntime` from arithmetization.
 ### Decision 4: Task-queue model replaces the synchronized pipeline
 
 Each unit of work is a stateless, idempotent **task** identified by
-`(blockID, kindIndex, segmentIndex)`. Tasks are placed in a shared queue and
-consumed by any available worker on any machine. There is no global barrier.
+`(batchID, kindIndex, segmentIndex)`. `batchID` is an opaque correlation token
+chosen by the caller; the prover never interprets it. Tasks are placed in a
+shared queue and consumed by any available worker on any machine. There is no
+global barrier.
 
 The **only coordination event** is:
-> all `PreflightCommitTask`s for a block complete
+> all `PreflightCommitTask`s for a batch complete
 > → compute shared randomness (single hash, microseconds)
 > → enqueue all `LPPProveTask`s
 
@@ -166,7 +168,7 @@ Arithmetization does not need to know about Fiat-Shamir, LPP, or shared
 randomness. From its perspective `LPPColumnIDs` is simply "the columns I must
 emit first".
 
-### 4.2 Per-block runtime
+### 4.2 Per-batch runtime
 
 ```
 arithmetization.Run(tracePath) → (preflightCh, traceCh)
@@ -201,7 +203,7 @@ sends it. Injecting shared randomness is the prover's exclusive responsibility.
     │  SETUP: both sides run this once; no runtime hand-off needed         │
     └──────────────────────────────────────────────────────────────────────┘
 
-Per-block proving:
+Per-batch proving:
 
 arithmetization.Run(tracePath)
     │
@@ -280,7 +282,7 @@ prover-ray/
 └── pipeline/
     ├── task.go            — PreflightCommitTask, GLProveTask, LPPProveTask, MergeTask
     │                         TaskQueue interface, WorkerResult
-    ├── coordinator.go     — Coordinator: tracks preflight commits per block,
+    ├── coordinator.go     — Coordinator: tracks preflight commit tasks per batch,
     │                         fires shared-randomness event, pairs proofs for merging
     └── pipeline.go        — Prover.Prove() — enqueues tasks, returns immediately
                              Worker.Run()   — stateless task executor, any machine
@@ -412,7 +414,7 @@ Preflight per shard k:
     hash_chip.FSSchedule[0] for shard k    ← committed early
     (NOT the CPU columns — those are on the query side)
 
-After all preflight commits:
+After all preflight commit tasks complete:
     GetSharedRandomness(all shard × chip commitments) → single field.Octuplet
     → injected into every CPU segment witness as InitialFiatShamirState
 ```
@@ -439,7 +441,7 @@ Consequences for the design:
    runtime; it cannot be known at setup time.
 
 2. **The coordinator handles 0-row chips gracefully.** A chip with zero rows
-   in a shard produces no task, no preflight commitment, and no proof. It
+   in a shard produces no task, no commitment, and no proof. It
    contributes nothing to shared randomness for that shard.
 
 3. **The merge tree depth is dynamic.** The coordinator's greedy pairing
@@ -494,7 +496,7 @@ module-structured) but not **how the prover consumes it**.
    sanity check. Currently the pseudocode notes this in `SegmentProof.LppCommitment`
    but does not enforce it.
 
-3. **Coordinator persistence**: for crash recovery the coordinator's per-block
+3. **Coordinator persistence**: for crash recovery the coordinator's per-batch
    state (received commitments, available proof paths) must be checkpointed to a
    durable store before results are acknowledged from the queue.
 

@@ -6,7 +6,7 @@
 // A synchronized pipeline (wait for all GL proofs → compute shared randomness
 // → start LPP proofs) has three failure modes the thread identified:
 //
-//  1. One crashed prover stalls the whole block.
+//  1. One crashed prover stalls the whole batch.
 //  2. Memory must be held on one machine until every proof is done.
 //  3. The slowest segment sets the wall-clock time for the whole batch
 //     (straggler problem).
@@ -14,14 +14,15 @@
 // The task-queue model avoids all three:
 //  - Tasks are idempotent: a crashed worker re-enqueues its task; no state is lost.
 //  - Tasks are stateless: inputs/outputs live in a shared store (filesystem,
-//    object store); no machine needs to hold the full block in memory.
+//    object store); no machine needs to hold the full batch in memory.
 //  - Workers steal from the queue: a fast machine that finishes its segment
 //    immediately picks up the next one; no machine idles waiting for a straggler.
 //
 // # The one unavoidable coordination event
 //
-// Shared randomness requires all preflight commits (a protocol requirement).
-// This is handled as a single lightweight event in the Coordinator:
+// Shared randomness requires committing to all preflight columns of the batch
+// (a protocol requirement). This is handled as a single lightweight event in
+// the Coordinator:
 //
 //	all PreflightCommitTasks done → hash commitments → enqueue LPP tasks
 //
@@ -55,8 +56,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/distributed"
 )
 
-// Prover is the top-level entry point. It holds no per-block state; all
-// per-block state lives in the Coordinator and the task queue.
+// Prover is the top-level entry point. It holds no per-batch state; all
+// per-batch state lives in the Coordinator and the task queue.
 type Prover struct {
 	kinds       []*distributed.SegmentKind
 	arith       arithmetization.Arithmetization
@@ -74,18 +75,23 @@ func NewProver(kinds []*distributed.SegmentKind, queue TaskQueue) *Prover {
 	return p
 }
 
-// Prove submits a block for proving. It returns as soon as all tasks have been
-// enqueued; the actual proving happens asynchronously on the worker pool.
-// The final proof is written to the output store addressed by blockID.
+// Prove submits one proving job for an opaque batch of preflight segments
+// that share one Fiat-Shamir randomness. It returns as soon as all tasks have
+// been enqueued; the actual proving happens asynchronously on the worker pool.
+// The final proof is written to the output store addressed by batchID.
+//
+// batchID is an opaque correlation token chosen by the caller. The prover does
+// not interpret it (it could be a block ID, a chunk ID, anything); it only
+// uses it to group tasks/results that belong to the same batch.
 //
 // If proving is interrupted (crash, restart), call Prove again with the same
-// blockID: the Coordinator will replay results from the durable queue log and
+// batchID: the Coordinator will replay results from the durable queue log and
 // resume without re-proving already-completed segments.
-func (p *Prover) Prove(ctx context.Context, blockID string, req ProveRequest) error {
+func (p *Prover) Prove(ctx context.Context, batchID string, req ProveRequest) error {
 
 	// --- Launch arithmetization ------------------------------------------
-	// preflightCh: one []PreflightSegment per block, sent early.
-	// traceCh:     one TracingResult per block, sent when done.
+	// preflightCh: one []PreflightSegment per batch, sent early.
+	// traceCh:     one TracingResult per batch, sent when done.
 	preflightCh, traceCh := p.arith.Run(req.TracePath)
 
 	// --- Stream preflight tasks as they arrive ---------------------------
@@ -97,15 +103,15 @@ func (p *Prover) Prove(ctx context.Context, blockID string, req ProveRequest) er
 		case <-ctx.Done():
 			return
 		case segs := <-preflightCh:
-			// Register how many preflight commits the coordinator should expect.
+			// Register how many preflight commit tasks the coordinator should expect.
 			// LPP witnesses are not ready yet; they will be attached when the
 			// full trace arrives. PSEUDO: this registration should be idempotent
 			// for crash-recovery (the coordinator checks if already registered).
-			p.coordinator.RegisterBlock(blockID, len(segs), pseudoTotalProofs(segs, p.kinds), nil)
+			p.coordinator.RegisterBatch(batchID, len(segs), pseudoTotalProofs(segs, p.kinds), nil)
 
 			for _, seg := range segs {
 				_ = p.queue.EnqueuePreflight(PreflightCommitTask{
-					BlockID:      blockID,
+					BatchID:      batchID,
 					KindIndex:    seg.ModuleIndex,
 					SegmentIndex: seg.SegmentIndex,
 					Segment:      seg,
@@ -125,12 +131,12 @@ func (p *Prover) Prove(ctx context.Context, blockID string, req ProveRequest) er
 			// Attach the LPP witnesses to the coordinator so it can enqueue
 			// LPP tasks once shared randomness is available.
 			// PSEUDO: update registration rather than overwrite.
-			p.coordinator.RegisterBlock(blockID, 0, 0, result.WitnessesLPP)
+			p.coordinator.RegisterBatch(batchID, 0, 0, result.WitnessesLPP)
 
 			for _, w := range result.WitnessesGL {
-				outPath := pseudoGLProofPath(blockID, w.ModuleIndex, w.SegmentIndex)
+				outPath := pseudoGLProofPath(batchID, w.ModuleIndex, w.SegmentIndex)
 				_ = p.queue.EnqueueGL(GLProveTask{
-					BlockID:      blockID,
+					BatchID:      batchID,
 					KindIndex:    w.ModuleIndex,
 					SegmentIndex: w.SegmentIndex,
 					Kind:         p.kinds[w.ModuleIndex],
@@ -175,7 +181,7 @@ func (w *Worker) Run(ctx context.Context) {
 }
 
 // execute runs a single task and returns a WorkerResult.
-// All task types are handled here; the worker doesn't know or care what block
+// All task types are handled here; the worker doesn't know or care what batch
 // is being proven or what machine the coordinator runs on.
 func (w *Worker) execute(ctx context.Context, task any) WorkerResult {
 	_ = ctx
@@ -184,7 +190,7 @@ func (w *Worker) execute(ctx context.Context, task any) WorkerResult {
 	case PreflightCommitTask:
 		commitment := distributed.CommitLPPColumns(t.Segment)
 		return WorkerResult{
-			BlockID:      t.BlockID,
+			BatchID:      t.BatchID,
 			KindIndex:    t.KindIndex,
 			SegmentIndex: t.SegmentIndex,
 			Commitment:   &commitment,
@@ -195,7 +201,7 @@ func (w *Worker) execute(ctx context.Context, task any) WorkerResult {
 		// Write the proof atomically to t.OutputPath.
 		pseudoProveGL(t)
 		return WorkerResult{
-			BlockID:      t.BlockID,
+			BatchID:      t.BatchID,
 			KindIndex:    t.KindIndex,
 			SegmentIndex: t.SegmentIndex,
 			ProofPath:    t.OutputPath,
@@ -206,7 +212,7 @@ func (w *Worker) execute(ctx context.Context, task any) WorkerResult {
 		// InitialFiatShamirState is already set in t.Witness by the coordinator.
 		pseudoProveLPP(t)
 		return WorkerResult{
-			BlockID:      t.BlockID,
+			BatchID:      t.BatchID,
 			KindIndex:    t.KindIndex,
 			SegmentIndex: t.SegmentIndex,
 			ProofPath:    t.OutputPath,
@@ -217,7 +223,7 @@ func (w *Worker) execute(ctx context.Context, task any) WorkerResult {
 		// step, write merged proof to t.OutputPath.
 		pseudoMerge(t)
 		return WorkerResult{
-			BlockID:   t.BlockID,
+			BatchID:   t.BatchID,
 			ProofPath: t.OutputPath,
 		}
 
@@ -247,8 +253,8 @@ func (w *Worker) report(result WorkerResult) {
 func pseudoTotalProofs(_ []arithmetization.PreflightSegment, _ []*distributed.SegmentKind) int {
 	panic("pseudo: total = nbGLSegments + nbLPPSegments")
 }
-func pseudoGLProofPath(blockID string, kindIdx, segIdx int) string {
-	return blockID + "/gl/" + itoa(kindIdx) + "/" + itoa(segIdx) + ".proof"
+func pseudoGLProofPath(batchID string, kindIdx, segIdx int) string {
+	return batchID + "/gl/" + itoa(kindIdx) + "/" + itoa(segIdx) + ".proof"
 }
 func pseudoDequeue(_ TaskQueue) any          { panic("pseudo: blocking dequeue from queue backend") }
 func pseudoProveGL(_ GLProveTask)            { panic("pseudo: run GL circuit prover") }

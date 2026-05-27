@@ -13,12 +13,12 @@ import (
 //
 // There is no shared memory between tasks. Workers communicate only through the
 // task queue and a lightweight output store (e.g. a shared filesystem or object
-// store addressed by block/kind/segment).
+// store addressed by batch/kind/segment).
 //
 // The only coordination event in the entire pipeline is:
 //
-//	"all PreflightCommitTasks for a given block are done
-//	 → compute shared randomness
+//	"all PreflightCommitTasks for a given batch are done
+//	 → compute shared randomness from their commitments
 //	 → enqueue LPPProveTasks"
 //
 // This is a single cheap hash operation on the coordinator, not a proving sync.
@@ -29,7 +29,7 @@ import (
 //
 // Output: an LPPCommitment (stored by the coordinator; never written to disk).
 type PreflightCommitTask struct {
-	BlockID      string
+	BatchID      string // all preflight columns in the same batch contribute to one shared randomness
 	KindIndex    int
 	SegmentIndex int
 	// Segment carries the FSSchedule[0] column data in-memory (small; only the
@@ -44,7 +44,7 @@ type PreflightCommitTask struct {
 //
 // Output path: OutputPath (written atomically; safe to retry).
 type GLProveTask struct {
-	BlockID      string
+	BatchID      string
 	KindIndex    int
 	SegmentIndex int
 	Kind         *distributed.SegmentKind
@@ -59,7 +59,7 @@ type GLProveTask struct {
 //
 // Output path: OutputPath (written atomically; safe to retry).
 type LPPProveTask struct {
-	BlockID        string
+	BatchID        string
 	KindIndex      int
 	SegmentIndex   int
 	Kind           *distributed.SegmentKind
@@ -73,7 +73,7 @@ type LPPProveTask struct {
 //
 // Output path: OutputPath.
 type MergeTask struct {
-	BlockID     string
+	BatchID     string
 	LeftPath    string // path to first input proof
 	RightPath   string // path to second input proof
 	OutputPath  string // path for merged output proof
@@ -98,7 +98,7 @@ type TaskQueue interface {
 // The coordinator uses these to decide when to fire the shared-randomness
 // event and when to enqueue merge tasks.
 type WorkerResult struct {
-	BlockID      string
+	BatchID      string
 	KindIndex    int
 	SegmentIndex int
 	// Commitment is populated for completed PreflightCommitTasks.
@@ -109,12 +109,12 @@ type WorkerResult struct {
 	Err error
 }
 
-// SharedRandomnessEvent is fired by the coordinator exactly once per block,
-// as soon as all PreflightCommitTasks for that block have succeeded.
+// SharedRandomnessEvent is fired by the coordinator exactly once per batch,
+// as soon as all PreflightCommitTasks for that batch have succeeded.
 // The event carries the shared randomness and the full LPP witness set so
 // the coordinator can immediately enqueue all LPP tasks.
 type SharedRandomnessEvent struct {
-	BlockID         string
+	BatchID         string
 	SharedRandomness field.Octuplet
 	LPPWitnesses    []*arithmetization.ModuleWitnessLPP
 }

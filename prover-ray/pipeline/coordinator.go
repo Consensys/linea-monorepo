@@ -10,10 +10,11 @@ import (
 
 // Coordinator is the thin orchestration layer. It does two things:
 //
-//  1. Tracks incoming PreflightCommitTask results. When all N expected
-//     preflight commits for a block have arrived, it computes the shared
-//     randomness (a single hash operation) and fires a SharedRandomnessEvent.
-//     This is the only coordination point in the entire pipeline.
+//  1. Tracks incoming PreflightCommitTask results. When commitments for all
+//     N expected preflight segments of a batch have arrived, it computes the
+//     shared randomness (a single hash operation) and fires a
+//     SharedRandomnessEvent. This is the only coordination point in the
+//     entire pipeline.
 //
 //  2. Tracks incoming GL/LPP proof paths. When any two proofs are available,
 //     it enqueues a MergeTask. The merge tree grows incrementally; no barrier
@@ -28,11 +29,11 @@ import (
 type Coordinator struct {
 	mu sync.Mutex
 
-	// preflightState tracks, per block, how many preflight commits we are
-	// waiting for and the commitments received so far.
+	// preflightState tracks, per batch, how many preflight commit tasks we
+	// are waiting for and the commitments received so far.
 	preflightState map[string]*preflightTracker
 
-	// mergeState tracks available proofs per block for merge pairing.
+	// mergeState tracks available proofs per batch for merge pairing.
 	mergeState map[string]*mergeTracker
 
 	// queue is used to enqueue LPP and Merge tasks once conditions are met.
@@ -42,9 +43,9 @@ type Coordinator struct {
 	kinds []*distributed.SegmentKind
 }
 
-// preflightTracker holds per-block preflight state.
+// preflightTracker holds per-batch preflight state.
 type preflightTracker struct {
-	expected     int // total number of preflight commits to wait for
+	expected     int // total number of preflight commit tasks to wait for
 	received     int
 	commitments  []distributed.LPPCommitment
 	lppWitnesses []*arithmetization.ModuleWitnessLPP // held until shared randomness is ready
@@ -67,31 +68,35 @@ func NewCoordinator(kinds []*distributed.SegmentKind, queue TaskQueue) *Coordina
 	}
 }
 
-// RegisterBlock tells the Coordinator how many preflight commits and total
-// proofs to expect for a given block. Called by the producer (Prove) before
-// any tasks are enqueued.
-func (c *Coordinator) RegisterBlock(blockID string, totalSegments, totalProofs int, lppWitnesses []*arithmetization.ModuleWitnessLPP) {
+// RegisterBatch tells the Coordinator how many preflight commit tasks and
+// total proofs to expect for one batch. All preflight columns sharing this
+// batchID contribute to the same Fiat-Shamir randomness; the coordinator
+// fires the shared-randomness event once it has received commitments for all
+// totalSegments preflight segments of the batch.
+// Called by the producer (Prove) before any tasks are enqueued.
+func (c *Coordinator) RegisterBatch(batchID string, totalSegments, totalProofs int, lppWitnesses []*arithmetization.ModuleWitnessLPP) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.preflightState[blockID] = &preflightTracker{
+	c.preflightState[batchID] = &preflightTracker{
 		expected:     totalSegments,
 		commitments:  make([]distributed.LPPCommitment, 0, totalSegments),
 		lppWitnesses: lppWitnesses,
 	}
-	c.mergeState[blockID] = &mergeTracker{
+	c.mergeState[batchID] = &mergeTracker{
 		total: totalProofs,
 	}
 }
 
 // OnPreflightResult is called when a PreflightCommitTask completes.
-// If all preflight commits for the block have now arrived, it fires the
-// shared-randomness event: injects InitialFiatShamirState into every LPP
-// witness and enqueues all LPP tasks. This is the only coordination point.
+// If commitments for all preflight segments of the batch have now arrived,
+// it fires the shared-randomness event: injects InitialFiatShamirState into
+// every LPP witness and enqueues all LPP tasks. This is the only coordination
+// point.
 func (c *Coordinator) OnPreflightResult(result WorkerResult) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	tracker := c.preflightState[result.BlockID]
+	tracker := c.preflightState[result.BatchID]
 	if result.Err != nil {
 		// PSEUDO: re-enqueue the failed preflight task.
 		// The retry logic lives in the queue implementation.
@@ -102,10 +107,10 @@ func (c *Coordinator) OnPreflightResult(result WorkerResult) {
 	tracker.received++
 
 	if tracker.received < tracker.expected {
-		return // still waiting for more preflight commits
+		return // still waiting for more preflight commit tasks to complete
 	}
 
-	// All preflight commits are in — compute shared randomness.
+	// All commitments are in — compute shared randomness.
 	// This is the only coordination point and is a single cheap hash.
 	sharedRandomness := distributed.GetSharedRandomness(tracker.commitments)
 
@@ -115,9 +120,9 @@ func (c *Coordinator) OnPreflightResult(result WorkerResult) {
 	for i, w := range tracker.lppWitnesses {
 		w.InitialFiatShamirState = sharedRandomness
 		// PSEUDO: determine output path for this LPP proof.
-		outPath := pseudoLPPProofPath(result.BlockID, w.ModuleIndex, w.SegmentIndex)
+		outPath := pseudoLPPProofPath(result.BatchID, w.ModuleIndex, w.SegmentIndex)
 		_ = c.queue.EnqueueLPP(LPPProveTask{
-			BlockID:      result.BlockID,
+			BatchID:      result.BatchID,
 			KindIndex:    w.ModuleIndex,
 			SegmentIndex: w.SegmentIndex,
 			Kind:         c.kinds[w.ModuleIndex],
@@ -126,7 +131,7 @@ func (c *Coordinator) OnPreflightResult(result WorkerResult) {
 		})
 	}
 
-	delete(c.preflightState, result.BlockID) // free memory
+	delete(c.preflightState, result.BatchID) // free memory
 }
 
 // OnProofResult is called when a GLProveTask or LPPProveTask completes.
@@ -136,7 +141,7 @@ func (c *Coordinator) OnProofResult(result WorkerResult) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	mt := c.mergeState[result.BlockID]
+	mt := c.mergeState[result.BatchID]
 	if result.Err != nil {
 		// PSEUDO: re-enqueue the failed proof task.
 		return
@@ -154,9 +159,9 @@ func (c *Coordinator) OnProofResult(result WorkerResult) {
 		mt.merged += 2
 
 		isFinal := (mt.merged == mt.total) && len(mt.available) == 0
-		outPath := pseudoMergeProofPath(result.BlockID, mt.merged)
+		outPath := pseudoMergeProofPath(result.BatchID, mt.merged)
 		_ = c.queue.EnqueueMerge(MergeTask{
-			BlockID:     result.BlockID,
+			BatchID:     result.BatchID,
 			LeftPath:    left,
 			RightPath:   right,
 			OutputPath:  outPath,
@@ -177,12 +182,12 @@ func (c *Coordinator) OnMergeResult(result WorkerResult) {
 // Pseudo stubs
 // ---------------------------------------------------------------------------
 
-func pseudoLPPProofPath(blockID string, kindIdx, segIdx int) string {
-	return blockID + "/lpp/" + itoa(kindIdx) + "/" + itoa(segIdx) + ".proof"
+func pseudoLPPProofPath(batchID string, kindIdx, segIdx int) string {
+	return batchID + "/lpp/" + itoa(kindIdx) + "/" + itoa(segIdx) + ".proof"
 }
 
-func pseudoMergeProofPath(blockID string, mergedCount int) string {
-	return blockID + "/merge/" + itoa(mergedCount) + ".proof"
+func pseudoMergeProofPath(batchID string, mergedCount int) string {
+	return batchID + "/merge/" + itoa(mergedCount) + ".proof"
 }
 
 func itoa(n int) string {
