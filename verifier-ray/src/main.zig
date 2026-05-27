@@ -8,7 +8,9 @@ const poseidon2 = verifier_ray.crypto.poseidon2;
 const Transcript = verifier_ray.crypto.fiat_shamir.Transcript;
 
 const is_r5_zkvm = builtin.target.cpu.arch == .riscv64 and builtin.target.os.tag == .freestanding;
-const is_native_linux_x86_64 = builtin.target.cpu.arch == .x86_64 and builtin.target.os.tag == .linux;
+const is_native_os = builtin.target.os.tag == .linux or builtin.target.os.tag == .macos;
+const is_native_arch = builtin.target.cpu.arch == .x86_64 or builtin.target.cpu.arch == .aarch64;
+const is_supported_native = is_native_os and is_native_arch;
 
 const Commitment = verifier_ray.proof.Commitment;
 const Digest = poseidon2.Digest;
@@ -48,23 +50,12 @@ pub fn main() noreturn {
         // this entry point should only be called from native build (`make build` or `make build-release`)
         unreachable;
     }
-    if (comptime !is_native_linux_x86_64) {
-        @compileError("native verifier syscall path currently supports x86_64-linux only");
+    if (comptime !is_supported_native) {
+        @compileError("native verifier libc path currently supports x86_64/aarch64 Linux and macOS only");
     }
 
-    // load the input into memory using Linux syscalls (to avoid depending on stdlib for file I/O and memory mapping)
-    const fd = nativeSyscall3(sys_open, @intFromPtr(native_input_path.ptr), o_rdonly, 0);
-    if (isNativeSyscallError(fd)) exitNative(1);
-
-    const mapped_addr = nativeSyscall6(sys_mmap, 0, raw_input_len, prot_read, map_private, fd, 0);
-    if (isNativeSyscallError(mapped_addr)) exitNative(1);
-
-    // unsafe pointer cast from the raw mapped memory to our structured input type
-    const input: *const Input = @ptrCast(@alignCast(@as([*]const u8, @ptrFromInt(mapped_addr))));
-
-    // run the verifier smoke test with the loaded input
-    const res = runVerifierSmoke(input);
-    exitNative(res);
+    const input = loadNativeInput();
+    exitNative(runVerifierSmoke(input));
 }
 
 // The main entry point for the R5 zkVM smoke test. This is separate from the
@@ -125,56 +116,36 @@ fn exerciseTemporaryTraceWork(input: *const Input) bool {
     return challenge.eql(input.expected_challenge);
 }
 
-const sys_open: u64 = 2;
-const sys_mmap: u64 = 9;
-const sys_exit: u64 = 60;
-const o_rdonly: u64 = 0;
-const prot_read: u64 = 1;
-const map_private: u64 = 2;
+const o_rdonly: c_int = 0;
+const prot_read: c_int = 1;
+const map_private: c_int = 2;
+const map_failed = ~@as(usize, 0);
 
-fn isNativeSyscallError(result: u64) bool {
-    const signed: i64 = @bitCast(result);
-    return signed < 0 and signed > -4096;
-}
+extern fn open(path: [*:0]const u8, flags: c_int) c_int;
+extern fn mmap(address: ?*anyopaque, length: usize, protection: c_int, flags: c_int, fd: c_int, offset: i64) *anyopaque;
+extern fn _exit(status: c_int) noreturn;
 
-fn nativeSyscall1(number: u64, arg1: u64) u64 {
-    return asm volatile ("syscall"
-        : [ret] "={rax}" (-> u64),
-        : [number] "{rax}" (number),
-          [arg1] "{rdi}" (arg1),
-        : .{ .rcx = true, .r11 = true, .memory = true });
-}
+fn loadNativeInput() *const Input {
+    if (comptime !is_supported_native) {
+        @compileError("native verifier libc path currently supports x86_64/aarch64 Linux and macOS only");
+    }
 
-fn nativeSyscall3(number: u64, arg1: u64, arg2: u64, arg3: u64) u64 {
-    return asm volatile ("syscall"
-        : [ret] "={rax}" (-> u64),
-        : [number] "{rax}" (number),
-          [arg1] "{rdi}" (arg1),
-          [arg2] "{rsi}" (arg2),
-          [arg3] "{rdx}" (arg3),
-        : .{ .rcx = true, .r11 = true, .memory = true });
-}
+    const fd = open(native_input_path.ptr, o_rdonly);
+    if (fd < 0) exitNative(1);
 
-fn nativeSyscall6(number: u64, arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64, arg6: u64) u64 {
-    return asm volatile ("syscall"
-        : [ret] "={rax}" (-> u64),
-        : [number] "{rax}" (number),
-          [arg1] "{rdi}" (arg1),
-          [arg2] "{rsi}" (arg2),
-          [arg3] "{rdx}" (arg3),
-          [arg4] "{r10}" (arg4),
-          [arg5] "{r8}" (arg5),
-          [arg6] "{r9}" (arg6),
-        : .{ .rcx = true, .r11 = true, .memory = true });
+    const mapped_addr = mmap(null, raw_input_len, prot_read, map_private, fd, 0);
+    if (@intFromPtr(mapped_addr) == map_failed) exitNative(1);
+
+    const mapped_bytes: [*]const u8 = @ptrCast(mapped_addr);
+    return @ptrCast(@alignCast(mapped_bytes));
 }
 
 fn exitNative(code: u8) noreturn {
-    if (comptime !is_native_linux_x86_64) {
-        @compileError("native verifier syscall exit currently supports x86_64-linux only");
+    if (comptime !is_supported_native) {
+        @compileError("native verifier libc exit currently supports x86_64/aarch64 Linux and macOS only");
     }
 
-    _ = nativeSyscall1(sys_exit, @intCast(code));
-    unreachable;
+    _exit(@intCast(code));
 }
 
 fn exitR5(code: u8) noreturn {

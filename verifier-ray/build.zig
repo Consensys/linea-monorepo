@@ -44,6 +44,10 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    if (!r5) {
+        exe.root_module.link_libc = true;
+    }
+
     if (r5) {
         // Point to assembly overwriting default SP with the one defined in the linker script.
         exe.root_module.addAssemblyFile(b.path("src/start.s"));
