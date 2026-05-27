@@ -70,7 +70,7 @@ jobs:
           - component: coordinator
             folder-name: coordinator
             include-path: coordinator/**
-          - component-name: maru
+          - component: maru
             folder-name: maru
             include-path: maru/**
           - component: prover
