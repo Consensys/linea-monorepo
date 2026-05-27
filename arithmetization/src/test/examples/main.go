@@ -22,11 +22,32 @@ type memoryBlob struct {
 	name   string
 }
 
+// parseInBytes accepts either an inline hex literal / raw string, or @path to a
+// file containing a 0x-prefixed hex blob (used for large batched Keccak inputs
+// that would exceed the shell's per-argument size limit).
+func parseInBytes(arg string) ([]byte, error) {
+	if strings.HasPrefix(arg, "@") {
+		data, err := os.ReadFile(strings.TrimPrefix(arg, "@"))
+		if err != nil {
+			return nil, fmt.Errorf("reading inBytes file: %w", err)
+		}
+		arg = strings.TrimSpace(string(data))
+	}
+	if strings.HasPrefix(arg, "0x") || strings.HasPrefix(arg, "0X") {
+		inBytes, err := hex.DecodeString(arg[2:])
+		if err != nil {
+			return nil, fmt.Errorf("decoding hex input bytes: %w", err)
+		}
+		return inBytes, nil
+	}
+	return []byte(arg), nil
+}
+
 // The purpose of this program is simply to generate a suitable ZkC json input
 // file for a given RISC-V binary program.
 func main() {
 	if len(os.Args) != 4 {
-		fmt.Fprintln(os.Stderr, "usage: go run main.go <elfFile> <inBytes> <inBytesOffset>")
+		fmt.Fprintln(os.Stderr, "usage: go run main.go <elfFile> <inBytes|@hexFile> <inBytesOffset>")
 		os.Exit(1)
 	}
 

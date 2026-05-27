@@ -1,7 +1,11 @@
 name: Arithmetization zkc interpreter benchmark (base vs optim)
 
-# Benchmark of zkc interpreterfor the Keccak and Blake guest programs on
-# two branches of this repo. Designed to give a reliable paired comparison on a
+# Benchmark of zkc interpreter for guest programs on
+# two branches, the base branch and the optim branch.
+# Guest programs are the Keccak and Blake programs in the arithmetization/src/test/examples 
+# directory.
+
+# Designed to give a reliable paired comparison on a
 # single runner: one untimed warmup per branch, then N alternating (opt, base)
 # timed iterations with a per-iteration cache reset + brief cool-down to keep
 # the machine state similar across runs.

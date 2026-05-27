@@ -276,8 +276,7 @@ keccak-rust-json: keccak-rust-build
 	@echo "packing first $(KECCAK_N_VECTORS) vector(s) from $(KECCAK_ACCEPTS) into $(KECCAK_IN_BYTES_HEX)"
 	$(KECCAK_ACCEPTS2HEX) "$(KECCAK_ACCEPTS)" $(KECCAK_N_VECTORS) > $(KECCAK_IN_BYTES_HEX)
 	@echo "rendering ZKC JSON to $(KECCAK_JSON)"
-	$(KECCAK_ELF2JSON) $(KECCAK_ELF) "$$(cat $(KECCAK_IN_BYTES_HEX))" \
-		$(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(KECCAK_JSON)
+	$(KECCAK_ELF2JSON) $(KECCAK_ELF) @$(KECCAK_IN_BYTES_HEX) $(IN_BYTES_OFFSET) > $(KECCAK_JSON)
 
 keccak-rust-exec: install-zkc keccak-rust-json
 	zkc exec $(KECCAK_JSON) $(ZKC_MAIN)
@@ -320,8 +319,7 @@ blake-rust-json: blake-rust-build
 	@echo "rendering one ZKC JSON per vector under $(BLAKE_JSON_DIR)"
 	@n=0; while IFS= read -r in_bytes; do \
 		n=$$((n + 1)); idx=$$(printf '%03d' $$n); \
-		$(BLAKE_ELF2JSON) $(BLAKE_ELF) "$$in_bytes" \
-			$(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) \
+		$(BLAKE_ELF2JSON) $(BLAKE_ELF) "$$in_bytes" $(IN_BYTES_OFFSET) \
 			> "$(BLAKE_JSON_DIR)/$$idx.json" || exit $$?; \
 	done < $(BLAKE_IN_BYTES_ALL); \
 	echo "generated $$n Blake JSON(s) in $(BLAKE_JSON_DIR)"
