@@ -7,6 +7,13 @@ name: Arithmetization zkc interpreter benchmark (base vs optim)
 # the machine state similar across runs.
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'arithmetization/**'
+      - '.github/actions/setup-arithmetization-riscv/**'
+      - '.github/workflows/arithmetization-*.yml'
   workflow_dispatch:
     inputs:
       base_ref:
