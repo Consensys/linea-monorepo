@@ -351,9 +351,9 @@ func renderInvariants(out *strings.Builder, w workload) bool {
 	}
 	stepsOK := !stepsConflict
 	if stepsOK {
-		fmt.Fprintf(out, "- **%s** steps: PASS with machine exec steps = %s\n", w.name, formatThousands(stepsSeen))
+		fmt.Fprintf(out, "- **%s** : PASS with machine exec steps = %s\n", w.name, formatThousands(stepsSeen))
 	} else {
-		fmt.Fprintf(out, "- **%s** steps: FAIL — machine exec steps diverge across variants/iters\n", w.name)
+		fmt.Fprintf(out, "- **%s** : FAIL — machine exec steps diverge across variants/iters\n", w.name)
 	}
 	return stepsOK
 }

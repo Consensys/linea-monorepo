@@ -9,7 +9,7 @@ name: Arithmetization native zkc benchmark - Keccak (base vs optim)
 # Per-iteration `cache_thrasher` + sleep attempts to keep CPU cache state comparable across timed runs.
 #
 # Benchmark data : 
-# In arithmetization/src/test/examples/rust/src/keccak/keccak.accepts
+# In arithmetization/src/test/examples/zkc/keccakf/keccakf_batched.accepts
 # There are 20k test vectors you can select from to run the benchmark.
 # Each test vector has a raw message of 16 * 32 bytes, ie fits in 4 blocks of 1088 bits.
 # 1 test vector = 4 blocks

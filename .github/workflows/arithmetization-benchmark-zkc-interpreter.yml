@@ -1,14 +1,26 @@
 name: Arithmetization zkc interpreter benchmark (base vs optim)
 
-# Benchmark of zkc interpreter for guest programs on
+# Benchmark of guest programs executed by the zkc interpreter of
 # two branches, the base branch and the optim branch.
 # Guest programs are the Keccak and Blake programs in the arithmetization/src/test/examples 
 # directory.
 
+# Benchmark methodology : 
 # Designed to give a reliable paired comparison on a
 # single runner: one untimed warmup per branch, then N alternating (opt, base)
 # timed iterations with a per-iteration cache reset + brief cool-down to keep
 # the machine state similar across runs.
+
+# Benchmark data : 
+# -- For Keccak
+# In arithmetization/src/test/examples/rust/src/keccak/keccak.accepts
+# There are 20k test vectors you can select from to run the benchmark.
+# Each test vector has a raw message of 16 * 32 bytes, ie fits in 4 blocks of 1088 bits.
+# 1 test vector = 4 blocks
+# -- For Blake
+# In the inputs, you can select the number of Blake compression rounds.
+# Script ./scripts/blake_rounds_to_in_bytes/main.go will generate the test vector with the requested number of compression rounds.
+# h, m, t, f are hard-coded to the standard Blake2b "abc" test vector.
 
 on:
   pull_request:
