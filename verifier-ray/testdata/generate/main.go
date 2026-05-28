@@ -97,7 +97,7 @@ func writeHeader(out *bytes.Buffer) {
 	fmt.Fprintf(out, "pub const prover_visibility_oracle: u8 = %d;\n", int(wiop.VisibilityOracle))
 	fmt.Fprintf(out, "pub const prover_visibility_public: u8 = %d;\n", int(wiop.VisibilityPublic))
 	fmt.Fprintln(out)
-	fmt.Fprintln(out, "pub const RuntimeTraceColumn = struct { visibility: u8, is_assigned: bool, is_ext: bool, base_values: []const u32, ext_values: []const [6]u32 };")
+	fmt.Fprintln(out, "pub const RuntimeTraceColumn = struct { visibility: u8, is_assigned: bool, is_ext: bool, base_values: []const u32, ext_values: []const [6]u32, commitments: []const [8]u32 };")
 	fmt.Fprintln(out, "pub const RuntimeTraceCell = struct { is_assigned: bool, is_ext: bool, base_value: u32, ext_value: [6]u32 };")
 	fmt.Fprintln(out, "pub const RuntimeTraceRound = struct { columns: []const RuntimeTraceColumn, cells: []const RuntimeTraceCell, expected_coins: []const [6]u32 };")
 	fmt.Fprintln(out, "pub const RuntimeTraceCase = struct { rounds: []const RuntimeTraceRound };")
@@ -395,11 +395,12 @@ type runtimeTraceRound struct {
 // may have internal columns in the source protocol, but they are intentionally
 // not exported to verifier-ray traces.
 type runtimeTraceColumn struct {
-	visibility wiop.Visibility
-	assigned   bool
-	isExt      bool
-	baseValues []field.Element
-	extValues  []field.Ext
+	visibility  wiop.Visibility
+	assigned    bool
+	isExt       bool
+	baseValues  []field.Element
+	extValues   []field.Ext
+	commitments []field.Octuplet
 }
 
 // runtimeTraceCell records a scalar value opened in the round. Unlike internal
@@ -428,10 +429,9 @@ func writeRuntimeTraceCases(out *bytes.Buffer) {
 	fmt.Fprintln(out)
 }
 
-// buildRuntimeTraceCases constructs a small real prover-ray WIOP protocol and
-// runs prover-ray's Runtime.AdvanceRound. The returned trace contains both the
-// verifier-visible messages and the coins produced by prover-ray, so Zig can
-// replay the same transcript updates without porting the whole Go runtime.
+// buildRuntimeTraceCases constructs a small real prover-ray WIOP protocol, then
+// exports the verifier-visible transcript messages. Oracle columns are exported
+// as commitment-sized transcript blocks rather than raw assignments.
 func buildRuntimeTraceCases() []runtimeTraceCase {
 	sys := wiop.NewSystemf("runtime-trace")
 	r0 := sys.NewRound()
@@ -447,13 +447,13 @@ func buildRuntimeTraceCases() []runtimeTraceCase {
 	r0BaseCell := r0.NewCell(sys.Context.Childf("r0-base-cell"), false)
 	r0ExtCell := r0.NewCell(sys.Context.Childf("r0-ext-cell"), true)
 
-	r1CoinA := r1.NewCoinField(sys.Context.Childf("r1-coin-a"))
-	r1CoinB := r1.NewCoinField(sys.Context.Childf("r1-coin-b"))
+	r1.NewCoinField(sys.Context.Childf("r1-coin-a"))
+	r1.NewCoinField(sys.Context.Childf("r1-coin-b"))
 	r1OracleExt := mod.NewExtensionColumn(sys.Context.Childf("r1-oracle-ext"), wiop.VisibilityOracle, r1)
 	r1PublicBase := mod.NewColumn(sys.Context.Childf("r1-public-base"), wiop.VisibilityPublic, r1)
 	r1BaseCell := r1.NewCell(sys.Context.Childf("r1-base-cell"), false)
 
-	r2Coin := r2.NewCoinField(sys.Context.Childf("r2-coin"))
+	r2.NewCoinField(sys.Context.Childf("r2-coin"))
 
 	r0OracleBaseValues := elems(3, 1, 4, 1)
 	r0PublicExtValues := []field.Ext{
@@ -480,50 +480,80 @@ func buildRuntimeTraceCases() []runtimeTraceCase {
 	rt.AssignCell(r0BaseCell, field.ElemFromBase(r0BaseCellValue))
 	rt.AssignCell(r0ExtCell, field.ElemFromExt(r0ExtCellValue))
 
-	// This is the reference behavior verifier-ray must match. prover-ray absorbs
-	// round-0 oracle/public columns and cells, advances to round 1, then squeezes
-	// the coins declared on round 1.
 	rt.AdvanceRound()
-	r1Coins := []field.Ext{
-		rt.GetCoinValue(r1CoinA).AsExt(),
-		rt.GetCoinValue(r1CoinB).AsExt(),
-	}
 
 	rt.AssignColumn(r1OracleExt, concreteExt(r1OracleExtValues))
 	rt.AssignColumn(r1PublicBase, concreteBase(r1PublicBaseValues))
 	rt.AssignCell(r1BaseCell, field.ElemFromBase(r1BaseCellValue))
 
-	// Advance once more so the generated trace covers more than one downstream
-	// coin derivation.
 	rt.AdvanceRound()
-	r2Coins := []field.Ext{rt.GetCoinValue(r2Coin).AsExt()}
 
-	return []runtimeTraceCase{{
+	tc := runtimeTraceCase{
 		rounds: []runtimeTraceRound{
 			{
 				columns: []runtimeTraceColumn{
-					{visibility: wiop.VisibilityOracle, assigned: true, baseValues: r0OracleBaseValues},
+					{visibility: wiop.VisibilityOracle, assigned: true, commitments: commitmentBlocksFromElements(r0OracleBaseValues)},
 					{visibility: wiop.VisibilityPublic, assigned: true, isExt: true, extValues: r0PublicExtValues},
 				},
 				cells: []runtimeTraceCell{
 					{assigned: true, baseValue: r0BaseCellValue},
 					{assigned: true, isExt: true, extValue: r0ExtCellValue},
 				},
-				expectedCoins: r1Coins,
 			},
 			{
 				columns: []runtimeTraceColumn{
-					{visibility: wiop.VisibilityOracle, assigned: true, isExt: true, extValues: r1OracleExtValues},
+					{visibility: wiop.VisibilityOracle, assigned: true, isExt: true, commitments: commitmentBlocksFromExts(r1OracleExtValues)},
 					{visibility: wiop.VisibilityPublic, assigned: true, baseValues: r1PublicBaseValues},
 				},
 				cells: []runtimeTraceCell{
 					{assigned: true, baseValue: r1BaseCellValue},
 				},
-				expectedCoins: r2Coins,
 			},
 			{},
 		},
-	}}
+	}
+	setRuntimeTraceExpectedCoins(&tc, []int{len(r1.Coins), len(r2.Coins)})
+	return []runtimeTraceCase{tc}
+}
+
+func setRuntimeTraceExpectedCoins(tc *runtimeTraceCase, coinCounts []int) {
+	if len(coinCounts) != len(tc.rounds)-1 {
+		panic("coin counts must cover every non-final runtime trace round")
+	}
+	fs := fiatshamir.NewFiatShamir()
+	for roundIndex, coinCount := range coinCounts {
+		updateFiatShamirFromRuntimeTrace(fs, tc.rounds[roundIndex])
+		tc.rounds[roundIndex].expectedCoins = make([]field.Ext, coinCount)
+		for coinIndex := range tc.rounds[roundIndex].expectedCoins {
+			tc.rounds[roundIndex].expectedCoins[coinIndex] = fs.RandomFext()
+		}
+	}
+}
+
+func updateFiatShamirFromRuntimeTrace(fs *fiatshamir.FiatShamir, round runtimeTraceRound) {
+	for _, column := range round.columns {
+		switch column.visibility {
+		case wiop.VisibilityOracle:
+			for _, commitment := range column.commitments {
+				fs.Update(commitment[:]...)
+			}
+		case wiop.VisibilityPublic:
+			if column.isExt {
+				fs.UpdateExt(column.extValues...)
+			} else {
+				fs.Update(column.baseValues...)
+			}
+		default:
+			panic(fmt.Sprintf("unexpected verifier trace visibility %v", column.visibility))
+		}
+	}
+	for _, cell := range round.cells {
+		if cell.isExt {
+			fs.UpdateExt(cell.extValue)
+		} else {
+			fs.Update(cell.baseValue)
+		}
+	}
 }
 
 func writeRuntimeTraceRound(out *bytes.Buffer, round runtimeTraceRound) {
@@ -544,15 +574,19 @@ func writeRuntimeTraceRound(out *bytes.Buffer, round runtimeTraceRound) {
 
 func writeRuntimeTraceColumn(out *bytes.Buffer, column runtimeTraceColumn) {
 	baseValues := ".{}"
-	if column.assigned && !column.isExt {
+	if column.assigned && column.visibility == wiop.VisibilityPublic && !column.isExt {
 		baseValues = elemSlice(column.baseValues)
 	}
 	extValues := ".{}"
-	if column.assigned && column.isExt {
+	if column.assigned && column.visibility == wiop.VisibilityPublic && column.isExt {
 		extValues = extSlice(column.extValues)
 	}
-	fmt.Fprintf(out, "                .{ .visibility = %s, .is_assigned = %t, .is_ext = %t, .base_values = &%s, .ext_values = &%s },\n",
-		visibilityLiteral(column.visibility), column.assigned, column.isExt, baseValues, extValues)
+	commitments := ".{}"
+	if column.assigned && column.visibility == wiop.VisibilityOracle {
+		commitments = commitmentSlice(column.commitments)
+	}
+	fmt.Fprintf(out, "                .{ .visibility = %s, .is_assigned = %t, .is_ext = %t, .base_values = &%s, .ext_values = &%s, .commitments = &%s },\n",
+		visibilityLiteral(column.visibility), column.assigned, column.isExt, baseValues, extValues, commitments)
 }
 
 func visibilityLiteral(visibility wiop.Visibility) string {
@@ -612,6 +646,44 @@ func octuplet(values ...uint64) field.Octuplet {
 	return out
 }
 
+func commitmentBlocksFromElements(values []field.Element) []field.Octuplet {
+	if len(values) == 0 {
+		return nil
+	}
+	blocks := make([]field.Octuplet, 0, (len(values)+7)/8)
+	remaining := values
+	for len(remaining) > 0 {
+		var block field.Octuplet
+		if len(remaining) < len(block) {
+			copy(block[len(block)-len(remaining):], remaining)
+			remaining = nil
+		} else {
+			copy(block[:], remaining[:len(block)])
+			remaining = remaining[len(block):]
+		}
+		blocks = append(blocks, block)
+	}
+	return blocks
+}
+
+func commitmentBlocksFromExts(values []field.Ext) []field.Octuplet {
+	if len(values) == 0 {
+		return nil
+	}
+	elems := make([]field.Element, 0, len(values)*field.ExtensionDegree)
+	for i := range values {
+		elems = append(elems,
+			values[i].B0.A0,
+			values[i].B0.A1,
+			values[i].B1.A0,
+			values[i].B1.A1,
+			values[i].B2.A0,
+			values[i].B2.A1,
+		)
+	}
+	return commitmentBlocksFromElements(elems)
+}
+
 func u(e field.Element) uint64 {
 	return uint64(e.Bits()[0])
 }
@@ -641,6 +713,14 @@ func extSlice(values []field.Ext) string {
 	parts := make([]string, len(values))
 	for i, value := range values {
 		parts[i] = ext6(value)
+	}
+	return ".{ " + strings.Join(parts, ", ") + " }"
+}
+
+func commitmentSlice(values []field.Octuplet) string {
+	parts := make([]string, len(values))
+	for i, value := range values {
+		parts[i] = oct8(value)
 	}
 	return ".{ " + strings.Join(parts, ", ") + " }"
 }

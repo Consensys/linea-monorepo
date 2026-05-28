@@ -3,18 +3,14 @@ const std = @import("std");
 const runtime = @import("../runtime.zig");
 const field = @import("../field/koalabear.zig");
 const ext = @import("../field/koalabear_ext.zig");
-const lagrange = @import("../pcs/lagrange.zig");
 
-pub const Error = std.mem.Allocator.Error || runtime.Error || lagrange.Error || error{
+pub const Error = std.mem.Allocator.Error || runtime.Error || field.Error || error{
     InvalidExpression,
     InvalidOperatorArity,
     NonPolynomialExpression,
     EmptyModule,
     InvalidCoinCount,
     InvalidClaimCount,
-    InvalidColumnCount,
-    WitnessClaimMismatch,
-    QuotientClaimMismatch,
     QuotientIdentityMismatch,
 };
 
@@ -62,15 +58,18 @@ pub const System = struct {
 
 pub const CheckInput = struct {
     /// Verifier-visible messages from the round before the global quotient
-    /// compiler's quotient round. This usually contains the trace columns.
+    /// compiler's quotient round. Oracle columns are represented by
+    /// commitments; PCS verification is expected to authenticate the
+    /// corresponding evaluation claims before this check consumes them.
     initial_round: runtime.RoundMessage,
     /// Verifier-visible messages from the quotient round. This contains the
-    /// quotient-share columns committed after the merge coin is known.
+    /// quotient-share commitments after the merge coin is known.
     quotient_round: runtime.RoundMessage,
-    /// Claimed evaluations of all unique witness column views at evalCoin.
+    /// PCS-authenticated evaluations of all unique witness column views at
+    /// evalCoin, including shifted points where relevant.
     witness_claims: []const ext.Ext,
-    /// Claimed evaluations of quotient shares at evalCoin, flattened in the
-    /// same order as the quotient columns are declared.
+    /// PCS-authenticated evaluations of quotient shares at evalCoin, flattened
+    /// in the same order as the quotient columns are declared.
     quotient_claims: []const ext.Ext,
 };
 
@@ -79,7 +78,6 @@ pub const Compiled = struct {
     modules: []CompiledModule,
     total_witness_claims: usize,
     total_quotient_claims: usize,
-    total_quotient_columns: usize,
 
     pub fn deinit(self: *Compiled) void {
         for (self.modules) |*module| {
@@ -98,7 +96,6 @@ pub const Compiled = struct {
         if (input.quotient_round.next_round_coin_count != self.modules.len) return Error.InvalidCoinCount;
         if (input.witness_claims.len != self.total_witness_claims) return Error.InvalidClaimCount;
         if (input.quotient_claims.len != self.total_quotient_claims) return Error.InvalidClaimCount;
-        if (input.quotient_round.columns.len != self.total_quotient_columns) return Error.InvalidColumnCount;
 
         var rt = runtime.Runtime.initWithRoundCount(3);
 
@@ -115,7 +112,6 @@ pub const Compiled = struct {
         for (self.modules, 0..) |module, module_index| {
             const merge_coin = merge_coins[module_index];
             const eval_coin = eval_coins[module_index];
-            try module.checkLagrangeClaims(input, eval_coin);
             try module.checkQuotientIdentity(input, merge_coin, eval_coin);
         }
     }
@@ -126,27 +122,6 @@ pub const CompiledModule = struct {
     witness_claim_offset: usize,
     witness_views: []ColumnView,
     buckets: []CompiledBucket,
-
-    fn checkLagrangeClaims(self: CompiledModule, input: CheckInput, eval_coin: ext.Ext) Error!void {
-        for (self.witness_views, 0..) |view, i| {
-            if (view.column >= input.initial_round.columns.len) return Error.InvalidColumnCount;
-            const column = input.initial_round.columns[view.column];
-            const point = try shiftedPoint(self.spec.size, eval_coin, view.shift);
-            const got = try evaluateVectorAtExt(column.assignment, point);
-            const want = input.witness_claims[self.witness_claim_offset + i];
-            if (!got.eql(want)) return Error.WitnessClaimMismatch;
-        }
-
-        for (self.buckets) |bucket| {
-            for (0..bucket.ratio) |k| {
-                const column_index = bucket.quotient_column_offset + k;
-                if (column_index >= input.quotient_round.columns.len) return Error.InvalidColumnCount;
-                const got = try evaluateVectorAtExt(input.quotient_round.columns[column_index].assignment, eval_coin);
-                const want = input.quotient_claims[bucket.quotient_claim_offset + k];
-                if (!got.eql(want)) return Error.QuotientClaimMismatch;
-            }
-        }
-    }
 
     fn checkQuotientIdentity(
         self: CompiledModule,
@@ -246,7 +221,6 @@ pub const CompiledBucket = struct {
     ratio: usize,
     vanishing_indices: []usize,
     quotient_claim_offset: usize,
-    quotient_column_offset: usize,
 };
 
 pub fn Compile(allocator: std.mem.Allocator, system: System) Error!Compiled {
@@ -262,7 +236,6 @@ pub fn Compile(allocator: std.mem.Allocator, system: System) Error!Compiled {
 
     var total_witness_claims: usize = 0;
     var total_quotient_claims: usize = 0;
-    var total_quotient_columns: usize = 0;
 
     for (system.modules) |module| {
         if (module.vanishings.len == 0) continue;
@@ -318,11 +291,9 @@ pub fn Compile(allocator: std.mem.Allocator, system: System) Error!Compiled {
                 .ratio = ratio,
                 .vanishing_indices = indices,
                 .quotient_claim_offset = total_quotient_claims,
-                .quotient_column_offset = total_quotient_columns,
             };
             buckets_initialized += 1;
             total_quotient_claims += ratio;
-            total_quotient_columns += ratio;
         }
 
         try modules.append(allocator, .{
@@ -339,7 +310,6 @@ pub fn Compile(allocator: std.mem.Allocator, system: System) Error!Compiled {
         .modules = try modules.toOwnedSlice(allocator),
         .total_witness_claims = total_witness_claims,
         .total_quotient_claims = total_quotient_claims,
-        .total_quotient_columns = total_quotient_columns,
     };
 }
 
@@ -414,26 +384,6 @@ fn containsRatio(values: []const usize, needle: usize) bool {
         if (value == needle) return true;
     }
     return false;
-}
-
-fn evaluateVectorAtExt(vector: runtime.Vector, point: ext.Ext) Error!ext.Ext {
-    return switch (vector) {
-        .base => |values| try lagrange.evaluateBaseAtExt(values, point),
-        .ext => |values| try lagrange.evaluateExtAtExt(values, point),
-    };
-}
-
-fn shiftedPoint(cardinality: usize, point: ext.Ext, shift: i32) Error!ext.Ext {
-    if (shift == 0) return point;
-    const omega_shift = try rootPower(cardinality, shift);
-    return point.mul(ext.Ext.lift(omega_shift));
-}
-
-fn rootPower(cardinality: usize, shift: i32) Error!field.Element {
-    const omega = try field.rootOfUnityBy(cardinality);
-    const n = @as(i64, @intCast(cardinality));
-    const normalized = @mod(@as(i64, shift), n);
-    return omega.pow(@as(u64, @intCast(normalized)));
 }
 
 fn evalCancellationAtPoint(cancelled: []const i32, cardinality: usize, point: ext.Ext) Error!ext.Ext {

@@ -218,9 +218,16 @@ func traceRoundFromRuntime(rt wiop.Runtime, round *wiop.Round) runtimeTraceRound
 			assigned:   true,
 			isExt:      !assignment.Plain.IsBase(),
 		}
-		if assignment.Plain.IsBase() {
+		if col.Visibility == wiop.VisibilityOracle {
+			if assignment.Plain.IsBase() {
+				traceColumn.commitments = commitmentBlocksFromElements(assignment.Plain.AsBase())
+			} else {
+				traceColumn.commitments = commitmentBlocksFromExts(assignment.Plain.AsExt())
+			}
+		} else if assignment.Plain.IsBase() {
 			traceColumn.baseValues = append([]field.Element(nil), assignment.Plain.AsBase()...)
 		} else {
+			traceColumn.isExt = true
 			traceColumn.extValues = append([]field.Ext(nil), assignment.Plain.AsExt()...)
 		}
 		columns = append(columns, traceColumn)
