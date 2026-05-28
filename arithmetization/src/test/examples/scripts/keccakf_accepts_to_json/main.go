@@ -16,7 +16,7 @@
 // `block_counts` is truncated to the first N u64 entries, and `blocks` is
 // truncated to the first `sum(block_counts[0..N])` blocks. The output is a
 // valid input for `keccakf_batched.zkc` at workload size N.
-//
+
 // Usage:
 //
 //	keccakf_accepts_to_json <in.accepts> <out.json> <n-vectors>
