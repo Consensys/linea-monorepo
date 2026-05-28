@@ -2,8 +2,7 @@
 
 This document compares two approaches to the global-constraint verifier in
 `verifier-ray`, using a concrete example constraint to make the differences
-tangible. It is written to help a reader understand what each PR does and what
-tradeoffs it carries, not to prescribe a choice.
+tangible.
 
 ---
 
@@ -93,7 +92,7 @@ plus the 4 arithmetic operations the constraint actually requires.
 
 ---
 
-## PR #3230 — Compile-time Codegen (`verifier-ray/global-constraint`)
+## PR #3230 (This Work) — Compile-time Codegen (`verifier-ray/global-constraint`)
 
 ### What it does
 
@@ -148,7 +147,7 @@ recursion, no data structure reads.
 
 ## Side-by-side: What Runs Per Proof
 
-| | PR #3202 (dispatch) | PR #3230 (codegen) |
+| | PR #3202 (dispatch) | PR #3230 (codegen, this work) |
 |---|---|---|
 | Expression tree in binary | yes — `ExprNode[]` array | no |
 | Array reads per eval | 1 per node (10 here) | 0 |
@@ -183,7 +182,7 @@ A zkVM (e.g. SP1, RISC Zero) proves a RISC-V execution trace. Every instruction
 
 For `A·(B−1)·(C+D²)`, approximate RISC-V instruction cost:
 
-| Step | PR #3202 | PR #3230 |
+| Step | PR #3202 | PR #3230 (this work)|
 |---|---|---|
 | Array bounds check + load | ~3–5 per node | 0 |
 | Switch dispatch | ~3–5 per node | 0 |
@@ -228,7 +227,7 @@ needing a codegen step is valuable.
 
 ## Summary
 
-| Characteristic | PR #3202 (dispatch) | PR #3230 (codegen) |
+| Characteristic | PR #3202 (dispatch) | PR #3230 (codegen, this work) |
 |---|---|---|
 | Protocol flexibility | any protocol, no regen needed | fixed at codegen time, regen on change |
 | Development iteration | fast — no build step | slower — regen + commit cycle |
