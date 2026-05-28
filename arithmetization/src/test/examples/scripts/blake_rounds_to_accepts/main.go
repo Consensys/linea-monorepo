@@ -10,13 +10,26 @@
 // against rust/src/blake/blake_with_in_bytes.rs for any rounds value the user
 // passes.
 //
-// Output: one `0x<hex>` line on stdout (277 bytes = 554 hex chars), matching
-// the .all format consumed by the blake_accepts_to_in_bytes helper / the
-// blake-rust-json Makefile target.
+// Output: one `0x<hex>` line on stdout (277 bytes = 554 hex chars) in the
+// on-disk `.all` layout consumed by the blake_accepts_to_in_bytes helper and
+// the blake-rust-json Makefile target. That layout is the canonical
+// EIP-152 buffer (rounds BE, then h/m/t little-endian, then f, then h_out
+// little-endian) byte-reversed end-to-end: BLAKE_ELF2JSON reverses these
+// bytes again before they reach guest RAM, so the guest sees the canonical
+// EIP-152 order at run time (see rust/src/blake/blake_with_in_bytes.rs).
+//
+// Field order in the emitted hex (reading left-to-right, byte offsets 0..276):
+//
+//	0  .. 63   h_out[7..0] as 8 × BE u64    (64 bytes)
+//	64         f                            (1 byte)
+//	65 .. 80   t[1], t[0]  as 2 × BE u64    (16 bytes)
+//	81 .. 208  m[15..0]    as 16 × BE u64   (128 bytes)
+//	209 .. 272 h[7..0]     as 8 × BE u64    (64 bytes)
+//	273 .. 276 rounds      as LE u32        (4 bytes)
 //
 // Usage:
 //
-//	blake_rounds_to_in_bytes <rounds>
+//	blake_rounds_to_accepts <rounds>
 //
 // Reference: RFC 7693 / EIP-152. Cross-checked against the rounds=12 test
 // vector documented in blake_with_in_bytes.rs (canonical Blake2b-512("abc")).
@@ -125,7 +138,7 @@ func compress(rounds uint32, h [8]uint64, m [16]uint64, t [2]uint64, f byte) [8]
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: blake_rounds_to_in_bytes <rounds>")
+		fmt.Fprintln(os.Stderr, "usage: blake_rounds_to_accepts <rounds>")
 		os.Exit(1)
 	}
 	roundsU64, err := strconv.ParseUint(os.Args[1], 0, 32)
@@ -137,22 +150,31 @@ func main() {
 
 	hOut := compress(rounds, initH, initM, initT, initF)
 
-	var buf [277]byte
-	binary.BigEndian.PutUint32(buf[0:4], rounds)
+	// Step 1: build the canonical EIP-152 buffer (rounds BE, h/m/t LE, f, h_out LE).
+	var canonical [277]byte
+	binary.BigEndian.PutUint32(canonical[0:4], rounds)
 	for i := 0; i < 8; i++ {
-		binary.LittleEndian.PutUint64(buf[4+i*8:], initH[i])
+		binary.LittleEndian.PutUint64(canonical[4+i*8:], initH[i])
 	}
 	for i := 0; i < 16; i++ {
-		binary.LittleEndian.PutUint64(buf[68+i*8:], initM[i])
+		binary.LittleEndian.PutUint64(canonical[68+i*8:], initM[i])
 	}
-	binary.LittleEndian.PutUint64(buf[196:], initT[0])
-	binary.LittleEndian.PutUint64(buf[204:], initT[1])
-	buf[212] = initF
+	binary.LittleEndian.PutUint64(canonical[196:], initT[0])
+	binary.LittleEndian.PutUint64(canonical[204:], initT[1])
+	canonical[212] = initF
 	for i := 0; i < 8; i++ {
-		binary.LittleEndian.PutUint64(buf[213+i*8:], hOut[i])
+		binary.LittleEndian.PutUint64(canonical[213+i*8:], hOut[i])
+	}
+
+	// Step 2: byte-reverse the whole buffer to match the .all on-disk layout.
+	var buf [277]byte
+	for i := range canonical {
+		buf[len(canonical)-1-i] = canonical[i]
 	}
 
 	fmt.Printf("0x%s\n", hex.EncodeToString(buf[:]))
-	fmt.Fprintf(os.Stderr, "rounds=%d h_out (LE bytes hex): %s\n",
-		rounds, hex.EncodeToString(buf[213:]))
+	// Stderr summary: the 64-byte h_out block lives at offsets [0:64] of the
+	// reversed buffer, as h_out[7..0] big-endian.
+	fmt.Fprintf(os.Stderr, "rounds=%d h_out (h_out[7..0] BE bytes hex): %s\n",
+		rounds, hex.EncodeToString(buf[:64]))
 }

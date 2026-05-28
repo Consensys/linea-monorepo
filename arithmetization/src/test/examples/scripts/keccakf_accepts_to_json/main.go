@@ -4,11 +4,12 @@
 // The `.accepts` fixture is a single JSON object with four hex-string fields:
 //   - "n_vectors"     : ROM input — number of independent hashes (u64 BE)
 //   - "block_counts"  : ROM input — per-vector block count, flat concat of
-//                       n_vectors × u64 BE
+//     n_vectors × u64 BE
 //   - "blocks"        : ROM input — flat concat of sum(block_counts) Keccak
-//                       rate-1088 padded blocks (136 bytes each)
+//     rate-1088 padded blocks (136 bytes each)
 //   - "result"        : WOM output — expected per-vector 256-bit digest
-//in arithmetization/src/test/examples/Makefile. 
+//
+// in arithmetization/src/test/examples/Makefile.
 // `zkc exec` accepts only ROM inputs; passing the WOM `result` field along
 // with the inputs makes it fail. This helper slices the fixture to the first
 // N vectors and drops `result`: `n_vectors` is re-encoded to N,
@@ -18,7 +19,7 @@
 //
 // Usage:
 //
-//	keccakf_accepts_to_input <in.accepts> <out.json> <n-vectors>
+//	keccakf_accepts_to_json <in.accepts> <out.json> <n-vectors>
 package main
 
 import (
@@ -37,7 +38,7 @@ const (
 
 func main() {
 	if len(os.Args) != 4 {
-		fmt.Fprintln(os.Stderr, "usage: keccakf_accepts_to_input <in.accepts> <out.json> <n-vectors>")
+		fmt.Fprintln(os.Stderr, "usage: keccakf_accepts_to_json <in.accepts> <out.json> <n-vectors>")
 		os.Exit(1)
 	}
 	inPath, outPath := os.Args[1], os.Args[2]

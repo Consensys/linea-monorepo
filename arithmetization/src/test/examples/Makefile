@@ -293,7 +293,7 @@ keccak-rust-json: keccak-rust-build
 	$(KECCAK_ELF2JSON) $(KECCAK_ELF) @$(KECCAK_IN_BYTES_HEX) $(IN_BYTES_OFFSET) > $(KECCAK_JSON)
 
 keccak-rust-exec: install-zkc keccak-rust-json
-	zkc exec $(KECCAK_JSON) $(ZKC_MAIN)
+	zkc exec -q $(KECCAK_JSON) $(ZKC_MAIN)
 
 ######################################################
 # Blake (Rust guest) — split build/json/exec mirroring Keccak's structure.
@@ -343,7 +343,7 @@ blake-rust-exec: install-zkc blake-rust-json
 	for json in $(BLAKE_JSON_DIR)/*.json; do \
 		i=$$((i + 1)); \
 		echo "RUN   case $$i  ($$json)"; \
-		exit_line=$$(zkc exec "$$json" $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
+		exit_line=$$(zkc exec -q "$$json" $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
 		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
 			echo "PASS  case $$i"; \
 			echo "  $$exit_line"; \
