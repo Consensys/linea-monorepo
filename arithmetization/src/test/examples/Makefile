@@ -106,32 +106,6 @@ define ELF_TO_JSON
 	@go run $(GO_MAIN) "$(1)" "$(IN_BYTES)" $(IN_BYTES_OFFSET) > "$(2)"
 endef
 
-# Compile TEST once, then execute it once per IN_BYTES line in the .all file
-define VECTOR_EXEC
-	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=$(TEST)
-	@echo "building $(BIN)_elf2json..."; \
-	go build -o $(BIN)_elf2json $(GO_MAIN) || exit $$?; \
-	echo "$(BIN)_elf2json built"; \
-	pass=0; fail=0; \
-	i=0; while IFS= read -r in_bytes; do \
-		i=$$((i + 1)); \
-		$(BIN)_elf2json $(BIN) "$$in_bytes" $(IN_BYTES_OFFSET) > $(JSON) || exit $$?; \
-		echo "RUN   case $$i"; \
-		exit_line=$$(zkc exec $(JSON) $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
-		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
-			echo "PASS  case $$i"; \
-			echo "  $$exit_line"; \
-			pass=$$((pass + 1)); \
-		else \
-			echo "FAIL  case $$i"; \
-			echo "  $$exit_line"; \
-			fail=$$((fail + 1)); \
-		fi; \
-	done < $(1); \
-	echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
-	if [ "$$fail" -ne 0 ]; then echo "error: $$fail vector(s) failed" >&2; exit 1; fi
-endef
-
 ######################################################
 # Targets
 ######################################################
@@ -276,7 +250,28 @@ verify-elf: require-test
 	@echo "All values match\n"
 
 vector-exec: require-src require-vector-file install-zkc
-	$(call VECTOR_EXEC,$(VECTOR_FILE))
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=$(TEST)
+	@echo "building $(BIN)_elf2json..."; \
+	go build -o $(BIN)_elf2json $(GO_MAIN) || exit $$?; \
+	echo "$(BIN)_elf2json built"; \
+	pass=0; fail=0; \
+	i=0; while IFS= read -r in_bytes; do \
+		i=$$((i + 1)); \
+		$(BIN)_elf2json $(BIN) "$$in_bytes" $(IN_BYTES_OFFSET) > $(JSON) || exit $$?; \
+		echo "RUN   case $$i"; \
+		exit_line=$$(zkc exec $(JSON) $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
+		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
+			echo "PASS  case $$i"; \
+			echo "  $$exit_line"; \
+			pass=$$((pass + 1)); \
+		else \
+			echo "FAIL  case $$i"; \
+			echo "  $$exit_line"; \
+			fail=$$((fail + 1)); \
+		fi; \
+	done < $(VECTOR_FILE); \
+	echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
+	if [ "$$fail" -ne 0 ]; then echo "error: $$fail vector(s) failed" >&2; exit 1; fi
 
 # Run test vector with 10 cases from `rust/src/blake/blake10.all`
 blake-rust-exec:
