@@ -19,7 +19,7 @@ name: Arithmetization zkc interpreter benchmark (base vs optim)
 # 1 test vector = 4 blocks
 # -- For Blake
 # In the inputs, you can select the number of Blake compression rounds.
-# Script ./scripts/blake_rounds_to_in_bytes/main.go will generate the test vector with the requested number of compression rounds.
+# Script ./scripts/blake_rounds_to_accepts/main.go will generate the test vector with the requested number of compression rounds.
 # h, m, t, f are hard-coded to the standard Blake2b "abc" test vector.
 
 on:

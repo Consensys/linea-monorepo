@@ -32,6 +32,7 @@ type memoryBlob struct {
 //     line.
 //   - Raw (non-hex) inputs are passed through verbatim.
 func parseInBytes(arg string) ([]byte, error) {
+	fromFile := false
 	if strings.HasPrefix(arg, "@") {
 		data, err := os.ReadFile(strings.TrimPrefix(arg, "@"))
 		if err != nil {

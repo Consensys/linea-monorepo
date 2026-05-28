@@ -29,7 +29,7 @@
 //
 // Usage:
 //
-//	blake_rounds_to_in_bytes <rounds>
+//	blake_rounds_to_accepts <rounds>
 //
 // Reference: RFC 7693 / EIP-152. Cross-checked against the rounds=12 test
 // vector documented in blake_with_in_bytes.rs (canonical Blake2b-512("abc")).
@@ -138,7 +138,7 @@ func compress(rounds uint32, h [8]uint64, m [16]uint64, t [2]uint64, f byte) [8]
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: blake_rounds_to_in_bytes <rounds>")
+		fmt.Fprintln(os.Stderr, "usage: blake_rounds_to_accepts <rounds>")
 		os.Exit(1)
 	}
 	roundsU64, err := strconv.ParseUint(os.Args[1], 0, 32)
