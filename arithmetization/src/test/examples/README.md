@@ -93,7 +93,7 @@ riscv-test() {
             # targets that do NOT require TEST argument
             make -f "$makefile" "$1" "${@:2}"
             ;;
-        exec|debug|compile|zkc-exec|zkc-debug|clean|verify-elf)
+        exec|debug|compile|vector-exec|zkc-exec|zkc-debug|clean|verify-elf)
             # targets that require TEST argument
             make -f "$makefile" "$1" TEST="$2" "${@:3}"
             ;;
@@ -118,6 +118,8 @@ riscv-test debug <name>.<ext> IN_BYTES="0xAABB"
 riscv-test <name>.<ext> IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x08800008
 # Compile only
 riscv-test compile <name>.<ext>
+# Compile once and execute one input vector per .all line
+riscv-test vector-exec <name>.<ext> VECTOR_FILE=path/to/vectors.all
 # Convert an already compiled ELF to JSON
 riscv-test elf-to-json BIN_EXT=asm/bin/test
 # Execute an already compiled ELF
@@ -154,6 +156,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `make TEST=foo.<ext>`            | Compile and execute (default)                                                          |
 | `make debug TEST=foo.<ext>`      | Compile and debug                                                                      |
 | `make compile TEST=foo.<ext>`    | Compile only                                                                           |
+| `make vector-exec TEST=foo.<ext> VECTOR_FILE=foo.all` | Compile once and execute one input vector per `.all` line       |
 | `make exec-elf BIN_EXT=foo`      | Convert and execute an already compiled ELF (`JSON_EXT=foo.json` by default)           |
 | `make elf-to-json BIN_EXT=foo`   | Convert an already compiled ELF to JSON (`JSON_EXT=foo.json` by default)               |
 | `make install-zkc`               | Invoke `../../../Makefile install-zkc` to install zkc if not already installed         |
@@ -176,6 +179,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `TEST`           | `""`                                                                                    | Source file path with extension, relative to the corresponding `src/` folder                       |
 | `BIN_EXT`        | `""`                                                                                    | Already compiled ELF used by `elf-to-json` and `exec-elf`                                          |
 | `JSON_EXT`       | `$(BIN_EXT).json`                                                                       | JSON output path used by `elf-to-json` and `exec-elf`                                              |
+| `VECTOR_FILE`    | `""`                                                                                    | `.all` file used by `vector-exec`, with one `IN_BYTES` value per line                              |
 | `IN_BYTES`       | `""`                                                                                    | Hex big-endian input written in RAM at `IN_BYTES_OFFSET` as little-endian bytes before execution   |
 | `PROGRAM_OFFSET` | `0x00000000`                                                                            | Program address used by this Makefile's generated linker script (up to 128 MiB)                    |
 | `IN_BYTES_OFFSET`| `0x08800000`                                                                            | Memory address where input bytes are written (up to 1 GiB)                                         |

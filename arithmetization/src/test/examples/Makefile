@@ -3,7 +3,7 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf blake-rust-exec build-act4 run-act4 require-test require-src require-bin-ext
+.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-exec blake-rust-exec build-act4 run-act4 require-test require-src require-bin-ext require-vector-file
 
 # Keep validation, build, and execution targets running in order
 .NOTPARALLEL:
@@ -26,6 +26,9 @@ TEST ?=
 # Already compiled binary to execute with exec-elf target (BIN_EXT=path/to/your_bin)
 BIN_EXT  ?=
 JSON_EXT ?= $(BIN_EXT).json
+
+# File containing one IN_BYTES value per line for vector-exec
+VECTOR_FILE ?=
 
 # If TEST=src_optional_subfolder/your_test(.s|.zig|.rs), the variables below are set as follows:
 # src_optional_subfolder/your_test
@@ -101,6 +104,32 @@ EXIT_SUCCESS_STRING := "EXIT CODE = 0"
 define ELF_TO_JSON
 	@echo "\nGenerating $(2) from $(1)"
 	@go run $(GO_MAIN) "$(1)" "$(IN_BYTES)" $(IN_BYTES_OFFSET) > "$(2)"
+endef
+
+# Compile TEST once, then execute it once per IN_BYTES line in the .all file
+define VECTOR_EXEC
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=$(TEST)
+	@echo "building $(BIN)_elf2json..."; \
+	go build -o $(BIN)_elf2json $(GO_MAIN) || exit $$?; \
+	echo "$(BIN)_elf2json built"; \
+	pass=0; fail=0; \
+	i=0; while IFS= read -r in_bytes; do \
+		i=$$((i + 1)); \
+		$(BIN)_elf2json $(BIN) "$$in_bytes" $(IN_BYTES_OFFSET) > $(JSON) || exit $$?; \
+		echo "RUN   case $$i"; \
+		exit_line=$$(zkc exec $(JSON) $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
+		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
+			echo "PASS  case $$i"; \
+			echo "  $$exit_line"; \
+			pass=$$((pass + 1)); \
+		else \
+			echo "FAIL  case $$i"; \
+			echo "  $$exit_line"; \
+			fail=$$((fail + 1)); \
+		fi; \
+	done < $(1); \
+	echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
+	if [ "$$fail" -ne 0 ]; then echo "error: $$fail vector(s) failed" >&2; exit 1; fi
 endef
 
 ######################################################
@@ -180,7 +209,7 @@ zkc-debug: require-test install-zkc
 	zkc debug $(JSON) $(ZKC_MAIN)
 
 clean: require-test
-	rm -f $(BIN) $(JSON) $(BIN).objdump $(LINKER_SCRIPT)
+	rm -f $(BIN) $(JSON) $(BIN).objdump $(BIN)_elf2json $(LINKER_SCRIPT)
 
 clean-all:
 	rm -rf $(MAKEFILE_DIR)asm/bin/
@@ -246,31 +275,12 @@ verify-elf: require-test
 	@echo "  SP:              $(SP) (expected) = $(SP_FROM_ELF) (from ELF)"
 	@echo "All values match\n"
 
+vector-exec: require-src require-vector-file install-zkc
+	$(call VECTOR_EXEC,$(VECTOR_FILE))
+
 # Run 10 blake test vectors from `rust/src/blake/blake10.all`
-# (blake_with_in_bytes.rs and main.go are compiled just once)
-blake-rust-exec: install-zkc
-	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=blake/blake_with_in_bytes.rs
-	@echo "building blake_elf2json..."; \
-	go build -o $(MAKEFILE_DIR)rust/target/blake_elf2json $(GO_MAIN) || exit $$?; \
-	echo "blake_elf2json built"; \
-	pass=0; fail=0; \
-	i=0; while IFS= read -r in_bytes; do \
-		i=$$((i + 1)); \
-		$(MAKEFILE_DIR)rust/target/blake_elf2json $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes "$$in_bytes" $(IN_BYTES_OFFSET) > $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json || exit $$?; \
-		echo "RUN   case $$i"; \
-		exit_line=$$(zkc exec $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
-		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
-			echo "PASS  case $$i"; \
-			echo "  $$exit_line"; \
-			pass=$$((pass + 1)); \
-		else \
-			echo "FAIL  case $$i"; \
-			echo "  $$exit_line"; \
-			fail=$$((fail + 1)); \
-		fi; \
-	done < $(MAKEFILE_DIR)rust/src/blake/blake10.all; \
-	echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
-	if [ "$$fail" -ne 0 ]; then echo "error: $$fail blake vector(s) failed" >&2; exit 1; fi
+blake-rust-exec:
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec TEST=blake/blake_with_in_bytes.rs VECTOR_FILE=$(MAKEFILE_DIR)rust/src/blake/blake10.all
 
 # Build the ACT4 self-checking ELFs with the Linea ACT4 config 
 # Note: build if needed
@@ -371,3 +381,7 @@ require-src: require-test
 require-bin-ext:
 	@[ -n "$(BIN_EXT)" ] || { echo "BIN_EXT is mandatory. Usage: make BIN_EXT=path/to/your_bin"; exit 1; }
 	@[ -f $(BIN_EXT) ] || { echo "BIN_EXT file not found: $(BIN_EXT)"; exit 1; }
+
+require-vector-file:
+	@[ -n "$(VECTOR_FILE)" ] || { echo "VECTOR_FILE is mandatory. Usage: make vector-exec TEST=src_optional_subfolder/your_test(.s|.zig|.rs) VECTOR_FILE=path/to/vectors.all"; exit 1; }
+	@[ -f $(VECTOR_FILE) ] || { echo "VECTOR_FILE file not found: $(VECTOR_FILE)"; exit 1; }
