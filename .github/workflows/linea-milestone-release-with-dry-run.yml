@@ -101,13 +101,19 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
 
+      - name: Calculate timestamp
+        id: timestamp
+        run: |
+          TIMESTAMP=$(date -u +%Y%m%d%H%M%S)
+          echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
+
       - name: Create and push branch off latest tip of the current branch
         id: mkbranch
         env:
           SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
+          TIMESTAMP: ${{ steps.timestamp.outputs.timestamp }}
         run: |
           set -euo pipefail
-          TIMESTAMP=$(date -u +%Y%m%d%H%M%S)
           BRANCH="ci/milestone-dry-run-${TIMESTAMP}"
           git fetch origin "${SOURCE_BRANCH}"
           git checkout -b "${BRANCH}" "origin/${SOURCE_BRANCH}"
@@ -121,9 +127,9 @@ jobs:
           IMAGE_TAG_SUFFIX: 'dry_run'
           RELEASE_TAG_SUFFIX: 'dry-run'
           PRE_RELEASE: false
+          TIMESTAMP: ${{ steps.timestamp.outputs.timestamp }}
         run: |
           set -euo pipefail
-          TIMESTAMP=$(date -u +%Y%m%d%H%M%S)
           gh workflow run linea-milestone-release.yml \
             --ref "${BRANCH}" \
             -f image_tag_suffix="${IMAGE_TAG_SUFFIX}" \
