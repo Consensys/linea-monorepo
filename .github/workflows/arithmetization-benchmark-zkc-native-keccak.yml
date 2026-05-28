@@ -117,7 +117,7 @@ jobs:
           # warmup once (untimed) and then take N consecutive timed samples.
           for variant in base opt; do
             reset_state; run_native_keccak "$variant" warmup || true
-            for i in $(seq 1 ${{ inputs.iterations || 5 }}); do
+            for i in $(seq 1 ${{ inputs.iterations || 1 }}); do
               reset_state; run_native_keccak "$variant" "$i"
             done
           done
@@ -130,7 +130,7 @@ jobs:
           mkdir -p /tmp/bench/logs
           /tmp/bench/render_bench_summary \
             -logs /tmp/bench/logs \
-            -iters ${{ inputs.iterations || 5 }} \
+            -iters ${{ inputs.iterations || 1 }} \
             -workloads keccak \
             -base-ref "${{ inputs.zkc_base_ref }}" \
             -optim-ref "${{ inputs.zkc_optim_ref }}" \
