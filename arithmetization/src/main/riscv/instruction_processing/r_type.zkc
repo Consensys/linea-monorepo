@@ -378,7 +378,7 @@ fn process_R_type_instruction<ram, registers, poseidon_state>(opcode:Opcode, ins
                 // Note: registers[rd] isn't changed by this instruction, it's merely read
                 v2_upper::v2_lower = v2
                 if v2_upper != 0 {
-                  fail "Poseidon input size too large: %d", v2
+                    fail "Poseidon input size too large: %d", v2
                 }
                 poseidon(v1, v2_lower, registers[rd] as Address, 0)
                 printf "Poseidon done!\n"
