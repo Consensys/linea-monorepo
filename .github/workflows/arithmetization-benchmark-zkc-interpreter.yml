@@ -51,7 +51,7 @@ on:
         type: string
         default: main
       n_vectors_keccak:
-        description: 'N Keccak test vectors (x4 for number of blocks)'
+        description: 'First N Keccak test vectors from keccak.accepts (x4 for number of blocks)'
         required: false
         type: number
         default: 100
@@ -119,7 +119,7 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p /tmp/bench/logs
-          ITERS=${{ inputs.iterations || 1 }}
+          ITERS=${{ inputs.iterations || 2 }}
 
           # progress prints
           log() { printf '[%s] %s\n' "$(date +'%H:%M:%S')" "$*"; }
@@ -169,7 +169,7 @@ jobs:
           mkdir -p /tmp/bench/logs
           /tmp/bench/render_bench_summary \
             -logs /tmp/bench/logs \
-            -iters ${{ inputs.iterations || 1 }} \
+            -iters ${{ inputs.iterations || 2 }} \
             -blake-n 1 \
             -base-ref "${{ inputs.base_ref || github.base_ref }}" \
             -optim-ref "${{ inputs.optim_ref || github.event.pull_request.head.sha || github.sha }}" \

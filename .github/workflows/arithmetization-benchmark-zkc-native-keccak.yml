@@ -13,6 +13,8 @@ name: Arithmetization native zkc benchmark - Keccak (base vs optim)
 # There are 20k test vectors you can select from to run the benchmark.
 # Each test vector has a raw message of 16 * 32 bytes, ie fits in 4 blocks of 1088 bits.
 # 1 test vector = 4 blocks
+# The `n_vectors_keccak` input picks the first N vectors from this fixture
+# (1..20000);
 
 on:
   pull_request:
@@ -32,6 +34,11 @@ on:
         description: 'go-corset commit/branch/tag for the OPTIM zkc binary'
         required: true
         type: string
+      n_vectors_keccak:
+        description: 'First N Keccak test vectors from keccakf_batched.accepts (1..20000)'
+        required: false
+        type: number
+        default: 1000
       iterations:
         description: 'Number of timed iterations per variant'
         required: false
@@ -83,11 +90,13 @@ jobs:
           go build -o /tmp/bench/keccakf_accepts_to_input ./scripts/keccakf_accepts_to_input/main.go
           go build -o /tmp/bench/cache_thrasher           ./scripts/cache_thrasher/main.go
           go build -o /tmp/bench/render_bench_summary     ./scripts/render_bench_summary/main.go
-          # Strip the `result` WOM output from the .accepts fixture so the
-          # remaining ROM inputs can be fed to `zkc exec`.
+          # Slice the .accepts fixture to the first N vectors and drop the
+          # `result` WOM output so the remaining ROM inputs can be fed to
+          # `zkc exec`.
           /tmp/bench/keccakf_accepts_to_input \
             "$PWD/zkc/keccakf/keccakf_batched.accepts" \
-            /tmp/keccakf_input.json
+            /tmp/keccakf_input.json \
+            ${{ inputs.n_vectors_keccak || 1000 }}
 
       - name: Run benchmark (warmup + sequential timed iterations, base then opt)
         shell: bash
@@ -95,7 +104,7 @@ jobs:
           set -uo pipefail
           mkdir -p /tmp/bench/logs
           zkc_prog="$PWD/arithmetization/src/test/examples/zkc/keccakf/keccakf_batched.zkc"
-          ITERS=${{ inputs.iterations || 1 }}
+          ITERS=${{ inputs.iterations || 2 }}
 
           # progress prints
           log() { printf '[%s] %s\n' "$(date +'%H:%M:%S')" "$*"; }
@@ -131,10 +140,11 @@ jobs:
           mkdir -p /tmp/bench/logs
           /tmp/bench/render_bench_summary \
             -logs /tmp/bench/logs \
-            -iters ${{ inputs.iterations || 1 }} \
+            -iters ${{ inputs.iterations || 2 }} \
             -workloads keccak \
             -base-ref "${{ inputs.zkc_base_ref }}" \
             -optim-ref "${{ inputs.zkc_optim_ref }}" \
+            -keccak-n-vectors ${{ inputs.n_vectors_keccak }} \
             | tee -a "$GITHUB_STEP_SUMMARY" \
             | tee /tmp/bench/logs/summary.md
 
