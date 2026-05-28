@@ -119,6 +119,10 @@ fn exerciseTemporaryTraceWork(input: *const Input) bool {
     return challenge.eql(input.expected_challenge);
 }
 
+// Native smoke tests use the same fixed binary input image as the R5 linked-memory path.
+// The Makefile places that image at `native_input_path`, so native execution only needs a
+// small libc surface: open the file, mmap exactly `@sizeOf(Input)`, and cast the bytes to
+// `Input`. Avoiding std file/argument handling keeps ReleaseSmall native binaries compact.
 const o_rdonly: c_int = 0;
 const prot_read: c_int = 1;
 const map_private: c_int = 2;
