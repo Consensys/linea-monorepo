@@ -342,9 +342,8 @@ blake-rust-exec: install-zkc blake-rust-json
 	@pass=0; fail=0; i=0; \
 	for json in $(BLAKE_JSON_DIR)/*.json; do \
 		i=$$((i + 1)); \
-		$(MAKEFILE_DIR)rust/target/blake_elf2json $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes "$$in_bytes" $(IN_BYTES_OFFSET) > $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json || exit $$?; \
-		echo "RUN   case $$i"; \
-		exit_line=$$(zkc exec $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes.json $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
+		echo "RUN   case $$i  ($$json)"; \
+		exit_line=$$(zkc exec "$$json" $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
 		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
 			echo "PASS  case $$i"; \
 			echo "  $$exit_line"; \
