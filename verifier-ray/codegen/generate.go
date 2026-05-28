@@ -9,6 +9,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
 	"github.com/consensys/linea-monorepo/prover-ray/wiop/compilers/global"
 )
@@ -251,12 +252,9 @@ func emitGlobalVerify(gv *global.Verifier, colFlatIdx map[wiop.ObjectID]int, cel
 			w.line("const _v%d_%d_%d = %s; // Step 1: V_j(r)", gvIdx, bktIdx, vIdx, exprCode)
 
 			// Step 2: apply cancellation — P_j(r) = V_j(r) * prod_{k in cancelled_j}(r - omega^k)
-			if len(v.CancelledPositions) == 0 {
-				w.line("const _c%d_%d_%d = ext.Ext.one(); // Step 2: Cancel_j(r) = 1 (no cancelled rows)", gvIdx, bktIdx, vIdx)
-			} else {
-				positions := formatCancelledPositions(v.CancelledPositions)
-				w.line("const _c%d_%d_%d = try gc.evalCancellation(%s, &.{%s}, coins_r%d[%d]); // Step 2: Cancel_j(r)",
-					gvIdx, bktIdx, vIdx, nVar, positions, ec.Slot(), ec.Position())
+			cVarName := fmt.Sprintf("_c%d_%d_%d", gvIdx, bktIdx, vIdx)
+			if err := emitCancellationCode(cVarName, v.CancelledPositions, gv, nVar, w); err != nil {
+				return fmt.Errorf("codegen: gv%d bucket%d vanishing%d cancellation: %w", gvIdx, bktIdx, vIdx, err)
 			}
 			w.line("const _pc%d_%d_%d = _v%d_%d_%d.mul(_c%d_%d_%d); // Step 2: P_j(r) = V_j(r) * Cancel_j(r)",
 				gvIdx, bktIdx, vIdx, gvIdx, bktIdx, vIdx, gvIdx, bktIdx, vIdx)
@@ -401,6 +399,105 @@ func emitExprCode(expr wiop.Expression, gv *global.Verifier, cellAccessMap map[w
 	default:
 		return "", fmt.Errorf("unsupported expression type %T", expr)
 	}
+}
+
+// emitCancellationCode emits a Zig const declaration for the cancellation
+// polynomial C(r) = Π_{k ∈ cancelled}(r − ω^k).
+//
+// Static modules: all ω^k are computed at Go codegen time and emitted as
+// field constants — no gc.evalCancellation call at all.
+//
+// Dynamic modules: position 0 (ω^0 = 1) is always inlined as (r − 1).
+// Any non-zero positions are passed to gc.evalCancellation. Mixed cases like
+// [0, -1] split: the row-0 factor is inlined and only the non-zero positions
+// go to evalCancellation, which is then multiplied with the inlined factor.
+func emitCancellationCode(varName string, cancelled []int, gv *global.Verifier, nVar string, w *writer) error {
+	ec := gv.EvalCoin.Context.ID
+	rExpr := fmt.Sprintf("coins_r%d[%d]", ec.Slot(), ec.Position())
+
+	if len(cancelled) == 0 {
+		w.line("const %s = ext.Ext.one(); // Step 2: Cancel_j(r) = 1 (no cancelled rows)", varName)
+		return nil
+	}
+
+	if !gv.Module.IsDynamic() {
+		// Static module: all ω^k are known at codegen time — inline the full product.
+		n := gv.Module.Size()
+		omega := field.RootOfUnityBy(n)
+		factors := make([]string, len(cancelled))
+		for i, pos := range cancelled {
+			normalized := pos
+			if normalized < 0 {
+				normalized = n + normalized
+			}
+			var omegaK field.Element
+			field.ExpToInt(&omegaK, omega, normalized)
+			factors[i] = cancellationFactor(rExpr, omegaK.Uint64())
+		}
+		w.line("const %s = %s; // Step 2: Cancel_j(r) (static, ω^k inlined)", varName, mulChain(factors))
+		return nil
+	}
+
+	// Dynamic module: separate zero positions (inlineable) from non-zero positions
+	// (need gc.evalCancellation). ω^0 = 1 regardless of n, so (r - 1) is always safe.
+	zeroCount := 0
+	var nonZero []int
+	for _, pos := range cancelled {
+		if pos == 0 {
+			zeroCount++
+		} else {
+			nonZero = append(nonZero, pos)
+		}
+	}
+
+	// Build the inlined part: (r - 1)^zeroCount
+	var inlinedFactors []string
+	for range zeroCount {
+		inlinedFactors = append(inlinedFactors, cancellationFactor(rExpr, 1))
+	}
+
+	if len(nonZero) == 0 {
+		// All positions are 0 — fully inlineable.
+		w.line("const %s = %s; // Step 2: Cancel_j(r) (row 0, inlined)", varName, mulChain(inlinedFactors))
+		return nil
+	}
+
+	// Some non-zero positions: emit gc.evalCancellation for those, multiply with
+	// any inlined row-0 factors.
+	positions := formatCancelledPositions(nonZero)
+	evalExpr := fmt.Sprintf("try gc.evalCancellation(%s, &.{%s}, %s)", nVar, positions, rExpr)
+	if len(inlinedFactors) == 0 {
+		w.line("const %s = %s; // Step 2: Cancel_j(r)", varName, evalExpr)
+	} else {
+		allFactors := append(inlinedFactors, evalExpr)
+		w.line("const %s = %s; // Step 2: Cancel_j(r) (row 0 inlined, rest via evalCancellation)", varName, mulChain(allFactors))
+	}
+	return nil
+}
+
+// cancellationFactor returns the Zig expression for (r − ω^k) given the
+// canonical integer value of ω^k.
+func cancellationFactor(rExpr string, omegaK uint64) string {
+	switch omegaK {
+	case 0:
+		return rExpr // r − 0 = r
+	case 1:
+		return fmt.Sprintf("(%s).sub(ext.Ext.one())", rExpr)
+	default:
+		return fmt.Sprintf("(%s).sub(ext.Ext.lift(base.Element.fromCanonical(%d) catch unreachable))", rExpr, omegaK)
+	}
+}
+
+// mulChain folds a slice of Zig expressions into a left-associative .mul chain.
+func mulChain(factors []string) string {
+	if len(factors) == 1 {
+		return factors[0]
+	}
+	result := factors[0]
+	for _, f := range factors[1:] {
+		result = fmt.Sprintf("(%s).mul(%s)", result, f)
+	}
+	return result
 }
 
 // formatCancelledPositions formats cancelled positions as a comma-separated

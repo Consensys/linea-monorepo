@@ -145,15 +145,61 @@ recursion, no data structure reads.
 
 ---
 
+## Steps 2–5: Cancellation, Aggregation, Quotient, Identity Check
+
+Steps 1–5 are defined in [global-constraint.md](./global-constraint.md).
+Step 1 (expression evaluation) is covered above. This section covers the rest.
+
+### Step 2 — Cancellation: `P_j(r) = V_j(r) · ∏_{k ∈ cancelled_j}(r − ω_n^k)`
+
+The cancelled-positions set is fixed by the circuit and never changes per proof.
+
+**PR #3202** stores cancelled positions as a runtime slice and calls
+`evalCancellation` unconditionally — one function call and one branch per
+vanishing, even when no rows are cancelled.
+
+**PR #3230** resolves two cases at compile time:
+
+- **Case 1 — no cancelled rows** (constraints referencing only unshifted
+  columns, e.g. `A·(A−1) = 0`): emits `ext.Ext.one()` — no function call, no
+  branch.
+- **Case 2 — log-derivative sums** (`cancelled = [0]`, row 0 only): `ω_n^0 = 1`
+  regardless of module size `n`, so the factor is inlined as
+  `r.sub(ext.Ext.one())`.
+
+All other cases (e.g. local/transition constraints that also cancel the last row)
+require `gc.evalCancellation` at runtime, because `ω_n^{n−1}` depends on `n`
+which is not known until the proof is presented.
+
+---
+
+### Steps 3–5 — Aggregation, Quotient, Identity Check
+
+The field arithmetic is identical in both PRs. For large vanishing counts the
+loops run unconditionally regardless; the per-iteration cost difference is the
+Step 1 expression-eval overhead, not the loop machinery.
+
+---
+
 ## Side-by-side: What Runs Per Proof
 
 | | PR #3202 (dispatch) | PR #3230 (codegen, this work) |
 |---|---|---|
+| **Step 1 — expression eval** | | |
 | Expression tree in binary | yes — `ExprNode[]` array | no |
 | Array reads per eval | 1 per node (10 here) | 0 |
 | Switch dispatches per eval | 1 per node (10 here) | 0 |
 | Recursive calls per eval | 1 per node (10 here) | 0 |
 | Arithmetic ops | 4 | 4 |
+| **Step 2 — cancellation** | | |
+| `cancelled = []` (no shift) | `evalCancellationAtPoint` called, returns `Ext.one()` | `ext.Ext.one()` literal, no call |
+| `cancelled = [0]` (log-derivative, row 0) | `evalCancellationAtPoint` called | `r.sub(ext.Ext.one())` inlined |
+| other cancelled positions | `evalCancellationAtPoint` called | `gc.evalCancellation` called |
+| **Steps 3–5 — aggregate / quotient / identity** | | |
+| Implementation | inline in `checkQuotientIdentity` | delegates to `gc.verify` |
+| `n` source | always runtime (from spec data) | literal (static) or proof len (dynamic) |
+| Loop counts | runtime (from spec data) | compile-time-known at call site (may unroll for small counts) |
+| **Overall** | | |
 | Protocol IR in binary | yes | no |
 | Binary size | larger (IR + interpreter) | smaller (arithmetic only) |
 | Generated source size | small fixed runtime | grows with protocol |
@@ -222,6 +268,56 @@ PR #3202 is described by its author as an "interim/golden-vector verifier" —
 useful for validating that prover-ray outputs align with the Zig algebra. In
 that role the interpreter overhead is irrelevant and the flexibility of not
 needing a codegen step is valuable.
+
+---
+
+## Which approach is better?
+
+The answer depends on which use case you are optimising for.
+
+### For the production zkVM precompile
+
+**PR #3230 (codegen) is strictly better**, for all five steps.
+
+Step 1 accounts for most of the difference (see expression-eval section above).
+For Steps 2–5 both PRs implement the same algorithm with identical field
+arithmetic (PR #3202 inline in `checkQuotientIdentity`; PR #3230 via `gc.verify`).
+PR #3230's advantages are:
+
+- **Step 2**: two cases are fully compile-time (no function call, no branch):
+  unshifted-only constraints (`cancelled = []`) and log-derivative sums
+  (`cancelled = [0]`). All other cancellations still call `gc.evalCancellation`.
+- **Steps 3–4**: fixed-size arrays at the call site may allow loop unrolling for
+  small counts (ratio 1–4 for quotient shares is typical). For large vanishing
+  counts the loop runs regardless; the per-iteration saving comes from Step 1.
+- **Step 5**: static modules emit a literal `n`, so `r.pow(n)` has a
+  compile-time-known exponent.
+
+In a zkVM precompile there is no branch predictor — every conditional costs the
+same as arithmetic, and a fixed-DAG circuit cannot represent runtime branches.
+PR #3230's fixed loop counts and elided branches are therefore mandatory, not
+an optional optimisation.
+
+### For development and testing
+
+**PR #3202 (runtime dispatch) is better** — not for performance, but for
+iteration speed. There is no codegen step, no generated file to commit, and the
+Zig binary adapts to any protocol change immediately. PR #3202's author
+describes it as an interim verifier for validating alignment between prover-ray
+and the Zig field algebra. In that role the dispatch overhead is irrelevant.
+
+### Recommendation
+
+The two PRs are not alternatives for the same role — they are different tools:
+
+- **PR #3202**: use as a reference / golden-vector verifier during development
+  to validate that the prover produces outputs the Zig algebra agrees with.
+- **PR #3230**: the production path. Once the real circuit is wired into
+  `buildSystem()`, the generated stub is the verifier that goes into the zkVM.
+
+They can coexist: PR #3202's test vectors can serve as an independent oracle to
+cross-check PR #3230's generated Zig. A proof that passes both gives much higher
+confidence than either alone.
 
 ---
 

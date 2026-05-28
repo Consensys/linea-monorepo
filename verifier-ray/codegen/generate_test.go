@@ -231,6 +231,147 @@ func TestGenerateZig_MultiModule(t *testing.T) {
 	}
 }
 
+// TestGenerateZig_StaticCancellationInlined verifies that for a static module,
+// cancelled-row factors (r − ω^k) are emitted as inline Zig constants with no
+// call to gc.evalCancellation.
+func TestGenerateZig_StaticCancellationInlined(t *testing.T) {
+	sys := wiop.NewSystemf("static-cancel")
+	m := sys.NewSizedModule(sys.Context.Childf("main"), 4, wiop.PaddingDirectionRight)
+	a := m.NewPrecomputedColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, makeTestVec(1, 0, 0, 0))
+	// Position 0: ω^0 = 1, so factor is (r - 1) = r.sub(ext.Ext.one())
+	m.NewVanishingManual(sys.Context.Childf("ACancel"), a.View(), 0)
+	global.Compile(sys)
+	wiop.Materialize(sys)
+
+	var buf bytes.Buffer
+	if err := GenerateZig(sys, &buf); err != nil {
+		t.Fatalf("GenerateZig() error = %v", err)
+	}
+	src := buf.String()
+
+	if strings.Contains(src, "evalCancellation") {
+		t.Fatalf("static module should not call gc.evalCancellation, got:\n%s", src)
+	}
+	// Row 0 factor: ω^0 = 1 → (r - 1) = .sub(ext.Ext.one())
+	if !strings.Contains(src, ".sub(ext.Ext.one())") {
+		t.Fatalf("static cancel at pos 0 should emit .sub(ext.Ext.one()), got:\n%s", src)
+	}
+	// Comment should say "static, ω^k inlined"
+	if !strings.Contains(src, "static, ω^k inlined") {
+		t.Fatalf("expected 'static, ω^k inlined' comment, got:\n%s", src)
+	}
+}
+
+// TestGenerateZig_StaticCancellationLastRow verifies that the last row (pos=-1,
+// normalized to n-1) emits a non-trivial field constant for ω^(n-1).
+func TestGenerateZig_StaticCancellationLastRow(t *testing.T) {
+	sys := wiop.NewSystemf("static-cancel-last")
+	m := sys.NewSizedModule(sys.Context.Childf("main"), 4, wiop.PaddingDirectionRight)
+	a := m.NewPrecomputedColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, makeTestVec(1, 0, 0, 0))
+	m.NewVanishingManual(sys.Context.Childf("ALastRow"), a.View(), -1)
+	global.Compile(sys)
+	wiop.Materialize(sys)
+
+	var buf bytes.Buffer
+	if err := GenerateZig(sys, &buf); err != nil {
+		t.Fatalf("GenerateZig() error = %v", err)
+	}
+	src := buf.String()
+
+	if strings.Contains(src, "evalCancellation") {
+		t.Fatalf("static module should not call gc.evalCancellation, got:\n%s", src)
+	}
+	// Last row: pos = n-1 = 3 → ω^3 is some non-trivial constant
+	if !strings.Contains(src, "fromCanonical(") {
+		t.Fatalf("static cancel at last row should emit fromCanonical(...), got:\n%s", src)
+	}
+	if !strings.Contains(src, "static, ω^k inlined") {
+		t.Fatalf("expected 'static, ω^k inlined' comment, got:\n%s", src)
+	}
+}
+
+// TestGenerateZig_DynamicCancellationRow0Inlined verifies that a dynamic module
+// with only position 0 cancelled emits an inline (r - 1) factor.
+func TestGenerateZig_DynamicCancellationRow0Inlined(t *testing.T) {
+	sys := wiop.NewSystemf("dyn-cancel-row0")
+	r0 := sys.NewRound()
+	m := sys.NewDynamicModule(sys.Context.Childf("dyn"), wiop.PaddingDirectionRight)
+	a := m.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+	m.NewVanishingManual(sys.Context.Childf("ARow0"), a.View(), 0)
+	global.Compile(sys)
+	wiop.Materialize(sys)
+
+	var buf bytes.Buffer
+	if err := GenerateZig(sys, &buf); err != nil {
+		t.Fatalf("GenerateZig() error = %v", err)
+	}
+	src := buf.String()
+
+	if strings.Contains(src, "evalCancellation") {
+		t.Fatalf("dynamic module with only pos=0 should not call gc.evalCancellation, got:\n%s", src)
+	}
+	if !strings.Contains(src, ".sub(ext.Ext.one())") {
+		t.Fatalf("dynamic row-0 cancel should emit .sub(ext.Ext.one()), got:\n%s", src)
+	}
+	if !strings.Contains(src, "row 0, inlined") {
+		t.Fatalf("expected 'row 0, inlined' comment, got:\n%s", src)
+	}
+}
+
+// TestGenerateZig_DynamicCancellationLastRowFallback verifies that a dynamic module
+// with a non-zero cancelled position falls back to gc.evalCancellation.
+func TestGenerateZig_DynamicCancellationLastRowFallback(t *testing.T) {
+	sys := wiop.NewSystemf("dyn-cancel-lastrow")
+	r0 := sys.NewRound()
+	m := sys.NewDynamicModule(sys.Context.Childf("dyn"), wiop.PaddingDirectionRight)
+	a := m.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+	m.NewVanishingManual(sys.Context.Childf("ALastRow"), a.View(), -1)
+	global.Compile(sys)
+	wiop.Materialize(sys)
+
+	var buf bytes.Buffer
+	if err := GenerateZig(sys, &buf); err != nil {
+		t.Fatalf("GenerateZig() error = %v", err)
+	}
+	src := buf.String()
+
+	if !strings.Contains(src, "evalCancellation") {
+		t.Fatalf("dynamic module with non-zero positions should call gc.evalCancellation, got:\n%s", src)
+	}
+}
+
+// TestGenerateZig_DynamicCancellationMixedSplit verifies that [0, -1] (row 0 +
+// last row, the common transition-constraint case) inlines the row-0 factor and
+// calls gc.evalCancellation only for the last-row position.
+func TestGenerateZig_DynamicCancellationMixedSplit(t *testing.T) {
+	sys := wiop.NewSystemf("dyn-cancel-mixed")
+	r0 := sys.NewRound()
+	m := sys.NewDynamicModule(sys.Context.Childf("dyn"), wiop.PaddingDirectionRight)
+	a := m.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+	m.NewVanishingManual(sys.Context.Childf("ABoth"), a.View(), 0, -1)
+	global.Compile(sys)
+	wiop.Materialize(sys)
+
+	var buf bytes.Buffer
+	if err := GenerateZig(sys, &buf); err != nil {
+		t.Fatalf("GenerateZig() error = %v", err)
+	}
+	src := buf.String()
+
+	// Row-0 factor must be inlined
+	if !strings.Contains(src, ".sub(ext.Ext.one())") {
+		t.Fatalf("mixed cancel should inline row-0 factor as .sub(ext.Ext.one()), got:\n%s", src)
+	}
+	// Last-row factor must use evalCancellation with only position -1
+	if !strings.Contains(src, "evalCancellation") {
+		t.Fatalf("mixed cancel should call gc.evalCancellation for non-zero positions, got:\n%s", src)
+	}
+	// evalCancellation must NOT include position 0 in its list (it was inlined)
+	if strings.Contains(src, "evalCancellation(_n0, &.{0,") || strings.Contains(src, "evalCancellation(_n0, &.{0}") {
+		t.Fatalf("position 0 should not be passed to evalCancellation, got:\n%s", src)
+	}
+}
+
 func TestGenerateZigRejectsDynamicModuleWithInternalColumns(t *testing.T) {
 	sys := wiop.NewSystemf("dynamic-internal")
 	r0 := sys.NewRound()
