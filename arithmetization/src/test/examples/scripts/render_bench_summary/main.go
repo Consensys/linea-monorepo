@@ -488,6 +488,9 @@ func main() {
 	if *zkcVersion != "" {
 		fmt.Fprintf(&out, "- zkc version (go-corset ref): `%s`\n", *zkcVersion)
 	}
+	if *iters > 0 {
+		fmt.Fprintf(&out, "- number of timed iterations per variant: %d\n", *iters)
+	}
 	if wantKeccak && *keccakNVectors > 0 {
 		fmt.Fprintf(&out, "- number of Keccak vectors: %d\n", *keccakNVectors)
 	}

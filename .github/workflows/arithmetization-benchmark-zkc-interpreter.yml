@@ -41,7 +41,7 @@ on:
         required: true
         type: string
       iterations:
-        description: 'Number of timed iterations per (workload, variant)'
+        description: 'Number of timed iterations per (program, variant)'
         required: false
         type: number
         default: 5
@@ -51,12 +51,12 @@ on:
         type: string
         default: main
       n_vectors_keccak:
-        description: 'Keccak vectors batched per zkc exec (one timed run per iteration)'
+        description: 'N Keccak test vectors (x4 for number of blocks)'
         required: false
         type: number
         default: 100
-      rounds_blake:
-        description: 'Blake compression rounds'
+      n_rounds_blake:
+        description: 'N Blake compression rounds'
         required: false
         type: number
         default: 12
@@ -94,7 +94,7 @@ jobs:
           git worktree add /tmp/wt-base refs/bench/base
           git worktree add /tmp/wt-opt  refs/bench/opt
 
-      - name: Build ELFs, helpers, and per-vector JSONs once (on opt worktree)
+      - name: Build ELFs, helpers, and per-vector JSONs (on opt worktree)
         run: |
           set -eux
           mkdir -p /tmp/bench/logs /tmp/bench/json/blake
@@ -104,10 +104,8 @@ jobs:
             KECCAK_N_VECTORS=${{ inputs.n_vectors_keccak || 10 }} \
             KECCAK_JSON=/tmp/keccak.json
           # Blake: synthesize a single .all line at the requested rounds count
-          # (h, m, t, f hard-coded to the standard Blake2b "abc" test vector;
-          # h_out computed on the fly), then run blake-rust-json against it.
           go build -o /tmp/bench/blake_rounds2bytes ./scripts/blake_rounds_to_in_bytes/main.go
-          /tmp/bench/blake_rounds2bytes ${{ inputs.rounds_blake || 12 }} > /tmp/blake_custom.all
+          /tmp/bench/blake_rounds2bytes ${{ inputs.n_rounds_blake || 12 }} > /tmp/blake_custom.all
           make blake-rust-json \
             BLAKE_ACCEPTS=/tmp/blake_custom.all \
             BLAKE_N_VECTORS=1 \
@@ -121,6 +119,10 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p /tmp/bench/logs
+          ITERS=${{ inputs.iterations || 1 }}
+
+          # progress prints
+          log() { printf '[%s] %s\n' "$(date +'%H:%M:%S')" "$*"; }
 
           reset_state() {
             sync || true
@@ -146,16 +148,18 @@ jobs:
           }
 
           for wl in keccak blake; do
+            log "=== workload: ${wl} ==="
             # Untimed warmup: opt then base. Primes the page cache and shared libs
             # so both branches face an already-warm filesystem on iteration 1.
-            reset_state; run_${wl} opt  warmup || true
-            reset_state; run_${wl} base warmup || true
+            reset_state; log "${wl}: warmup opt  (untimed)"; run_${wl} opt  warmup || true
+            reset_state; log "${wl}: warmup base (untimed)"; run_${wl} base warmup || true
             # Timed runs: opt_i, base_i alternating, starting with opt.
-            for i in $(seq 1 ${{ inputs.iterations || 1 }}); do
-              reset_state; run_${wl} opt  "$i"
-              reset_state; run_${wl} base "$i"
+            for i in $(seq 1 "$ITERS"); do
+              reset_state; log "${wl}: iter ${i}/${ITERS} opt";  run_${wl} opt  "$i"
+              reset_state; log "${wl}: iter ${i}/${ITERS} base"; run_${wl} base "$i"
             done
           done
+          log "all workloads done"
 
       - name: Parse logs and emit summary
         if: always()
@@ -171,7 +175,7 @@ jobs:
             -optim-ref "${{ inputs.optim_ref || github.event.pull_request.head.sha || github.sha }}" \
             -zkc-version "${{ inputs.go_corset_ref || 'main' }}" \
             -keccak-n-vectors ${{ inputs.n_vectors_keccak || 10 }} \
-            -blake-rounds ${{ inputs.rounds_blake || 12 }} \
+            -blake-rounds ${{ inputs.n_rounds_blake || 12 }} \
             | tee -a "$GITHUB_STEP_SUMMARY" \
             | tee /tmp/bench/logs/summary.md
 

@@ -59,10 +59,8 @@ jobs:
       - name: Build two zkc binaries (base + opt) via go install
         run: |
           set -eux
-          # `go install pkg@version` natively accepts tags, branches and full
-          # SHAs, which is the easiest way to materialise two zkc binaries
-          # from two refs of go-corset side by side. We collect each install
-          # into its own GOBIN and rename the output so they coexist on disk.
+          # We collect each install into its own GOBIN and rename the output
+          # so they coexist on disk.
           for variant in base opt; do
             case "$variant" in
               base) ref="${{ inputs.zkc_base_ref || 'main' }}" ;;
@@ -86,8 +84,7 @@ jobs:
           go build -o /tmp/bench/cache_thrasher           ./scripts/cache_thrasher/main.go
           go build -o /tmp/bench/render_bench_summary     ./scripts/render_bench_summary/main.go
           # Strip the `result` WOM output from the .accepts fixture so the
-          # remaining ROM inputs (n_vectors, block_counts, blocks) can be fed
-          # to `zkc exec`.
+          # remaining ROM inputs can be fed to `zkc exec`.
           /tmp/bench/keccakf_accepts_to_input \
             "$PWD/zkc/keccakf/keccakf_batched.accepts" \
             /tmp/keccakf_input.json
@@ -98,6 +95,10 @@ jobs:
           set -uo pipefail
           mkdir -p /tmp/bench/logs
           zkc_prog="$PWD/arithmetization/src/test/examples/zkc/keccakf/keccakf_batched.zkc"
+          ITERS=${{ inputs.iterations || 1 }}
+
+          # progress prints
+          log() { printf '[%s] %s\n' "$(date +'%H:%M:%S')" "$*"; }
 
           reset_state() {
             sync || true
@@ -113,16 +114,14 @@ jobs:
               > "/tmp/bench/logs/keccak_${1}_${2}.log" 2>&1
           }
 
-          # We must not alternate base/opt per iteration here: doing so would
-          # require switching zkc binaries (and their already-warm page-cache
-          # footprint) between every timed run. Instead, for each variant we
-          # warmup once (untimed) and then take N consecutive timed samples.
           for variant in base opt; do
-            reset_state; run_native_keccak "$variant" warmup || true
-            for i in $(seq 1 ${{ inputs.iterations || 1 }}); do
-              reset_state; run_native_keccak "$variant" "$i"
+            log "=== variant: ${variant} ==="
+            reset_state; log "${variant}: warmup (untimed)"; run_native_keccak "$variant" warmup || true
+            for i in $(seq 1 "$ITERS"); do
+              reset_state; log "${variant}: iter ${i}/${ITERS}"; run_native_keccak "$variant" "$i"
             done
           done
+          log "all variants done"
 
       - name: Parse logs and emit summary
         if: always()
