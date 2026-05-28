@@ -4,7 +4,7 @@ include "utils/type.zkc"
 // This will act as the program "heap" and will contain, amongst other things,
 // the program executable itself and the program inputs. 
 #[bipartite]
-memory ram(address:Address) -> (bytes:u8)
+memory ram(address:Address) -> (word:u32)
 
 // Represents the Register File to use when executing the guest program.  That
 // is, the value of all registers at the given moment.

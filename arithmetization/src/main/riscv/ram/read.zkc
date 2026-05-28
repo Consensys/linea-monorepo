@@ -1,14 +1,79 @@
 include "../memory.zkc"
+include "../utils/constants.zkc"
 
-fn read_64<ram>(address:Address) -> (value:u64) {
-    value = ram[address + 7]::ram[address + 6]::ram[address + 5]::ram[address + 4]::ram[address + 3]::ram[address + 2]::ram[address + 1]::ram[address + 0]
+fn word_address(address:Address) -> (aligned:Address) {
+    aligned = address & MASK_ADDR_ALIGN_4
 }
 
-fn read_32<ram>(address:Address) -> (value:u32) {
-    value = ram[address + 3]::ram[address + 2]::ram[address + 1]::ram[address + 0]
+fn byte_offset(address:Address) -> (offset:u2) {
+    offset = (address & 3) as u2
+}
+
+fn extract_byte_from_word(word:u32, offset:u2) -> (byte:u8) {
+    if offset == 0 {
+        byte = (word & 0xFF) as u8
+    } else if offset == 1 {
+        byte = ((word >> 8) & 0xFF) as u8
+    } else if offset == 2 {
+        byte = ((word >> 16) & 0xFF) as u8
+    } else {
+        byte = ((word >> 24) & 0xFF) as u8
+    }
+}
+
+fn read_8<ram>(address:Address) -> (value:u8) {
+    var aligned:Address = word_address(address)
+    var offset:u2 = byte_offset(address)
+    var word:u32 = ram[aligned]
+    value = extract_byte_from_word(word, offset)
 }
 
 fn read_16<ram>(address:Address) -> (value:u16) {
-    value = ram[address + 1]::ram[address + 0]
+    var aligned:Address = word_address(address)
+    var offset:u2 = byte_offset(address)
+    if offset == 0 {
+        value = (ram[aligned] & 0xFFFF) as u16
+    } else if offset == 1 {
+        var word_lo:u32 = ram[aligned]
+        var word_hi:u32 = ram[aligned + 4]
+        value = ((word_lo >> 8) | ((word_hi & 0xFF) << 8)) as u16
+    } else if offset == 2 {
+        value = ((ram[aligned] >> 16) & 0xFFFF) as u16
+    } else {
+        var word_lo:u32 = ram[aligned]
+        var word_hi:u32 = ram[aligned + 4]
+        value = ((word_lo >> 24) | ((word_hi & 0xFF) << 8)) as u16
+    }
 }
 
+fn read_32<ram>(address:Address) -> (value:u32) {
+    var aligned:Address = word_address(address)
+    var offset:u2 = byte_offset(address)
+    if offset == 0 {
+        value = ram[aligned]
+    } else if offset == 1 {
+        var word_lo:u32 = ram[aligned]
+        var word_hi:u32 = ram[aligned + 4]
+        value = (word_lo >> 8) | ((word_hi & 0xFF) << 24)
+    } else if offset == 2 {
+        var word_lo:u32 = ram[aligned]
+        var word_hi:u32 = ram[aligned + 4]
+        value = (word_lo >> 16) | ((word_hi & 0xFFFF) << 16)
+    } else {
+        var word_lo:u32 = ram[aligned]
+        var word_hi:u32 = ram[aligned + 4]
+        value = (word_lo >> 24) | ((word_hi & 0xFFFFFF) << 8)
+    }
+}
+
+fn read_64<ram>(address:Address) -> (value:u64) {
+    var aligned:Address = word_address(address)
+    var offset:u2 = byte_offset(address)
+    if offset == 0 {
+        value = ram[aligned + 4]::ram[aligned]
+    } else {
+        var lo:u32 = read_32(address)
+        var hi:u32 = read_32(address + 4)
+        value = hi::lo
+    }
+}

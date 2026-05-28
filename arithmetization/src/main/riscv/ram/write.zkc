@@ -1,52 +1,84 @@
 include "../memory.zkc"
+include "../utils/constants.zkc"
+include "read.zkc"
 
-// Everything in RISC5 is little endian
-fn write_64<ram>(address:Address, value:u64) -> () {
-    var v0:u8
-    var v1:u8
-    var v2:u8
-    var v3:u8
-    var v4:u8
-    var v5:u8
-    var v6:u8
-    var v7:u8
-
-    v7::v6::v5::v4::v3::v2::v1::v0 = value
-
-    ram[address + 0] = v0
-    ram[address + 1] = v1
-    ram[address + 2] = v2
-    ram[address + 3] = v3
-    ram[address + 4] = v4
-    ram[address + 5] = v5
-    ram[address + 6] = v6
-    ram[address + 7] = v7
+fn replace_byte_in_word(word:u32, offset:u2, byte:u8) -> (new_word:u32) {
+    var cleared:u32
+    var inserted:u32 = byte as u32
+    if offset == 0 {
+        cleared = word & 0xFFFFFF00
+        new_word = cleared | inserted
+    } else if offset == 1 {
+        cleared = word & 0xFFFF00FF
+        new_word = cleared | (inserted << 8)
+    } else if offset == 2 {
+        cleared = word & 0xFF00FFFF
+        new_word = cleared | (inserted << 16)
+    } else {
+        cleared = word & 0x00FFFFFF
+        new_word = cleared | (inserted << 24)
+    }
 }
 
-fn write_32<ram>(address:Address, value:u32) -> () {
-    var v0:u8
-    var v1:u8
-    var v2:u8
-    var v3:u8
-
-    v3::v2::v1::v0 = value
-
-    ram[address + 0] = v0
-    ram[address + 1] = v1
-    ram[address + 2] = v2
-    ram[address + 3] = v3
+// Everything in RISC5 is little endian
+fn write_8<ram>(address:Address, value:u8) -> () {
+    var aligned:Address = word_address(address)
+    var offset:u2 = byte_offset(address)
+    var old_word:u32 = ram[aligned]
+    var new_word:u32 = replace_byte_in_word(old_word, offset, value)
+    ram[aligned] = new_word
 }
 
 fn write_16<ram>(address:Address, value:u16) -> () {
-    var v0:u8
-    var v1:u8
-
-    v1::v0 = value
-
-    ram[address + 0] = v0
-    ram[address + 1] = v1
+    var aligned:Address = word_address(address)
+    var offset:u2 = byte_offset(address)
+    if offset == 0 {
+        var word:u32 = ram[aligned]
+        ram[aligned] = (word & 0xFFFF0000) | (value as u32)
+    } else if offset == 2 {
+        var word:u32 = ram[aligned]
+        ram[aligned] = (word & 0xFFFF) | ((value as u32) << 16)
+    } else {
+        var b0:u8
+        var b1:u8
+        b1::b0 = value
+        write_8(address, b0)
+        write_8(address + 1, b1)
+    }
 }
 
-fn write_8<ram>(address:Address, value:u8) -> () {
-    ram[address] = value
+fn write_32<ram>(address:Address, value:u32) -> () {
+    var aligned:Address = word_address(address)
+    var offset:u2 = byte_offset(address)
+    if offset == 0 {
+        ram[aligned] = value
+    } else {
+        var b0:u8
+        var b1:u8
+        var b2:u8
+        var b3:u8
+        b3::b2::b1::b0 = value
+        write_8(address, b0)
+        write_8(address + 1, b1)
+        write_8(address + 2, b2)
+        write_8(address + 3, b3)
+    }
+}
+
+fn write_64<ram>(address:Address, value:u64) -> () {
+    var aligned:Address = word_address(address)
+    var offset:u2 = byte_offset(address)
+    if offset == 0 {
+        var lo:u32
+        var hi:u32
+        hi::lo = value
+        ram[aligned] = lo
+        ram[aligned + 4] = hi
+    } else {
+        var lo:u32
+        var hi:u32
+        hi::lo = value
+        write_32(address, lo)
+        write_32(address + 4, hi)
+    }
 }
