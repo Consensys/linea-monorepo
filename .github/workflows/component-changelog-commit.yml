@@ -98,7 +98,7 @@ jobs:
         id: timestamp
         shell: bash
         run: |
-          echo "TIMESTAMP=$(date -u +%Y%m%d)" >> $GITHUB_OUTPUT
+          echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
 
       - name: Create pull request
         if: ${{ inputs.create_pull_request }}
