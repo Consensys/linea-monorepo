@@ -71,8 +71,6 @@ fn process_R_type_instruction<ram, registers, poseidon_state>(opcode:Opcode, ins
 
     funct7::rs2::rs1::funct3::rd = instruction_parameters
 
-    printf "funct3 ≡ %b, funct7 ≡ %b\n", funct3, funct7
-
     v1 = registers[rs1]
     v2 = registers[rs2]
 
@@ -359,6 +357,12 @@ fn process_R_type_instruction<ram, registers, poseidon_state>(opcode:Opcode, ins
                 } else {
                     registers[rd] = sgn_extension_u32_u64(v1_lower % v2_lower)
                 }
+            } else {
+                printf "[ERROR] Unsupported R-type instruction with\n"
+                printf "\topcode ≡ OP32 ≡ %x ≡ %b\n", opcode, opcode
+                printf "\tfunct3 ≡ %x ≡ %b\n", funct3, funct3
+                printf "\tfunct7 ≡ %x ≡ %b\n", funct7, funct7
+                fail "unsupported R-type instruction"
             }
         }
 
@@ -371,10 +375,18 @@ fn process_R_type_instruction<ram, registers, poseidon_state>(opcode:Opcode, ins
 
             if (funct3 == FUNCT3_POSEIDON_1) && (funct7 == FUNCT7_POSEIDON_1) {
                 // address:Address, size_in_bytes:u32, destination:Address, apply_mds_initially:u1
+                // Note: registers[rd] isn't changed by this instruction, it's merely read
                 v2_upper::v2_lower = v2
-                var vd:DoubleWord = registers[rd]
-                poseidon(v1, v2_lower, vd as Address, 0)
+                if v2_upper != 0 {
+                  fail "Poseidon input size too large: %d", v2
+                }
+                poseidon(v1, v2_lower, registers[rd] as Address, 0)
                 printf "Poseidon done!\n"
+            } else {
+                printf "[ERROR] Unsupported R-type custom-0 instruction with\n"
+                printf "\tfunct3 ≡ %x ≡ %b\n", funct3, funct3
+                printf "\tfunct7 ≡ %x ≡ %b\n", funct7, funct7
+                fail
             }
         }
 

@@ -1,6 +1,7 @@
 # How to
 
-To trigger the test with inputs one must construct a valid input. A valid input is structured like so
+To trigger the test with inputs (`poseidon1_with_in_bytes.rs`) one must construct a valid input.
+A valid input is structured like so
 
 `0x <input_len> <result> <inputs>`
 
@@ -8,6 +9,11 @@ where
 - `<input_len>` is a 4 byte, little endian integer indicating the length in bytes of `<inputs>`,
 - `<inputs>` is an input byte slice, composed of 3-byte little-endian words
 - `<result>` is the **full state** of the Poseidon hash at the end of the computation
+
+The right result can be computed by running the tools at `https://github.com/khovratovich/poseidon-tools`.
+One must be careful when constructing the `<inputs>`: inputs are read 3 bytes at a time (zero padded if
+data runs out) to build the felts. E.g. if one wants to compute the Poseidon hash of `range(16)` as below
+one must produce inputs that are 3-byte little endian integers in the range 0..16.
 
 ## Example input string
 

@@ -1,5 +1,3 @@
-include "poseidon.zkc"
-
 fn write_to_state<poseidon_state>(address:u8, value:𝔽) -> () {
     poseidon_state[address] = value
 }

@@ -7,12 +7,6 @@ const STATE_LEN: usize = STATE_WIDTH * BYTES_PER_FELT;
 
 include!("../custom_std.rs");
 
-/// Compile-time test case selector. Pick one of:
-///   0: range(7)        1: range(16)       2: range(256)
-///   3: zeros(1)        4: zeros(16)       5: zeros(256)
-///   6: zeros(2^16)     7: zeros(2^18)     8: zeros(2^20)
-const TEST_CASE: u32 = 1;
-
 fn in_line_assembly_poseidon_call(input_offset: usize, input_size: usize, output_offset: usize) {
   unsafe {
     core::arch::asm!(
