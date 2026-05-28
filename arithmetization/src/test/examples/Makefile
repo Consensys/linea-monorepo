@@ -343,14 +343,11 @@ blake-rust-exec: install-zkc blake-rust-json
 	for json in $(BLAKE_JSON_DIR)/*.json; do \
 		i=$$((i + 1)); \
 		echo "RUN   case $$i  ($$json)"; \
-		exit_line=$$(zkc exec -q "$$json" $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
-		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
+		if zkc exec -q "$$json" $(ZKC_MAIN) >/dev/null 2>&1; then \
 			echo "PASS  case $$i"; \
-			echo "  $$exit_line"; \
 			pass=$$((pass + 1)); \
 		else \
-			echo "FAIL  case $$i"; \
-			echo "  $$exit_line"; \
+			echo "FAIL  case $$i (zkc exec exited non-zero; rerun without -q for the panic message)"; \
 			fail=$$((fail + 1)); \
 		fi; \
 	done; \
