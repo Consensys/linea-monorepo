@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/hash"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
@@ -126,27 +127,41 @@ func (run *Runtime) AdvanceRound() {
 			continue
 		}
 		cv := run.GetColumnAssignment(col) // panics if unassigned
-		run.fs.UpdateSV(cv.Plain)
+
+		if cv.Plain.IsBase() {
+			run.fs.Bind("current challenge", cv.Plain.AsBase())
+		} else {
+			cvExt := cv.Plain.AsExt()
+			for _, e := range cvExt {
+				run.fs.Bind("current challenge", []koalabear.Element{e.B0.A0})
+				run.fs.Bind("current challenge", []koalabear.Element{e.B0.A1})
+				run.fs.Bind("current challenge", []koalabear.Element{e.B1.A0})
+				run.fs.Bind("current challenge", []koalabear.Element{e.B1.A1})
+				run.fs.Bind("current challenge", []koalabear.Element{e.B2.A0})
+				run.fs.Bind("current challenge", []koalabear.Element{e.B2.A1})
+			}
+		}
+		//run.fs.UpdateSV(cv.Plain)
 	}
 
 	// Feed all cell values into the Fiat-Shamir state.
-	for _, cell := range run.currentRound.Cells {
-		v, ok := run.cells[cell.Context.ID]
-		if !ok {
-			panic(fmt.Sprintf(
-				"wiop: AdvanceRound: cell %q not assigned before advancing round",
-				cell.Context.Path(),
-			))
-		}
-		run.fs.UpdateGeneric(v)
-	}
+	// for _, cell := range run.currentRound.Cells {
+	// 	v, ok := run.cells[cell.Context.ID]
+	// 	if !ok {
+	// 		panic(fmt.Sprintf(
+	// 			"wiop: AdvanceRound: cell %q not assigned before advancing round",
+	// 			cell.Context.Path(),
+	// 		))
+	// 	}
+	// 	run.fs.UpdateGeneric(v)
+	// }
 
 	run.currentRound = next
 
 	// Derive a coin for every CoinField declared in the new round.
-	for _, coin := range run.currentRound.Coins {
-		run.coins[coin.Context.ID] = field.ElemFromExt(run.fs.RandomFext())
-	}
+	// for _, coin := range run.currentRound.Coins {
+	// 	run.coins[coin.Context.ID] = field.ElemFromExt(run.fs.RandomFext())
+	// }
 }
 
 // AssignColumn stores a concrete vector assignment for col.
