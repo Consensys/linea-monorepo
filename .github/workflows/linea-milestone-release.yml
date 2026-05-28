@@ -30,6 +30,11 @@ on:
         required: false
         default: false
         type: boolean
+      dry_run_release:
+        description: 'Dry run a release (without build and push the docker images to dockerhub)'
+        required: false
+        default: false
+        type: boolean
   workflow_call:
     inputs:
       image_tag_suffix:
@@ -196,6 +201,7 @@ jobs:
       release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: no release tag suffix allowed for milestone component release 
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
+      dry_run_release: ${{ inputs.dry_run_release }}
       upload_changelog: true
     secrets: inherit
 
@@ -214,6 +220,7 @@ jobs:
       release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: no release tag suffix allowed for milestone component release 
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
+      dry_run_release: ${{ inputs.dry_run_release }}
       upload_changelog: true
     secrets: inherit
 
@@ -232,6 +239,7 @@ jobs:
       release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: no release tag suffix allowed for milestone component release 
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
+      dry_run_release: ${{ inputs.dry_run_release }}
       upload_changelog: true
     secrets: inherit
 
@@ -250,6 +258,7 @@ jobs:
       release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: no release tag suffix allowed for milestone component release 
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
+      dry_run_release: ${{ inputs.dry_run_release }}
       upload_changelog: true
     secrets: inherit
 
@@ -268,6 +277,7 @@ jobs:
       release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: no release tag suffix allowed for milestone component release
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
+      dry_run_release: ${{ inputs.dry_run_release }}
       upload_changelog: true
     secrets: inherit
 
@@ -284,6 +294,7 @@ jobs:
       without_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin }}
       draft_release: ${{ !inputs.pre_release }}
       pre_release: ${{ inputs.pre_release }}
+      dry_run_release: ${{ inputs.dry_run_release }}
       upload_changelog: true
     secrets: inherit
 

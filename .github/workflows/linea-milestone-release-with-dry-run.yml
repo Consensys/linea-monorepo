@@ -114,7 +114,7 @@ jobs:
           git push origin "${BRANCH}"
           echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
-      - name: Dispatch linea-milestone-release.yml on new branch
+      - name: Dispatch linea-milestone-release.yml on new branch with dry run release 
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           BRANCH: ${{ steps.mkbranch.outputs.branch }}
@@ -128,7 +128,8 @@ jobs:
             --ref "${BRANCH}" \
             -f image_tag_suffix="${IMAGE_TAG_SUFFIX}" \
             -f release_tag_suffix="${RELEASE_TAG_SUFFIX}-${TIMESTAMP}" \
-            -f pre_release="${PRE_RELEASE}"
+            -f pre_release="${PRE_RELEASE}" \
+            -f dry_run_release=true
 
       - name: Find dispatched run and report URL
         id: find-run
