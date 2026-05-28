@@ -1,6 +1,6 @@
 # Contract Address Registry
 
-This directory contains the manually-maintained, per-network deployed address registry for the Linea protocol.
+This directory contains the PR-reviewed, per-network deployed address registry for the Linea protocol. Files may be edited manually or generated from an external source of truth, then validated before use.
 
 ## Files
 
@@ -85,9 +85,9 @@ This validates JSON shape, network/chainId metadata, EIP-55 checksums, duplicate
 zero/non-zero consistency before deploy scripts consume the data. It also scans the raw JSON for
 duplicate object keys, because `JSON.parse` would otherwise silently keep only the last value.
 
-## Contract Key Mapping
+## Registry Key Mapping
 
-The following keys are recognised by deploy scripts:
+Deploy scripts look up `contractKey` first, then `envVarName` when they differ. The following keys are recognised by deploy scripts:
 
 | Key | Env var equivalent | Notes |
 |-----|--------------------|-------|

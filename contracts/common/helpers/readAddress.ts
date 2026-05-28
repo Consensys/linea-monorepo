@@ -12,6 +12,7 @@ import {
   REGISTRY_NETWORKS,
   sameAddressSet,
 } from "./addressRegistry";
+import { formatEnvVarForLog, formatEnvVarValueForMessage } from "./envVarLogging";
 
 /**
  * Reads a single contract address from the per-network registry file.
@@ -93,7 +94,7 @@ export function requireAddressFromRegistryOrEnv(networkName: string, contractKey
       throw new Error(
         `Address conflict for "${contractKey}" on network "${networkName}":\n` +
           `  Registry (contracts/deployments/addresses/${networkName}.json): ${registryAddress}\n` +
-          `  Environment variable ${envVarName}: ${envAddress}\n` +
+          `  Environment variable ${envVarName}: ${formatEnvVarValueForMessage(envVarName!, envAddress)}\n` +
           `Either remove the env var override or update the registry to match.`,
       );
     }
@@ -104,7 +105,9 @@ export function requireAddressFromRegistryOrEnv(networkName: string, contractKey
   }
 
   if (envAddress !== undefined) {
-    console.log(`Using environment variable ${envVarName}=${envAddress} for ${contractKey} (no registry entry)`);
+    console.log(
+      `Using environment variable ${formatEnvVarForLog(envVarName!, envAddress)} for ${contractKey} (no registry entry)`,
+    );
     return envAddress;
   }
 
@@ -133,7 +136,7 @@ export function requireAddressesFromRegistryOrEnv(
       throw new Error(
         `Address conflict for "${contractKey}" on network "${networkName}":\n` +
           `  Registry (contracts/deployments/addresses/${networkName}.json): ${registryAddresses.join(", ")}\n` +
-          `  Environment variable ${envVarName}: ${envAddresses.join(", ")}\n` +
+          `  Environment variable ${envVarName}: ${envAddresses.map((value) => formatEnvVarValueForMessage(envVarName, value)).join(", ")}\n` +
           `Either remove the env var override or update the registry to match.`,
       );
     }
@@ -145,7 +148,7 @@ export function requireAddressesFromRegistryOrEnv(
 
   if (envAddresses !== undefined) {
     console.log(
-      `Using environment variable ${envVarName}=${envAddresses.join(", ")} for ${contractKey} (no registry entry)`,
+      `Using environment variable ${formatEnvVarForLog(envVarName, envAddresses.join(", "))} for ${contractKey} (no registry entry)`,
     );
     return envAddresses;
   }

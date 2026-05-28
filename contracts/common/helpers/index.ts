@@ -2,6 +2,7 @@ export * from "./roles";
 export * from "./hashing";
 export * from "./encoding";
 export * from "./environment";
+export * from "./envVarLogging";
 export * from "./auditedDeployVerifier";
 export * from "./deployments";
 export * from "./environmentHelper";

@@ -2,7 +2,7 @@
 
 ## Address Registry
 
-For stable, named networks (`mainnet`, `sepolia`, `hoodi`, `linea_mainnet`, `linea_sepolia`) the deploy scripts read contract addresses from a **manually-maintained registry** committed to the repository:
+For stable, named networks (`mainnet`, `sepolia`, `hoodi`, `linea_mainnet`, `linea_sepolia`) the deploy scripts read contract addresses from a **PR-reviewed registry** committed to the repository:
 
 ```
 contracts/deployments/addresses/
@@ -13,7 +13,7 @@ contracts/deployments/addresses/
   linea_sepolia.json
 ```
 
-See [contracts/deployments/addresses/README.md](../../deployments/addresses/README.md) for the full guide — how addresses are resolved, how to update the registry, and the contract-key-to-env-var mapping.
+See [contracts/deployments/addresses/README.md](../../deployments/addresses/README.md) for the full guide — how addresses are resolved, how to update the registry, and the registry-key-to-env-var mapping.
 
 ### Resolution order
 
@@ -29,7 +29,7 @@ Networks without a registry (`custom`, `zkevm_dev`, `l2`) fall back to env var o
 
 ### Address validation
 
-All address env vars are validated with `ethers.isAddress` before use. An invalid address (wrong length, bad checksum, etc.) throws immediately with a clear message before any RPC call is made.
+Registry-backed address env vars are validated with `ethers.isAddress` before use and normalized to EIP-55 checksum form. The registry validator is stricter: committed JSON addresses must already be EIP-55 checksummed. An invalid address (wrong length, bad checksum, etc.) throws immediately with a clear message before any RPC call is made.
 
 <br />
 

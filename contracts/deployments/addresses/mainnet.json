@@ -41,7 +41,7 @@
     },
     "LINEA_ROLLUP_ADDRESS": {
       "address": "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
-      "notes": "L1 Message Service"
+      "notes": "LineaRollup proxy (L1 message service)"
     },
     "L1_SECURITY_COUNCIL": {
       "address": "0x892bb7EeD71efB060ab90140e7825d8127991DD3",

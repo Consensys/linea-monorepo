@@ -13,7 +13,6 @@ import {
   getEnvVarOrDefault,
   getRequiredEnvVar,
   requireAddressFromRegistryOrEnv,
-  validateAddressEnvVar,
   tryVerifyContract,
   LogContractDeployment,
 } from "../common/helpers";
@@ -28,7 +27,11 @@ const func: DeployFunction = withSignerUiSession("04_deploy_L2MessageService.ts"
     "L2_SECURITY_COUNCIL",
     "L2_SECURITY_COUNCIL",
   );
-  const l2MessageServiceL1L2MessageSetter = validateAddressEnvVar("L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER");
+  const l2MessageServiceL1L2MessageSetter = requireAddressFromRegistryOrEnv(
+    network.name,
+    "L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER",
+    "L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER",
+  );
   const l2MessageServiceRateLimitPeriod = getRequiredEnvVar("L2_MESSAGE_SERVICE_RATE_LIMIT_PERIOD");
   const l2MessageServiceRateLimitAmount = getRequiredEnvVar("L2_MESSAGE_SERVICE_RATE_LIMIT_AMOUNT");
 

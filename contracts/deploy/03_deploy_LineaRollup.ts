@@ -43,7 +43,7 @@ const func: DeployFunction = withSignerUiSession("03_deploy_LineaRollup.ts", asy
   const lineaRollupRateLimitPeriodInSeconds = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
   const lineaRollupRateLimitAmountInWei = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
   const lineaRollupGenesisTimestamp = getRequiredEnvVar("L2_GENESIS_TIMESTAMP");
-  const MultiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+  const livenessRecoveryOperator = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
   const pauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_PAUSE_TYPES_ROLES", LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES);
   const unpauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_UNPAUSE_TYPES_ROLES", LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES);
@@ -72,12 +72,12 @@ const func: DeployFunction = withSignerUiSession("03_deploy_LineaRollup.ts", asy
         shnarfProvider: ADDRESS_ZERO,
         addressFilter,
       },
-      MultiCallAddress,
+      livenessRecoveryOperator,
       yieldManagerAddress,
     ],
     {
       initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-      unsafeAllow: ["constructor"],
+      unsafeAllow: ["constructor", "incorrect-initializer-order"],
     },
   );
 

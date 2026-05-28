@@ -20,11 +20,7 @@ const func: DeployFunction = withSignerUiSession("18_deploy_RollupRevenueVault.t
   const invoiceSubmitter = validateAddressEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_SUBMITTER");
   const burner = validateAddressEnvVar("ROLLUP_REVENUE_VAULT_BURNER");
   const invoicePaymentReceiver = validateAddressEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_PAYMENT_RECEIVER");
-  const tokenBridge = requireAddressFromRegistryOrEnv(
-    network.name,
-    "TokenBridge_L2",
-    "ROLLUP_REVENUE_VAULT_TOKEN_BRIDGE",
-  );
+  const tokenBridge = requireAddressFromRegistryOrEnv(network.name, "TokenBridge_L2", "TOKEN_BRIDGE_ADDRESS");
   const messageService = requireAddressFromRegistryOrEnv(
     network.name,
     "L2MessageService",
@@ -50,7 +46,7 @@ const func: DeployFunction = withSignerUiSession("18_deploy_RollupRevenueVault.t
     ],
     {
       initializer: ROLLUP_REVENUE_VAULT_INITIALIZE_SIGNATURE,
-      unsafeAllow: ["constructor"],
+      unsafeAllow: ["constructor", "incorrect-initializer-order"],
     },
   );
 

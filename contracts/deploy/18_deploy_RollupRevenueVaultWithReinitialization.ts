@@ -31,11 +31,7 @@ const func: DeployFunction = withSignerUiSession(
     const invoiceSubmitter = validateAddressEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_SUBMITTER");
     const burner = validateAddressEnvVar("ROLLUP_REVENUE_VAULT_BURNER");
     const invoicePaymentReceiver = validateAddressEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_PAYMENT_RECEIVER");
-    const tokenBridge = requireAddressFromRegistryOrEnv(
-      hre.network.name,
-      "TokenBridge_L2",
-      "ROLLUP_REVENUE_VAULT_TOKEN_BRIDGE",
-    );
+    const tokenBridge = requireAddressFromRegistryOrEnv(hre.network.name, "TokenBridge_L2", "TOKEN_BRIDGE_ADDRESS");
     const messageService = requireAddressFromRegistryOrEnv(
       hre.network.name,
       "L2MessageService",

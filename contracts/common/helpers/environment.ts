@@ -1,12 +1,21 @@
 import { ethers } from "ethers";
 
+import { formatEnvVarForLog, formatEnvVarValueForMessage } from "./envVarLogging";
+
+export {
+  envVarNameFromContext,
+  formatEnvVarForLog,
+  formatEnvVarValueForMessage,
+  isEnvVarContext,
+  isSensitiveEnvVar,
+} from "./envVarLogging";
+
 export function getRequiredEnvVar(name: string): string {
   const envValue = process.env[name];
   if (!envValue) {
     throw new Error(`Required environment variable "${name}" is missing or empty.`);
   }
-  // Do not log the value of the environment variable for safety reasons
-  console.log(`Using environment variable ${name}`);
+  console.log(`Using environment variable ${formatEnvVarForLog(name, envValue)}`);
   return envValue;
 }
 
@@ -18,7 +27,7 @@ export function getEnvVarOrDefault(envVar: string, defaultValue: unknown) {
     return defaultValue;
   }
 
-  console.log(`Using provided ${envVar} environment variable`);
+  console.log(`Using provided ${formatEnvVarForLog(envVar, envValue)}`);
   try {
     const parsedValue = JSON.parse(envValue);
     if (typeof parsedValue === "object" && !Array.isArray(parsedValue)) {
@@ -55,7 +64,7 @@ export function validateAddressEnvVar(name: string): string {
   const raw = getRequiredEnvVar(name);
   if (!ethers.isAddress(raw)) {
     throw new Error(
-      `Environment variable "${name}" is not a valid EVM address. Got: "${raw}". ` +
+      `Environment variable "${name}" is not a valid EVM address. Got: "${formatEnvVarValueForMessage(name, raw)}". ` +
         `Expected a 0x-prefixed 40-hex-character address.`,
     );
   }

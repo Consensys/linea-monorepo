@@ -4,13 +4,13 @@ This directory contains two categories of deployment artefacts:
 
 ## addresses/
 
-Manually-maintained, per-network registry of stable deployed contract addresses.
+PR-reviewed, per-network registry of stable deployed contract addresses. Entries may be edited manually or generated from an external source of truth, then validated before use.
 
 See **[addresses/README.md](addresses/README.md)** for:
 
 - How addresses are resolved during deploys (registry vs env var precedence)
 - How to update an address (PR-based, auditable)
-- The full contract key-to-env-var mapping
+- The full registry key-to-env-var mapping
 
 ## bytecode/
 

@@ -2,6 +2,8 @@ import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
 
+import { envVarNameFromContext, formatEnvVarValueForMessage, isEnvVarContext } from "./envVarLogging";
+
 export const REGISTRY_DIR = path.join(__dirname, "..", "..", "deployments", "addresses");
 
 export const REGISTRY_NETWORKS = new Set(["mainnet", "sepolia", "hoodi", "linea_mainnet", "linea_sepolia"]);
@@ -55,6 +57,13 @@ export function isMultiRegistryEntry(entry: RegistryContractEntry): entry is Mul
 
 export function parseChecksummedAddress(raw: string, context: string): string {
   if (!ethers.isAddress(raw)) {
+    if (isEnvVarContext(context)) {
+      const envVarName = envVarNameFromContext(context);
+      throw new Error(
+        `Environment variable "${envVarName}" is not a valid EVM address. Got: "${formatEnvVarValueForMessage(envVarName, raw)}". ` +
+          `Expected a 0x-prefixed 40-hex-character address.`,
+      );
+    }
     throw new Error(`${context}: invalid EVM address "${raw}"`);
   }
   return ethers.getAddress(raw);
@@ -279,6 +288,87 @@ function findDuplicateJsonKeys(source: string): DuplicateJsonKey[] {
   return duplicates;
 }
 
+function toIssueMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function addIssue(issues: RegistryValidationIssue[], file: string, path: string, message: string): void {
+  issues.push({ file, path, message });
+}
+
+function validateNotes(file: string, notesPath: string, notes: unknown, issues: RegistryValidationIssue[]): void {
+  if (notes !== undefined && typeof notes !== "string") {
+    addIssue(issues, file, notesPath, "`notes` must be a string when present.");
+  }
+}
+
+function validateAllowedProperties(
+  file: string,
+  entryPath: string,
+  record: Record<string, unknown>,
+  allowedProperties: string[],
+  issues: RegistryValidationIssue[],
+): void {
+  const allowed = new Set(allowedProperties);
+  for (const property of Object.keys(record)) {
+    if (!allowed.has(property)) {
+      addIssue(issues, file, `${entryPath}.${property}`, `Unexpected property "${property}".`);
+    }
+  }
+}
+
+function validateAddressObject(
+  file: string,
+  entryPath: string,
+  entry: unknown,
+  issues: RegistryValidationIssue[],
+): entry is AddressObject {
+  if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+    addIssue(issues, file, entryPath, "Address item must be an object.");
+    return false;
+  }
+
+  const record = entry as Record<string, unknown>;
+  validateAllowedProperties(file, entryPath, record, ["address", "notes"], issues);
+  if (typeof record.address !== "string") {
+    addIssue(issues, file, `${entryPath}.address`, "`address` must be a string.");
+    return false;
+  }
+
+  try {
+    assertChecksummedAddress(record.address, `${file} ${entryPath}.address`);
+  } catch (error) {
+    addIssue(issues, file, `${entryPath}.address`, toIssueMessage(error));
+  }
+
+  validateNotes(file, `${entryPath}.notes`, record.notes, issues);
+  return true;
+}
+
+function validateDuplicateAddressObjects(
+  file: string,
+  addressesPath: string,
+  entries: unknown[],
+  issues: RegistryValidationIssue[],
+): void {
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+      continue;
+    }
+    const address = (entry as Record<string, unknown>).address;
+    if (typeof address !== "string" || !ethers.isAddress(address)) {
+      continue;
+    }
+    const normalized = ethers.getAddress(address).toLowerCase();
+    if (seen.has(normalized)) {
+      addIssue(issues, file, addressesPath, `Duplicate address "${address}" in \`addresses\` array.`);
+      return;
+    }
+    seen.add(normalized);
+  }
+}
+
 function validateRegistryEntryShape(
   file: string,
   contractKey: string,
@@ -289,7 +379,7 @@ function validateRegistryEntryShape(
   const issueCountBefore = issues.length;
 
   if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
-    issues.push({ file, path: entryPath, message: "Entry must be an object." });
+    addIssue(issues, file, entryPath, "Entry must be an object.");
     return false;
   }
 
@@ -298,80 +388,34 @@ function validateRegistryEntryShape(
   const hasAddresses = Array.isArray(record.addresses);
 
   if (hasAddress && hasAddresses) {
-    issues.push({ file, path: entryPath, message: "Entry must not define both `address` and `addresses`." });
+    addIssue(issues, file, entryPath, "Entry must not define both `address` and `addresses`.");
     return false;
   }
 
   if (!hasAddress && !hasAddresses) {
-    issues.push({ file, path: entryPath, message: "Entry must define either `address` or `addresses`." });
+    addIssue(issues, file, entryPath, "Entry must define either `address` or `addresses`.");
     return false;
   }
 
   if (hasAddresses) {
     const addressItems = record.addresses as unknown[];
+    validateAllowedProperties(file, entryPath, record, ["addresses", "notes"], issues);
     if (addressItems.length === 0) {
-      issues.push({ file, path: `${entryPath}.addresses`, message: "`addresses` must contain at least one item." });
+      addIssue(issues, file, `${entryPath}.addresses`, "`addresses` must contain at least one item.");
       return false;
     }
 
     for (const [index, item] of addressItems.entries()) {
-      const itemPath = `${entryPath}.addresses[${index}]`;
-      if (item === null || typeof item !== "object" || Array.isArray(item)) {
-        issues.push({ file, path: itemPath, message: "Address item must be an object." });
-        continue;
-      }
-      const addressItem = item as Record<string, unknown>;
-      if (typeof addressItem.address !== "string") {
-        issues.push({ file, path: `${itemPath}.address`, message: "`address` must be a string." });
-        continue;
-      }
-      try {
-        assertChecksummedAddress(addressItem.address, `${file} ${itemPath}.address`);
-      } catch (error) {
-        issues.push({
-          file,
-          path: `${itemPath}.address`,
-          message: error instanceof Error ? error.message : String(error),
-        });
-      }
-      if (addressItem.notes !== undefined && typeof addressItem.notes !== "string") {
-        issues.push({ file, path: `${itemPath}.notes`, message: "`notes` must be a string when present." });
-      }
+      validateAddressObject(file, `${entryPath}.addresses[${index}]`, item, issues);
     }
 
-    const seen = new Set<string>();
-    for (const item of addressItems as AddressObject[]) {
-      if (!ethers.isAddress(item.address)) {
-        continue;
-      }
-      const normalized = ethers.getAddress(item.address).toLowerCase();
-      if (seen.has(normalized)) {
-        issues.push({
-          file,
-          path: `${entryPath}.addresses`,
-          message: `Duplicate address "${item.address}" in \`addresses\` array.`,
-        });
-        break;
-      }
-      seen.add(normalized);
-    }
+    validateDuplicateAddressObjects(file, `${entryPath}.addresses`, addressItems, issues);
+    validateNotes(file, `${entryPath}.notes`, record.notes, issues);
   } else if (typeof record.address === "string") {
-    try {
-      assertChecksummedAddress(record.address, `${file} ${entryPath}.address`);
-    } catch (error) {
-      issues.push({
-        file,
-        path: `${entryPath}.address`,
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
+    validateAddressObject(file, entryPath, record, issues);
   } else {
-    issues.push({ file, path: `${entryPath}.address`, message: "`address` must be a string." });
+    addIssue(issues, file, `${entryPath}.address`, "`address` must be a string.");
     return false;
-  }
-
-  if (record.notes !== undefined && typeof record.notes !== "string") {
-    issues.push({ file, path: `${entryPath}.notes`, message: "`notes` must be a string when present." });
   }
 
   return issues.length === issueCountBefore;
@@ -386,11 +430,7 @@ function validateMixedZeroPopulation(
   try {
     getPopulatedAddresses(entry);
   } catch (error) {
-    issues.push({
-      file,
-      path: `contracts.${contractKey}`,
-      message: error instanceof Error ? error.message : String(error),
-    });
+    addIssue(issues, file, `contracts.${contractKey}`, toIssueMessage(error));
   }
 }
 
@@ -399,7 +439,7 @@ export function validateRegistryFile(fileName: string): RegistryValidationIssue[
   const issues: RegistryValidationIssue[] = [];
 
   if (!fs.existsSync(filePath)) {
-    issues.push({ file: fileName, path: fileName, message: "Registry file is missing." });
+    addIssue(issues, fileName, fileName, "Registry file is missing.");
     return issues;
   }
 
@@ -407,44 +447,33 @@ export function validateRegistryFile(fileName: string): RegistryValidationIssue[
   const raw = fs.readFileSync(filePath, "utf-8");
   try {
     for (const duplicate of findDuplicateJsonKeys(raw)) {
-      issues.push({
-        file: fileName,
-        path: duplicate.path,
-        message: `Duplicate JSON key "${duplicate.key}". JSON parsers keep only the last value.`,
-      });
+      addIssue(
+        issues,
+        fileName,
+        duplicate.path,
+        `Duplicate JSON key "${duplicate.key}". JSON parsers keep only the last value.`,
+      );
     }
     registry = JSON.parse(raw) as NetworkRegistry;
   } catch (error) {
-    issues.push({
-      file: fileName,
-      path: fileName,
-      message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
-    });
+    addIssue(issues, fileName, fileName, `Invalid JSON: ${toIssueMessage(error)}`);
     return issues;
   }
 
   const networkName = fileName.replace(/\.json$/, "");
   if (registry.network !== networkName) {
-    issues.push({
-      file: fileName,
-      path: "network",
-      message: `Expected network "${networkName}", got "${registry.network}".`,
-    });
+    addIssue(issues, fileName, "network", `Expected network "${networkName}", got "${registry.network}".`);
   }
 
   const expectedChainId = EXPECTED_CHAIN_IDS[networkName];
   if (expectedChainId === undefined) {
-    issues.push({ file: fileName, path: "network", message: `Unknown registry network "${networkName}".` });
+    addIssue(issues, fileName, "network", `Unknown registry network "${networkName}".`);
   } else if (registry.chainId !== expectedChainId) {
-    issues.push({
-      file: fileName,
-      path: "chainId",
-      message: `Expected chainId ${expectedChainId}, got ${registry.chainId}.`,
-    });
+    addIssue(issues, fileName, "chainId", `Expected chainId ${expectedChainId}, got ${registry.chainId}.`);
   }
 
   if (registry.contracts === null || typeof registry.contracts !== "object" || Array.isArray(registry.contracts)) {
-    issues.push({ file: fileName, path: "contracts", message: "`contracts` must be an object." });
+    addIssue(issues, fileName, "contracts", "`contracts` must be an object.");
     return issues;
   }
 
