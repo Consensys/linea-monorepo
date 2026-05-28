@@ -1,18 +1,12 @@
-## [1.0.1-rc1] - 2026-05-28
+## [unreleased]
 
 ### 🐛 Bug Fixes
 
 - *(maru)* Address PR 3126 workflow follow-ups (#3164)
-## [1.0.1-rc1] - 2026-05-27
 
-### 🐛 Bug Fixes
+### 🚜 Refactor
 
-- *(maru)* Address PR 3126 workflow follow-ups (#3164)
-## [1.0.1-rc1] - 2026-05-27
-
-### 🐛 Bug Fixes
-
-- *(maru)* Address PR 3126 workflow follow-ups (#3164)
+- *(maru)* Fix maru build circular dependencies (#3204)
 # Changelog
 
 ### Upcoming Breaking Changes
