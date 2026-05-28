@@ -34,9 +34,7 @@ fn read_16<ram>(address:Address) -> (value:u16) {
     if offset == 0 {
         value = (ram[aligned] & 0xFFFF) as u16
     } else if offset == 1 {
-        var word_lo:u32 = ram[aligned]
-        var word_hi:u32 = ram[aligned + 4]
-        value = ((word_lo >> 8) | ((word_hi & 0xFF) << 8)) as u16
+        value = ((ram[aligned] >> 8) & 0xFFFF) as u16
     } else if offset == 2 {
         value = ((ram[aligned] >> 16) & 0xFFFF) as u16
     } else {
