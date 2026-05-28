@@ -539,6 +539,9 @@ func main() {
 	if *iters > 0 {
 		fmt.Fprintf(&out, "- number of timed iterations per variant: %d\n", *iters)
 	}
+	if *iters > 0 {
+		fmt.Fprintf(&out, "- number of timed iterations per variant: %d\n", *iters)
+	}
 	if wantKeccak && *keccakNVectors > 0 {
 		fmt.Fprintf(&out, "- number of Keccak vectors: %d\n", *keccakNVectors)
 	}
