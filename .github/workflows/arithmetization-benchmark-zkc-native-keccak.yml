@@ -112,7 +112,7 @@ jobs:
           set -uo pipefail
           mkdir -p /tmp/bench/logs
           zkc_prog="$PWD/arithmetization/src/test/examples/zkc/keccakf/keccakf_batched.zkc"
-          ITERS=${{ inputs.iterations || 1 }}
+          ITERS=${{ inputs.iterations || 0 }}
 
           # progress prints
           log() { printf '[%s] %s\n' "$(date +'%H:%M:%S')" "$*"; }
@@ -148,7 +148,7 @@ jobs:
           mkdir -p /tmp/bench/logs
           /tmp/bench/render_bench_summary \
             -logs /tmp/bench/logs \
-            -iters ${{ inputs.iterations || 1 }} \
+            -iters ${{ inputs.iterations || 0 }} \
             -workloads keccak \
             -base-ref "${{ inputs.zkc_base_ref || 'main' }}" \
             -optim-ref "${{ inputs.zkc_optim_ref || 'b1af3445bfc4b3a3254a52b1929aadd07ad7fa3e' }}" \
