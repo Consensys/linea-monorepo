@@ -28,18 +28,18 @@ on:
       draft_release:
         description: 'Draft Release'
         required: false
-        default: false
         type: boolean
+        default: false
       pre_release:
         description: 'Pre Release'
         required: false
-        default: false
         type: boolean
+        default: false
       dry_run_release:
         description: 'Dry run a release (without build and push the docker image to dockerhub)'
         required: false
-        default: false
         type: boolean
+        default: false
       upload_changelog:
         description: "Upload the updated CHANGELOG.md and skip pushing the commit or creating PR"
         required: false

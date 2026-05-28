@@ -28,13 +28,13 @@ on:
       pre_release:
         description: 'Pre Release if checked; Draft release otherwise'
         required: false
-        default: false
         type: boolean
+        default: false
       dry_run_release:
         description: 'Dry run a release (without build and push the docker images to dockerhub)'
         required: false
-        default: false
         type: boolean
+        default: false
   workflow_call:
     inputs:
       image_tag_suffix:
@@ -55,8 +55,13 @@ on:
       pre_release:
         description: 'Pre Release if checked; Draft release otherwise'
         required: false
-        default: false
         type: boolean
+        default: false
+      dry_run_release:
+        description: 'Dry run a release (without build and push the docker images to dockerhub)'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: linea-milestone-release-${{ github.ref }}
