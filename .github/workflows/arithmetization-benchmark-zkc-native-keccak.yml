@@ -63,8 +63,8 @@ jobs:
           # into its own GOBIN and rename the output so they coexist on disk.
           for variant in base opt; do
             case "$variant" in
-              base) ref="${{ inputs.zkc_base_ref || github.base_ref }}" ;;
-              opt)  ref="${{ inputs.zkc_optim_ref || github.event.pull_request.head.sha || github.sha }}" ;;
+              base) ref="${{ inputs.zkc_base_ref || "main" }}" ;;
+              opt)  ref="${{ inputs.zkc_optim_ref || "b1af3445bfc4b3a3254a52b1929aadd07ad7fa3e" }}" ;;
             esac
             tmpbin=$(mktemp -d)
             GOBIN="$tmpbin" go install "github.com/consensys/go-corset/cmd/zkc@${ref}"
