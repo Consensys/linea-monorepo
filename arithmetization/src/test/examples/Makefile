@@ -278,7 +278,7 @@ verify-elf: require-test
 vector-exec: require-src require-vector-file install-zkc
 	$(call VECTOR_EXEC,$(VECTOR_FILE))
 
-# Run 10 blake test vectors from `rust/src/blake/blake10.all`
+# Run test vector with 10 cases from `rust/src/blake/blake10.all`
 blake-rust-exec:
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec TEST=blake/blake_with_in_bytes.rs VECTOR_FILE=$(MAKEFILE_DIR)rust/src/blake/blake10.all
 
