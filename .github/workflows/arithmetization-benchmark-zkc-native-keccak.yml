@@ -64,8 +64,8 @@ jobs:
           # so they coexist on disk.
           for variant in base opt; do
             case "$variant" in
-              base) ref="${{ inputs.zkc_base_ref }}" ;;
-              opt)  ref="${{ inputs.zkc_optim_ref }}" ;;
+              base) ref="${{ inputs.zkc_base_ref || 'main' }}" ;;
+              opt)  ref="${{ inputs.zkc_optim_ref || 'b1af3445bfc4b3a3254a52b1929aadd07ad7fa3e' }}" ;;
             esac
             tmpbin=$(mktemp -d)
             GOBIN="$tmpbin" go install "github.com/consensys/go-corset/cmd/zkc@${ref}"
@@ -90,7 +90,7 @@ jobs:
           /tmp/bench/keccakf_accepts_to_input \
             "$PWD/zkc/keccakf/keccakf_batched.accepts" \
             /tmp/keccakf_input.json \
-            ${{ inputs.n_vectors_keccak }}
+            ${{ inputs.n_vectors_keccak || 1000 }}
 
       - name: Run benchmark (warmup + sequential timed iterations, base then opt)
         shell: bash
@@ -98,7 +98,7 @@ jobs:
           set -uo pipefail
           mkdir -p /tmp/bench/logs
           zkc_prog="$PWD/arithmetization/src/test/examples/zkc/keccakf/keccakf_batched.zkc"
-          ITERS=${{ inputs.iterations }}
+          ITERS=${{ inputs.iterations || 1 }}
 
           # progress prints
           log() { printf '[%s] %s\n' "$(date +'%H:%M:%S')" "$*"; }
@@ -134,11 +134,11 @@ jobs:
           mkdir -p /tmp/bench/logs
           /tmp/bench/render_bench_summary \
             -logs /tmp/bench/logs \
-            -iters ${{ inputs.iterations }} \
+            -iters ${{ inputs.iterations || 1 }} \
             -workloads keccak \
-            -base-ref "${{ inputs.zkc_base_ref }}" \
-            -optim-ref "${{ inputs.zkc_optim_ref }}" \
-            -keccak-n-vectors ${{ inputs.n_vectors_keccak }} \
+            -base-ref "${{ inputs.zkc_base_ref || 'main' }}" \
+            -optim-ref "${{ inputs.zkc_optim_ref || 'b1af3445bfc4b3a3254a52b1929aadd07ad7fa3e' }}" \
+            -keccak-n-vectors ${{ inputs.n_vectors_keccak || 1000 }} \
             | tee -a "$GITHUB_STEP_SUMMARY" \
             | tee /tmp/bench/logs/summary.md
 

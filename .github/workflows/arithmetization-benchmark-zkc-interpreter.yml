@@ -80,8 +80,8 @@ jobs:
       - name: Add worktrees for base and optim branches
         run: |
           set -eux
-          BASE_REF="${{ inputs.base_ref }}"
-          OPTIM_REF="${{ inputs.optim_ref }}"
+          BASE_REF="${{ inputs.base_ref || 'main' }}"
+          OPTIM_REF="${{ inputs.optim_ref || github.event.pull_request.head.sha || github.sha }}"
           git fetch origin "${BASE_REF}":refs/bench/base
           git fetch origin "${OPTIM_REF}":refs/bench/opt
           git worktree add /tmp/wt-base refs/bench/base
@@ -94,11 +94,11 @@ jobs:
           cd /tmp/wt-opt/arithmetization/src/test/examples
           # Keccak: one batched JSON.
           make keccak-rust-json \
-            KECCAK_N_VECTORS=${{ inputs.n_vectors_keccak }} \
+            KECCAK_N_VECTORS=${{ inputs.n_vectors_keccak || 100 }} \
             KECCAK_JSON=/tmp/keccak.json
           # Blake: synthesize a single .all line at the requested rounds count
           go build -o /tmp/bench/blake_rounds2bytes ./scripts/blake_rounds_to_in_bytes/main.go
-          /tmp/bench/blake_rounds2bytes ${{ inputs.n_rounds_blake }} > /tmp/blake_custom.all
+          /tmp/bench/blake_rounds2bytes ${{ inputs.n_rounds_blake || 12 }} > /tmp/blake_custom.all
           make blake-rust-json \
             BLAKE_ACCEPTS=/tmp/blake_custom.all \
             BLAKE_N_VECTORS=1 \
@@ -112,7 +112,7 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p /tmp/bench/logs
-          ITERS=${{ inputs.iterations }}
+          ITERS=${{ inputs.iterations || 1 }}
 
           # progress prints
           log() { printf '[%s] %s\n' "$(date +'%H:%M:%S')" "$*"; }
@@ -162,13 +162,13 @@ jobs:
           mkdir -p /tmp/bench/logs
           /tmp/bench/render_bench_summary \
             -logs /tmp/bench/logs \
-            -iters ${{ inputs.iterations }} \
+            -iters ${{ inputs.iterations || 1}} \
             -blake-n 1 \
-            -base-ref "${{ inputs.base_ref }}" \
-            -optim-ref "${{ inputs.optim_ref }}" \
-            -zkc-version "${{ inputs.go_corset_ref }}" \
-            -keccak-n-vectors ${{ inputs.n_vectors_keccak }} \
-            -blake-rounds ${{ inputs.n_rounds_blake }} \
+            -base-ref "${{ inputs.base_ref || 'main' }}" \
+            -optim-ref "${{ inputs.optim_ref || github.event.pull_request.head.sha || github.sha }}" \
+            -zkc-version "${{ inputs.go_corset_ref || 'main' }}" \
+            -keccak-n-vectors ${{ inputs.n_vectors_keccak || 100 }} \
+            -blake-rounds ${{ inputs.n_rounds_blake || 12 }} \
             | tee -a "$GITHUB_STEP_SUMMARY" \
             | tee /tmp/bench/logs/summary.md
 
