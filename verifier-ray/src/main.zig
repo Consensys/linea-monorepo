@@ -15,6 +15,9 @@ const is_supported_native = is_native_os and is_native_arch;
 const Commitment = verifier_ray.proof.Commitment;
 const Digest = poseidon2.Digest;
 
+// Temporary smoke-test fixture shape. These values are currently hand-picked
+// so the native and R5 paths exercise non-trivial verifier code; they should
+// come from prover-ray metadata once we wire in realistic proofs.
 const commitment_count = 1;
 const commitment_limb_count = 8;
 const public_input_count = 2;
