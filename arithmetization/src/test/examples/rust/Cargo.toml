@@ -17,6 +17,10 @@ name = "poseidon1_with_in_bytes"
 path = "src/poseidon1/poseidon1_with_in_bytes.rs"
 
 [[bin]]
+name = "poseidon1_software"
+path = "src/poseidon1/poseidon1_software.rs"
+
+[[bin]]
 name = "blake_with_in_embedded"
 path = "src/blake/blake_with_in_embedded.rs"
 
