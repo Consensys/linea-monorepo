@@ -279,7 +279,7 @@ KECCAK_ACCEPTS2HEX  := $(MAKEFILE_DIR)rust/target/keccak_accepts2hex
 KECCAK_IN_BYTES_HEX := /tmp/keccak_in_bytes.hex
 
 keccak-rust-build:
-	cargo clean -p keccak --manifest-path $(MAKEFILE_DIR)rust/Cargo.toml 2>/dev/null || true
+	cargo clean -p riscv-tests --manifest-path $(MAKEFILE_DIR)rust/Cargo.toml
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=keccak/keccak.rs IN_BYTES=0x00 KECCAK_N_VECTORS=$(KECCAK_N_VECTORS)
 	@echo "building keccak_elf2json..."
 	go build -o $(KECCAK_ELF2JSON) $(GO_MAIN)

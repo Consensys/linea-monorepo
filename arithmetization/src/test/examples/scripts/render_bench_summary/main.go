@@ -24,7 +24,9 @@
 //     max RSS, assert all M parsed.
 //
 // Output:
-//   - Per-workload invariant PASS/FAIL line for step count.
+//   - Per-workload comparison table for machine exec step count (base vs
+//     opt). Step counts can legitimately differ across branches; within a
+//     single variant, drift across iterations is surfaced as a warning.
 //   - Per-iter Markdown table.
 //   - Aggregate Markdown table with mean / stdev / [min, max] / paired Δ / paired t-stat.
 package main
@@ -330,32 +332,78 @@ func formatThousands(n uint64) string {
 	return b.String()
 }
 
-func renderInvariants(out *strings.Builder, w workload) bool {
-	var (
-		stepsSeen     uint64
-		stepsConflict bool
-		first         = true
-	)
-	for _, v := range []*variantMetrics{&w.opt, &w.base} {
+// formatThousandsSigned renders a signed integer with comma thousands
+// separators and an explicit sign, e.g. -882453 -> "-882,453",
+// 12345 -> "+12,345". Used for step-count deltas in the steps comparison
+// table.
+func formatThousandsSigned(n int64) string {
+	if n < 0 {
+		return "-" + formatThousands(uint64(-n))
+	}
+	return "+" + formatThousands(uint64(n))
+}
+
+// renderStepCounts emits a per-workload table comparing base vs opt machine
+// execution step counts.
+//
+// Step counts can legitimately differ between the two branches whenever the
+// optim branch changes IR lowering, codegen, or any compile-time decision
+// that resizes the unrolled trace — that is *intended* benchmark signal, not
+// a regression, so we render it as a comparison table instead of flagging
+// the run as a failure.
+//
+// We do still verify within-variant determinism: a single variant running the
+// same workload across iterations must produce the same step count, and any
+// drift is surfaced as a warning beneath the table.
+func renderStepCounts(out *strings.Builder, w workload) {
+	canonical := func(v variantMetrics) (steps uint64, mismatch bool, present bool) {
+		first := true
 		for _, iter := range sortedIters(v.byIter) {
 			m := v.byIter[iter]
 			if first {
-				stepsSeen = m.steps
+				steps = m.steps
 				first = false
+				present = true
 				continue
 			}
-			if m.steps != stepsSeen {
-				stepsConflict = true
+			if m.steps != steps {
+				mismatch = true
 			}
 		}
+		return
 	}
-	stepsOK := !stepsConflict
-	if stepsOK {
-		fmt.Fprintf(out, "- **%s** : PASS with machine exec steps = %s\n", w.name, formatThousands(stepsSeen))
-	} else {
-		fmt.Fprintf(out, "- **%s** : FAIL — machine exec steps diverge across variants/iters\n", w.name)
+	bSteps, bMismatch, bPresent := canonical(w.base)
+	oSteps, oMismatch, oPresent := canonical(w.opt)
+	if !bPresent && !oPresent {
+		return
 	}
-	return stepsOK
+
+	fmt.Fprintf(out, "\n#### %s — machine exec steps\n\n", w.name)
+	fmt.Fprintln(out, "| metric | base | opt | Δ (o - b) | % |")
+	fmt.Fprintln(out, "| --- | ---: | ---: | ---: | ---: |")
+
+	bCell := "(missing)"
+	if bPresent {
+		bCell = formatThousands(bSteps)
+	}
+	oCell := "(missing)"
+	if oPresent {
+		oCell = formatThousands(oSteps)
+	}
+	dCell, pCell := "–", "–"
+	if bPresent && oPresent {
+		delta := int64(oSteps) - int64(bSteps)
+		dCell = formatThousandsSigned(delta)
+		pCell = fmt.Sprintf("%+.2f%%", pct(float64(delta), float64(bSteps)))
+	}
+	fmt.Fprintf(out, "| steps | %s | %s | %s | %s |\n", bCell, oCell, dCell, pCell)
+
+	if bMismatch {
+		fmt.Fprintln(out, "\n> ⚠️ base step count diverges across iterations — the workload may not be deterministic.")
+	}
+	if oMismatch {
+		fmt.Fprintln(out, "\n> ⚠️ opt step count diverges across iterations — the workload may not be deterministic.")
+	}
 }
 
 func renderPerIter(out *strings.Builder, w workload, iters int) {
@@ -499,16 +547,12 @@ func main() {
 	}
 	out.WriteString("\n")
 
-	out.WriteString("### First warm up run\n\n")
-	allOK := true
-	if wantKeccak && !renderInvariants(&out, kc) {
-		allOK = false
+	out.WriteString("### Machine exec steps\n")
+	if wantKeccak {
+		renderStepCounts(&out, kc)
 	}
-	if wantBlake && !renderInvariants(&out, bl) {
-		allOK = false
-	}
-	if !allOK {
-		out.WriteString("\n> NOTE: machine exec steps differ across variants/iters — the optim branch may have changed semantics, not just performance.\n")
+	if wantBlake {
+		renderStepCounts(&out, bl)
 	}
 
 	out.WriteString("\n### Per-iteration timings\n")
