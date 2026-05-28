@@ -62,8 +62,8 @@ func LagrangeAtZeta(zeta koalabear.Element, N, i int) koalabear.Element {
 	return omegai
 }
 
-func LagrangeAtZetaExt(zeta ext.E4, N, i int) ext.E4 {
-	var zetaN, numerator, denominator, one ext.E4
+func LagrangeAtZetaExt(zeta ext.E6, N, i int) ext.E6 {
+	var zetaN, numerator, denominator, one ext.E6
 	zetaN.Exp(zeta, big.NewInt(int64(N)))
 	one.SetOne()
 	zetaN.Sub(&zetaN, &one)
@@ -75,8 +75,9 @@ func LagrangeAtZetaExt(zeta ext.E4, N, i int) ext.E4 {
 	omegaI.Exp(omegaI, big.NewInt(int64(i)))
 	numerator.MulByElement(&zetaN, &omegaI)
 
-	var omegaIExt ext.E4
-	omegaIExt.Lift(&omegaI)
+	var omegaIExt ext.E6
+	// omegaIExt.Lift(&omegaI)
+	omegaIExt.B0.A0.Set(&omegaI)
 	denominator.Sub(&zeta, &omegaIExt)
 
 	var Nk koalabear.Element
@@ -155,11 +156,17 @@ func EvaluateLagrangeWithWeights(p Polynomial, weights []koalabear.Element) koal
 
 // ExtEvaluateLagrangeWithWeights is the extension-field counterpart of
 // EvaluateLagrangeWithWeights. The Lagrange weights live in the base field.
-func ExtEvaluateLagrangeWithWeights(p ExtPolynomial, weights []koalabear.Element) ext.E4 {
+func ExtEvaluateLagrangeWithWeights(p ExtPolynomial, weights []koalabear.Element) ext.E6 {
 	if len(p) != len(weights) {
 		panic("ExtEvaluateLagrangeWithWeights: length mismatch")
 	}
-	return ext.Vector(p).InnerProductByElement(koalabear.Vector(weights))
+	a := ext.VectorE6(p)
+	var res, tmp ext.E6
+	for i := 0; i < len(a); i++ {
+		tmp.MulByElement(&a[i], &weights[i])
+		res.Add(&res, &tmp)
+	}
+	return res
 }
 
 // EvaluateOnExtendedDomainRoot evaluates p, given in Lagrange form over d, at
@@ -171,7 +178,7 @@ func EvaluateOnExtendedDomainRoot(p Polynomial, d *fft.Domain, bigD *fft.Domain,
 
 // ExtEvaluateOnExtendedDomainRoot is the extension-field counterpart of
 // EvaluateOnExtendedDomainRoot.
-func ExtEvaluateOnExtendedDomainRoot(p ExtPolynomial, d *fft.Domain, bigD *fft.Domain, rootIndex int) ext.E4 {
+func ExtEvaluateOnExtendedDomainRoot(p ExtPolynomial, d *fft.Domain, bigD *fft.Domain, rootIndex int) ext.E6 {
 	weights := LagrangeWeightsOnExtendedDomainRoot(d, bigD, rootIndex)
 	return ExtEvaluateLagrangeWithWeights(p, weights)
 }

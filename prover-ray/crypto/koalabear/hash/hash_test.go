@@ -57,7 +57,7 @@ func TestPoseidon2MDHasherChunkingInvariant(t *testing.T) {
 }
 
 func TestPoseidon2MDHasherWriteExtMatchesCoordinates(t *testing.T) {
-	input := []ext.E4{
+	input := []ext.E6{
 		testExt(1, 2, 3, 4),
 		testExt(5, 6, 7, 8),
 		testExt(9, 10, 11, 12),
@@ -142,7 +142,7 @@ func TestPoseidon2SpongeHasherChunkingInvariant(t *testing.T) {
 }
 
 func TestPoseidon2SpongeHasherWriteExtMatchesCoordinates(t *testing.T) {
-	input := []ext.E4{
+	input := []ext.E6{
 		testExt(1, 2, 3, 4),
 		testExt(5, 6, 7, 8),
 		testExt(9, 10, 11, 12),
@@ -205,7 +205,7 @@ func TestPoseidon2SpongeBatch16MatchesScalar(t *testing.T) {
 
 func TestPoseidon2SpongeBatch16WriteExtMatchesScalar(t *testing.T) {
 	same := NewElement(42)
-	var exts [Poseidon2SpongeBatchSize]ext.E4
+	var exts [Poseidon2SpongeBatchSize]ext.E6
 	for lane := 0; lane < Poseidon2SpongeBatchSize; lane++ {
 		v := uint64((lane + 1) * 10)
 		exts[lane] = testExt(v+1, v+2, v+3, v+4)
@@ -227,7 +227,7 @@ func TestPoseidon2SpongeBatch16WriteExtMatchesScalar(t *testing.T) {
 }
 
 func TestSHA256FieldHasherWriteExtMatchesCoordinates(t *testing.T) {
-	input := []ext.E4{
+	input := []ext.E6{
 		testExt(1, 2, 3, 4),
 		testExt(5, 6, 7, 8),
 	}
@@ -379,8 +379,8 @@ func testElements(n int) []koalabear.Element {
 	return res
 }
 
-func testExt(a0, a1, b0, b1 uint64) ext.E4 {
-	var e ext.E4
+func testExt(a0, a1, b0, b1 uint64) ext.E6 {
+	var e ext.E6
 	e.B0.A0.SetUint64(a0)
 	e.B0.A1.SetUint64(a1)
 	e.B1.A0.SetUint64(b0)

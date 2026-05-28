@@ -90,12 +90,14 @@ func (ph *Poseidon2MDHasher) WriteElements(elmts ...koalabear.Element) {
 	}
 }
 
-func (ph *Poseidon2MDHasher) WriteExt(elmts ...ext.E4) {
+func (ph *Poseidon2MDHasher) WriteExt(elmts ...ext.E6) {
 	for _, elmt := range elmts {
 		ph.writeElement(elmt.B0.A0)
 		ph.writeElement(elmt.B0.A1)
 		ph.writeElement(elmt.B1.A0)
 		ph.writeElement(elmt.B1.A1)
+		ph.writeElement(elmt.B2.A0)
+		ph.writeElement(elmt.B2.A1)
 	}
 }
 
@@ -174,7 +176,7 @@ func (ph *Poseidon2SpongeHasher) WriteElements(elmts ...koalabear.Element) {
 	}
 }
 
-func (ph *Poseidon2SpongeHasher) WriteExt(elmts ...ext.E4) {
+func (ph *Poseidon2SpongeHasher) WriteExt(elmts ...ext.E6) {
 	for _, elmt := range elmts {
 		ph.writeElement(elmt.B0.A0)
 		ph.writeElement(elmt.B0.A1)
@@ -279,7 +281,7 @@ func (ph *Poseidon2SpongeBatch16) WriteElementBatch(elmts [Poseidon2SpongeBatchS
 	}
 }
 
-func (ph *Poseidon2SpongeBatch16) WriteExtBatch(elmts [Poseidon2SpongeBatchSize]ext.E4) {
+func (ph *Poseidon2SpongeBatch16) WriteExtBatch(elmts [Poseidon2SpongeBatchSize]ext.E6) {
 	var batch [Poseidon2SpongeBatchSize]koalabear.Element
 	for i := range elmts {
 		batch[i].Set(&elmts[i].B0.A0)
@@ -295,6 +297,14 @@ func (ph *Poseidon2SpongeBatch16) WriteExtBatch(elmts [Poseidon2SpongeBatchSize]
 	ph.WriteElementBatch(batch)
 	for i := range elmts {
 		batch[i].Set(&elmts[i].B1.A1)
+	}
+	ph.WriteElementBatch(batch)
+	for i := range elmts {
+		batch[i].Set(&elmts[i].B2.A0)
+	}
+	ph.WriteElementBatch(batch)
+	for i := range elmts {
+		batch[i].Set(&elmts[i].B2.A1)
 	}
 	ph.WriteElementBatch(batch)
 }

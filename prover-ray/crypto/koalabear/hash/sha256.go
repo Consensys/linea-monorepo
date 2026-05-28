@@ -45,9 +45,9 @@ func (h *SHA256FieldHasher) WriteElements(elmts ...koalabear.Element) {
 	}
 }
 
-func (h *SHA256FieldHasher) WriteExt(elmts ...ext.E4) {
+func (h *SHA256FieldHasher) WriteExt(elmts ...ext.E6) {
 	for _, elmt := range elmts {
-		h.WriteElements(elmt.B0.A0, elmt.B0.A1, elmt.B1.A0, elmt.B1.A1)
+		h.WriteElements(elmt.B0.A0, elmt.B0.A1, elmt.B1.A0, elmt.B1.A1, elmt.B2.A0, elmt.B2.A1)
 	}
 }
 

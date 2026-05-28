@@ -90,9 +90,10 @@ func (encoder *Encoder) EncodeExt(p poly.ExtPolynomial, d *fft.Domain) poly.ExtP
 	_p := make(poly.ExtPolynomial, N)
 	copy(_p, p)
 
-	d.FFTInverseExt(_p[:n], fft.DIF)
+	// d.FFTInverseExt(_p[:n], fft.DIF)
+	d.FFTInverseExt6(_p[:n], fft.DIF)
 	scatterBitReversedCoeffs(_p, n, int(N))
-	encoder.Domain.FFTExt(_p, fft.DIT)
+	encoder.Domain.FFTExt6(_p, fft.DIT)
 
 	return _p
 }

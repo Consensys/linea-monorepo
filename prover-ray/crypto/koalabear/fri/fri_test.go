@@ -39,8 +39,8 @@ func randomPoly(n int) []koalabear.Element {
 	return elems
 }
 
-func randomExtPoly(n int) []ext.E4 {
-	elems := make([]ext.E4, n)
+func randomExtPoly(n int) []ext.E6 {
+	elems := make([]ext.E6, n)
 	for i := range elems {
 		elems[i].MustSetRandom()
 	}
@@ -58,7 +58,7 @@ func buildLevelTree(t *testing.T, p fri.Params, layer []koalabear.Element) *merk
 	return tree
 }
 
-func buildLevelTreeExt(t *testing.T, p fri.Params, layer []ext.E4) *merkle.Tree {
+func buildLevelTreeExt(t *testing.T, p fri.Params, layer []ext.E6) *merkle.Tree {
 	t.Helper()
 	tree, err := p.BuildLevelTreeExt(layer)
 	if err != nil {

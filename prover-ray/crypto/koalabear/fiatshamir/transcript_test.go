@@ -22,7 +22,7 @@ func (h *recordingHasher) WriteElements(elements ...koalabear.Element) {
 	h.current = append(h.current, elements...)
 }
 
-func (h *recordingHasher) WriteExt(elements ...ext.E4) {
+func (h *recordingHasher) WriteExt(elements ...ext.E6) {
 	for _, e := range elements {
 		h.current = append(h.current, e.B0.A0, e.B0.A1, e.B1.A0, e.B1.A1)
 	}

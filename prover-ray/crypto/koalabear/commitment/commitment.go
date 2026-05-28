@@ -114,7 +114,7 @@ func (wt WMerkleTree) OpenProof(i int) (merkle.Proof, error) {
 }
 
 type PairBase = [2]koalabear.Element // used to store the pairs {f_k(w^i), f_k(-w^i)}
-type PairExt = [2]ext.E4             // used to store the pairs {f_k(w^i), f_k(-w^i)}
+type PairExt = [2]ext.E6             // used to store the pairs {f_k(w^i), f_k(-w^i)}
 
 func NewRSCommit(N uint64, rate uint64, leafHasher LeafHasher, nodehasher NodeHasher) RSCommit {
 	return NewRSCommitWithDomainCache(N, rate, leafHasher, nodehasher, nil)
@@ -313,7 +313,7 @@ func (lh Poseidon2LeafHasher) hashLeavesBatch16(dst []hash.Digest, src LeafSourc
 	}
 
 	for _, pol := range src.Ext {
-		var lo, hi [hash.Poseidon2SpongeBatchSize]ext.E4
+		var lo, hi [hash.Poseidon2SpongeBatchSize]ext.E6
 		for lane := 0; lane < hash.Poseidon2SpongeBatchSize; lane++ {
 			i := start + lane
 			lo[lane].Set(&pol[i])

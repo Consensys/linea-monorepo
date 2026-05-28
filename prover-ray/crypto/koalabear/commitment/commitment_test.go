@@ -291,8 +291,8 @@ func baseElement(v uint64) koalabear.Element {
 	return e
 }
 
-func extElement(a0, a1, b0, b1 uint64) ext.E4 {
-	var e ext.E4
+func extElement(a0, a1, b0, b1 uint64) ext.E6 {
+	var e ext.E6
 	e.B0.A0.SetUint64(a0)
 	e.B0.A1.SetUint64(a1)
 	e.B1.A0.SetUint64(b0)

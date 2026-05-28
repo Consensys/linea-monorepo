@@ -22,8 +22,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poly"
 )
 
-func e4FromU64(a0, a1, b0, b1 uint64) ext.E4 {
-	var z ext.E4
+func e4FromU64(a0, a1, b0, b1 uint64) ext.E6 {
+	var z ext.E6
 	z.B0.A0.SetUint64(a0)
 	z.B0.A1.SetUint64(a1)
 	z.B1.A0.SetUint64(b0)
@@ -31,15 +31,16 @@ func e4FromU64(a0, a1, b0, b1 uint64) ext.E4 {
 	return z
 }
 
-func liftE4(v koalabear.Element) ext.E4 {
-	var z ext.E4
-	z.Lift(&v)
+func liftE4(v koalabear.Element) ext.E6 {
+	var z ext.E6
+	// z.Lift(&v)
+	z.B0.A0.Set(&v)
 	return z
 }
 
-func canonicalEvalExt(coeffs []ext.E4, z ext.E4) ext.E4 {
+func canonicalEvalExt(coeffs []ext.E6, z ext.E6) ext.E6 {
 	if len(coeffs) == 0 {
-		return ext.E4{}
+		return ext.E6{}
 	}
 	y := coeffs[len(coeffs)-1]
 	for i := len(coeffs) - 2; i >= 0; i-- {
@@ -60,7 +61,7 @@ func TestEncodeExt(t *testing.T) {
 	domainD := fft.NewDomain(uint64(len(coeffs)))
 	p := make(poly.ExtPolynomial, len(coeffs))
 	copy(p, coeffs)
-	domainD.FFTExt(p, fft.DIF)
+	domainD.FFTExt6(p, fft.DIF)
 	fft.BitReverse(p)
 
 	encoder := NewEncoder(8)
