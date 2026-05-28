@@ -1,16 +1,18 @@
 name: Arithmetization native zkc benchmark - Keccak (base vs optim)
 
-# Benchmark of native `zkc exec` on the batched Keccak-f program against two
-# `zkc` builds: a "base" version of zkc and an "optim" version. Both runs use
-# the same arithmetization source (`arithmetization/src/test/examples/zkc/keccakf/`);
-# only the `zkc` binary differs.
+# Benchmark of native zkc batched Keccak-f function against two
+# zkc versions: a "base" version and an "optim" version. 
 #
-# Unlike the RISC-V interpreter benchmark we cannot alternate variants per
-# iteration: each variant requires its own `zkc` binary, and swapping binaries
-# every iteration is more expensive than the timed work itself. We instead do
-# one untimed warm-up + N timed iterations for the base variant, then the same
-# for the optim variant. Per-iteration `cache_thrasher` + sleep still attempt
-# to keep CPU cache state comparable across timed runs.
+# Benchmark methodology : 
+# one untimed warm-up (untimed) + N timed iterations for the base variant
+# one untimed warm-up (untimed) + N timed iterations for the optim variant
+# Per-iteration `cache_thrasher` + sleep attempts to keep CPU cache state comparable across timed runs.
+#
+# Benchmark data : 
+# In arithmetization/src/test/examples/rust/src/keccak/keccak.accepts
+# There are 20k test vectors you can select from to run the benchmark.
+# Each test vector has a raw message of 16 * 32 bytes, ie fits in 4 blocks of 1088 bits.
+# 1 test vector = 4 blocks
 
 on:
   pull_request:

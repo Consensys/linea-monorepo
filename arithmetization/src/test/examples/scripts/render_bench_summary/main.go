@@ -1,5 +1,5 @@
 // Parses the per-iteration logs produced by the
-// arithmetization-benchmark-zkc-interpreter workflow and renders a
+// arithmetization benchmark workflows and renders a
 // Markdown summary to stdout (suitable for `>> $GITHUB_STEP_SUMMARY`).
 //
 // Log file naming (produced by the workflow's timing loop):
@@ -15,7 +15,7 @@
 //     -> steps + execution_s (uint + float; steps is invariant)
 //     The interpreter emits "Machine execution"; native zkc emits
 //     "Constraint execution". We match either.
-//   - "Elapsed (wall clock) time ... : M:SS.ss" -> wall_s (float)
+//   - "Elapsed (wall clock) time ... : M:SS.ss" -> wall_s (float) => unused
 //   - "Maximum resident set size (kbytes): N"   -> rss_kb (int)
 //
 // Aggregation per (variant, iter):
@@ -360,20 +360,20 @@ func renderInvariants(out *strings.Builder, w workload) bool {
 
 func renderPerIter(out *strings.Builder, w workload, iters int) {
 	fmt.Fprintf(out, "\n#### %s — per iteration\n\n", w.name)
-	fmt.Fprintln(out, "| iter | base_wall (s) | opt_wall (s) | Δ (b - o) | % | base_cstr (s) | opt_cstr (s) | Δ (b - o) | % |")
-	fmt.Fprintln(out, "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+	fmt.Fprintln(out, "| iter | base_wall (s) | opt_wall (s) | Δ (o - b) | % |")
+	fmt.Fprintln(out, "| ---: | ---: | ---: | ---: | ---: |")
 	for i := 1; i <= iters; i++ {
 		bm, bOK := w.base.byIter[i]
 		om, oOK := w.opt.byIter[i]
 		if !bOK || !oOK {
-			fmt.Fprintf(out, "| %d | (missing) | (missing) | – | – | (missing) | (missing) | – | – |\n", i)
+			fmt.Fprintf(out, "| %d | (missing) | (missing) | – | – |\n", i)
 			continue
 		}
-		dW := bm.wallS - om.wallS
-		dC := bm.constraintS - om.constraintS
-		fmt.Fprintf(out, "| %d | %.2f | %.2f | %+.2f | %+.2f%% | %.2f | %.2f | %+.2f | %+.2f%% |\n",
-			i, bm.wallS, om.wallS, dW, pct(dW, bm.wallS),
-			bm.constraintS, om.constraintS, dC, pct(dC, bm.constraintS))
+		// Δ = opt - base, so a NEGATIVE Δ means optim is faster than base
+		// (lower wall clock = win). Percentage is still normalised to base.
+		dW := om.wallS - bm.wallS
+		fmt.Fprintf(out, "| %d | %.2f | %.2f | %+.2f | %+.2f%% |\n",
+			i, bm.wallS, om.wallS, dW, pct(dW, bm.wallS))
 	}
 }
 
@@ -382,7 +382,6 @@ func renderAggregate(out *strings.Builder, w workload) {
 		base, opt []float64
 	}
 	wall := col{}
-	cstr := col{}
 	rss := col{}
 	for _, i := range sortedIters(w.opt.byIter) {
 		om := w.opt.byIter[i]
@@ -392,8 +391,6 @@ func renderAggregate(out *strings.Builder, w workload) {
 		}
 		wall.base = append(wall.base, bm.wallS)
 		wall.opt = append(wall.opt, om.wallS)
-		cstr.base = append(cstr.base, bm.constraintS)
-		cstr.opt = append(cstr.opt, om.constraintS)
 		rss.base = append(rss.base, float64(bm.rssKB))
 		rss.opt = append(rss.opt, float64(om.rssKB))
 	}
@@ -403,23 +400,24 @@ func renderAggregate(out *strings.Builder, w workload) {
 		bLo, bHi := minMax(c.base)
 		oMu, oSd := mean(c.opt), stdev(c.opt)
 		oLo, oHi := minMax(c.opt)
-		dMu := bMu - oMu
+		// Δ mean = opt - base; negative = optim wins on average.
+		dMu := oMu - bMu
 		return fmt.Sprintf(
 			"| %s | "+fmtStr+" ± "+fmtStr+" ["+fmtStr+", "+fmtStr+"] | "+fmtStr+" ± "+fmtStr+" ["+fmtStr+", "+fmtStr+"] | %+.2f | %+.2f%% |\n",
 			label, bMu, bSd, bLo, bHi, oMu, oSd, oLo, oHi, dMu, pct(dMu, bMu))
 	}
 
 	fmt.Fprintf(out, "\n#### %s — aggregate\n\n", w.name)
-	fmt.Fprintln(out, "| metric | baseline (mean ± stdev [min, max]) | optimised (mean ± stdev [min, max]) | Δ mean | % |")
+	fmt.Fprintln(out, "| metric | baseline (mean ± stdev [min, max]) | optimised (mean ± stdev [min, max]) | Δ mean (o - b) | % |")
 	fmt.Fprintln(out, "| --- | --- | --- | ---: | ---: |")
 	fmt.Fprint(out, row("wall (s)", wall, "%.2f"))
-	fmt.Fprint(out, row("constraint (s)", cstr, "%.2f"))
 	fmt.Fprint(out, row("RSS (KB)", rss, "%.0f"))
 
-	tW := pairedT(wall.base, wall.opt)
-	tC := pairedT(cstr.base, cstr.opt)
-	fmt.Fprintf(out, "\nPaired t-stat: wall = %s, constraint = %s (n=%d)\n",
-		formatFloat(tW), formatFloat(tC), len(wall.base))
+	// Pass (opt, base) so the t-stat sign matches the Δ sign convention:
+	// negative t-stat <=> optim faster on average.
+	tW := pairedT(wall.opt, wall.base)
+	fmt.Fprintf(out, "\nPaired t-stat (o - b): wall = %s (n=%d)\n",
+		formatFloat(tW), len(wall.base))
 }
 
 func formatFloat(v float64) string {
