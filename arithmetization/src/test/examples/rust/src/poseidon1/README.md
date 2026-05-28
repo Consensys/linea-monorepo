@@ -7,12 +7,12 @@ To trigger the test with inputs one must construct a valid input. a valid input 
 
 where
 - `<input length in bytes>` is a 4 byte little endian integer indicating the input length,
-- `<inputs>` is an input byte slice
+- `<inputs>` is an input byte slice, composed of 3-byte little-endian words
 - `<expected output>` is the **full state** of the Poseidon hash at the end of the computation
 
 ## Example input string
 
-input_size ≡ `30 00 00 00 ≡ 48`
+input_size ≡ `30 00 00 00` ≡ 48
 input      ≡ `010000 020000 030000 040000 050000 060000 070000 080000 090000 0a0000 0b0000 0c0000 0d0000 0e0000 0f0000`
 result     ≡ "67a1d2223fcc1149c0c9f819a25f722c2f603a5eb4c61453ffce495a3a716b546314f2172196381206c3610774d65476010c66277a0575741ec3e152fb3d97610000000100000200000300000400000500000600000700000800000900000a00000b00000c00000d00000e00000f0000"
 

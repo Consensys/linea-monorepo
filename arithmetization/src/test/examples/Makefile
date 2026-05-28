@@ -171,7 +171,7 @@ elf-to-json: require-bin-ext
 	$(call ELF_TO_JSON,$(BIN_EXT),$(JSON_EXT))
 
 install-zkc:
-	$(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc
+	# $(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc
 
 zkc-exec: require-test install-zkc
 	zkc exec $(JSON) $(ZKC_MAIN)

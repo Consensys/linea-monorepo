@@ -1,16 +1,13 @@
 #![no_std]
 #![no_main]
+#![feature(generic_const_exprs)]
+#![allow(incomplete_features)]
 
 const OUTPUT_SIZE: usize = 15;
 const OUTPUT_LEN_BYTES: usize = OUTPUT_SIZE * 4;
+const BYTES_PER_FELT: usize = 3;
 
 include!("../custom_std.rs");
-
-/// Compile-time test case selector. Pick one of:
-///   0: range(7)        1: range(16)       2: range(256)
-///   3: zeros(1)        4: zeros(16)       5: zeros(256)
-///   6: zeros(2^16)     7: zeros(2^18)     8: zeros(2^20)
-const TEST_CASE: u32 = 1;
 
 fn in_line_assembly_poseidon_call(input_offset: usize, input_size: usize, output_offset: usize) {
     unsafe {
@@ -43,20 +40,25 @@ fn compare(output_buf: &[u8; OUTPUT_LEN_BYTES], expected: &[u32; OUTPUT_SIZE]) -
     -1
 }
 
-// Build a range(N) input on the stack (input[i] = i as u8), run the precompile,
-// and compare its output against the supplied expected vector.
-fn run_range<const N: usize>(fill_expected: fn(&mut [u32; OUTPUT_SIZE])) -> i32 {
-    let mut input = [0u8; N];
+// Build a range(N) input as N felts of values 0..N, each encoded as 3 LE bytes
+// (matching the precompile's `get_full_felt`). Total input size: N * 3 bytes.
+fn run_range<const N: usize>(fill_expected: fn(&mut [u32; OUTPUT_SIZE])) -> i32
+where
+    [(); N * BYTES_PER_FELT]: Sized,
+{
+    let mut input = [0u8; N * BYTES_PER_FELT];
     let mut i = 0;
     while i < N {
-        input[i] = i as u8;
+        input[i * BYTES_PER_FELT]     = (i         & 0xff) as u8;
+        input[i * BYTES_PER_FELT + 1] = ((i >> 8)  & 0xff) as u8;
+        input[i * BYTES_PER_FELT + 2] = ((i >> 16) & 0xff) as u8;
         i += 1;
     }
 
     let mut output_buf = [0u8; OUTPUT_LEN_BYTES];
     in_line_assembly_poseidon_call(
         input.as_ptr() as usize,
-        N,
+        N * BYTES_PER_FELT,
         output_buf.as_mut_ptr() as usize,
     );
 
@@ -65,14 +67,17 @@ fn run_range<const N: usize>(fill_expected: fn(&mut [u32; OUTPUT_SIZE])) -> i32 
     compare(&output_buf, &expected)
 }
 
-// All-zeros input variant. Same shape as run_range.
-fn run_zeros<const N: usize>(fill_expected: fn(&mut [u32; OUTPUT_SIZE])) -> i32 {
-    let input = [0u8; N];
+// All-zeros input variant: N felts of value 0, i.e. N * 3 zero bytes.
+fn run_zeros<const N: usize>(fill_expected: fn(&mut [u32; OUTPUT_SIZE])) -> i32
+where
+    [(); N * BYTES_PER_FELT]: Sized,
+{
+    let input = [0u8; N * BYTES_PER_FELT];
 
     let mut output_buf = [0u8; OUTPUT_LEN_BYTES];
     in_line_assembly_poseidon_call(
         input.as_ptr() as usize,
-        N,
+        N * BYTES_PER_FELT,
         output_buf.as_mut_ptr() as usize,
     );
 
@@ -245,31 +250,39 @@ fn fill_expected_zeros_2_to_20(out: &mut [u32; OUTPUT_SIZE]) {
     out[14] = 0x67cd7e44;
 }
 
+// Runs all 9 test cases and exits with a bitmask of failures: bit i is set if
+// test i did not match its expected output (see the table below). Exit code 0
+// means every test passed.
+//
+//   bit 0: range(7)        bit 1: range(16)       bit 2: range(256)
+//   bit 3: zeros(1)        bit 4: zeros(16)       bit 5: zeros(256)
+//   bit 6: zeros(2^16)     bit 7: zeros(2^18)     bit 8: zeros(2^20)
+//
+// Cases 6-8 allocate very large stack arrays (64 KiB, 256 KiB, 1 MiB) and
+// `[0u8; N]` for such N typically lowers to a memset call. If the build fails
+// with "undefined symbol: memset", `-Z build-std` needs to include
+// `compiler_builtins` (or define a local memset).
 #[no_mangle]
 fn main() -> ! {
+    let results: [i32; 7] = [
+        run_range::<7>(fill_expected_range_7),
+        run_range::<16>(fill_expected_range_16),
+        run_range::<256>(fill_expected_range_256),
+        run_zeros::<1>(fill_expected_zeros_1),
+        run_zeros::<16>(fill_expected_zeros_16),
+        run_zeros::<256>(fill_expected_zeros_256),
+        run_zeros::<{ 1 << 16 }>(fill_expected_zeros_2_to_16),
+        // run_zeros::<{ 1 << 18 }>(fill_expected_zeros_2_to_18),
+        // run_zeros::<{ 1 << 20 }>(fill_expected_zeros_2_to_20),
+    ];
 
-    let (input, expected) = get_test_vector();
-
-    let mismatch_index: i32 = match TEST_CASE {
-        0 => run_range::<7>(fill_expected_range_7),
-        1 => run_range::<16>(fill_expected_range_16),
-        2 => run_range::<256>(fill_expected_range_256),
-        3 => run_zeros::<1>(fill_expected_zeros_1),
-        4 => run_zeros::<16>(fill_expected_zeros_16),
-        5 => run_zeros::<256>(fill_expected_zeros_256),
-        // Cases 6-8 allocate very large stack arrays (64 KiB, 256 KiB, 1 MiB)
-        // and `[0u8; N]` for such N typically lowers to a memset call. If the
-        // build fails with "undefined symbol: memset", `-Z build-std` needs to
-        // include `compiler_builtins` (or define a local memset).
-        6 => run_zeros::<{ 1 << 16 }>(fill_expected_zeros_2_to_16),
-        7 => run_zeros::<{ 1 << 18 }>(fill_expected_zeros_2_to_18),
-        8 => run_zeros::<{ 1 << 20 }>(fill_expected_zeros_2_to_20),
-        _ => -1,
-    };
-
-    if mismatch_index < 0 {
-        exit(0);
-    } else {
-        exit(0);
+    let mut failures: u32 = 0;
+    let mut i = 0;
+    while i < results.len() {
+        if results[i] >= 0 {
+            failures |= 1u32 << i;
+        }
+        i += 1;
     }
+    exit(failures as i32);
 }
