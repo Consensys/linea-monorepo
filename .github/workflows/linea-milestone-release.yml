@@ -398,4 +398,5 @@ jobs:
       tx_exclusion_api_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.tx-exclusion-api }}
       linea_besu_package_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.linea-besu-package }}
       maru_latest_docker_tag: ${{ needs.component-latest-docker-tags.outputs.maru }}
+      skip_docker_image_info: ${{ inputs.dry_run_release }}
     secrets: inherit
