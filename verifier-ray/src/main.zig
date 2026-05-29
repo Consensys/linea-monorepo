@@ -36,7 +36,7 @@ const Input = extern struct {
     public_inputs: [public_input_count]field.Element,
     proof_bytes: [proof_byte_count]u8,
     coefficients: [coefficient_count]field.Element,
-    point: field.Element,
+    point: ext.Ext,
     expected_challenge: ext.Ext,
 };
 
@@ -109,11 +109,11 @@ fn runVerifierSmoke(input: *const Input) u8 {
 
 fn exerciseTemporaryTraceWork(input: *const Input) bool {
     // Temporary zkVM trace exercise. Remove this once main verifies a realistic proof.
-    const evaluation = polynomial.evaluateBaseCanonical(input.coefficients[0..], input.point);
+    const evaluation = polynomial.evaluateBaseCanonicalAtExt(input.coefficients[0..], input.point);
 
     var transcript = Transcript.init();
     transcript.updateElements(input.coefficients[0..]);
-    transcript.updateElement(evaluation);
+    transcript.updateExt(&.{evaluation});
     const challenge = transcript.randomExt();
 
     return challenge.eql(input.expected_challenge);
