@@ -9,7 +9,7 @@
 .NOTPARALLEL:
 
 ######################################################
-# Variables and support functions
+# Generic variables and support functions
 ######################################################
 
 # Directory of this Makefile (used for relative paths)
@@ -26,18 +26,6 @@ TEST ?=
 # Already compiled binary to execute with exec-elf target (BIN_EXT=path/to/your_bin)
 BIN_EXT  ?=
 JSON_EXT ?= $(BIN_EXT).json
-
-# Generic test vector variables
-VECTOR_ACCEPTS              ?=
-VECTOR_N_VECTORS            ?= 0
-# `VECTOR_JSON_MODE` is `dir` for one JSON per vector or `single` for one batched JSON
-VECTOR_JSON_MODE            ?= dir
-VECTOR_JSON                 ?= $(JSON)
-VECTOR_JSON_DIR             ?= $(dir $(JSON))vector_json
-VECTOR_IN_BYTES             ?= $(BIN).in_bytes.all
-VECTOR_ELF2JSON             ?= $(BIN)_elf2json
-VECTOR_ACCEPTS_TO_IN_BYTES  ?=
-VECTOR_ACCEPTS2IN_BYTES     ?= $(BIN)_accepts2inbytes
 
 # If TEST=src_optional_subfolder/your_test(.s|.zig|.rs), the variables below are set as follows:
 # src_optional_subfolder/your_test
@@ -84,28 +72,6 @@ ENTRY_POINT_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) 
 SP_FROM_ELF              = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _stack_start | awk '{print "0x"$$1}')
 VERIFY_ELF               ?= false             
 
-# ACT4 testing framework specific variables
-ACT4_CONFIG_DIR := $(MAKEFILE_DIR)act4/config
-ACT4_WORK_DIR   := $(MAKEFILE_DIR)act4/bin/work
-ACT4_CONFIG     := $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm/test_config.yaml
-# The 3 parameters below must be consistent with the ones provided to arithmetization/Makefile
-ACT4_REF        ?= 9798a554ce4139f472c9ccd3a18c9061d0f7024d
-ACT4_REPO       ?= $(abspath $(shell git -C $(MAKEFILE_DIR) rev-parse --show-toplevel)/../riscv-arch-test)
-ACT4_RISCV_DIR  ?= $(HOME)/riscv
-ACT4_IMAGE      := riscv-act4:$(ACT4_REF)
-ACT4_EXTENSIONS := I,M
-ACT4_JOBS       := 4
-ACT4_ELF_DIR    := $(ACT4_WORK_DIR)/linea-rv64im-zicclsm/elfs
-ACT4_LOGS       := $(MAKEFILE_DIR)act4/bin/logs
-ACT4_RESULTS    := $(MAKEFILE_DIR)act4/bin/results.txt
-# ACT4_BUILD_MODE = (host|docker)
-ACT4_BUILD_MODE ?= host
-# Parameters passed to https://github.com/riscv/riscv-arch-test/blob/act4/Makefile:
-# If true, disables objdump generation for faster builds
-ACT4_FAST       ?= false
-# If true, enables debug output (signature objdump, trace files, and trap report)
-ACT4_DEBUG      ?= true
-
 # String to determine if a program is exiting with exit code 0
 EXIT_SUCCESS_STRING := "EXIT CODE = 0"
 
@@ -115,9 +81,9 @@ define ELF_TO_JSON
 	@go run $(GO_MAIN) "$(1)" "$(IN_BYTES)" $(IN_BYTES_OFFSET) > "$(2)"
 endef
 
-######################################################
-# Targets to handle generic tests
-######################################################
+#####################################################################
+# Compilation, execution, debugging and verification targets
+#####################################################################
 
 # Default target (make)
 exec: compile zkc-exec
@@ -258,9 +224,20 @@ verify-elf: require-test
 	@echo "  SP:              $(SP) (expected) = $(SP_FROM_ELF) (from ELF)"
 	@echo "All values match\n"
 
-###############################################################
-# Targets to handle generic test vectors
-###############################################################
+#####################################################################
+# Test vector targets
+#####################################################################
+
+VECTOR_ACCEPTS              ?=
+VECTOR_N_VECTORS            ?= 0
+# `VECTOR_JSON_MODE` is `dir` for one JSON per vector or `single` for one batched JSON
+VECTOR_JSON_MODE            ?= dir
+VECTOR_JSON                 ?= $(JSON)
+VECTOR_JSON_DIR             ?= $(dir $(JSON))vector_json
+VECTOR_IN_BYTES             ?= $(BIN).in_bytes.all
+VECTOR_ELF2JSON             ?= $(BIN)_elf2json
+VECTOR_ACCEPTS_TO_IN_BYTES  ?=
+VECTOR_ACCEPTS2IN_BYTES     ?= $(BIN)_accepts2inbytes
 
 vector-build: require-src
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=$(TEST)
@@ -326,9 +303,9 @@ vector-exec: install-zkc
 		exit 2; \
 	fi
 
-###############################################################
-# Keccak wrapper targets and benchmark workflow variables
-###############################################################
+#####################################################################
+# Keccak wrapper targets
+#####################################################################
 
 KECCAK_ACCEPTS     ?= $(MAKEFILE_DIR)rust/src/keccak/keccak.accepts
 KECCAK_N_VECTORS   ?= 10
@@ -352,9 +329,9 @@ keccak-rust-json: keccak-rust-build
 keccak-rust-exec: keccak-rust-json
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec VECTOR_JSON_MODE=single VECTOR_JSON=$(KECCAK_JSON)
 
-###############################################################
-# Blake wrapper targets and benchmark workflow variables
-###############################################################
+#####################################################################
+# Blake wrapper targets
+#####################################################################
 
 BLAKE_ACCEPTS      ?= $(MAKEFILE_DIR)rust/src/blake/blake10.all
 BLAKE_N_VECTORS    ?= 10
@@ -376,9 +353,30 @@ blake-rust-json: blake-rust-build
 blake-rust-exec: blake-rust-json
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec VECTOR_JSON_MODE=dir VECTOR_JSON_DIR=$(BLAKE_JSON_DIR)
 
-###############################################################
+#####################################################################
 # ACT4 targets
-###############################################################
+#####################################################################
+
+ACT4_CONFIG_DIR := $(MAKEFILE_DIR)act4/config
+ACT4_WORK_DIR   := $(MAKEFILE_DIR)act4/bin/work
+ACT4_CONFIG     := $(ACT4_CONFIG_DIR)/linea-rv64im-zicclsm/test_config.yaml
+# The 3 parameters below must be consistent with the ones provided to arithmetization/Makefile
+ACT4_REF        ?= 9798a554ce4139f472c9ccd3a18c9061d0f7024d
+ACT4_REPO       ?= $(abspath $(shell git -C $(MAKEFILE_DIR) rev-parse --show-toplevel)/../riscv-arch-test)
+ACT4_RISCV_DIR  ?= $(HOME)/riscv
+ACT4_IMAGE      := riscv-act4:$(ACT4_REF)
+ACT4_EXTENSIONS := I,M
+ACT4_JOBS       := 4
+ACT4_ELF_DIR    := $(ACT4_WORK_DIR)/linea-rv64im-zicclsm/elfs
+ACT4_LOGS       := $(MAKEFILE_DIR)act4/bin/logs
+ACT4_RESULTS    := $(MAKEFILE_DIR)act4/bin/results.txt
+# ACT4_BUILD_MODE = (host|docker)
+ACT4_BUILD_MODE ?= host
+# Parameters passed to https://github.com/riscv/riscv-arch-test/blob/act4/Makefile:
+# If true, disables objdump generation for faster builds
+ACT4_FAST       ?= false
+# If true, enables debug output (signature objdump, trace files, and trap report)
+ACT4_DEBUG      ?= true
 
 # Build the ACT4 self-checking ELFs with the Linea ACT4 config 
 # Note: build if needed
@@ -466,9 +464,9 @@ act4-exec: install-zkc act4-build
 	if [ "$$count" -eq 0 ]; then echo "error: no ACT4 ELFs found in $(ACT4_ELF_DIR)" >&2; exit 1; fi; \
 	if [ "$$fail" -ne 0 ]; then echo "error: $$fail of $$count ACT4 test(s) failed" >&2; exit 1; fi
 
-######################################################
+#####################################################################
 # Support targets to validate mandatory parameters
-######################################################
+#####################################################################
 
 require-test:
 	@[ -n "$(TEST)" ] || { echo "TEST is mandatory. Usage: make TEST=src_optional_subfolder/your_test(.s|.zig|.rs)"; exit 1; }
