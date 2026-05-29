@@ -1,3 +1,15 @@
+## [1.1.1] - 2026-05-29
+
+### [coordinator] - [v0.1.1](https://github.com/Consensys/linea-monorepo/releases/tag/releases%2Fcoordinator%2Fv0.1.1)
+### [maru] - [v1.0.1](https://github.com/Consensys/linea-monorepo/releases/tag/releases%2Fmaru%2Fv1.0.1)
+### [postman] - [v1.0.1](https://github.com/Consensys/linea-monorepo/releases/tag/releases%2Fpostman%2Fv1.0.1)
+### [prover] - [v1.0.1](https://github.com/Consensys/linea-monorepo/releases/tag/releases%2Fprover%2Fv1.0.1)
+### [tx-exclusion-api] - [v1.0.2](https://github.com/Consensys/linea-monorepo/releases/tag/releases%2Ftx-exclusion-api%2Fv1.0.2)
+
+#### ⚙️ Miscellaneous Tasks
+
+- *(ci)* For milestone release testing
+### [linea-besu-package] - [v1.0.1](https://github.com/Consensys/linea-monorepo/releases/tag/releases%2Flinea-besu-package%2Fv1.0.1)
 ## [1.1.0] - 2026-05-29
 
 ### [coordinator] - [v0.1.1](https://github.com/Consensys/linea-monorepo/releases/tag/releases%2Fcoordinator%2Fv0.1.1)
