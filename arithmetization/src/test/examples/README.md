@@ -122,6 +122,8 @@ riscv-test compile <name>.<ext>
 riscv-test vector-build <name>.<ext>
 riscv-test vector-json <name>.<ext> VECTOR_FILE=path/to/vectors.all VECTOR_N_VECTORS=10
 riscv-test vector-exec VECTOR_JSON_DIR=path/to/json_dir
+# Use VECTOR_N_VECTORS=-1 to select all vectors
+riscv-test vector-json <name>.<ext> VECTOR_FILE=path/to/vectors.all VECTOR_N_VECTORS=-1
 # Build vectors from a custom input format by passing a converter
 riscv-test vector-build <name>.<ext> VECTOR_FILE_TO_IN_BYTES_GO=path/to/converter.go
 riscv-test vector-json <name>.<ext> VECTOR_FILE=path/to/vectors.accepts VECTOR_N_VECTORS=10 VECTOR_FILE_TO_IN_BYTES_GO=path/to/converter.go
@@ -133,7 +135,7 @@ riscv-test exec-elf BIN_EXT=asm/bin/test
 riscv-test clean <name>.<ext>
 # Clean all build artifacts
 riscv-test clean-all
-# Run 10 Blake vectors
+# Run all Blake vectors from blake10.all
 riscv-test blake-rust-exec
 # Build one batched Keccak JSON
 riscv-test keccak-rust-json KECCAK_N_VECTORS=10 KECCAK_JSON_FILE=/tmp/keccak.json
@@ -180,7 +182,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `make keccak-rust-exec`                                  | Run the batched Keccak vector JSON input                                               |
 | `make blake-rust-build`                                  | Build the Blake Rust vector test and helper binaries                                   |
 | `make blake-rust-json`                                   | Generate Blake vector JSON inputs                                                      |
-| `make blake-rust-exec`                                   | Run 10 Blake vectors from `rust/src/blake/blake10.all`                                 |
+| `make blake-rust-exec`                                   | Run all Blake vectors from `rust/src/blake/blake10.all`                                |
 | `make act4-build`                                        | Build ACT4 ELFs with the Linea ACT4 config                                             |
 | `make act4-exec`                                         | Build and run ACT4 ELFs through zkc and write results/logs under `act4/bin/`           |
 
@@ -194,7 +196,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `BIN_EXT`                    | `""`                                                           | Already compiled ELF used by `elf-to-json` and `exec-elf`                                          |
 | `JSON_EXT`                   | `$(BIN_EXT).json`                                              | JSON output path used by `elf-to-json` and `exec-elf`                                              |
 | `VECTOR_FILE`                | `""`                                                           | Vector input file consumed by `vector-json`; one `IN_BYTES` per line in `dir` mode unless a converter is provided |
-| `VECTOR_N_VECTORS`           | `""`                                                           | Positive number of vectors selected by `vector-json`                                               |
+| `VECTOR_N_VECTORS`           | `""`                                                           | Number of vectors selected by `vector-json`; `-1` means all vectors                                |
 | `VECTOR_JSON_MODE`           | `dir`                                                          | `dir` for one JSON per vector, `single` for one batched JSON                                       |
 | `VECTOR_JSON_FILE`           | `$(JSON)`                                                      | Batched JSON path used when `VECTOR_JSON_MODE=single`                                              |
 | `VECTOR_JSON_DIR`            | `$(dir $(JSON))vector_json`                                    | JSON directory used when `VECTOR_JSON_MODE=dir`                                                    |
@@ -214,10 +216,10 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `ACT4_FAST`                  | `false`                                                        | Set to `true` to skip ACT4 objdump generation for faster builds                                    |
 | `ACT4_DEBUG`                 | `true`                                                         | Set to `false` to skip ACT4 debug artifacts                                                        |
 | `BLAKE_ALL_FILE`             | `rust/src/blake/blake10.all`                                   | Blake `.all` vector file used by `blake-rust-json`                                                 |
-| `BLAKE_N_VECTORS`            | `10`                                                           | Number of Blake vectors to generate                                                               |
+| `BLAKE_N_VECTORS`            | `-1`                                                           | Number of Blake vectors to generate; `-1` means all vectors                                        |
 | `BLAKE_JSON_DIR`             | `rust/target/riscv64im-unknown-none-elf/release/blake_json`    | Directory where `blake-rust-json` writes per-vector JSON files                                     |
 | `KECCAK_ACCEPTS_FILE`        | `rust/src/keccak/keccak.accepts`                               | Keccak `.accepts` vector file used by `keccak-rust-json`                                           |
-| `KECCAK_N_VECTORS`           | `10`                                                           | Number of Keccak vectors compiled into and packed for the Keccak guest                             |
+| `KECCAK_N_VECTORS`           | `10`                                                           | Number of Keccak vectors compiled into and packed for the Keccak guest; `-1` means all vectors     |
 | `KECCAK_JSON_FILE`           | `rust/target/riscv64im-unknown-none-elf/release/keccak.json`   | JSON path written by `keccak-rust-json`                                                            |
 
 ## JSON input format

@@ -12,7 +12,8 @@
 //
 //	keccak_accepts_to_in_bytes <accepts-file> <n-vectors>
 //
-// Exits non-zero if any line fails validation or fewer than N vectors are available.
+// `n-vectors == -1` means all vectors. Exits non-zero if any line fails
+// validation or fewer than N vectors are available.
 package main
 
 import (
@@ -102,8 +103,8 @@ func run(args []string) error {
 	}
 	path := args[0]
 	n, err := strconv.Atoi(args[1])
-	if err != nil || n <= 0 {
-		return fmt.Errorf("n-vectors must be a positive integer, got %q", args[1])
+	if err != nil || n == 0 || n < -1 {
+		return fmt.Errorf("n-vectors must be -1 or a positive integer, got %q", args[1])
 	}
 
 	f, err := os.Open(path)
@@ -112,13 +113,17 @@ func run(args []string) error {
 	}
 	defer f.Close()
 
-	blob := make([]byte, 0, n*vectorBytes)
+	capacity := 0
+	if n > 0 {
+		capacity = n * vectorBytes
+	}
+	blob := make([]byte, 0, capacity)
 	scanner := bufio.NewScanner(f)
 	// Long lines: a single accepts line is ~1500 chars but allow ample headroom.
 	scanner.Buffer(make([]byte, 0, 1<<20), 1<<22)
 	lineno := 0
 	emitted := 0
-	for scanner.Scan() && emitted < n {
+	for scanner.Scan() && (n == -1 || emitted < n) {
 		lineno++
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
@@ -134,7 +139,7 @@ func run(args []string) error {
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("scan %s: %w", path, err)
 	}
-	if emitted < n {
+	if n != -1 && emitted < n {
 		return fmt.Errorf("%s: only %d vector(s) available, requested %d", path, emitted, n)
 	}
 

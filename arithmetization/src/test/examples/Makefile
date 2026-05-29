@@ -3,7 +3,7 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-build vector-json vector-exec keccak-rust-build keccak-rust-json keccak-rust-exec blake-rust-build blake-rust-json blake-rust-exec act4-build act4-exec require-test require-src require-bin-ext require-vector-file require-positive-n-vectors require-vector-build-artifacts require-vector-json-mode
+.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-build vector-json vector-exec keccak-rust-build keccak-rust-json keccak-rust-exec blake-rust-build blake-rust-json blake-rust-exec act4-build act4-exec require-test require-src require-bin-ext require-vector-file require-n-vectors require-vector-build-artifacts require-vector-json-mode
 
 # Keep validation, build, and execution targets running in order
 .NOTPARALLEL:
@@ -249,13 +249,15 @@ vector-build: require-src
 		go build -o $(VECTOR_FILE_TO_IN_BYTES_BIN) $(VECTOR_FILE_TO_IN_BYTES_GO); \
 	fi
 
-vector-json: require-src require-vector-file require-positive-n-vectors require-vector-build-artifacts require-vector-json-mode
-	@echo "selecting $(VECTOR_N_VECTORS) vector(s) from $(VECTOR_FILE)"
+vector-json: require-src require-vector-file require-n-vectors require-vector-build-artifacts require-vector-json-mode
+	@echo "selecting $(if $(filter -1,$(VECTOR_N_VECTORS)),all,$(VECTOR_N_VECTORS)) vector(s) from $(VECTOR_FILE)"
 	@if [ -n "$(VECTOR_FILE_TO_IN_BYTES_GO)" ]; then \
 		$(VECTOR_FILE_TO_IN_BYTES_BIN) "$(VECTOR_FILE)" $(VECTOR_N_VECTORS) > $(VECTOR_IN_BYTES_FILE); \
 	elif [ "$(VECTOR_JSON_MODE)" = "single" ]; then \
 		echo "VECTOR_JSON_MODE=single requires VECTOR_FILE_TO_IN_BYTES_GO"; \
 		exit 1; \
+	elif [ "$(VECTOR_N_VECTORS)" = "-1" ]; then \
+		cat "$(VECTOR_FILE)" > $(VECTOR_IN_BYTES_FILE); \
 	else \
 		head -n $(VECTOR_N_VECTORS) "$(VECTOR_FILE)" > $(VECTOR_IN_BYTES_FILE); \
 	fi
@@ -338,7 +340,7 @@ keccak-rust-exec: keccak-rust-json
 #####################################################################
 
 BLAKE_ALL_FILE  ?= $(MAKEFILE_DIR)rust/src/blake/blake10.all
-BLAKE_N_VECTORS ?= 10
+BLAKE_N_VECTORS ?= -1
 BLAKE_JSON_DIR  ?= $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_json
 
 blake-rust-build:
@@ -485,9 +487,11 @@ require-vector-file:
 	@[ -n "$(VECTOR_FILE)" ] || { echo "VECTOR_FILE is mandatory. Usage: make vector-json TEST=src_optional_subfolder/your_test(.s|.zig|.rs) VECTOR_FILE=path/to/vectors"; exit 1; }
 	@[ -f $(VECTOR_FILE) ] || { echo "VECTOR_FILE file not found: $(VECTOR_FILE)"; exit 1; }
 
-require-positive-n-vectors:
-	@[ -n "$(VECTOR_N_VECTORS)" ] || { echo "VECTOR_N_VECTORS is mandatory and must be positive"; exit 1; }
-	@[ "$(VECTOR_N_VECTORS)" -gt 0 ] 2>/dev/null || { echo "VECTOR_N_VECTORS must be a positive integer, got: $(VECTOR_N_VECTORS)"; exit 1; }
+require-n-vectors:
+	@[ -n "$(VECTOR_N_VECTORS)" ] || { echo "VECTOR_N_VECTORS is mandatory. Use -1 for all vectors or a positive integer"; exit 1; }
+	@if [ "$(VECTOR_N_VECTORS)" != "-1" ]; then \
+		[ "$(VECTOR_N_VECTORS)" -gt 0 ] 2>/dev/null || { echo "VECTOR_N_VECTORS must be -1 or a positive integer, got: $(VECTOR_N_VECTORS)"; exit 1; }; \
+	fi
 
 require-vector-build-artifacts:
 	@[ -f $(BIN) ] || { echo "BIN not found: $(BIN). Run vector-build first"; exit 1; }
