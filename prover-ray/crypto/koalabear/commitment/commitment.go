@@ -16,6 +16,7 @@ package commitment
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	ext "github.com/consensys/gnark-crypto/field/koalabear/extensions"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/hash"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/merkle"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/parallel"
@@ -180,11 +181,24 @@ func (Poseidon2LeafHasher) BatchSize() int {
 }
 
 func (Poseidon2NodeHasher) HashNode(left, right hash.Digest) hash.Digest {
-	h := hash.NewPoseidon2MDHasher()
-	h.WriteElements(hash.NewElement(nodeDomainTag))
-	h.WriteElements(left[:]...)
-	h.WriteElements(right[:]...)
-	return h.Sum()
+	return hash.Poseidon2NodeCompress(nodeDomainTag, left, right)
+}
+
+// BatchSize is the lane width of the SIMD-batched Poseidon2 permutation.
+func (Poseidon2NodeHasher) BatchSize() int { return hash.Poseidon2SpongeBatchSize }
+
+// HashNodes compresses BatchSize() (left, right) pairs in one batched
+// permutation. dst, left, right must all have length BatchSize().
+func (Poseidon2NodeHasher) HashNodes(dst, left, right []hash.Digest) {
+	const n = hash.Poseidon2SpongeBatchSize
+	if len(dst) != n || len(left) != n || len(right) != n {
+		panic("Poseidon2NodeHasher.HashNodes: input slices must have length BatchSize()")
+	}
+	var l, r [n]hash.Digest
+	copy(l[:], left)
+	copy(r[:], right)
+	out := hash.Poseidon2NodeCompressBatch16(nodeDomainTag, &l, &r)
+	copy(dst, out[:])
 }
 
 // Commit commits to base and extension polynomials in one Merkle tree. Inputs
@@ -202,18 +216,28 @@ func (rs *RSCommit) Commit(basePolys []poly.Polynomial, extPolys []poly.ExtPolyn
 		domainCache = &poly.DomainCache{}
 	}
 
-	// 1- encode every polynomial on its rail
+	// 1- encode every polynomial on its rail. Each Encode is independent
+	//    (disjoint input/output slices, shared read-only domain). Each outer
+	//    worker calls 2 FFTs in Encode; cap the FFT's internal parallelism so
+	//    outer × inner ≤ NumCPU.
+	fftOuter := max(len(basePolys), len(extPolys))
+	fftOpt := fft.WithNbTasks(parallel.NbTasksPerJob(fftOuter))
+
 	encodedBase := make([]poly.Polynomial, len(basePolys))
-	for i, pol := range basePolys {
-		n := len(pol)
-		encodedBase[i] = rs.Encoder.Encode(pol, domainCache.Get(uint64(n)))
-	}
+	parallel.Execute(len(basePolys), func(start, end int) {
+		for i := start; i < end; i++ {
+			pol := basePolys[i]
+			encodedBase[i] = rs.Encoder.Encode(pol, domainCache.Get(uint64(len(pol))), fftOpt)
+		}
+	})
 
 	encodedExt := make([]poly.ExtPolynomial, len(extPolys))
-	for i, pol := range extPolys {
-		n := len(pol)
-		encodedExt[i] = rs.Encoder.EncodeExt(pol, domainCache.Get(uint64(n)))
-	}
+	parallel.Execute(len(extPolys), func(start, end int) {
+		for i := start; i < end; i++ {
+			pol := extPolys[i]
+			encodedExt[i] = rs.Encoder.EncodeExt(pol, domainCache.Get(uint64(len(pol))), fftOpt)
+		}
+	})
 
 	// 2- build the merkle tree, with rs.N/2 leafs
 	// the i-th leaf is base pairs followed by extension pairs.
@@ -235,19 +259,26 @@ func (rs *RSCommit) Commit(basePolys []poly.Polynomial, extPolys []poly.ExtPolyn
 		Ext:        encodedExt,
 		PairOffset: halfN,
 	}
-	if batchHasher, ok := rs.LeafHasher.(BatchLeafHasher); ok {
-		hashLeavesBatchParallel(batchHasher, leaves, src)
-	} else {
-		parallel.Execute(halfN, func(start, end int) {
-			hashLeavesScalar(rs.LeafHasher, leaves[start:end], src, start)
-		})
-	}
+	HashLeavesParallel(rs.LeafHasher, leaves, src)
 
 	if err := tree.Build(leaves); err != nil {
 		return WMerkleTree{}, err
 	}
 
 	return wTree, nil
+}
+
+// HashLeavesParallel hashes len(dst) paired leaves from src into dst, using
+// the batched leaf hasher when available (rate-16 Poseidon2 sponge) and
+// fanning the work out across goroutines.
+func HashLeavesParallel(lh LeafHasher, dst []hash.Digest, src LeafSource) {
+	if batchHasher, ok := lh.(BatchLeafHasher); ok {
+		hashLeavesBatchParallel(batchHasher, dst, src)
+		return
+	}
+	parallel.Execute(len(dst), func(start, end int) {
+		hashLeavesScalar(lh, dst[start:end], src, start)
+	})
 }
 
 func hashLeavesBatchParallel(lh BatchLeafHasher, dst []hash.Digest, src LeafSource) {

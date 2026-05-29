@@ -18,6 +18,35 @@ import (
 	"sync"
 )
 
+// NbTasksPerJob divides the available CPU budget evenly across nbJobs running
+// in parallel: it returns max(1, NumCPU/nbJobs). Use it to set per-job
+// parallelism (e.g. fft.WithNbTasks) so that outer × inner goroutines stays
+// near NumCPU instead of multiplying.
+func NbTasksPerJob(nbJobs int) int {
+	if nbJobs <= 1 {
+		return runtime.NumCPU()
+	}
+	n := runtime.NumCPU() / nbJobs
+	if n < 1 {
+		return 1
+	}
+	return n
+}
+
+// ExecuteWithThreshold runs work in parallel when nbIterations >= threshold,
+// otherwise invokes it once in the current goroutine. Saves the scheduler
+// round-trip when nbIterations is tiny.
+func ExecuteWithThreshold(nbIterations, threshold int, work func(int, int)) {
+	if nbIterations <= 0 {
+		return
+	}
+	if nbIterations < threshold {
+		work(0, nbIterations)
+		return
+	}
+	Execute(nbIterations, work)
+}
+
 func Execute(nbIterations int, work func(int, int), maxCpus ...int) {
 
 	nbTasks := runtime.NumCPU()

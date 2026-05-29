@@ -1,6 +1,7 @@
 package fiatshamir
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -24,7 +25,7 @@ func (h *recordingHasher) WriteElements(elements ...koalabear.Element) {
 
 func (h *recordingHasher) WriteExt(elements ...ext.E6) {
 	for _, e := range elements {
-		h.current = append(h.current, e.B0.A0, e.B0.A1, e.B1.A0, e.B1.A1)
+		h.current = hash.AppendExtElements(h.current, e)
 	}
 }
 
@@ -101,6 +102,85 @@ func TestChallengeIDDomainSeparation(t *testing.T) {
 
 	if a == b {
 		t.Fatalf("different challenge IDs produced the same challenge")
+	}
+}
+
+func TestComputeChallengeWithGrindingRecordsAndReplaysProofOfWork(t *testing.T) {
+	const nbBits = 6
+
+	binding := testElement(42)
+	hasher := hash.NewPoseidon2SpongeHasher()
+	transcript := NewTranscript(&hasher, "zeta")
+	if err := transcript.Bind("zeta", []koalabear.Element{binding}); err != nil {
+		t.Fatalf("bind zeta: %v", err)
+	}
+
+	zeta, err := transcript.ComputeChallenge("zeta", WithGrinding(nbBits))
+	if err != nil {
+		t.Fatalf("compute zeta with grinding: %v", err)
+	}
+	if !hasZeroGrindingBits(hash.Digest(zeta), nbBits) {
+		t.Fatalf("challenge does not satisfy %d bits of grinding", nbBits)
+	}
+
+	pow, ok := transcript.ProofOfWork("zeta")
+	if !ok {
+		t.Fatalf("expected proof of work to be recorded")
+	}
+	if pow.NbBits != nbBits {
+		t.Fatalf("unexpected proof-of-work bits: want %d, got %d", nbBits, pow.NbBits)
+	}
+
+	replayHasher := hash.NewPoseidon2SpongeHasher()
+	replay := NewTranscript(&replayHasher, "zeta")
+	if err := replay.Bind("zeta", []koalabear.Element{binding}); err != nil {
+		t.Fatalf("bind replay zeta: %v", err)
+	}
+	if err := replay.SetProofOfWork("zeta", pow); err != nil {
+		t.Fatalf("set proof of work: %v", err)
+	}
+	replayedZeta, err := replay.ComputeChallenge("zeta", WithGrinding(nbBits))
+	if err != nil {
+		t.Fatalf("replay zeta with grinding: %v", err)
+	}
+	if replayedZeta != zeta {
+		t.Fatalf("replayed challenge mismatch")
+	}
+}
+
+func TestComputeChallengeRejectsInvalidProofOfWork(t *testing.T) {
+	const nbBits = 6
+
+	binding := testElement(99)
+	hasher := hash.NewPoseidon2SpongeHasher()
+	transcript := NewTranscript(&hasher, "zeta")
+	if err := transcript.Bind("zeta", []koalabear.Element{binding}); err != nil {
+		t.Fatalf("bind zeta: %v", err)
+	}
+
+	var invalidPow ProofOfWork
+	invalidPow.NbBits = nbBits
+	for saltValue := uint64(0); ; saltValue++ {
+		invalidPow.Salt.SetUint64(saltValue)
+		value, err := transcript.computeChallengeDigest("zeta", 0, transcript.challenges[0], &invalidPow)
+		if err != nil {
+			t.Fatalf("compute candidate challenge: %v", err)
+		}
+		if !hasZeroGrindingBits(value, nbBits) {
+			break
+		}
+	}
+
+	replayHasher := hash.NewPoseidon2SpongeHasher()
+	replay := NewTranscript(&replayHasher, "zeta")
+	if err := replay.Bind("zeta", []koalabear.Element{binding}); err != nil {
+		t.Fatalf("bind replay zeta: %v", err)
+	}
+	if err := replay.SetProofOfWork("zeta", invalidPow); err != nil {
+		t.Fatalf("set invalid proof of work: %v", err)
+	}
+	if _, err := replay.ComputeChallenge("zeta", WithGrinding(nbBits)); !errors.Is(err, errInvalidProofOfWork) {
+		t.Fatalf("expected invalid proof-of-work error, got %v", err)
 	}
 }
 

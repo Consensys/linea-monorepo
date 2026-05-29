@@ -43,10 +43,10 @@ func TestEvaluateOnExtendedDomainRootMatchesEncode(t *testing.T) {
 
 func TestExtEvaluateOnExtendedDomainRootMatchesEncodeExt(t *testing.T) {
 	p := poly.ExtPolynomial{
-		e4FromU64(1, 2, 3, 4),
-		e4FromU64(5, 6, 7, 8),
-		e4FromU64(9, 10, 11, 12),
-		e4FromU64(13, 14, 15, 16),
+		e6FromU64(1, 2, 3, 4),
+		e6FromU64(5, 6, 7, 8),
+		e6FromU64(9, 10, 11, 12),
+		e6FromU64(13, 14, 15, 16),
 	}
 
 	domainD := fft.NewDomain(uint64(len(p)))

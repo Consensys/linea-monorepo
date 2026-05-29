@@ -12,6 +12,7 @@ const (
 	NB_FULL_ROUND      = 6
 	NB_PARTIAL_ROUNDS  = 21
 	DIGEST_NB_ELEMENTS = 8
+	ExtDegree          = 6
 )
 
 // 8 to land in a space big enough to be collision resistant
@@ -64,4 +65,30 @@ func ElementsToExt(a0, a1, b0, b1, c0, c1 koalabear.Element) ext.E6 {
 	res.B2.A0.Set(&c0)
 	res.B2.A1.Set(&c1)
 	return res
+}
+
+func LiftBaseToExt(v koalabear.Element) ext.E6 {
+	var res ext.E6
+	res.B0.A0.Set(&v)
+	return res
+}
+
+func IsBaseExt(v ext.E6) bool {
+	return v.B0.A1.IsZero() && v.B1.IsZero() && v.B2.IsZero()
+}
+
+func BaseFromExt(v ext.E6) (koalabear.Element, bool) {
+	return v.B0.A0, IsBaseExt(v)
+}
+
+func AppendExtElements(dst []koalabear.Element, v ext.E6) []koalabear.Element {
+	return append(dst,
+		v.B0.A0, v.B0.A1,
+		v.B1.A0, v.B1.A1,
+		v.B2.A0, v.B2.A1,
+	)
+}
+
+func ExtToElements(v ext.E6) []koalabear.Element {
+	return AppendExtElements(make([]koalabear.Element, 0, ExtDegree), v)
 }

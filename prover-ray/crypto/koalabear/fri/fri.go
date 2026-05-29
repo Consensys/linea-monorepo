@@ -26,8 +26,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/hash"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/merkle"
+	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/parallel"
+	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poly"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/reedsolomon"
 )
+
+// foldParallelThreshold is the smallest half-layer size at which fan-out
+// across goroutines beats the precomputed-xInv seeding overhead per chunk.
+const foldParallelThreshold = 1 << 12
 
 // Params holds the FRI configuration and precomputed per-level data.
 // Build once with NewParams; reuse across many Prove/Verify calls.
@@ -42,17 +48,29 @@ type Params struct {
 	invTwo       koalabear.Element
 	domains      []*fft.Domain // domains[j] has cardinality N/2^j, generator ωⱼ
 	domainsLight []domainLight // domainLight stores only the cardinality and the domain generator
+	grinding     int           // grinding bits for PoW, on the alpha
 }
 
 type Config struct {
-	LightMode bool
+	WoFullDomainAllocation bool
+	Grinding               int // grinding bits for PoW. More grinding bits => more cpu work for the prover, but security goes from log_blowup * num_queries to log_blowup * num_queries + query_proof_of_work_bits
 }
 
 type Option func(c *Config) error
 
-func LightMode() Option {
+func WoFullDomainAllocation() Option {
 	return func(c *Config) error {
-		c.LightMode = true
+		c.WoFullDomainAllocation = true
+		return nil
+	}
+}
+
+// WithGrinding forces the folding challenges to start with nbBits at zeroes, to increase security
+// It lowers the space <wrong proof x miraculously valid challenges>.
+// Security goes from log_blowup * num_queries to log_blowup * num_queries + query_proof_of_work_bits.
+func WithGrinding(nbBits int) Option {
+	return func(c *Config) error {
+		c.Grinding = nbBits
 		return nil
 	}
 }
@@ -93,9 +111,10 @@ func NewParams(N, D, numQueries int, lh commitment.LeafHasher, nh commitment.Nod
 		NodeHasher: nh,
 		numRounds:  numRounds,
 		invTwo:     invTwo,
+		grinding:   config.Grinding,
 	}
 
-	if !config.LightMode {
+	if !config.WoFullDomainAllocation {
 		res.domains = make([]*fft.Domain, numRounds+1)
 		for j := 0; j <= numRounds; j++ {
 			res.domains[j] = fft.NewDomain(uint64(N) >> j)
@@ -199,9 +218,10 @@ type Proof struct {
 	// Running-polynomial FRI path
 	FRIRoots      []hash.Digest // Merkle roots for running poly T_1..T_{r-1}
 	FinalField    field.Kind
-	FinalPolyBase []koalabear.Element // populated when FinalField == field.Base
-	FinalPolyExt  []ext.E6            // populated when FinalField == field.Ext
-	FRIQueries    []Query             // len = NumQueries
+	FinalPolyBase []koalabear.Element               // populated when FinalField == field.Base
+	FinalPolyExt  []ext.E6                          // populated when FinalField == field.Ext
+	FRIQueries    []Query                           // len = NumQueries
+	PoW           map[string]fiatshamir.ProofOfWork // proof of work in case grinding has nbBits > 0
 }
 
 // FullDomainGenerator returns the generator of the full evaluation domain (layer 0, size N).
@@ -402,7 +422,7 @@ func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcri
 		if err := ts.Bind(name, root[:]); err != nil {
 			return Proof{}, nil, fmt.Errorf("fri: Prove: bind fold %d: %w", j, err)
 		}
-		challenge, err := ts.ComputeChallenge(name)
+		challenge, err := computeProverFoldChallenge(ts, name, p.grinding)
 		if err != nil {
 			return Proof{}, nil, fmt.Errorf("fri: Prove: compute fold challenge %d: %w", j, err)
 		}
@@ -419,6 +439,9 @@ func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcri
 	layers[p.numRounds] = running
 	prf.FinalField = field.Base
 	prf.FinalPolyBase = running
+	if err := recordFoldProofsOfWork(p, &prf, ts); err != nil {
+		return Proof{}, nil, fmt.Errorf("fri: Prove: record proof of work: %w", err)
+	}
 
 	if err := ts.Bind(queryName(0), transcriptBasePoly(prf.FinalPolyBase)); err != nil {
 		return Proof{}, nil, fmt.Errorf("fri: Prove: bind final poly: %w", err)
@@ -531,7 +554,7 @@ func proveExt(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcrip
 		if err := ts.Bind(name, root[:]); err != nil {
 			return Proof{}, nil, fmt.Errorf("fri: Prove: bind fold %d: %w", j, err)
 		}
-		challenge, err := ts.ComputeChallenge(name)
+		challenge, err := computeProverFoldChallenge(ts, name, p.grinding)
 		if err != nil {
 			return Proof{}, nil, fmt.Errorf("fri: Prove: compute fold challenge %d: %w", j, err)
 		}
@@ -546,6 +569,9 @@ func proveExt(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcrip
 	layers[p.numRounds] = running
 	prf.FinalField = field.Ext
 	prf.FinalPolyExt = running
+	if err := recordFoldProofsOfWork(p, &prf, ts); err != nil {
+		return Proof{}, nil, fmt.Errorf("fri: Prove: record proof of work: %w", err)
+	}
 
 	if err := ts.Bind(queryName(0), transcriptExtPoly(prf.FinalPolyExt)); err != nil {
 		return Proof{}, nil, fmt.Errorf("fri: Prove: bind final poly: %w", err)
@@ -728,7 +754,7 @@ func verifyBase(p Params, levelRoots, levelRootsExtra []hash.Digest, levelAtRoun
 		if err := ts.Bind(name, root[:]); err != nil {
 			return fmt.Errorf("fri: Verify: bind fold %d: %w", j, err)
 		}
-		challenge, err := ts.ComputeChallenge(name)
+		challenge, err := computeVerifierFoldChallenge(ts, name, p.grinding, prf.PoW)
 		if err != nil {
 			return fmt.Errorf("fri: Verify: compute fold challenge %d: %w", j, err)
 		}
@@ -798,7 +824,7 @@ func verifyExt(p Params, levelRoots, levelRootsExtra []hash.Digest, levelAtRound
 		if err := ts.Bind(name, root[:]); err != nil {
 			return fmt.Errorf("fri: Verify: bind fold %d: %w", j, err)
 		}
-		challenge, err := ts.ComputeChallenge(name)
+		challenge, err := computeVerifierFoldChallenge(ts, name, p.grinding, prf.PoW)
 		if err != nil {
 			return fmt.Errorf("fri: Verify: compute fold challenge %d: %w", j, err)
 		}
@@ -845,6 +871,44 @@ func levelGammaName(l int) string { return fmt.Sprintf("fri_level_%d_gamma", l) 
 func foldName(j int) string       { return fmt.Sprintf("fri_fold_%d", j) }
 func queryName(k int) string      { return fmt.Sprintf("fri_query_%d", k) }
 
+func computeProverFoldChallenge(ts *fiatshamir.Transcript, name string, grinding int) ([8]koalabear.Element, error) {
+	if grinding == 0 {
+		return ts.ComputeChallenge(name)
+	}
+	return ts.ComputeChallenge(name, fiatshamir.WithGrinding(grinding))
+}
+
+func computeVerifierFoldChallenge(ts *fiatshamir.Transcript, name string, grinding int, proofsOfWork map[string]fiatshamir.ProofOfWork) ([8]koalabear.Element, error) {
+	if grinding == 0 {
+		return ts.ComputeChallenge(name)
+	}
+
+	pow, ok := proofsOfWork[name]
+	if !ok {
+		return [8]koalabear.Element{}, fmt.Errorf("missing proof of work for %s", name)
+	}
+	if err := ts.SetProofOfWork(name, pow); err != nil {
+		return [8]koalabear.Element{}, err
+	}
+	return ts.ComputeChallenge(name, fiatshamir.WithGrinding(grinding))
+}
+
+func recordFoldProofsOfWork(p Params, prf *Proof, ts *fiatshamir.Transcript) error {
+	if p.grinding == 0 || p.numRounds == 0 {
+		return nil
+	}
+	prf.PoW = make(map[string]fiatshamir.ProofOfWork, p.numRounds)
+	for j := 0; j < p.numRounds; j++ {
+		name := foldName(j)
+		pow, ok := ts.ProofOfWork(name)
+		if !ok {
+			return fmt.Errorf("missing proof of work for %s", name)
+		}
+		prf.PoW[name] = pow
+	}
+	return nil
+}
+
 func log2(n int) int {
 	k := 0
 	for n > 1 {
@@ -855,7 +919,7 @@ func log2(n int) int {
 }
 
 // buildTreeBase builds a Merkle tree of Nⱼ/2 leaves where
-// leaf k = LeafHasher(encode(layer[k]) || encode(layer[k + Nⱼ/2])).
+// leaf k = LeafHasher(layer[k] || layer[k + Nⱼ/2]).
 func buildTreeBase(layer []koalabear.Element, lh commitment.LeafHasher, nh commitment.NodeHasher) (*merkle.Tree, error) {
 	half := len(layer) / 2
 	tree, err := merkle.New(half, nh)
@@ -863,10 +927,10 @@ func buildTreeBase(layer []koalabear.Element, lh commitment.LeafHasher, nh commi
 		return nil, err
 	}
 	leaves := make([]hash.Digest, half)
-	for k := 0; k < half; k++ {
-		pair := []commitment.PairBase{{layer[k], layer[k+half]}}
-		leaves[k] = lh.HashLeaf(pair, nil)
-	}
+	commitment.HashLeavesParallel(lh, leaves, commitment.LeafSource{
+		Base:       []poly.Polynomial{layer},
+		PairOffset: half,
+	})
 	return tree, tree.Build(leaves)
 }
 
@@ -878,67 +942,65 @@ func buildTreeExt(layer []ext.E6, lh commitment.LeafHasher, nh commitment.NodeHa
 		return nil, err
 	}
 	leaves := make([]hash.Digest, half)
-	for k := 0; k < half; k++ {
-		pair := []commitment.PairExt{{layer[k], layer[k+half]}}
-		leaves[k] = lh.HashLeaf(nil, pair)
-	}
+	commitment.HashLeavesParallel(lh, leaves, commitment.LeafSource{
+		Ext:        []poly.ExtPolynomial{layer},
+		PairOffset: half,
+	})
 	return tree, tree.Build(leaves)
 }
 
 // foldLayerBase folds a base-field layer of size Nⱼ into a layer of size Nⱼ/2.
+//
+// The naive loop carries a serial dependency on xInv = GeneratorInv^i; each
+// parallel chunk seeds xInv with GeneratorInv^chunkStart so chunks run
+// independently.
 func foldLayerBase(layer []koalabear.Element, alpha koalabear.Element, domain *fft.Domain, invTwo koalabear.Element) []koalabear.Element {
 	half := len(layer) / 2
 	next := make([]koalabear.Element, half)
+	parallel.ExecuteWithThreshold(half, foldParallelThreshold, func(start, end int) {
+		xInv := poly.PowUint64(domain.GeneratorInv, uint64(start))
+		var sum, diff koalabear.Element
+		for i := start; i < end; i++ {
+			p, q := layer[i], layer[i+half]
 
-	var xInv, sum, diff koalabear.Element
-	xInv.SetOne()
+			sum.Add(&p, &q)
+			sum.Mul(&sum, &invTwo)
 
-	for i := 0; i < half; i++ {
-		p, q := layer[i], layer[i+half]
+			diff.Sub(&p, &q)
+			diff.Mul(&diff, &invTwo)
+			diff.Mul(&diff, &xInv)
+			diff.Mul(&diff, &alpha)
 
-		sum.Add(&p, &q)
-		sum.Mul(&sum, &invTwo)
-
-		diff.Sub(&p, &q)
-		diff.Mul(&diff, &invTwo)
-		diff.Mul(&diff, &xInv)
-		diff.Mul(&diff, &alpha)
-
-		next[i].Add(&sum, &diff)
-
-		xInv.Mul(&xInv, &domain.GeneratorInv)
-	}
-
+			next[i].Add(&sum, &diff)
+			xInv.Mul(&xInv, &domain.GeneratorInv)
+		}
+	})
 	return next
 }
 
-// foldLayerExt folds an extension-field layer of size Nⱼ into a layer of size
-// Nⱼ/2. Domain factors remain base-field elements and are multiplied with
-// MulByElement.
+// foldLayerExt is the extension-field counterpart of foldLayerBase; domain
+// factors stay in the base field and are multiplied via MulByElement.
 func foldLayerExt(layer []ext.E6, alpha ext.E6, domain *fft.Domain, invTwo koalabear.Element) []ext.E6 {
 	half := len(layer) / 2
 	next := make([]ext.E6, half)
+	parallel.ExecuteWithThreshold(half, foldParallelThreshold, func(start, end int) {
+		xInv := poly.PowUint64(domain.GeneratorInv, uint64(start))
+		for i := start; i < end; i++ {
+			p, q := layer[i], layer[i+half]
 
-	var xInv koalabear.Element
-	xInv.SetOne()
+			var sum, diff ext.E6
+			sum.Add(&p, &q)
+			sum.MulByElement(&sum, &invTwo)
 
-	for i := 0; i < half; i++ {
-		p, q := layer[i], layer[i+half]
+			diff.Sub(&p, &q)
+			diff.MulByElement(&diff, &invTwo)
+			diff.MulByElement(&diff, &xInv)
+			diff.Mul(&diff, &alpha)
 
-		var sum, diff ext.E6
-		sum.Add(&p, &q)
-		sum.MulByElement(&sum, &invTwo)
-
-		diff.Sub(&p, &q)
-		diff.MulByElement(&diff, &invTwo)
-		diff.MulByElement(&diff, &xInv)
-		diff.Mul(&diff, &alpha)
-
-		next[i].Add(&sum, &diff)
-
-		xInv.Mul(&xInv, &domain.GeneratorInv)
-	}
-
+			next[i].Add(&sum, &diff)
+			xInv.Mul(&xInv, &domain.GeneratorInv)
+		}
+	})
 	return next
 }
 
@@ -950,10 +1012,10 @@ func transcriptBasePoly(poly []koalabear.Element) []koalabear.Element {
 }
 
 func transcriptExtPoly(poly []ext.E6) []koalabear.Element {
-	res := make([]koalabear.Element, 0, 2+4*len(poly))
+	res := make([]koalabear.Element, 0, 2+hash.ExtDegree*len(poly))
 	res = append(res, hash.NewElement(0x45585450), hash.NewElement(uint64(len(poly)))) // "EXTP"
 	for _, v := range poly {
-		res = append(res, v.B0.A0, v.B0.A1, v.B1.A0, v.B1.A1)
+		res = hash.AppendExtElements(res, v)
 	}
 	return res
 }

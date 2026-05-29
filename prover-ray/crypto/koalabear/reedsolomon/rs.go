@@ -59,7 +59,10 @@ func scatterBitReversedCoeffs[T any](p []T, n, N int) {
 // RSEncode evalutes p on the N-th roots of unity (N must be > len(p))
 // p is in Lagrange form
 // it returns a copy of p
-func (encoder *Encoder) Encode(p poly.Polynomial, d *fft.Domain) poly.Polynomial {
+// Optional fftOpts are forwarded to both internal FFTs (e.g. to cap inner
+// parallelism with fft.WithNbTasks when Encode is itself called inside a
+// parallel.Execute loop).
+func (encoder *Encoder) Encode(p poly.Polynomial, d *fft.Domain, fftOpts ...fft.Option) poly.Polynomial {
 
 	// get the size of p
 	n := len(p)
@@ -72,9 +75,9 @@ func (encoder *Encoder) Encode(p poly.Polynomial, d *fft.Domain) poly.Polynomial
 	// Lagrange normal to canonical bit-reversed (w.r.t. n). We place those
 	// coefficients directly in N-bit-reversed order and use a DIT FFT, avoiding
 	// the two explicit BitReverse passes previously needed for normal order.
-	d.FFTInverse(_p[:n], fft.DIF)
+	d.FFTInverse(_p[:n], fft.DIF, fftOpts...)
 	scatterBitReversedCoeffs(_p, n, int(N))
-	encoder.Domain.FFT(_p, fft.DIT)
+	encoder.Domain.FFT(_p, fft.DIT, fftOpts...)
 
 	// return _p
 	return _p
@@ -83,17 +86,16 @@ func (encoder *Encoder) Encode(p poly.Polynomial, d *fft.Domain) poly.Polynomial
 // EncodeExt evaluates an extension-field polynomial on the encoder domain.
 // The input p is in Lagrange normal form over d; the output is a fresh
 // extension polynomial in Lagrange normal form over encoder.Domain.
-func (encoder *Encoder) EncodeExt(p poly.ExtPolynomial, d *fft.Domain) poly.ExtPolynomial {
+func (encoder *Encoder) EncodeExt(p poly.ExtPolynomial, d *fft.Domain, fftOpts ...fft.Option) poly.ExtPolynomial {
 	n := len(p)
 
 	N := encoder.Domain.Cardinality
 	_p := make(poly.ExtPolynomial, N)
 	copy(_p, p)
 
-	// d.FFTInverseExt(_p[:n], fft.DIF)
-	d.FFTInverseExt6(_p[:n], fft.DIF)
+	d.FFTInverseExt6(_p[:n], fft.DIF, fftOpts...)
 	scatterBitReversedCoeffs(_p, n, int(N))
-	encoder.Domain.FFTExt6(_p, fft.DIT)
+	encoder.Domain.FFTExt6(_p, fft.DIT, fftOpts...)
 
 	return _p
 }

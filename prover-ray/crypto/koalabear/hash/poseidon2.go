@@ -182,6 +182,8 @@ func (ph *Poseidon2SpongeHasher) WriteExt(elmts ...ext.E6) {
 		ph.writeElement(elmt.B0.A1)
 		ph.writeElement(elmt.B1.A0)
 		ph.writeElement(elmt.B1.A1)
+		ph.writeElement(elmt.B2.A0)
+		ph.writeElement(elmt.B2.A1)
 	}
 }
 
@@ -362,6 +364,62 @@ func (ph *Poseidon2SpongeBatch16) digest() [Poseidon2SpongeBatchSize]Digest {
 	for lane := range res {
 		for i := range res[lane] {
 			res[lane][i].Set(&ph.state[i][lane])
+		}
+	}
+	return res
+}
+
+// Poseidon2NodeCompress is a one-permutation Merkle node hasher using the
+// width-24 sponge permutation. Layout:
+//
+//	state[0]      = nodeDomainTag (capacity, for domain separation from leaves)
+//	state[1..7]   = 0             (rest of capacity)
+//	state[8..15]  = left[0..7]    (rate, low half)
+//	state[16..23] = right[0..7]   (rate, high half)
+//
+// One Permutation, then the digest is the first DIGEST_NB_ELEMENTS (=8)
+// state slots.
+//
+// This replaces the previous MD-style width-16 hasher (two permutations per
+// node, no SIMD path). One permutation per node is enough for collision
+// resistance because the input fits in a single rate-16 block.
+func Poseidon2NodeCompress(nodeDomainTag uint64, left, right Digest) Digest {
+	var state [SPONGE_WIDTH]koalabear.Element
+	state[0].SetUint64(nodeDomainTag)
+	for i := range left {
+		state[8+i].Set(&left[i])
+		state[16+i].Set(&right[i])
+	}
+	if err := defaultPoseidon2SpongePerm.Permutation(state[:]); err != nil {
+		panic(err)
+	}
+	var res Digest
+	copy(res[:], state[:DIGEST_NB_ELEMENTS])
+	return res
+}
+
+// Poseidon2NodeCompressBatch16 compresses 16 (left, right) pairs in parallel
+// via the 16-lane batched sponge permutation (permutation16x24). Lanes are
+// independent. Same layout as Poseidon2NodeCompress in each lane.
+func Poseidon2NodeCompressBatch16(nodeDomainTag uint64, left, right *[Poseidon2SpongeBatchSize]Digest) [Poseidon2SpongeBatchSize]Digest {
+	var state [SPONGE_WIDTH][Poseidon2SpongeBatchSize]koalabear.Element
+	var tag koalabear.Element
+	tag.SetUint64(nodeDomainTag)
+	for lane := 0; lane < Poseidon2SpongeBatchSize; lane++ {
+		state[0][lane].Set(&tag)
+	}
+	for lane := 0; lane < Poseidon2SpongeBatchSize; lane++ {
+		for i := 0; i < DIGEST_NB_ELEMENTS; i++ {
+			state[8+i][lane].Set(&left[lane][i])
+			state[16+i][lane].Set(&right[lane][i])
+		}
+	}
+	defaultPoseidon2SpongePerm.Permutation16x24(&state)
+
+	var res [Poseidon2SpongeBatchSize]Digest
+	for lane := range res {
+		for i := range res[lane] {
+			res[lane][i].Set(&state[i][lane])
 		}
 	}
 	return res

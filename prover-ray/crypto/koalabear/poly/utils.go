@@ -183,9 +183,21 @@ func ExtEvaluateOnExtendedDomainRoot(p ExtPolynomial, d *fft.Domain, bigD *fft.D
 	return ExtEvaluateLagrangeWithWeights(p, weights)
 }
 
-// nextPowerOfTwo is an alias for NextPowerOfTwo for internal use
-func nextPowerOfTwo(n int) int {
-	return NextPowerOfTwo(n)
+// PowUint64 returns base^exp in koalabear via binary exponentiation.
+// Used to seed per-chunk accumulators when parallelizing loops that
+// otherwise carry a serial multiplicative dependency (a_{i+1} = a_i · g).
+func PowUint64(base koalabear.Element, exp uint64) koalabear.Element {
+	var res koalabear.Element
+	res.SetOne()
+	b := base
+	for exp != 0 {
+		if exp&1 == 1 {
+			res.Mul(&res, &b)
+		}
+		b.Mul(&b, &b)
+		exp >>= 1
+	}
+	return res
 }
 
 func EvalXnMinusOneOnCoset(n, N int) []koalabear.Element {

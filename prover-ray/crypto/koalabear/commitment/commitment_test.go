@@ -206,6 +206,28 @@ func TestPoseidon2BatchLeafHasherMatchesScalarLeaves(t *testing.T) {
 	}
 }
 
+func TestPoseidon2BatchNodeHasherMatchesScalarHash(t *testing.T) {
+	const n = hash.Poseidon2SpongeBatchSize
+	left := make([]hash.Digest, n)
+	right := make([]hash.Digest, n)
+	for i := 0; i < n; i++ {
+		for j := 0; j < len(left[i]); j++ {
+			left[i][j].SetUint64(uint64(0xabcd0000 + i*16 + j))
+			right[i][j].SetUint64(uint64(0xdcba0000 + i*16 + j))
+		}
+	}
+
+	got := make([]hash.Digest, n)
+	DefaultNodeHasher.HashNodes(got, left, right)
+
+	for i := 0; i < n; i++ {
+		want := DefaultNodeHasher.HashNode(left[i], right[i])
+		if got[i] != want {
+			t.Fatalf("pair %d: batched node digest differs from scalar digest:\n got  %v\n want %v", i, got[i], want)
+		}
+	}
+}
+
 func TestRSCommitEmptyRails(t *testing.T) {
 	basePolys := []poly.Polynomial{
 		{baseElement(1), baseElement(2), baseElement(3), baseElement(4)},
@@ -291,12 +313,18 @@ func baseElement(v uint64) koalabear.Element {
 	return e
 }
 
-func extElement(a0, a1, b0, b1 uint64) ext.E6 {
+func extElement(a0, a1, b0, b1 uint64, b2 ...uint64) ext.E6 {
 	var e ext.E6
 	e.B0.A0.SetUint64(a0)
 	e.B0.A1.SetUint64(a1)
 	e.B1.A0.SetUint64(b0)
 	e.B1.A1.SetUint64(b1)
+	if len(b2) > 0 {
+		e.B2.A0.SetUint64(b2[0])
+	}
+	if len(b2) > 1 {
+		e.B2.A1.SetUint64(b2[1])
+	}
 	return e
 }
 

@@ -58,9 +58,9 @@ func TestPoseidon2MDHasherChunkingInvariant(t *testing.T) {
 
 func TestPoseidon2MDHasherWriteExtMatchesCoordinates(t *testing.T) {
 	input := []ext.E6{
-		testExt(1, 2, 3, 4),
-		testExt(5, 6, 7, 8),
-		testExt(9, 10, 11, 12),
+		testExt(1, 2, 3, 4, 5, 6),
+		testExt(7, 8, 9, 10, 11, 12),
+		testExt(13, 14, 15, 16, 17, 18),
 	}
 
 	withExt := NewPoseidon2MDHasher()
@@ -68,7 +68,7 @@ func TestPoseidon2MDHasherWriteExtMatchesCoordinates(t *testing.T) {
 
 	withElements := NewPoseidon2MDHasher()
 	for _, e := range input {
-		withElements.WriteElements(e.B0.A0, e.B0.A1, e.B1.A0, e.B1.A1)
+		withElements.WriteElements(ExtToElements(e)...)
 	}
 
 	if got, want := withExt.Sum(), withElements.Sum(); got != want {
@@ -143,9 +143,9 @@ func TestPoseidon2SpongeHasherChunkingInvariant(t *testing.T) {
 
 func TestPoseidon2SpongeHasherWriteExtMatchesCoordinates(t *testing.T) {
 	input := []ext.E6{
-		testExt(1, 2, 3, 4),
-		testExt(5, 6, 7, 8),
-		testExt(9, 10, 11, 12),
+		testExt(1, 2, 3, 4, 5, 6),
+		testExt(7, 8, 9, 10, 11, 12),
+		testExt(13, 14, 15, 16, 17, 18),
 	}
 
 	withExt := NewPoseidon2SpongeHasher()
@@ -153,7 +153,7 @@ func TestPoseidon2SpongeHasherWriteExtMatchesCoordinates(t *testing.T) {
 
 	withElements := NewPoseidon2SpongeHasher()
 	for _, e := range input {
-		withElements.WriteElements(e.B0.A0, e.B0.A1, e.B1.A0, e.B1.A1)
+		withElements.WriteElements(ExtToElements(e)...)
 	}
 
 	if got, want := withExt.Sum(), withElements.Sum(); got != want {
@@ -208,7 +208,7 @@ func TestPoseidon2SpongeBatch16WriteExtMatchesScalar(t *testing.T) {
 	var exts [Poseidon2SpongeBatchSize]ext.E6
 	for lane := 0; lane < Poseidon2SpongeBatchSize; lane++ {
 		v := uint64((lane + 1) * 10)
-		exts[lane] = testExt(v+1, v+2, v+3, v+4)
+		exts[lane] = testExt(v+1, v+2, v+3, v+4, v+5, v+6)
 	}
 
 	batchHasher := NewPoseidon2SpongeBatch16()
@@ -228,8 +228,8 @@ func TestPoseidon2SpongeBatch16WriteExtMatchesScalar(t *testing.T) {
 
 func TestSHA256FieldHasherWriteExtMatchesCoordinates(t *testing.T) {
 	input := []ext.E6{
-		testExt(1, 2, 3, 4),
-		testExt(5, 6, 7, 8),
+		testExt(1, 2, 3, 4, 5, 6),
+		testExt(7, 8, 9, 10, 11, 12),
 	}
 
 	withExt := NewSHA256FieldHasher()
@@ -237,7 +237,7 @@ func TestSHA256FieldHasherWriteExtMatchesCoordinates(t *testing.T) {
 
 	withElements := NewSHA256FieldHasher()
 	for _, e := range input {
-		withElements.WriteElements(e.B0.A0, e.B0.A1, e.B1.A0, e.B1.A1)
+		withElements.WriteElements(ExtToElements(e)...)
 	}
 
 	if got, want := withExt.Sum(), withElements.Sum(); got != want {
@@ -379,11 +379,17 @@ func testElements(n int) []koalabear.Element {
 	return res
 }
 
-func testExt(a0, a1, b0, b1 uint64) ext.E6 {
+func testExt(a0, a1, b0, b1 uint64, b2 ...uint64) ext.E6 {
 	var e ext.E6
 	e.B0.A0.SetUint64(a0)
 	e.B0.A1.SetUint64(a1)
 	e.B1.A0.SetUint64(b0)
 	e.B1.A1.SetUint64(b1)
+	if len(b2) > 0 {
+		e.B2.A0.SetUint64(b2[0])
+	}
+	if len(b2) > 1 {
+		e.B2.A1.SetUint64(b2[1])
+	}
 	return e
 }
