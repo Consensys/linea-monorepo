@@ -14,8 +14,8 @@
 // on-disk `.all` layout consumed by the blake_accepts_to_in_bytes helper and
 // the blake-rust-json Makefile target. That layout is the canonical
 // EIP-152 buffer (rounds BE, then h/m/t little-endian, then f, then h_out
-// little-endian) byte-reversed end-to-end: BLAKE_ELF2JSON reverses these
-// bytes again before they reach guest RAM, so the guest sees the canonical
+// little-endian) byte-reversed end-to-end: the ELF-to-JSON helper reverses
+// these bytes again before they reach guest RAM, so the guest sees the canonical
 // EIP-152 order at run time (see rust/src/blake/blake_with_in_bytes.rs).
 //
 // Field order in the emitted hex (reading left-to-right, byte offsets 0..276):

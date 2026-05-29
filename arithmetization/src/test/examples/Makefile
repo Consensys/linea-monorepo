@@ -3,7 +3,7 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-exec blake-rust-build blake-rust-json blake-rust-exec keccak-rust-build keccak-rust-json keccak-rust-exec build-act4 run-act4 require-test require-src require-bin-ext require-vector-file
+.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-build vector-json vector-exec blake-rust-build blake-rust-json blake-rust-exec keccak-rust-build keccak-rust-json keccak-rust-exec build-act4 run-act4 require-test require-src require-bin-ext require-vector-accepts require-vector-json-tools
 
 # Keep validation, build, and execution targets running in order
 .NOTPARALLEL:
@@ -27,8 +27,17 @@ TEST ?=
 BIN_EXT  ?=
 JSON_EXT ?= $(BIN_EXT).json
 
-# File containing one IN_BYTES value per line for vector-exec
-VECTOR_FILE ?=
+# Generic vector test inputs. `VECTOR_JSON_MODE` is `dir` for one JSON per vector
+# or `single` for one batched JSON.
+VECTOR_ACCEPTS              ?=
+VECTOR_N_VECTORS            ?= 0
+VECTOR_JSON_MODE            ?= dir
+VECTOR_JSON                 ?= $(JSON)
+VECTOR_JSON_DIR             ?= $(dir $(JSON))vector_json
+VECTOR_IN_BYTES             ?= $(BIN).in_bytes.all
+VECTOR_ELF2JSON             ?= $(BIN)_elf2json
+VECTOR_ACCEPTS_TO_IN_BYTES  ?=
+VECTOR_ACCEPTS2IN_BYTES     ?= $(BIN)_accepts2inbytes
 
 # If TEST=src_optional_subfolder/your_test(.s|.zig|.rs), the variables below are set as follows:
 # src_optional_subfolder/your_test
@@ -54,9 +63,6 @@ JSON := $(BIN).json
 
 # Inputs and offsets for the program
 IN_BYTES        ?= ""
-
-# Keccak guest: compile-time vector count
-KECCAK_N_VECTORS ?= 10
 
 # Values to generate the linker script
 # 128 MiB (0x00000000 -> 0x07FFFFFF)
@@ -139,25 +145,14 @@ compile: require-src linker-script
 		zig build --build-file $(MAKEFILE_DIR)zig/build.zig -Dpath=$(BASENAME); \
 	elif [ "$(EXT)" = ".rs" ]; then \
 		echo "\nGenerating $(BIN) from $(SRC)"; \
-		if [ "$(NAME)" = "keccak" ]; then \
-			env KECCAK_N_VECTORS="$(KECCAK_N_VECTORS)" cargo +nightly rustc \
-				--manifest-path $(MAKEFILE_DIR)rust/Cargo.toml \
-				--target $(MAKEFILE_DIR)rust/riscv64im-unknown-none-elf.json \
-				-Z build-std=core \
-				-Z json-target-spec \
-				--bin $(NAME) \
-				--release \
-				-- -C link-arg=-T$(LINKER_SCRIPT); \
-		else \
-			cargo +nightly rustc \
-				--manifest-path $(MAKEFILE_DIR)rust/Cargo.toml \
-				--target $(MAKEFILE_DIR)rust/riscv64im-unknown-none-elf.json \
-				-Z build-std=core \
-				-Z json-target-spec \
-				--bin $(NAME) \
-				--release \
-				-- -C link-arg=-T$(LINKER_SCRIPT); \
-		fi; \
+		cargo +nightly rustc \
+			--manifest-path $(MAKEFILE_DIR)rust/Cargo.toml \
+			--target $(MAKEFILE_DIR)rust/riscv64im-unknown-none-elf.json \
+			-Z build-std=core \
+			-Z json-target-spec \
+			--bin $(NAME) \
+			--release \
+			-- -C link-arg=-T$(LINKER_SCRIPT); \
 	else \
 		echo "Unsupported file extension: $(EXT)"; \
 		exit 1; \
@@ -197,7 +192,7 @@ zkc-debug: require-test install-zkc
 	zkc debug $(JSON) $(ZKC_MAIN)
 
 clean: require-test
-	rm -f $(BIN) $(JSON) $(BIN).objdump $(BIN)_elf2json $(LINKER_SCRIPT)
+	rm -f $(BIN) $(JSON) $(BIN).objdump $(VECTOR_ELF2JSON) $(VECTOR_ACCEPTS2IN_BYTES) $(VECTOR_IN_BYTES) $(LINKER_SCRIPT)
 
 clean-all:
 	rm -rf $(MAKEFILE_DIR)asm/bin/
@@ -263,33 +258,113 @@ verify-elf: require-test
 	@echo "  SP:              $(SP) (expected) = $(SP_FROM_ELF) (from ELF)"
 	@echo "All values match\n"
 
-vector-exec: require-src require-vector-file install-zkc
+vector-build: require-src
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=$(TEST)
-	@echo "building $(BIN)_elf2json..."; \
-	go build -o $(BIN)_elf2json $(GO_MAIN) || exit $$?; \
-	echo "$(BIN)_elf2json built"; \
-	pass=0; fail=0; \
-	i=0; while IFS= read -r in_bytes; do \
-		i=$$((i + 1)); \
-		$(BIN)_elf2json $(BIN) "$$in_bytes" $(IN_BYTES_OFFSET) > $(JSON) || exit $$?; \
-		echo "RUN   case $$i"; \
-		exit_line=$$(zkc exec $(JSON) $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
-		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
-			echo "PASS  case $$i"; \
-			echo "  $$exit_line"; \
-			pass=$$((pass + 1)); \
-		else \
-			echo "FAIL  case $$i"; \
-			echo "  $$exit_line"; \
-			fail=$$((fail + 1)); \
-		fi; \
-	done < $(VECTOR_FILE); \
-	echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
-	if [ "$$fail" -ne 0 ]; then echo "error: $$fail vector(s) failed" >&2; exit 1; fi
+	@echo "building $(VECTOR_ELF2JSON)..."
+	go build -o $(VECTOR_ELF2JSON) $(GO_MAIN)
+	@if [ -n "$(VECTOR_ACCEPTS_TO_IN_BYTES)" ]; then \
+		echo "building $(VECTOR_ACCEPTS2IN_BYTES)..."; \
+		go build -o $(VECTOR_ACCEPTS2IN_BYTES) $(VECTOR_ACCEPTS_TO_IN_BYTES); \
+	fi
 
-# Run test vector with 10 cases from `rust/src/blake/blake10.all`
-#blake-rust-exec:
-#	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec TEST=blake/blake_with_in_bytes.rs VECTOR_FILE=$(MAKEFILE_DIR)rust/src/blake/blake10.all
+vector-json: require-src require-vector-accepts require-vector-json-tools
+	@echo "selecting vectors from $(VECTOR_ACCEPTS) (N=$(VECTOR_N_VECTORS), 0=all if supported)"
+	$(VECTOR_ACCEPTS2IN_BYTES) "$(VECTOR_ACCEPTS)" $(VECTOR_N_VECTORS) > $(VECTOR_IN_BYTES)
+	@if [ "$(VECTOR_JSON_MODE)" = "single" ]; then \
+		echo "rendering ZKC JSON to $(VECTOR_JSON)"; \
+		$(VECTOR_ELF2JSON) $(BIN) @$(VECTOR_IN_BYTES) $(IN_BYTES_OFFSET) > $(VECTOR_JSON) || exit $$?; \
+	elif [ "$(VECTOR_JSON_MODE)" = "dir" ]; then \
+		mkdir -p $(VECTOR_JSON_DIR); \
+		rm -f $(VECTOR_JSON_DIR)/*.json; \
+		echo "rendering one ZKC JSON per vector under $(VECTOR_JSON_DIR)"; \
+		n=0; while IFS= read -r in_bytes; do \
+			n=$$((n + 1)); idx=$$(printf '%03d' $$n); \
+			$(VECTOR_ELF2JSON) $(BIN) "$$in_bytes" $(IN_BYTES_OFFSET) > "$(VECTOR_JSON_DIR)/$$idx.json" || exit $$?; \
+		done < $(VECTOR_IN_BYTES); \
+		echo "generated $$n vector JSON(s) in $(VECTOR_JSON_DIR)"; \
+	else \
+		echo "error: VECTOR_JSON_MODE must be single or dir"; \
+		exit 2; \
+	fi
+
+vector-exec: install-zkc
+	@if [ "$(VECTOR_JSON_MODE)" = "single" ]; then \
+		exit_line=$$(zkc exec $(VECTOR_JSON) $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
+		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
+			echo "PASS  $(VECTOR_JSON)"; \
+			echo "  $$exit_line"; \
+		else \
+			echo "FAIL  $(VECTOR_JSON)"; \
+			echo "  $$exit_line"; \
+			exit 1; \
+		fi; \
+	elif [ "$(VECTOR_JSON_MODE)" = "dir" ]; then \
+		pass=0; fail=0; i=0; \
+		for json in $(VECTOR_JSON_DIR)/*.json; do \
+			[ -f "$$json" ] || { echo "error: no vector JSONs found in $(VECTOR_JSON_DIR)" >&2; exit 1; }; \
+			i=$$((i + 1)); \
+			echo "RUN   case $$i  ($$json)"; \
+			exit_line=$$(zkc exec "$$json" $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
+			if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
+				echo "PASS  case $$i"; \
+				echo "  $$exit_line"; \
+				pass=$$((pass + 1)); \
+			else \
+				echo "FAIL  case $$i"; \
+				echo "  $$exit_line"; \
+				fail=$$((fail + 1)); \
+			fi; \
+		done; \
+		echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
+		if [ "$$fail" -ne 0 ]; then echo "error: $$fail vector(s) failed" >&2; exit 1; fi; \
+	else \
+		echo "error: VECTOR_JSON_MODE must be single or dir"; \
+		exit 2; \
+	fi
+
+# Keccak wrappers keep the benchmark workflow variables while delegating to the generic vector targets.
+KECCAK_ACCEPTS     ?= $(MAKEFILE_DIR)rust/src/keccak/keccak.accepts
+KECCAK_N_VECTORS   ?= 10
+KECCAK_JSON        ?= $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/keccak.json
+
+keccak-rust-build:
+	cargo clean -p riscv-tests --manifest-path $(MAKEFILE_DIR)rust/Cargo.toml
+	KECCAK_N_VECTORS=$(KECCAK_N_VECTORS) $(MAKE) -f $(MAKEFILE_DIR)Makefile vector-build \
+		TEST=keccak/keccak.rs \
+		IN_BYTES=0x00 \
+		VECTOR_ACCEPTS_TO_IN_BYTES=$(MAKEFILE_DIR)scripts/keccak_accepts_to_in_bytes/main.go
+
+keccak-rust-json: keccak-rust-build
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-json \
+		TEST=keccak/keccak.rs \
+		VECTOR_ACCEPTS=$(KECCAK_ACCEPTS) \
+		VECTOR_N_VECTORS=$(KECCAK_N_VECTORS) \
+		VECTOR_JSON_MODE=single \
+		VECTOR_JSON=$(KECCAK_JSON)
+
+keccak-rust-exec: keccak-rust-json
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec VECTOR_JSON_MODE=single VECTOR_JSON=$(KECCAK_JSON)
+
+# Blake wrappers keep the benchmark workflow variables while delegating to the generic vector targets.
+BLAKE_ACCEPTS      ?= $(MAKEFILE_DIR)rust/src/blake/blake10.all
+BLAKE_N_VECTORS    ?= 0
+BLAKE_JSON_DIR     ?= $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_json
+
+blake-rust-build:
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-build \
+		TEST=blake/blake_with_in_bytes.rs \
+		VECTOR_ACCEPTS_TO_IN_BYTES=$(MAKEFILE_DIR)scripts/blake_accepts_to_in_bytes/main.go
+
+blake-rust-json: blake-rust-build
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-json \
+		TEST=blake/blake_with_in_bytes.rs \
+		VECTOR_ACCEPTS=$(BLAKE_ACCEPTS) \
+		VECTOR_N_VECTORS=$(BLAKE_N_VECTORS) \
+		VECTOR_JSON_MODE=dir \
+		VECTOR_JSON_DIR=$(BLAKE_JSON_DIR)
+
+blake-rust-exec: blake-rust-json
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec VECTOR_JSON_MODE=dir VECTOR_JSON_DIR=$(BLAKE_JSON_DIR)
 
 # Build the ACT4 self-checking ELFs with the Linea ACT4 config 
 # Note: build if needed
@@ -387,115 +462,10 @@ require-bin-ext:
 	@[ -n "$(BIN_EXT)" ] || { echo "BIN_EXT is mandatory. Usage: make BIN_EXT=path/to/your_bin"; exit 1; }
 	@[ -f $(BIN_EXT) ] || { echo "BIN_EXT file not found: $(BIN_EXT)"; exit 1; }
 
-require-vector-file:
-	@[ -n "$(VECTOR_FILE)" ] || { echo "VECTOR_FILE is mandatory. Usage: make vector-exec TEST=src_optional_subfolder/your_test(.s|.zig|.rs) VECTOR_FILE=path/to/vectors.all"; exit 1; }
-	@[ -f $(VECTOR_FILE) ] || { echo "VECTOR_FILE file not found: $(VECTOR_FILE)"; exit 1; }
+require-vector-accepts:
+	@[ -n "$(VECTOR_ACCEPTS)" ] || { echo "VECTOR_ACCEPTS is mandatory. Usage: make vector-json TEST=src_optional_subfolder/your_test(.s|.zig|.rs) VECTOR_ACCEPTS=path/to/vectors"; exit 1; }
+	@[ -f $(VECTOR_ACCEPTS) ] || { echo "VECTOR_ACCEPTS file not found: $(VECTOR_ACCEPTS)"; exit 1; }
 
-
-
-
-
-
-
-
-
-
-
-
-######################################################
-# Targets to generalize
-######################################################
-
-######################################################
-# Keccak (Rust guest) — split build/json/exec for reuse from CI benchmarks.
-#
-# `keccak-rust-build` — ELF + helper binaries (no zkc dependency).
-# `keccak-rust-json`  — pack first KECCAK_N_VECTORS vectors of KECCAK_ACCEPTS into
-#                       a single batched IN_BYTES blob, then render the ZKC JSON
-#                       at KECCAK_JSON. No zkc dependency.
-# `keccak-rust-exec`  — depends on keccak-rust-json + install-zkc; runs
-#                       `zkc exec` on the produced JSON.
-######################################################
-KECCAK_ACCEPTS      ?= $(MAKEFILE_DIR)rust/src/keccak/keccak.accepts
-
-KECCAK_ELF          := $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/keccak
-KECCAK_JSON         ?= $(KECCAK_ELF).json
-KECCAK_ELF2JSON     := $(MAKEFILE_DIR)rust/target/keccak_elf2json
-KECCAK_ACCEPTS2HEX  := $(MAKEFILE_DIR)rust/target/keccak_accepts2hex
-KECCAK_IN_BYTES_HEX := /tmp/keccak_in_bytes.hex
-
-keccak-rust-build:
-	cargo clean -p riscv-tests --manifest-path $(MAKEFILE_DIR)rust/Cargo.toml
-	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=keccak/keccak.rs IN_BYTES=0x00 KECCAK_N_VECTORS=$(KECCAK_N_VECTORS)
-	@echo "building keccak_elf2json..."
-	go build -o $(KECCAK_ELF2JSON) $(GO_MAIN)
-	@echo "building keccak_accepts2hex..."
-	go build -o $(KECCAK_ACCEPTS2HEX) $(MAKEFILE_DIR)scripts/keccak_accepts_to_in_bytes/main.go
-
-keccak-rust-json: keccak-rust-build
-	@echo "packing first $(KECCAK_N_VECTORS) vector(s) from $(KECCAK_ACCEPTS) into $(KECCAK_IN_BYTES_HEX)"
-	$(KECCAK_ACCEPTS2HEX) "$(KECCAK_ACCEPTS)" $(KECCAK_N_VECTORS) > $(KECCAK_IN_BYTES_HEX)
-	@echo "rendering ZKC JSON to $(KECCAK_JSON)"
-	$(KECCAK_ELF2JSON) $(KECCAK_ELF) @$(KECCAK_IN_BYTES_HEX) $(IN_BYTES_OFFSET) > $(KECCAK_JSON)
-
-keccak-rust-exec: install-zkc keccak-rust-json
-	zkc exec -q $(KECCAK_JSON) $(ZKC_MAIN)
-
-######################################################
-# Blake (Rust guest) — split build/json/exec mirroring Keccak's structure.
-#
-# `blake-rust-build` — ELF + helper binaries (no zkc dependency).
-# `blake-rust-json`  — select first BLAKE_N_VECTORS lines of BLAKE_ACCEPTS (0 =
-#                      all lines) and render one ZKC JSON per vector under
-#                      BLAKE_JSON_DIR. No zkc dependency.
-# `blake-rust-exec`  — depends on blake-rust-json + install-zkc; loops over the
-#                      produced JSONs and runs `zkc exec` with PASS/FAIL
-#                      accounting (preserves the prior behaviour).
-#
-# Defaults preserve the current `arithmetization-sample-guest-programs-run.yml`
-# workflow (BLAKE_ACCEPTS=blake10.all + BLAKE_N_VECTORS=0 -> all 10 vectors).
-######################################################
-BLAKE_ACCEPTS       ?= $(MAKEFILE_DIR)rust/src/blake/blake10.all
-BLAKE_N_VECTORS     ?= 0
-
-BLAKE_ELF           := $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_with_in_bytes
-BLAKE_JSON_DIR      ?= $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_json
-BLAKE_ELF2JSON      := $(MAKEFILE_DIR)rust/target/blake_elf2json
-BLAKE_ACCEPTS2HEX   := $(MAKEFILE_DIR)rust/target/blake_accepts2hex
-BLAKE_IN_BYTES_ALL  := /tmp/blake_in_bytes.all
-
-blake-rust-build:
-	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=blake/blake_with_in_bytes.rs
-	@echo "building blake_elf2json..."
-	go build -o $(BLAKE_ELF2JSON) $(GO_MAIN)
-	@echo "building blake_accepts2hex..."
-	go build -o $(BLAKE_ACCEPTS2HEX) $(MAKEFILE_DIR)scripts/blake_accepts_to_in_bytes/main.go
-
-blake-rust-json: blake-rust-build
-	@echo "selecting vectors from $(BLAKE_ACCEPTS) (N=$(BLAKE_N_VECTORS), 0=all)"
-	$(BLAKE_ACCEPTS2HEX) "$(BLAKE_ACCEPTS)" $(BLAKE_N_VECTORS) > $(BLAKE_IN_BYTES_ALL)
-	@mkdir -p $(BLAKE_JSON_DIR)
-	@rm -f $(BLAKE_JSON_DIR)/*.json
-	@echo "rendering one ZKC JSON per vector under $(BLAKE_JSON_DIR)"
-	@n=0; while IFS= read -r in_bytes; do \
-		n=$$((n + 1)); idx=$$(printf '%03d' $$n); \
-		$(BLAKE_ELF2JSON) $(BLAKE_ELF) "$$in_bytes" $(IN_BYTES_OFFSET) \
-			> "$(BLAKE_JSON_DIR)/$$idx.json" || exit $$?; \
-	done < $(BLAKE_IN_BYTES_ALL); \
-	echo "generated $$n Blake JSON(s) in $(BLAKE_JSON_DIR)"
-
-blake-rust-exec: install-zkc blake-rust-json
-	@pass=0; fail=0; i=0; \
-	for json in $(BLAKE_JSON_DIR)/*.json; do \
-		i=$$((i + 1)); \
-		echo "RUN   case $$i  ($$json)"; \
-		if zkc exec -q "$$json" $(ZKC_MAIN) >/dev/null 2>&1; then \
-			echo "PASS  case $$i"; \
-			pass=$$((pass + 1)); \
-		else \
-			echo "FAIL  case $$i (zkc exec exited non-zero; rerun without -q for the panic message)"; \
-			fail=$$((fail + 1)); \
-		fi; \
-	done; \
-	echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
-	if [ "$$fail" -ne 0 ]; then echo "error: $$fail vector(s) failed" >&2; exit 1; fi
+require-vector-json-tools:
+	@[ -x $(VECTOR_ELF2JSON) ] || { echo "VECTOR_ELF2JSON not found or not executable: $(VECTOR_ELF2JSON). Run vector-build first"; exit 1; }
+	@[ -x $(VECTOR_ACCEPTS2IN_BYTES) ] || { echo "VECTOR_ACCEPTS2IN_BYTES not found or not executable: $(VECTOR_ACCEPTS2IN_BYTES). Run vector-build first"; exit 1; }
