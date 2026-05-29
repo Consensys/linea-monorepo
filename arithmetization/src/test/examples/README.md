@@ -191,35 +191,35 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 
 ## Options
 
-| Variable                     | Default                                                        | Description                                                                                        |
-|------------------------------|----------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
-| `TEST`                       | `""`                                                           | Source file path with extension, relative to the corresponding `src/` folder                       |
-| `BIN_EXT`                    | `""`                                                           | Already compiled ELF used by `elf-to-json` and `exec-elf`                                          |
-| `JSON_EXT`                   | `$(BIN_EXT).json`                                              | JSON output path used by `elf-to-json` and `exec-elf`                                              |
-| `VECTOR_FILE`                | `""`                                                           | `.all` vector file consumed by `vector-json`; one `IN_BYTES` per line                              |
-| `VECTOR_N_VECTORS`           | `""`                                                           | Number of vectors selected by `vector-json`; `-1` means all vectors                                |
-| `VECTOR_JSON_MODE`           | `per-vector`                                                   | `per-vector` for one JSON per vector, `batched` for one JSON with selected vectors concatenated    |
-| `VECTOR_JSON_FILE`           | `$(JSON)`                                                      | Batched JSON path used when `VECTOR_JSON_MODE=batched`                                             |
-| `VECTOR_JSON_DIR`            | `$(dir $(JSON))vector_json`                                    | JSON directory used when `VECTOR_JSON_MODE=per-vector`                                             |
+| Variable                     | Default                                                        | Description                                                                                                  |
+|------------------------------|----------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| `TEST`                       | `""`                                                           | Source file path with extension, relative to the corresponding `src/` folder                                 |
+| `BIN_EXT`                    | `""`                                                           | Already compiled ELF used by `elf-to-json` and `exec-elf`                                                    |
+| `JSON_EXT`                   | `$(BIN_EXT).json`                                              | JSON output path used by `elf-to-json` and `exec-elf`                                                        |
+| `VECTOR_FILE`                | `""`                                                           | `.all` vector file consumed by `vector-json`; one `IN_BYTES` per line                                        |
+| `VECTOR_N_VECTORS`           | `""`                                                           | Number of vectors selected by `vector-json`; `-1` means all vectors                                          |
+| `VECTOR_JSON_MODE`           | `per-vector`                                                   | `per-vector` for one JSON per vector, `batched` for one JSON with selected vectors concatenated              |
+| `VECTOR_JSON_FILE`           | `$(JSON)`                                                      | Batched JSON path used when `VECTOR_JSON_MODE=batched`                                                       |
+| `VECTOR_JSON_DIR`            | `$(dir $(JSON))vector_json`                                    | JSON directory used when `VECTOR_JSON_MODE=per-vector`                                                       |
 | `VECTOR_SUBSET_FILE`         | `$(BIN).all`                                                   | Intermediate `.all` file selected from `VECTOR_FILE`; one line per vector, or one blob including all vectors |
-| `VECTOR_ELF_TO_JSON_BIN`     | `$(BIN)_elf2json`                                              | Compiled ELF-to-JSON helper used by vector targets                                                 |
-| `IN_BYTES`                   | `""`                                                           | Hex big-endian input written in RAM at `IN_BYTES_OFFSET` as little-endian bytes before execution   |
-| `PROGRAM_OFFSET`             | `0x00000000`                                                   | Program address used by this Makefile's generated linker script (up to 128 MiB)                    |
-| `IN_BYTES_OFFSET`            | `0x08800000`                                                   | Memory address where input bytes are written (up to 1 GiB)                                         |
-| `SP`                         | `0x08800000`                                                   | Top of the stack region, stack grows downward from this address (8 MiB)                            |
-| `VERIFY_ELF`                 | `false`                                                        | Set to `true` to verify offsets, entry point and sp match the ELF ones                             |
-| `ACT4_BUILD_MODE`            | `host`                                                         | Build ACT4 ELFs with `host` or `docker`                                                            |
-| `ACT4_REF`                   | `9798a554ce4139f472c9ccd3a18c9061d0f7024d`                     | `riscv-arch-test` tag or commit used to build ACT4 ELFs                                            |
-| `ACT4_REPO`                  | `../riscv-arch-test`                                           | Local `riscv-arch-test` checkout used for ACT4 builds                                              |
-| `ACT4_RISCV_DIR`             | `~/riscv`                                                      | Directory where `install-sail` installs `sail_riscv_sim`                                           |
-| `ACT4_FAST`                  | `false`                                                        | Set to `true` to skip ACT4 objdump generation for faster builds                                    |
-| `ACT4_DEBUG`                 | `true`                                                         | Set to `false` to skip ACT4 debug artifacts                                                        |
-| `BLAKE_ALL_FILE`             | `rust/src/blake/blake10.all`                                   | Blake `.all` vector file used by `blake-rust-json`                                                 |
-| `BLAKE_N_VECTORS`            | `-1`                                                           | Number of Blake vectors to generate; `-1` means all vectors                                        |
-| `BLAKE_JSON_DIR`             | `rust/target/riscv64im-unknown-none-elf/release/blake_json`    | Directory where `blake-rust-json` writes per-vector JSON files                                     |
-| `KECCAK_ALL_FILE`            | `rust/src/keccak/keccak.all`                                   | Keccak `.all` vector file used by `keccak-rust-json`                                               |
-| `KECCAK_N_VECTORS`           | `10`                                                           | Number of Keccak vectors compiled into and packed for the Keccak guest; `-1` means all vectors     |
-| `KECCAK_JSON_FILE`           | `rust/target/riscv64im-unknown-none-elf/release/keccak.json`   | JSON path written by `keccak-rust-json`                                                            |
+| `VECTOR_ELF_TO_JSON_BIN`     | `$(BIN)_elf2json`                                              | Compiled ELF-to-JSON helper used by vector targets                                                           |
+| `IN_BYTES`                   | `""`                                                           | Hex big-endian input written in RAM at `IN_BYTES_OFFSET` as little-endian bytes before execution             |
+| `PROGRAM_OFFSET`             | `0x00000000`                                                   | Program address used by this Makefile's generated linker script (up to 128 MiB)                              |
+| `IN_BYTES_OFFSET`            | `0x08800000`                                                   | Memory address where input bytes are written (up to 1 GiB)                                                   |
+| `SP`                         | `0x08800000`                                                   | Top of the stack region, stack grows downward from this address (8 MiB)                                      |
+| `VERIFY_ELF`                 | `false`                                                        | Set to `true` to verify offsets, entry point and sp match the ELF ones                                       |
+| `ACT4_BUILD_MODE`            | `host`                                                         | Build ACT4 ELFs with `host` or `docker`                                                                      |
+| `ACT4_REF`                   | `9798a554ce4139f472c9ccd3a18c9061d0f7024d`                     | `riscv-arch-test` tag or commit used to build ACT4 ELFs                                                      |
+| `ACT4_REPO`                  | `../riscv-arch-test`                                           | Local `riscv-arch-test` checkout used for ACT4 builds                                                        |
+| `ACT4_RISCV_DIR`             | `~/riscv`                                                      | Directory where `install-sail` installs `sail_riscv_sim`                                                     |
+| `ACT4_FAST`                  | `false`                                                        | Set to `true` to skip ACT4 objdump generation for faster builds                                              |
+| `ACT4_DEBUG`                 | `true`                                                         | Set to `false` to skip ACT4 debug artifacts                                                                  |
+| `BLAKE_ALL_FILE`             | `rust/src/blake/blake10.all`                                   | Blake `.all` vector file used by `blake-rust-json`                                                           |
+| `BLAKE_N_VECTORS`            | `-1`                                                           | Number of Blake vectors to generate; `-1` means all vectors                                                  |
+| `BLAKE_JSON_DIR`             | `rust/target/riscv64im-unknown-none-elf/release/blake_json`    | Directory where `blake-rust-json` writes per-vector JSON files                                               |
+| `KECCAK_ALL_FILE`            | `rust/src/keccak/keccak.all`                                   | Keccak `.all` vector file used by `keccak-rust-json`                                                         |
+| `KECCAK_N_VECTORS`           | `10`                                                           | Number of Keccak vectors compiled into and packed for the Keccak guest; `-1` means all vectors               |
+| `KECCAK_JSON_FILE`           | `rust/target/riscv64im-unknown-none-elf/release/keccak.json`   | JSON path written by `keccak-rust-json`                                                                      |
 
 `IN_BYTES` values are expected in big-endian hex format.
 All `.all` vector files contain one big-endian `IN_BYTES` value per line.
