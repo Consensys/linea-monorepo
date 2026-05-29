@@ -106,8 +106,8 @@ Deploy scripts look up `contractKey` first, then `envVarName` when they differ. 
 | `VAULT_HUB` | `VAULT_HUB` | Lido VaultHub proxy (L1) |
 | `VAULT_FACTORY` | `VAULT_FACTORY` | Lido Staking Vault Factory (L1) |
 | `STETH` | `STETH` | Lido stETH token proxy (L1) |
+| `LINEA_TOKEN` | `LINEA_TOKEN` | Linea token for the current chain registry |
 | `LINEA_ROLLUP_OPERATORS` | `LINEA_ROLLUP_OPERATORS` | Comma-delimited L1 operator EOAs |
 | `VALIDIUM_OPERATORS` | `VALIDIUM_OPERATORS` | Comma-delimited Validium operator EOAs |
 
-> **Note:** `PLONKVERIFIER_ADDRESS` rotates with each proof system upgrade. It may appear in exported
-> registry files but deploy scripts treat it as env-var-only validation today.
+> **Note:** `VERIFIER_ADDRESS` rotates with each proof system upgrade.

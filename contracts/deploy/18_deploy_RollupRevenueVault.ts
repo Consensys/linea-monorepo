@@ -7,7 +7,6 @@ import {
   LogContractDeployment,
   getRequiredEnvVar,
   requireAddressFromRegistryOrEnv,
-  validateAddressEnvVar,
 } from "../common/helpers";
 import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
@@ -17,18 +16,42 @@ const func: DeployFunction = withSignerUiSession("18_deploy_RollupRevenueVault.t
 
   const lastInvoiceDate = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_LAST_INVOICE_DATE");
   const securityCouncil = requireAddressFromRegistryOrEnv(network.name, "L2_SECURITY_COUNCIL", "L2_SECURITY_COUNCIL");
-  const invoiceSubmitter = validateAddressEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_SUBMITTER");
-  const burner = validateAddressEnvVar("ROLLUP_REVENUE_VAULT_BURNER");
-  const invoicePaymentReceiver = validateAddressEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_PAYMENT_RECEIVER");
+  const invoiceSubmitter = requireAddressFromRegistryOrEnv(
+    network.name,
+    "ROLLUP_REVENUE_VAULT_INVOICE_SUBMITTER",
+    "ROLLUP_REVENUE_VAULT_INVOICE_SUBMITTER",
+  );
+  const burner = requireAddressFromRegistryOrEnv(
+    network.name,
+    "ROLLUP_REVENUE_VAULT_BURNER",
+    "ROLLUP_REVENUE_VAULT_BURNER",
+  );
+  const invoicePaymentReceiver = requireAddressFromRegistryOrEnv(
+    network.name,
+    "ROLLUP_REVENUE_VAULT_INVOICE_PAYMENT_RECEIVER",
+    "ROLLUP_REVENUE_VAULT_INVOICE_PAYMENT_RECEIVER",
+  );
   const tokenBridge = requireAddressFromRegistryOrEnv(network.name, "TokenBridge_L2", "TOKEN_BRIDGE_ADDRESS");
   const messageService = requireAddressFromRegistryOrEnv(
     network.name,
     "L2MessageService",
     "L2_MESSAGE_SERVICE_ADDRESS",
   );
-  const l1LineaTokenBurner = validateAddressEnvVar("ROLLUP_REVENUE_VAULT_L1_LINEA_TOKEN_BURNER");
-  const lineaToken = validateAddressEnvVar("ROLLUP_REVENUE_VAULT_LINEA_TOKEN");
-  const dexSwapAdapter = validateAddressEnvVar("ROLLUP_REVENUE_VAULT_DEX_SWAP_ADAPTER");
+  const l1LineaTokenBurner = requireAddressFromRegistryOrEnv(
+    network.name,
+    "ROLLUP_REVENUE_VAULT_L1_LINEA_TOKEN_BURNER",
+    "ROLLUP_REVENUE_VAULT_L1_LINEA_TOKEN_BURNER",
+  );
+  const lineaToken = requireAddressFromRegistryOrEnv(
+    network.name,
+    "ROLLUP_REVENUE_VAULT_LINEA_TOKEN",
+    "ROLLUP_REVENUE_VAULT_LINEA_TOKEN",
+  );
+  const dexSwapAdapter = requireAddressFromRegistryOrEnv(
+    network.name,
+    "ROLLUP_REVENUE_VAULT_DEX_SWAP_ADAPTER",
+    "ROLLUP_REVENUE_VAULT_DEX_SWAP_ADAPTER",
+  );
 
   const contract = await deployUpgradableFromFactory(
     contractName,

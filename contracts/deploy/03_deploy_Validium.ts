@@ -15,7 +15,6 @@ import {
   getRequiredEnvVar,
   requireAddressFromRegistryOrEnv,
   requireAddressesFromRegistryOrEnv,
-  validateAddressEnvVar,
   tryVerifyContract,
   LogContractDeployment,
 } from "../common/helpers";
@@ -26,7 +25,7 @@ const func: DeployFunction = withSignerUiSession("03_deploy_Validium.ts", async 
   const contractName = "Validium";
 
   // Validium DEPLOYED AS UPGRADEABLE PROXY
-  const verifierAddress = validateAddressEnvVar("PLONKVERIFIER_ADDRESS");
+  const verifierAddress = requireAddressFromRegistryOrEnv(network.name, "PlonkVerifier", "VERIFIER_ADDRESS");
   const validiumInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
   const validiumInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
   const validiumSecurityCouncil = requireAddressFromRegistryOrEnv(

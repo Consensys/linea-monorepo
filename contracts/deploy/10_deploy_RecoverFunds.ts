@@ -1,12 +1,7 @@
 import { network } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 
-import {
-  tryVerifyContract,
-  requireAddressFromRegistryOrEnv,
-  validateAddressEnvVar,
-  LogContractDeployment,
-} from "../common/helpers";
+import { tryVerifyContract, requireAddressFromRegistryOrEnv, LogContractDeployment } from "../common/helpers";
 import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 
@@ -19,7 +14,11 @@ const func: DeployFunction = withSignerUiSession("10_deploy_RecoverFunds.ts", as
     "L1_SECURITY_COUNCIL",
     "L1_SECURITY_COUNCIL",
   );
-  const RecoverFunds_executorAddress = validateAddressEnvVar("RECOVERFUNDS_EXECUTOR_ADDRESS");
+  const RecoverFunds_executorAddress = requireAddressFromRegistryOrEnv(
+    network.name,
+    "RECOVERFUNDS_EXECUTOR_ADDRESS",
+    "RECOVERFUNDS_EXECUTOR_ADDRESS",
+  );
 
   const contract = await deployUpgradableFromFactory(
     "RecoverFunds",

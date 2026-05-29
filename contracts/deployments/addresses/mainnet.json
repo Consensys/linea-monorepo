@@ -19,11 +19,11 @@
       "address": "0x5Ad9369254F29b724d98F6ce98Cb7bAD729969F3",
       "notes": "L1 Token Burner"
     },
-    "LINEA_TOKEN_BURNER_LINEA_TOKEN": {
+    "LINEA_TOKEN": {
       "address": "0x1789e0043623282D5DCc7F213d703C6D8BAfBB04",
       "notes": "L1 Linea Token"
     },
-    "PLONKVERIFIER_ADDRESS": {
+    "VERIFIER_ADDRESS": {
       "address": "0x41A4d93d09f4718fe899D12A4aD2C8a09104bdc7",
       "notes": "Plonk Verifier Mainnet Full"
     },

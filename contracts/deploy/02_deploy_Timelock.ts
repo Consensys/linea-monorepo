@@ -5,7 +5,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import {
   LogContractDeployment,
   getRequiredEnvVar,
-  validateAddressEnvVar,
+  requireAddressFromRegistryOrEnv,
   tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
@@ -25,7 +25,11 @@ const func: DeployFunction = withSignerUiSession(
     const timelockExecutors = getRequiredEnvVar("TIMELOCK_EXECUTORS");
 
     // This should be the safe
-    const adminAddress = validateAddressEnvVar("TIMELOCK_ADMIN_ADDRESS");
+    const adminAddress = requireAddressFromRegistryOrEnv(
+      hre.network.name,
+      "TIMELOCK_ADMIN_ADDRESS",
+      "TIMELOCK_ADMIN_ADDRESS",
+    );
 
     const minDelay = process.env.MIN_DELAY || 0;
 

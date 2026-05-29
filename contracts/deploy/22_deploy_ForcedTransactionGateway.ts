@@ -6,7 +6,6 @@ import {
   LogContractDeployment,
   getRequiredEnvVar,
   requireAddressFromRegistryOrEnv,
-  validateAddressEnvVar,
   tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
@@ -32,7 +31,11 @@ const func: DeployFunction = withSignerUiSession(
       "AddressFilter",
       "FORCED_TRANSACTION_ADDRESS_FILTER",
     );
-    const mimcLibraryAddress = validateAddressEnvVar("MIMC_LIBRARY_ADDRESS");
+    const mimcLibraryAddress = requireAddressFromRegistryOrEnv(
+      hre.network.name,
+      "MIMC_LIBRARY_ADDRESS",
+      "MIMC_LIBRARY_ADDRESS",
+    );
 
     const factory = await ethers.getContractFactory(contractName, {
       libraries: { Mimc: mimcLibraryAddress },

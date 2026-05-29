@@ -38,7 +38,7 @@
           "notes": "L1 Data Submission Operator EOA"
         }
       ]
-    },    
+    },
     "L1_SECURITY_COUNCIL": {
       "address": "0xCaBfaEE33dF7a94d8FECA5fAfE977DcaB069C91B",
       "notes": "L1 Sepolia Security Council Safe"
@@ -47,7 +47,7 @@
       "address": "0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5",
       "notes": "LineaRollup proxy on Sepolia L1"
     },
-    "PLONKVERIFIER_ADDRESS": {
+    "VERIFIER_ADDRESS": {
       "address": "0x5ca5dBf7Cb8F3f3c92E04B16FF5fCA1cdf147f79",
       "notes": "Plonk Verifier For Data Aggregation"
     }

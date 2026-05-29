@@ -10,7 +10,7 @@ import {
 import {
   generateRoleAssignments,
   getEnvVarOrDefault,
-  validateAddressEnvVar,
+  requireAddressesFromRegistryOrEnv,
   requireAddressFromRegistryOrEnv,
   tryVerifyContract,
   getRequiredEnvVar,
@@ -39,7 +39,11 @@ const func: DeployFunction = withSignerUiSession(
     const remoteChainId = getRequiredEnvVar("REMOTE_CHAIN_ID");
     const pauseTypeRoles = getEnvVarOrDefault("TOKEN_BRIDGE_PAUSE_TYPES_ROLES", TOKEN_BRIDGE_PAUSE_TYPES_ROLES);
     const unpauseTypeRoles = getEnvVarOrDefault("TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES", TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES);
-    const remoteSender = validateAddressEnvVar("REMOTE_SENDER_ADDRESS");
+    const remoteSender = requireAddressFromRegistryOrEnv(
+      network.name,
+      "REMOTE_SENDER_ADDRESS",
+      "REMOTE_SENDER_ADDRESS",
+    );
 
     let securityCouncilAddress;
 
@@ -48,9 +52,7 @@ const func: DeployFunction = withSignerUiSession(
     console.log(`Current network's chainId is ${chainId}. Remote (target) network's chainId is ${remoteChainId}`);
 
     let deployingChainMessageService = l2MessageServiceAddress;
-    let reservedAddresses = process.env.L2_RESERVED_TOKEN_ADDRESSES
-      ? process.env.L2_RESERVED_TOKEN_ADDRESSES.split(",")
-      : [];
+    let reservedAddresses: string[];
 
     if (process.env.TOKEN_BRIDGE_L1 === "true") {
       securityCouncilAddress = requireAddressFromRegistryOrEnv(
@@ -62,9 +64,11 @@ const func: DeployFunction = withSignerUiSession(
         `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES environment variable`,
       );
       deployingChainMessageService = lineaRollupAddress;
-      reservedAddresses = process.env.L1_RESERVED_TOKEN_ADDRESSES
-        ? process.env.L1_RESERVED_TOKEN_ADDRESSES.split(",")
-        : [];
+      reservedAddresses = requireAddressesFromRegistryOrEnv(
+        network.name,
+        "L1_RESERVED_TOKEN_ADDRESSES",
+        "L1_RESERVED_TOKEN_ADDRESSES",
+      );
     } else {
       securityCouncilAddress = requireAddressFromRegistryOrEnv(
         network.name,
@@ -74,12 +78,17 @@ const func: DeployFunction = withSignerUiSession(
       console.log(
         `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES environment variable`,
       );
+      reservedAddresses = requireAddressesFromRegistryOrEnv(
+        network.name,
+        "L2_RESERVED_TOKEN_ADDRESSES",
+        "L2_RESERVED_TOKEN_ADDRESSES",
+      );
     }
 
     const defaultRoleAddresses = generateRoleAssignments(TOKEN_BRIDGE_ROLES, securityCouncilAddress, []);
     const roleAddresses = getEnvVarOrDefault("TOKEN_BRIDGE_ROLE_ADDRESSES", defaultRoleAddresses);
 
-    const bridgedTokenAddress = validateAddressEnvVar("BRIDGED_TOKEN_ADDRESS");
+    const bridgedTokenAddress = requireAddressFromRegistryOrEnv(network.name, "BridgedToken", "BRIDGED_TOKEN_ADDRESS");
 
     // Deploying TokenBridge
     const TokenBridgeFactory = await ethers.getContractFactory(contractName, signer);

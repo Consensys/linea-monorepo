@@ -15,7 +15,6 @@ import {
   getRequiredEnvVar,
   requireAddressFromRegistryOrEnv,
   requireAddressesFromRegistryOrEnv,
-  validateAddressEnvVar,
   tryVerifyContract,
   LogContractDeployment,
 } from "../common/helpers";
@@ -27,7 +26,7 @@ const func: DeployFunction = withSignerUiSession("03_deploy_LineaRollup.ts", asy
 
   // LineaRollup DEPLOYED AS UPGRADEABLE PROXY (OpenZeppelin transparent). Hardhat Upgrades may reuse an
   // implementation and/or ProxyAdmin from `.openzeppelin/` for this network, so you might sign fewer than three txs.
-  const verifierAddress = validateAddressEnvVar("PLONKVERIFIER_ADDRESS");
+  const verifierAddress = requireAddressFromRegistryOrEnv(network.name, "PlonkVerifier", "VERIFIER_ADDRESS");
   const lineaRollupInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
   const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
   const lineaRollupSecurityCouncil = requireAddressFromRegistryOrEnv(
