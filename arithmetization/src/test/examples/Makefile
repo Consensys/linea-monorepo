@@ -230,12 +230,13 @@ verify-elf: require-test
 
 VECTOR_FILE                    ?=
 VECTOR_N_VECTORS               ?=
-# `VECTOR_JSON_MODE` is `dir` for one JSON per vector or `single` for one batched JSON
-VECTOR_JSON_MODE               ?= dir
+# `VECTOR_JSON_MODE` is `per-vector` for one JSON per vector or `batched` for one batched JSON
+VECTOR_JSON_MODE               ?= per-vector
 VECTOR_JSON_FILE               ?= $(JSON)
 VECTOR_JSON_DIR                ?= $(dir $(JSON))vector_json
 VECTOR_IN_BYTES_FILE           ?= $(BIN).in_bytes.all
 VECTOR_ELF_TO_JSON_BIN         ?= $(BIN)_elf2json
+# If set, VECTOR_FILE is parsed by this converter; otherwise it must already contain one `IN_BYTES` per line
 VECTOR_FILE_TO_IN_BYTES_GO     ?=
 VECTOR_FILE_TO_IN_BYTES_BIN    ?= $(BIN)_vector2inbytes
 
@@ -251,20 +252,24 @@ vector-build: require-src
 
 vector-json: require-src require-vector-file require-n-vectors require-vector-build-artifacts require-vector-json-mode
 	@echo "selecting $(if $(filter -1,$(VECTOR_N_VECTORS)),all,$(VECTOR_N_VECTORS)) vector(s) from $(VECTOR_FILE)"
+# Custom formats such as `.accepts` need a converter to produce `IN_BYTES`
+# Batched mode needs one packed `IN_BYTES` blob, so it requires a converter
+# Without a converter, the vector file is already one `IN_BYTES` value per line
+# In line-based mode, `-1` means all lines and positive N means keep the requested prefix
 	@if [ -n "$(VECTOR_FILE_TO_IN_BYTES_GO)" ]; then \
 		$(VECTOR_FILE_TO_IN_BYTES_BIN) "$(VECTOR_FILE)" $(VECTOR_N_VECTORS) > $(VECTOR_IN_BYTES_FILE); \
-	elif [ "$(VECTOR_JSON_MODE)" = "single" ]; then \
-		echo "VECTOR_JSON_MODE=single requires VECTOR_FILE_TO_IN_BYTES_GO"; \
+	elif [ "$(VECTOR_JSON_MODE)" = "batched" ]; then \
+		echo "VECTOR_JSON_MODE=batched requires VECTOR_FILE_TO_IN_BYTES_GO"; \
 		exit 1; \
 	elif [ "$(VECTOR_N_VECTORS)" = "-1" ]; then \
 		cat "$(VECTOR_FILE)" > $(VECTOR_IN_BYTES_FILE); \
 	else \
 		head -n $(VECTOR_N_VECTORS) "$(VECTOR_FILE)" > $(VECTOR_IN_BYTES_FILE); \
 	fi
-	@if [ "$(VECTOR_JSON_MODE)" = "single" ]; then \
+	@if [ "$(VECTOR_JSON_MODE)" = "batched" ]; then \
 		echo "rendering ZKC JSON to $(VECTOR_JSON_FILE)"; \
 		$(VECTOR_ELF_TO_JSON_BIN) $(BIN) @$(VECTOR_IN_BYTES_FILE) $(IN_BYTES_OFFSET) > $(VECTOR_JSON_FILE) || exit $$?; \
-	elif [ "$(VECTOR_JSON_MODE)" = "dir" ]; then \
+	elif [ "$(VECTOR_JSON_MODE)" = "per-vector" ]; then \
 		mkdir -p $(VECTOR_JSON_DIR); \
 		rm -f $(VECTOR_JSON_DIR)/*.json; \
 		echo "rendering one ZKC JSON per vector under $(VECTOR_JSON_DIR)"; \
@@ -276,7 +281,7 @@ vector-json: require-src require-vector-file require-n-vectors require-vector-bu
 	fi
 
 vector-exec: require-vector-json-mode install-zkc
-	@if [ "$(VECTOR_JSON_MODE)" = "single" ]; then \
+	@if [ "$(VECTOR_JSON_MODE)" = "batched" ]; then \
 		[ -f $(VECTOR_JSON_FILE) ] || { echo "VECTOR_JSON_FILE not found: $(VECTOR_JSON_FILE). Run vector-json first"; exit 1; }; \
 		exit_line=$$(zkc exec $(VECTOR_JSON_FILE) $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
 		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
@@ -287,7 +292,7 @@ vector-exec: require-vector-json-mode install-zkc
 			echo "  $$exit_line"; \
 			exit 1; \
 		fi; \
-	elif [ "$(VECTOR_JSON_MODE)" = "dir" ]; then \
+	elif [ "$(VECTOR_JSON_MODE)" = "per-vector" ]; then \
 		pass=0; fail=0; i=0; \
 		for json in $(VECTOR_JSON_DIR)/*.json; do \
 			[ -f "$$json" ] || { echo "error: no vector JSONs found in $(VECTOR_JSON_DIR)" >&2; exit 1; }; \
@@ -329,11 +334,11 @@ keccak-rust-json: keccak-rust-build
 		VECTOR_FILE_TO_IN_BYTES_GO=$(MAKEFILE_DIR)scripts/keccak_accepts_to_in_bytes/main.go \
 		VECTOR_FILE=$(KECCAK_ACCEPTS_FILE) \
 		VECTOR_N_VECTORS=$(KECCAK_N_VECTORS) \
-		VECTOR_JSON_MODE=single \
+		VECTOR_JSON_MODE=batched \
 		VECTOR_JSON_FILE=$(KECCAK_JSON_FILE)
 
 keccak-rust-exec: keccak-rust-json
-	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec VECTOR_JSON_MODE=single VECTOR_JSON_FILE=$(KECCAK_JSON_FILE)
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec VECTOR_JSON_MODE=batched VECTOR_JSON_FILE=$(KECCAK_JSON_FILE)
 
 #####################################################################
 # Blake wrapper targets
@@ -352,11 +357,11 @@ blake-rust-json: blake-rust-build
 		TEST=blake/blake_with_in_bytes.rs \
 		VECTOR_FILE=$(BLAKE_ALL_FILE) \
 		VECTOR_N_VECTORS=$(BLAKE_N_VECTORS) \
-		VECTOR_JSON_MODE=dir \
+		VECTOR_JSON_MODE=per-vector \
 		VECTOR_JSON_DIR=$(BLAKE_JSON_DIR)
 
 blake-rust-exec: blake-rust-json
-	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec VECTOR_JSON_MODE=dir VECTOR_JSON_DIR=$(BLAKE_JSON_DIR)
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec VECTOR_JSON_MODE=per-vector VECTOR_JSON_DIR=$(BLAKE_JSON_DIR)
 
 #####################################################################
 # ACT4 targets
@@ -501,4 +506,4 @@ require-vector-build-artifacts:
 	fi
 
 require-vector-json-mode:
-	@[ "$(VECTOR_JSON_MODE)" = "single" ] || [ "$(VECTOR_JSON_MODE)" = "dir" ] || { echo "VECTOR_JSON_MODE must be single or dir, got: $(VECTOR_JSON_MODE)"; exit 1; }
+	@[ "$(VECTOR_JSON_MODE)" = "per-vector" ] || [ "$(VECTOR_JSON_MODE)" = "batched" ] || { echo "VECTOR_JSON_MODE must be per-vector or batched, got: $(VECTOR_JSON_MODE)"; exit 1; }

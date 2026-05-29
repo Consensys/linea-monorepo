@@ -124,9 +124,10 @@ riscv-test vector-json <name>.<ext> VECTOR_FILE=path/to/vectors.all VECTOR_N_VEC
 riscv-test vector-exec VECTOR_JSON_DIR=path/to/json_dir
 # Use VECTOR_N_VECTORS=-1 to select all vectors
 riscv-test vector-json <name>.<ext> VECTOR_FILE=path/to/vectors.all VECTOR_N_VECTORS=-1
-# Build vectors from a custom input format by passing a converter
+# Build one batched JSON from a custom input format by passing a converter
 riscv-test vector-build <name>.<ext> VECTOR_FILE_TO_IN_BYTES_GO=path/to/converter.go
-riscv-test vector-json <name>.<ext> VECTOR_FILE=path/to/vectors.accepts VECTOR_N_VECTORS=10 VECTOR_FILE_TO_IN_BYTES_GO=path/to/converter.go
+riscv-test vector-json <name>.<ext> VECTOR_FILE=path/to/vectors.accepts VECTOR_N_VECTORS=10 VECTOR_FILE_TO_IN_BYTES_GO=path/to/converter.go VECTOR_JSON_MODE=batched VECTOR_JSON_FILE=path/to/vectors.json
+riscv-test vector-exec VECTOR_JSON_MODE=batched VECTOR_JSON_FILE=path/to/vectors.json
 # Convert an already compiled ELF to JSON
 riscv-test elf-to-json BIN_EXT=asm/bin/test
 # Execute an already compiled ELF
@@ -195,11 +196,11 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `TEST`                       | `""`                                                           | Source file path with extension, relative to the corresponding `src/` folder                       |
 | `BIN_EXT`                    | `""`                                                           | Already compiled ELF used by `elf-to-json` and `exec-elf`                                          |
 | `JSON_EXT`                   | `$(BIN_EXT).json`                                              | JSON output path used by `elf-to-json` and `exec-elf`                                              |
-| `VECTOR_FILE`                | `""`                                                           | Vector input file consumed by `vector-json`; one `IN_BYTES` per line in `dir` mode unless a converter is provided |
+| `VECTOR_FILE`                | `""`                                                           | Vector input file consumed by `vector-json`; one `IN_BYTES` per line in `per-vector` mode unless a converter is provided |
 | `VECTOR_N_VECTORS`           | `""`                                                           | Number of vectors selected by `vector-json`; `-1` means all vectors                                |
-| `VECTOR_JSON_MODE`           | `dir`                                                          | `dir` for one JSON per vector, `single` for one batched JSON                                       |
-| `VECTOR_JSON_FILE`           | `$(JSON)`                                                      | Batched JSON path used when `VECTOR_JSON_MODE=single`                                              |
-| `VECTOR_JSON_DIR`            | `$(dir $(JSON))vector_json`                                    | JSON directory used when `VECTOR_JSON_MODE=dir`                                                    |
+| `VECTOR_JSON_MODE`           | `per-vector`                                                   | `per-vector` for one JSON per vector, `batched` for one JSON containing all selected vectors       |
+| `VECTOR_JSON_FILE`           | `$(JSON)`                                                      | Batched JSON path used when `VECTOR_JSON_MODE=batched`                                             |
+| `VECTOR_JSON_DIR`            | `$(dir $(JSON))vector_json`                                    | JSON directory used when `VECTOR_JSON_MODE=per-vector`                                             |
 | `VECTOR_IN_BYTES_FILE`       | `$(BIN).in_bytes.all`                                          | Intermediate file with converted `IN_BYTES`, one line per vector                                  |
 | `VECTOR_ELF_TO_JSON_BIN`     | `$(BIN)_elf2json`                                              | Compiled ELF-to-JSON helper used by vector targets                                                 |
 | `VECTOR_FILE_TO_IN_BYTES_GO` | `""`                                                           | Optional Go converter source for custom vector formats such as `.accepts`                          |
