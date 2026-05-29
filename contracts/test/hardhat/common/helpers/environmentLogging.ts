@@ -13,7 +13,6 @@ const SENSITIVE_ENV_VAR_EXAMPLES = [
   "EXAMPLE_RPC_URL",
   "EXAMPLE_L1_RPC",
   "EXAMPLE_WEBSOCKET_URL",
-  "EXAMPLE_ADDRESS_FILTER_FILE_PATH",
   "EXAMPLE_API_KEY",
   "EXAMPLE_SECRET",
   "EXAMPLE_MNEMONIC",
@@ -40,5 +39,12 @@ describe("envVarLogging", () => {
     expect(isSensitiveEnvVar(name)).to.equal(false);
     expect(formatEnvVarForLog(name, "example")).to.equal(`${name}=example`);
     expect(formatEnvVarValueForMessage(name, "example")).to.equal("example");
+  });
+
+  it("does not redact file-path env vars that are not credentials", () => {
+    expect(isSensitiveEnvVar("ADDRESS_FILTER_FILE_PATH")).to.equal(false);
+    expect(formatEnvVarForLog("ADDRESS_FILTER_FILE_PATH", "/tmp/filter.txt")).to.equal(
+      "ADDRESS_FILTER_FILE_PATH=/tmp/filter.txt",
+    );
   });
 });

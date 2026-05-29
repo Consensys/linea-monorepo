@@ -20,7 +20,6 @@ const SENSITIVE_ENV_VAR_PATTERNS: RegExp[] = [
   /^RPC$/,
   /WEBSOCKET/,
   /_URL$/,
-  /_PATH$/,
   /ETHERSCAN/,
   /INFURA/,
   /AUTH_TOKEN/,

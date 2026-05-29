@@ -32,8 +32,8 @@ import {
 import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
 import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment";
 import {
+  getAddressesFromRegistryOrEnv,
   getDeploymentNetworkName,
-  requireAddressesFromRegistryOrEnv,
   requireAddressFromRegistryOrEnv,
 } from "../common/helpers/readAddress";
 import { generateRoleAssignments } from "../common/helpers/roles";
@@ -147,7 +147,7 @@ async function main() {
       `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES from registry or env and remoteSender=${remoteSender}`,
     );
     deployingChainMessageService = lineaRollupAddress;
-    reservedAddresses = requireAddressesFromRegistryOrEnv(
+    reservedAddresses = getAddressesFromRegistryOrEnv(
       networkName,
       "L1_RESERVED_TOKEN_ADDRESSES",
       "L1_RESERVED_TOKEN_ADDRESSES",
@@ -156,7 +156,7 @@ async function main() {
     console.log(
       `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES from registry or env and remoteSender=${remoteSender}`,
     );
-    reservedAddresses = requireAddressesFromRegistryOrEnv(
+    reservedAddresses = getAddressesFromRegistryOrEnv(
       networkName,
       "L2_RESERVED_TOKEN_ADDRESSES",
       "L2_RESERVED_TOKEN_ADDRESSES",

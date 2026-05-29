@@ -161,13 +161,18 @@ function loadLocalDeploymentArtifactSources(): Array<{ fileName: string; source:
 
 function extractRegistryLookupChecks(sources: Array<{ fileName: string; source: string }>): RegistryLookupCheck[] {
   const checks: RegistryLookupCheck[] = [];
+  // Matches both Hardhat scripts (network.name / hre.network.name) and standalone scripts
+  // that resolve the network via getDeploymentNetworkName() stored in a local variable.
   const callPattern =
-    /(requireAddressFromRegistryOrEnv|requireAddressesFromRegistryOrEnv)\(\s*(?:network\.name|hre\.network\.name)\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"/gs;
+    /(requireAddressFromRegistryOrEnv|requireAddressesFromRegistryOrEnv|getAddressesFromRegistryOrEnv)\(\s*(?:networkName|network\.name|hre\.network\.name)\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"/gs;
 
   for (const { fileName, source } of sources) {
     for (const match of source.matchAll(callPattern)) {
+      const helper = match[1]!;
       checks.push({
-        helper: match[1] as RegistryLookupCheck["helper"],
+        helper: (helper === "getAddressesFromRegistryOrEnv"
+          ? "requireAddressesFromRegistryOrEnv"
+          : helper) as RegistryLookupCheck["helper"],
         sourceFile: fileName,
         contractKey: match[2]!,
         envVarName: match[3]!,
@@ -324,7 +329,10 @@ function validateLocalDeploymentArtifacts(sources: Array<{ fileName: string; sou
 function main(): void {
   const deployScriptSources = loadDeployScriptSources();
   const localDeploymentArtifactSources = loadLocalDeploymentArtifactSources();
-  const registryLookupChecks = extractRegistryLookupChecks(deployScriptSources);
+  const registryLookupChecks = [
+    ...extractRegistryLookupChecks(deployScriptSources),
+    ...extractRegistryLookupChecks(localDeploymentArtifactSources),
+  ];
   const signatureIssues = validateInitializerSignatures();
   const registryIssues = [
     ...validateRegistryLookups(registryLookupChecks),

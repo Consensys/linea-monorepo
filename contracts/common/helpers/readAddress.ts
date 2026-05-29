@@ -169,6 +169,42 @@ export function requireAddressesFromRegistryOrEnv(
 }
 
 /**
+ * Like {@link requireAddressesFromRegistryOrEnv} but returns an empty array instead of
+ * throwing when neither a registry entry nor an env var is present.
+ *
+ * Use this for optional address lists (e.g. reserved token addresses) where an empty
+ * configuration is a valid deployment choice.
+ */
+export function getAddressesFromRegistryOrEnv(networkName: string, contractKey: string, envVarName: string): string[] {
+  const registryAddresses = getAddressesFromRegistry(networkName, contractKey, envVarName);
+  const envAddresses = parseEnvAddressList(envVarName);
+
+  if (registryAddresses !== undefined) {
+    if (envAddresses !== undefined && !sameAddressSet(registryAddresses, envAddresses)) {
+      throw new Error(
+        `Address conflict for "${contractKey}" on network "${networkName}":\n` +
+          `  Registry (contracts/deployments/addresses/${networkName}.json): ${registryAddresses.join(", ")}\n` +
+          `  Environment variable ${envVarName}: ${envAddresses.map((value) => formatEnvVarValueForMessage(envVarName, value)).join(", ")}\n` +
+          `Either remove the env var override or update the registry to match.`,
+      );
+    }
+    console.log(
+      `Using registry addresses for ${contractKey} on ${networkName}: ${registryAddresses.join(", ")}${envAddresses ? " (matches env var)" : ""}`,
+    );
+    return registryAddresses;
+  }
+
+  if (envAddresses !== undefined) {
+    console.log(
+      `Using environment variable ${formatEnvVarForLog(envVarName, envAddresses.join(", "))} for ${contractKey} (no registry entry)`,
+    );
+    return envAddresses;
+  }
+
+  return [];
+}
+
+/**
  * @deprecated Use getAddressFromRegistry instead.
  *
  * Reads a deployed contract address from the legacy hardhat-deploy artefact format at
