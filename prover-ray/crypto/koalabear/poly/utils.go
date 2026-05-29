@@ -155,7 +155,7 @@ func EvaluateLagrangeWithWeights(p Polynomial, weights []koalabear.Element) koal
 }
 
 // ExtEvaluateLagrangeWithWeights is the extension-field counterpart of
-// EvaluateLagrangeWithWeights. The Lagrange weights live in the base field.
+// EvaluateLagrangeWithWeights. The Lagrange weights live in the base koalabear.
 func ExtEvaluateLagrangeWithWeights(p ExtPolynomial, weights []koalabear.Element) ext.E6 {
 	if len(p) != len(weights) {
 		panic("ExtEvaluateLagrangeWithWeights: length mismatch")
@@ -186,4 +186,41 @@ func ExtEvaluateOnExtendedDomainRoot(p ExtPolynomial, d *fft.Domain, bigD *fft.D
 // nextPowerOfTwo is an alias for NextPowerOfTwo for internal use
 func nextPowerOfTwo(n int) int {
 	return NextPowerOfTwo(n)
+}
+
+func EvalXnMinusOneOnCoset(n, N int) []koalabear.Element {
+	// if !utils.IsPowerOfTwo(n) || !utils.IsPowerOfTwo(N) {
+	// 	utils.Panic("both n (%v) and N (%v) must be powers of two", n, N)
+	// }
+	// if N < n {
+	// 	utils.Panic("N (%v) must be ≥ n (%v)", N, n)
+	// }
+
+	r := N / n
+	nBig := big.NewInt(int64(n))
+
+	// res[0] = MultiplicativeGen^n  (the coset shift raised to the n-th power)
+	res := make([]koalabear.Element, r)
+	res[0] = fft.GeneratorFullMultiplicativeGroup()
+	res[0].Exp(res[0], nBig)
+
+	// t = (primitive N-th root of unity)^n  — step between consecutive values
+	t, err := fft.Generator(uint64(N))
+	if err != nil {
+		panic(err)
+	}
+	t.Exp(t, nBig)
+
+	for i := 1; i < r; i++ {
+		res[i].Mul(&res[i-1], &t)
+	}
+
+	// Subtract 1 from every entry
+	var one koalabear.Element
+	one.SetOne()
+	for i := 0; i < r; i++ {
+		res[i].Sub(&res[i], &one)
+	}
+
+	return res
 }

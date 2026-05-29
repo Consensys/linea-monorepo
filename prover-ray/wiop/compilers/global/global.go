@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poly"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/polynomials"
 	"github.com/consensys/linea-monorepo/prover-ray/utils"
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
 )
@@ -292,7 +292,7 @@ func buildProverBuckets(rawBuckets []rawBucket, m *wiop.Module) []proverBucket {
 			pb.largeDomain = fft.NewDomain(uint64(N))
 
 			// Precompute annihilator inverses: 1/(g^n · ω_ratio^j − 1) for j=0..ratio-1.
-			annVals := polynomials.EvalXnMinusOneOnCoset(n, N)
+			annVals := poly.EvalXnMinusOneOnCoset(n, N)
 			pb.annInv = make([]field.Element, ratio)
 			field.VecBatchInvBase(pb.annInv, annVals)
 
@@ -412,7 +412,7 @@ func (a *QuotientProverAction) Run(rt wiop.Runtime) {
 			// Dynamic module: compute at runtime.
 			smallDomain = fft.NewDomain(uint64(n))
 			largeDomain = fft.NewDomain(uint64(N))
-			annVals := polynomials.EvalXnMinusOneOnCoset(n, N)
+			annVals := poly.EvalXnMinusOneOnCoset(n, N)
 			annInv = make([]field.Element, ratio)
 			field.VecBatchInvBase(annInv, annVals)
 		}

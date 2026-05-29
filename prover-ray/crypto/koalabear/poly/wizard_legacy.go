@@ -1,4 +1,4 @@
-package polynomials
+package poly
 
 import (
 	"math/bits"
@@ -90,40 +90,6 @@ func EvalLagrangeBatch(p field.Vec, zs []field.Gen) []field.Gen {
 	}
 	return results
 }
-
-// ComputeLagrangeAtZ returns the vector [L₀(z), L₁(z), …, L_{n-1}(z)] where
-//
-//	Lᵢ(z) = ωⁱ/n · (zⁿ - 1) / (z - ωⁱ)
-//
-// Uses the recurrence relation to avoid n-1 extra inversions:
-//
-//	L₀(z) = (1/n) · (zⁿ - 1) / (z - 1)
-//	Lᵢ(z) = Lᵢ₋₁(z) · ω · (z - ωⁱ⁻¹) / (z - ωⁱ)
-//
-// cardinality must be a power of two not exceeding 2^MaxOrderRoot; z must not
-// be a root of unity.
-func ComputeLagrangeAtZ(z field.Gen, cardinality uint64) []field.Gen {
-	gen := field.RootOfUnityBy(int(cardinality))
-	n := int(cardinality)
-	if z.IsBase() {
-		res := computeLagrangeAtZBase(z.AsBase(), gen, n)
-		out := make([]field.Gen, n)
-		for i, e := range res {
-			out[i] = field.ElemFromBase(e)
-		}
-		return out
-	}
-	res := computeLagrangeAtZExt(z.AsExt(), gen, n)
-	out := make([]field.Gen, n)
-	for i, e := range res {
-		out[i] = field.ElemFromExt(e)
-	}
-	return out
-}
-
-// ---------------------------------------------------------------------------
-// Single-evaluation specializations
-// ---------------------------------------------------------------------------
 
 // evalLagrangeBaseBase: p in 𝔽_p, z in 𝔽_p → result in 𝔽_p.
 func evalLagrangeBaseBase(p []field.Element, z, gen field.Element) field.Element {
@@ -432,90 +398,4 @@ func evalBatchExtExt(weightedP []field.Ext, z field.Ext, omegaPowers []field.Ele
 	var result field.Ext
 	result.Mul(&zPowNMinusOne, &sum)
 	return result
-}
-
-// ---------------------------------------------------------------------------
-// Lagrange-basis vector specializations
-// ---------------------------------------------------------------------------
-
-// computeLagrangeAtZBase: z in 𝔽_p → each Lᵢ(z) in 𝔽_p.
-func computeLagrangeAtZBase(z, gen field.Element, n int) []field.Element {
-	res := make([]field.Element, n)
-	tb := bits.TrailingZeros(uint(n))
-
-	zPowN := z
-	for i := 0; i < tb; i++ {
-		zPowN.Square(&zPowN)
-	}
-	var one, zPowNMinusOne field.Element
-	one.SetOne()
-	zPowNMinusOne.Sub(&zPowN, &one)
-
-	var invN field.Element
-	invN.SetUint64(uint64(n))
-	invN.Inverse(&invN)
-
-	// L₀ = (zⁿ - 1) / (n · (z - 1))
-	var zMinusOne field.Element
-	zMinusOne.Sub(&z, &one)
-	res[0].Div(&zPowNMinusOne, &zMinusOne)
-	res[0].Mul(&res[0], &invN)
-
-	prevZMinusOmega := zMinusOne
-	var accOmega field.Element
-	accOmega.SetOne()
-
-	for i := 1; i < n; i++ {
-		// Lᵢ = ω · Lᵢ₋₁ · (z - ω^{i-1}) / (z - ωⁱ)
-		accOmega.Mul(&accOmega, &gen)
-		var curZMinusOmega field.Element
-		curZMinusOmega.Sub(&z, &accOmega)
-		res[i].Mul(&res[i-1], &gen)
-		res[i].Mul(&res[i], &prevZMinusOmega)
-		res[i].Div(&res[i], &curZMinusOmega)
-		prevZMinusOmega = curZMinusOmega
-	}
-	return res
-}
-
-// computeLagrangeAtZExt: z in 𝔽_{p^4} → each Lᵢ(z) in 𝔽_{p^4}.
-func computeLagrangeAtZExt(z field.Ext, gen field.Element, n int) []field.Ext {
-	res := make([]field.Ext, n)
-	tb := bits.TrailingZeros(uint(n))
-
-	var zPowN field.Ext
-	zPowN.Set(&z)
-	for i := 0; i < tb; i++ {
-		zPowN.Square(&zPowN)
-	}
-	var one, zPowNMinusOne field.Ext
-	one.SetOne()
-	zPowNMinusOne.Sub(&zPowN, &one)
-
-	var invN field.Element
-	invN.SetUint64(uint64(n))
-	invN.Inverse(&invN)
-
-	// L₀ = (zⁿ - 1) / (n · (z - 1))
-	var zMinusOne field.Ext
-	zMinusOne.Sub(&z, &one)
-	res[0].Div(&zPowNMinusOne, &zMinusOne)
-	res[0].MulByElement(&res[0], &invN)
-
-	prevZMinusOmega := zMinusOne
-	var accOmega field.Element
-	accOmega.SetOne()
-
-	for i := 1; i < n; i++ {
-		// Lᵢ = ω · Lᵢ₋₁ · (z - ω^{i-1}) / (z - ωⁱ)
-		accOmega.Mul(&accOmega, &gen)
-		var curZMinusOmega field.Ext
-		curZMinusOmega.Set(&z)
-		curZMinusOmega.B0.A0.Sub(&curZMinusOmega.B0.A0, &accOmega) // z - ω^i
-		res[i].MulByElement(&res[i-1], &gen)
-		res[i].Mul(&res[i], &prevZMinusOmega)
-		res[i].Div(&res[i], &curZMinusOmega)
-		prevZMinusOmega = curZMinusOmega
-	}
-	return res
 }
