@@ -439,13 +439,17 @@ run-act4: install-zkc build-act4
 		count=$$((count + 1)); \
 		go run $(GO_MAIN) "$$elf" "" 0 > "$$base.json" 2> "$$base.json.err"; \
 		[ -s "$$base.json.err" ] || rm -f "$$base.json.err"; \
-		if zkc exec -q "$$base.json" $(ZKC_MAIN) >/dev/null 2>&1; then \
+		zkc exec "$$base.json" $(ZKC_MAIN) > "$$base.full" 2>&1; \
+		awk '(previous == "ECALL for write" || previous == "ECALL for exit") && $$0 != "" { print } { previous = $$0 }' "$$base.full" > "$$base.out"; \
+		exit_line=$$(awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }' "$$base.full"); \
+		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
 			echo "PASS  $$name"; \
 			echo "PASS  $$name" >> "$(ACT4_RESULTS)"; \
+			awk '{ print "  " $$0 }' "$$base.out"; \
+			awk '{ print "  " $$0 }' "$$base.out" >> "$(ACT4_RESULTS)"; \
 			pass=$$((pass + 1)); \
+			rm -f "$$base.full"; \
 		else \
-			zkc exec "$$base.json" $(ZKC_MAIN) > "$$base.full" 2>&1 || true; \
-			awk '(previous == "ECALL for write" || previous == "ECALL for exit") && $$0 != "" { print } { previous = $$0 }' "$$base.full" > "$$base.out"; \
 			echo "FAIL  $$name"; \
 			echo "FAIL  $$name" >> "$(ACT4_RESULTS)"; \
 			awk '{ print "  " $$0 }' "$$base.out"; \
