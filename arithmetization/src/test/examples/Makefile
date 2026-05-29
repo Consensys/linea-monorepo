@@ -116,7 +116,7 @@ define ELF_TO_JSON
 endef
 
 ######################################################
-# 
+# Targets to handle generic tests
 ######################################################
 
 # Default target (make)
@@ -261,6 +261,7 @@ verify-elf: require-test
 ###############################################################
 # Targets to handle generic test vectors
 ###############################################################
+
 vector-build: require-src
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=$(TEST)
 	@echo "building $(VECTOR_ELF2JSON)..."
@@ -328,6 +329,7 @@ vector-exec: install-zkc
 ###############################################################
 # Keccak wrapper targets and benchmark workflow variables
 ###############################################################
+
 KECCAK_ACCEPTS     ?= $(MAKEFILE_DIR)rust/src/keccak/keccak.accepts
 KECCAK_N_VECTORS   ?= 10
 KECCAK_JSON        ?= $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/keccak.json
@@ -353,6 +355,7 @@ keccak-rust-exec: keccak-rust-json
 ###############################################################
 # Blake wrapper targets and benchmark workflow variables
 ###############################################################
+
 BLAKE_ACCEPTS      ?= $(MAKEFILE_DIR)rust/src/blake/blake10.all
 BLAKE_N_VECTORS    ?= 10
 BLAKE_JSON_DIR     ?= $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_json
