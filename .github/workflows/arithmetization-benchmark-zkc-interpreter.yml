@@ -109,12 +109,12 @@ jobs:
           # Keccak: one batched JSON.
           make keccak-rust-json \
             KECCAK_N_VECTORS=${{ inputs.n_vectors_keccak || 10 }} \
-            KECCAK_JSON=/tmp/keccak.json
+            KECCAK_JSON_FILE=/tmp/keccak.json
           # Blake: synthesize a single .all line at the requested rounds count
           go build -o /tmp/bench/blake_rounds2bytes ./scripts/blake_rounds_to_accepts/main.go
-          /tmp/bench/blake_rounds2bytes ${{ inputs.n_rounds_blake || 12 }} > /tmp/blake_custom.accepts
+          /tmp/bench/blake_rounds2bytes ${{ inputs.n_rounds_blake || 12 }} > /tmp/blake_custom.all
           make blake-rust-json \
-            BLAKE_ACCEPTS=/tmp/blake_custom.accepts \
+            BLAKE_ALL_FILE=/tmp/blake_custom.all \
             BLAKE_N_VECTORS=1 \
             BLAKE_JSON_DIR=/tmp/bench/json/blake
           # Helper binaries used by the timing loop and the summary step.
