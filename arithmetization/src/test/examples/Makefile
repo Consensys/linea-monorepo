@@ -158,7 +158,7 @@ zkc-debug: require-test install-zkc
 	zkc debug $(JSON) $(ZKC_MAIN)
 
 clean: require-test
-	rm -f $(BIN) $(JSON) $(BIN).objdump $(VECTOR_ELF_TO_JSON_BIN) $(VECTOR_IN_BYTES_FILE) $(LINKER_SCRIPT)
+	rm -f $(BIN) $(JSON) $(BIN).objdump $(VECTOR_ELF_TO_JSON_BIN) $(VECTOR_SUBSET_FILE) $(LINKER_SCRIPT)
 
 clean-all:
 	rm -rf $(MAKEFILE_DIR)asm/bin/
@@ -234,7 +234,7 @@ VECTOR_N_VECTORS               ?=
 VECTOR_JSON_MODE               ?= per-vector
 VECTOR_JSON_FILE               ?= $(JSON)
 VECTOR_JSON_DIR                ?= $(dir $(JSON))vector_json
-VECTOR_IN_BYTES_FILE           ?= $(BIN).in_bytes.all
+VECTOR_SUBSET_FILE             ?= $(BIN).all
 VECTOR_ELF_TO_JSON_BIN         ?= $(BIN)_elf2json
 
 vector-build: require-src
@@ -246,21 +246,22 @@ vector-json: require-src require-vector-file require-n-vectors require-vector-bu
 	@echo "selecting $(if $(filter -1,$(VECTOR_N_VECTORS)),all,$(VECTOR_N_VECTORS)) vector(s) from $(VECTOR_FILE)"
 # VECTOR_FILE must contain one `IN_BYTES` value per line
 # `per-vector` keeps one line per JSON; `batched` concatenates selected lines into one JSON input
-	@if [ "$(VECTOR_N_VECTORS)" = "-1" ]; then \
-		cat "$(VECTOR_FILE)" > $(VECTOR_IN_BYTES_FILE); \
-	else \
-		head -n $(VECTOR_N_VECTORS) "$(VECTOR_FILE)" > $(VECTOR_IN_BYTES_FILE); \
-	fi; \
-	selected=$$(wc -l < $(VECTOR_IN_BYTES_FILE)); \
-	if [ "$(VECTOR_N_VECTORS)" != "-1" ] && [ "$$selected" -lt "$(VECTOR_N_VECTORS)" ]; then \
-		echo "$(VECTOR_FILE): only $$selected vector(s) available, requested $(VECTOR_N_VECTORS)"; \
+	@available=$$(awk 'END { print NR }' $(VECTOR_FILE)); \
+	if [ "$(VECTOR_N_VECTORS)" != "-1" ] && [ "$$available" -lt "$(VECTOR_N_VECTORS)" ]; then \
+		echo "$(VECTOR_FILE): only $$available vector(s) available, requested $(VECTOR_N_VECTORS)"; \
 		exit 1; \
+	fi; \
+	if [ "$(VECTOR_JSON_MODE)" = "batched" ]; then \
+		if [ "$(VECTOR_N_VECTORS)" = "-1" ]; then cat "$(VECTOR_FILE)"; else head -n $(VECTOR_N_VECTORS) "$(VECTOR_FILE)"; fi | \
+			awk 'BEGIN { printf "0x" } { sub(/^0[xX]/, ""); printf "%s", $$0 } END { printf "\n" }' > $(VECTOR_SUBSET_FILE); \
+	elif [ "$(VECTOR_N_VECTORS)" = "-1" ]; then \
+		cat "$(VECTOR_FILE)" > $(VECTOR_SUBSET_FILE); \
+	else \
+		head -n $(VECTOR_N_VECTORS) "$(VECTOR_FILE)" > $(VECTOR_SUBSET_FILE); \
 	fi
 	@if [ "$(VECTOR_JSON_MODE)" = "batched" ]; then \
 		echo "rendering ZKC JSON to $(VECTOR_JSON_FILE)"; \
-		awk 'BEGIN { printf "0x" } { sub(/^0[xX]/, ""); printf "%s", $$0 } END { printf "\n" }' $(VECTOR_IN_BYTES_FILE) > $(VECTOR_IN_BYTES_FILE).batched; \
-		mv $(VECTOR_IN_BYTES_FILE).batched $(VECTOR_IN_BYTES_FILE); \
-		$(VECTOR_ELF_TO_JSON_BIN) $(BIN) @$(VECTOR_IN_BYTES_FILE) $(IN_BYTES_OFFSET) > $(VECTOR_JSON_FILE) || exit $$?; \
+		$(VECTOR_ELF_TO_JSON_BIN) $(BIN) @$(VECTOR_SUBSET_FILE) $(IN_BYTES_OFFSET) > $(VECTOR_JSON_FILE) || exit $$?; \
 	elif [ "$(VECTOR_JSON_MODE)" = "per-vector" ]; then \
 		mkdir -p $(VECTOR_JSON_DIR); \
 		rm -f $(VECTOR_JSON_DIR)/*.json; \
@@ -268,7 +269,7 @@ vector-json: require-src require-vector-file require-n-vectors require-vector-bu
 		n=0; while IFS= read -r in_bytes; do \
 			n=$$((n + 1)); idx=$$(printf '%03d' $$n); \
 			$(VECTOR_ELF_TO_JSON_BIN) $(BIN) "$$in_bytes" $(IN_BYTES_OFFSET) > "$(VECTOR_JSON_DIR)/$$idx.json" || exit $$?; \
-		done < $(VECTOR_IN_BYTES_FILE); \
+		done < $(VECTOR_SUBSET_FILE); \
 		echo "generated $$n vector JSON(s) in $(VECTOR_JSON_DIR)"; \
 	fi
 

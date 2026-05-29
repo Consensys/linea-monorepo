@@ -201,7 +201,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `VECTOR_JSON_MODE`           | `per-vector`                                                   | `per-vector` for one JSON per vector, `batched` for one JSON with selected vectors concatenated    |
 | `VECTOR_JSON_FILE`           | `$(JSON)`                                                      | Batched JSON path used when `VECTOR_JSON_MODE=batched`                                             |
 | `VECTOR_JSON_DIR`            | `$(dir $(JSON))vector_json`                                    | JSON directory used when `VECTOR_JSON_MODE=per-vector`                                             |
-| `VECTOR_IN_BYTES_FILE`       | `$(BIN).in_bytes.all`                                          | Intermediate file with the selected `IN_BYTES`, one line per vector                                |
+| `VECTOR_SUBSET_FILE`         | `$(BIN).all`                                                   | Intermediate `.all` file selected from `VECTOR_FILE`                                               |
 | `VECTOR_ELF_TO_JSON_BIN`     | `$(BIN)_elf2json`                                              | Compiled ELF-to-JSON helper used by vector targets                                                 |
 | `IN_BYTES`                   | `""`                                                           | Hex big-endian input written in RAM at `IN_BYTES_OFFSET` as little-endian bytes before execution   |
 | `PROGRAM_OFFSET`             | `0x00000000`                                                   | Program address used by this Makefile's generated linker script (up to 128 MiB)                    |
