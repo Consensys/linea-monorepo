@@ -8,33 +8,33 @@ permissions:
   pull-requests: write
 
 on:
-  # workflow_dispatch:
-  #   inputs:
-  #     image_tag_suffix:
-  #       description: 'Custom docker image tag suffix, i.e. All docker images would be retagged as [semver]-[YYYYMMDD]-[commit]-[suffix]'
-  #       required: false
-  #       type: string
-  #       default: ''
-  #     release_tag_suffix:
-  #       description: 'Custom release tag suffix, i.e. release tag would be releases/[component]/v[semver]-[suffix]'
-  #       required: false
-  #       type: string
-  #       default: ''
-  #     without_besu_fleet_plugin:
-  #       description: 'Type "true" to exclude besu-fleet-plugin in the linea-besu-package release'
-  #       required: false
-  #       type: string
-  #       default: ''
-  #     pre_release:
-  #       description: 'Pre Release if checked; Draft release otherwise'
-  #       required: false
-  #       type: boolean
-  #       default: false
-  #     dry_run_release:
-  #       description: 'Dry run a release (without build and push the docker images to dockerhub)'
-  #       required: false
-  #       type: boolean
-  #       default: false
+  workflow_dispatch:
+    inputs:
+      image_tag_suffix:
+        description: 'Custom docker image tag suffix, i.e. All docker images would be retagged as [semver]-[YYYYMMDD]-[commit]-[suffix]'
+        required: false
+        type: string
+        default: ''
+      release_tag_suffix:
+        description: 'Custom release tag suffix, i.e. release tag would be releases/[component]/v[semver]-[suffix]'
+        required: false
+        type: string
+        default: ''
+      without_besu_fleet_plugin:
+        description: 'Type "true" to exclude besu-fleet-plugin in the linea-besu-package release'
+        required: false
+        type: string
+        default: ''
+      pre_release:
+        description: 'Pre Release if checked; Draft release otherwise'
+        required: false
+        type: boolean
+        default: false
+      dry_run_release:
+        description: 'Dry run a release (without build and push the docker images to dockerhub)'
+        required: false
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       image_tag_suffix:
