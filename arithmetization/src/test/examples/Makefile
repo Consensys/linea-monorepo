@@ -27,10 +27,10 @@ TEST ?=
 BIN_EXT  ?=
 JSON_EXT ?= $(BIN_EXT).json
 
-# Generic vector test inputs. `VECTOR_JSON_MODE` is `dir` for one JSON per vector
-# or `single` for one batched JSON.
+# Generic test vector variables
 VECTOR_ACCEPTS              ?=
 VECTOR_N_VECTORS            ?= 0
+# `VECTOR_JSON_MODE` is `dir` for one JSON per vector or `single` for one batched JSON
 VECTOR_JSON_MODE            ?= dir
 VECTOR_JSON                 ?= $(JSON)
 VECTOR_JSON_DIR             ?= $(dir $(JSON))vector_json
@@ -116,7 +116,7 @@ define ELF_TO_JSON
 endef
 
 ######################################################
-# Targets
+# 
 ######################################################
 
 # Default target (make)
@@ -258,6 +258,9 @@ verify-elf: require-test
 	@echo "  SP:              $(SP) (expected) = $(SP_FROM_ELF) (from ELF)"
 	@echo "All values match\n"
 
+###############################################################
+# Targets to handle generic test vectors
+###############################################################
 vector-build: require-src
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=$(TEST)
 	@echo "building $(VECTOR_ELF2JSON)..."
@@ -322,7 +325,9 @@ vector-exec: install-zkc
 		exit 2; \
 	fi
 
-# Keccak wrappers keep the benchmark workflow variables while delegating to the generic vector targets.
+###############################################################
+# Keccak wrapper targets and benchmark workflow variables
+###############################################################
 KECCAK_ACCEPTS     ?= $(MAKEFILE_DIR)rust/src/keccak/keccak.accepts
 KECCAK_N_VECTORS   ?= 10
 KECCAK_JSON        ?= $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/keccak.json
@@ -345,9 +350,11 @@ keccak-rust-json: keccak-rust-build
 keccak-rust-exec: keccak-rust-json
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec VECTOR_JSON_MODE=single VECTOR_JSON=$(KECCAK_JSON)
 
-# Blake wrappers keep the benchmark workflow variables while delegating to the generic vector targets.
+###############################################################
+# Blake wrapper targets and benchmark workflow variables
+###############################################################
 BLAKE_ACCEPTS      ?= $(MAKEFILE_DIR)rust/src/blake/blake10.all
-BLAKE_N_VECTORS    ?= 0
+BLAKE_N_VECTORS    ?= 10
 BLAKE_JSON_DIR     ?= $(MAKEFILE_DIR)rust/target/riscv64im-unknown-none-elf/release/blake_json
 
 blake-rust-build:
@@ -365,6 +372,10 @@ blake-rust-json: blake-rust-build
 
 blake-rust-exec: blake-rust-json
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile vector-exec VECTOR_JSON_MODE=dir VECTOR_JSON_DIR=$(BLAKE_JSON_DIR)
+
+###############################################################
+# ACT4 targets
+###############################################################
 
 # Build the ACT4 self-checking ELFs with the Linea ACT4 config 
 # Note: build if needed
