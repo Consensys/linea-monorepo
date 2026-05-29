@@ -276,12 +276,13 @@ vector-json: require-src require-vector-file require-n-vectors require-vector-bu
 vector-exec: require-vector-json-mode install-zkc
 	@if [ "$(VECTOR_JSON_MODE)" = "batched" ]; then \
 		[ -f $(VECTOR_JSON_FILE) ] || { echo "VECTOR_JSON_FILE not found: $(VECTOR_JSON_FILE). Run vector-json first"; exit 1; }; \
+		echo "RUN   $(VECTOR_JSON_FILE)"; \
 		exit_line=$$(zkc exec $(VECTOR_JSON_FILE) $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
 		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
-			echo "PASS  $(VECTOR_JSON_FILE)"; \
+			echo "PASS"; \
 			echo "  $$exit_line"; \
 		else \
-			echo "FAIL  $(VECTOR_JSON_FILE)"; \
+			echo "FAIL"; \
 			echo "  $$exit_line"; \
 			exit 1; \
 		fi; \
@@ -290,14 +291,14 @@ vector-exec: require-vector-json-mode install-zkc
 		for json in $(VECTOR_JSON_DIR)/*.json; do \
 			[ -f "$$json" ] || { echo "error: no vector JSONs found in $(VECTOR_JSON_DIR)" >&2; exit 1; }; \
 			i=$$((i + 1)); \
-			echo "RUN   case $$i  ($$json)"; \
+			echo "RUN   case $$i  $$json"; \
 			exit_line=$$(zkc exec "$$json" $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
 			if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
-				echo "PASS  case $$i"; \
+				echo "PASS"; \
 				echo "  $$exit_line"; \
 				pass=$$((pass + 1)); \
 			else \
-				echo "FAIL  case $$i"; \
+				echo "FAIL"; \
 				echo "  $$exit_line"; \
 				fail=$$((fail + 1)); \
 			fi; \
@@ -442,19 +443,20 @@ act4-exec: install-zkc act4-build
 		count=$$((count + 1)); \
 		go run $(GO_MAIN) "$$elf" "" 0 > "$$base.json" 2> "$$base.json.err"; \
 		[ -s "$$base.json.err" ] || rm -f "$$base.json.err"; \
+		echo "RUN   $$name  $$base.json"; \
 		zkc exec "$$base.json" $(ZKC_MAIN) > "$$base.full" 2>&1; \
 		awk '(previous == "ECALL for write" || previous == "ECALL for exit") && $$0 != "" { print } { previous = $$0 }' "$$base.full" > "$$base.out"; \
 		exit_line=$$(awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }' "$$base.full"); \
 		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
-			echo "PASS  $$name"; \
-			echo "PASS  $$name" >> "$(ACT4_RESULTS)"; \
+			echo "PASS"; \
+			echo "PASS" >> "$(ACT4_RESULTS)"; \
 			awk '{ print "  " $$0 }' "$$base.out"; \
 			awk '{ print "  " $$0 }' "$$base.out" >> "$(ACT4_RESULTS)"; \
 			pass=$$((pass + 1)); \
 			rm -f "$$base.full"; \
 		else \
-			echo "FAIL  $$name"; \
-			echo "FAIL  $$name" >> "$(ACT4_RESULTS)"; \
+			echo "FAIL"; \
+			echo "FAIL" >> "$(ACT4_RESULTS)"; \
 			awk '{ print "  " $$0 }' "$$base.out"; \
 			awk '{ print "  " $$0 }' "$$base.out" >> "$(ACT4_RESULTS)"; \
 			fail=$$((fail + 1)); \
