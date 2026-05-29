@@ -11,6 +11,7 @@ import {
   tryVerifyContract,
   tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
+import { formatEnvVarValueForMessage } from "../common/helpers/envVarLogging";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployFromFactory, deployFromFactoryWithOpts } from "../scripts/hardhat/utils";
 
@@ -34,7 +35,9 @@ const func: DeployFunction = withSignerUiSession(
 
     if (optionalMimcAddress) {
       if (!ethers.isAddress(optionalMimcAddress)) {
-        throw new Error(`VERIFIER_MIMC_ADDRESS must be a valid address, got "${optionalMimcAddress}"`);
+        throw new Error(
+          `VERIFIER_MIMC_ADDRESS must be a valid address, got "${formatEnvVarValueForMessage("VERIFIER_MIMC_ADDRESS", optionalMimcAddress)}"`,
+        );
       }
       mimcAddress = ethers.getAddress(optionalMimcAddress);
       const code = await ethers.provider.getCode(mimcAddress);

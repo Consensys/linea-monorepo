@@ -201,6 +201,7 @@ function validateRegistryEnvUsage(sources: Array<{ fileName: string; source: str
   const registryKeys = collectRegistryContractKeys();
   const processEnvPattern = /process\.env(?:\.([A-Z0-9_]+)|\[\s*["']([A-Z0-9_]+)["']\s*\])/g;
   const validateAddressPattern = /validateAddressEnvVar\(\s*"([^"]+)"/g;
+  const getRequiredEnvVarPattern = /getRequiredEnvVar\(\s*"([^"]+)"/g;
 
   for (const { fileName, source } of sources) {
     for (const match of source.matchAll(processEnvPattern)) {
@@ -224,6 +225,18 @@ function validateRegistryEnvUsage(sources: Array<{ fileName: string; source: str
         category: "registry",
         target: `${fileName}/${key}`,
         message: `Registry key "${key}" is validated as env-only. Use requireAddressFromRegistryOrEnv so registered values are used on known networks.`,
+      });
+    }
+
+    for (const match of source.matchAll(getRequiredEnvVarPattern)) {
+      const key = match[1]!;
+      if (!registryKeys.has(key)) {
+        continue;
+      }
+      issues.push({
+        category: "registry",
+        target: `${fileName}/${key}`,
+        message: `Registry key "${key}" is read via getRequiredEnvVar. Use requireAddressFromRegistryOrEnv/requireAddressesFromRegistryOrEnv so registry values take precedence over stale env vars.`,
       });
     }
   }
@@ -316,6 +329,7 @@ function main(): void {
   const registryIssues = [
     ...validateRegistryLookups(registryLookupChecks),
     ...validateRegistryEnvUsage(deployScriptSources),
+    ...validateRegistryEnvUsage(localDeploymentArtifactSources),
   ];
   const artifactIssues = validateLocalDeploymentArtifacts(localDeploymentArtifactSources);
   const issues = [...signatureIssues, ...registryIssues, ...artifactIssues];

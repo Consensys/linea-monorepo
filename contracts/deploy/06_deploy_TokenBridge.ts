@@ -61,7 +61,7 @@ const func: DeployFunction = withSignerUiSession(
         "L1_SECURITY_COUNCIL",
       );
       console.log(
-        `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES environment variable`,
+        `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES from registry or env`,
       );
       deployingChainMessageService = lineaRollupAddress;
       reservedAddresses = requireAddressesFromRegistryOrEnv(
@@ -76,7 +76,7 @@ const func: DeployFunction = withSignerUiSession(
         "L2_SECURITY_COUNCIL",
       );
       console.log(
-        `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES environment variable`,
+        `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES from registry or env`,
       );
       reservedAddresses = requireAddressesFromRegistryOrEnv(
         network.name,

@@ -31,22 +31,32 @@ import {
 } from "./static-artifacts/UpgradeableBeacon.json";
 import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
 import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment";
+import {
+  getDeploymentNetworkName,
+  requireAddressesFromRegistryOrEnv,
+  requireAddressFromRegistryOrEnv,
+} from "../common/helpers/readAddress";
 import { generateRoleAssignments } from "../common/helpers/roles";
 
 async function main() {
   const ORDERED_NONCE_POST_L2MESSAGESERVICE = 3;
   const ORDERED_NONCE_POST_LINEAROLLUP = 7;
+  const networkName = getDeploymentNetworkName();
 
-  let securityCouncilAddress;
+  let securityCouncilAddress: string;
 
   if (process.env.TOKEN_BRIDGE_L1 === "true") {
-    securityCouncilAddress = getRequiredEnvVar("L1_SECURITY_COUNCIL");
+    securityCouncilAddress = requireAddressFromRegistryOrEnv(networkName, "L1_SECURITY_COUNCIL", "L1_SECURITY_COUNCIL");
   } else {
-    securityCouncilAddress = getRequiredEnvVar("L2_SECURITY_COUNCIL");
+    securityCouncilAddress = requireAddressFromRegistryOrEnv(networkName, "L2_SECURITY_COUNCIL", "L2_SECURITY_COUNCIL");
   }
 
-  const l2MessageServiceAddress = process.env.L2_MESSAGE_SERVICE_ADDRESS;
-  const lineaRollupAddress = process.env.LINEA_ROLLUP_ADDRESS;
+  const l2MessageServiceAddress = requireAddressFromRegistryOrEnv(
+    networkName,
+    "L2MessageService",
+    "L2_MESSAGE_SERVICE_ADDRESS",
+  );
+  const lineaRollupAddress = requireAddressFromRegistryOrEnv(networkName, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
 
   const remoteChainId = getRequiredEnvVar("REMOTE_CHAIN_ID");
 
@@ -126,9 +136,7 @@ async function main() {
   const beaconProxyAddress = await beaconProxy.getAddress();
 
   let deployingChainMessageService = l2MessageServiceAddress;
-  let reservedAddresses = process.env.L2_RESERVED_TOKEN_ADDRESSES
-    ? process.env.L2_RESERVED_TOKEN_ADDRESSES.split(",")
-    : [];
+  let reservedAddresses: string[];
   const remoteSender = ethers.getCreateAddress({
     from: process.env.REMOTE_DEPLOYER_ADDRESS || "",
     nonce: remoteDeployerNonce + 4,
@@ -136,15 +144,22 @@ async function main() {
 
   if (process.env.TOKEN_BRIDGE_L1 === "true") {
     console.log(
-      `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES environment variable and remoteSender=${remoteSender}`,
+      `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES from registry or env and remoteSender=${remoteSender}`,
     );
     deployingChainMessageService = lineaRollupAddress;
-    reservedAddresses = process.env.L1_RESERVED_TOKEN_ADDRESSES
-      ? process.env.L1_RESERVED_TOKEN_ADDRESSES.split(",")
-      : [];
+    reservedAddresses = requireAddressesFromRegistryOrEnv(
+      networkName,
+      "L1_RESERVED_TOKEN_ADDRESSES",
+      "L1_RESERVED_TOKEN_ADDRESSES",
+    );
   } else {
     console.log(
-      `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES environment variable and remoteSender=${remoteSender}`,
+      `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES from registry or env and remoteSender=${remoteSender}`,
+    );
+    reservedAddresses = requireAddressesFromRegistryOrEnv(
+      networkName,
+      "L2_RESERVED_TOKEN_ADDRESSES",
+      "L2_RESERVED_TOKEN_ADDRESSES",
     );
   }
 

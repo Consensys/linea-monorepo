@@ -15,6 +15,14 @@ import {
 import { formatEnvVarForLog, formatEnvVarValueForMessage } from "./envVarLogging";
 
 /**
+ * Resolves the deployment network for standalone scripts without Hardhat runtime.
+ * Names outside {@link REGISTRY_NETWORKS} (e.g. `custom`) skip registry lookup and require env vars.
+ */
+export function getDeploymentNetworkName(): string {
+  return process.env.HARDHAT_NETWORK ?? process.env.NETWORK ?? "custom";
+}
+
+/**
  * Reads a single contract address from the per-network registry file.
  * Returns `undefined` if the network has no registry, the key is missing, or the
  * address is the zero address placeholder. Throws if the registry entry is multi-address.
