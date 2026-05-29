@@ -27,12 +27,11 @@ jobs:
       release_tag: ${{ steps.compute-release-tag.outputs.next_tag }}
       tag_changed: ${{ steps.compute-release-tag.outputs.tag_changed }}
     steps:
-      # TODO: will revert exit to 1
       - name: Enforce non-main branch must have custom release tag suffix
         if: github.ref_name != 'main' && inputs.release_tag_suffix == ''
         run: |
           echo "❌ Non-main branch must have non-empty custom tag suffix"
-          exit 0
+          exit 1
 
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
