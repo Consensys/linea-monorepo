@@ -201,7 +201,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `VECTOR_JSON_MODE`           | `per-vector`                                                   | `per-vector` for one JSON per vector, `batched` for one JSON with selected vectors concatenated    |
 | `VECTOR_JSON_FILE`           | `$(JSON)`                                                      | Batched JSON path used when `VECTOR_JSON_MODE=batched`                                             |
 | `VECTOR_JSON_DIR`            | `$(dir $(JSON))vector_json`                                    | JSON directory used when `VECTOR_JSON_MODE=per-vector`                                             |
-| `VECTOR_SUBSET_FILE`         | `$(BIN).all`                                                   | Intermediate `.all` file selected from `VECTOR_FILE`                                               |
+| `VECTOR_SUBSET_FILE`         | `$(BIN).all`                                                   | Intermediate `.all` file selected from `VECTOR_FILE`; one line per vector, or one blob including all vectors |
 | `VECTOR_ELF_TO_JSON_BIN`     | `$(BIN)_elf2json`                                              | Compiled ELF-to-JSON helper used by vector targets                                                 |
 | `IN_BYTES`                   | `""`                                                           | Hex big-endian input written in RAM at `IN_BYTES_OFFSET` as little-endian bytes before execution   |
 | `PROGRAM_OFFSET`             | `0x00000000`                                                   | Program address used by this Makefile's generated linker script (up to 128 MiB)                    |
@@ -220,6 +220,21 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `KECCAK_ALL_FILE`            | `rust/src/keccak/keccak.all`                                   | Keccak `.all` vector file used by `keccak-rust-json`                                               |
 | `KECCAK_N_VECTORS`           | `10`                                                           | Number of Keccak vectors compiled into and packed for the Keccak guest; `-1` means all vectors     |
 | `KECCAK_JSON_FILE`           | `rust/target/riscv64im-unknown-none-elf/release/keccak.json`   | JSON path written by `keccak-rust-json`                                                            |
+
+`IN_BYTES` values are expected in big-endian hex format.
+All `.all` vector files contain one big-endian `IN_BYTES` value per line.
+In `batched` mode, the Makefile writes the selected vectors as one big-endian `IN_BYTES` blob, and `main.go` reverses that blob into the RAM-order input consumed by the guest.
+
+## ELF-to-JSON helper
+
+`main.go` converts an ELF and optional input bytes into the JSON consumed by `zkc`:
+
+```bash
+go run main.go <elfFile> <inBytes|@hexFile> <inBytesOffset>
+```
+
+Use inline `0x...` for small inputs and `@path/to/input.hex` for a file containing one `0x...` blob.
+Both forms are interpreted as big-endian `IN_BYTES` and reversed before being written to RAM.
 
 ## JSON input format
 

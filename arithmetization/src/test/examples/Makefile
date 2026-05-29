@@ -245,7 +245,7 @@ vector-build: require-src
 vector-json: require-src require-vector-file require-n-vectors require-vector-build-artifacts require-vector-json-mode
 	@echo "selecting $(if $(filter -1,$(VECTOR_N_VECTORS)),all,$(VECTOR_N_VECTORS)) vector(s) from $(VECTOR_FILE)"
 # VECTOR_FILE must contain one `IN_BYTES` value per line
-# `per-vector` keeps one line per JSON; `batched` concatenates selected lines into one JSON input
+# `per-vector` keeps one line per JSON; `batched` writes one big-endian blob for the whole batch
 	@available=$$(awk 'END { print NR }' $(VECTOR_FILE)); \
 	if [ "$(VECTOR_N_VECTORS)" != "-1" ] && [ "$$available" -lt "$(VECTOR_N_VECTORS)" ]; then \
 		echo "$(VECTOR_FILE): only $$available vector(s) available, requested $(VECTOR_N_VECTORS)"; \
@@ -253,7 +253,7 @@ vector-json: require-src require-vector-file require-n-vectors require-vector-bu
 	fi; \
 	if [ "$(VECTOR_JSON_MODE)" = "batched" ]; then \
 		if [ "$(VECTOR_N_VECTORS)" = "-1" ]; then cat "$(VECTOR_FILE)"; else head -n $(VECTOR_N_VECTORS) "$(VECTOR_FILE)"; fi | \
-			awk 'BEGIN { printf "0x" } { sub(/^0[xX]/, ""); printf "%s", $$0 } END { printf "\n" }' > $(VECTOR_SUBSET_FILE); \
+			awk '{ sub(/^0[xX]/, ""); line[NR] = $$0 } END { printf "0x"; for (i = NR; i >= 1; i--) printf "%s", line[i]; printf "\n" }' > $(VECTOR_SUBSET_FILE); \
 	elif [ "$(VECTOR_N_VECTORS)" = "-1" ]; then \
 		cat "$(VECTOR_FILE)" > $(VECTOR_SUBSET_FILE); \
 	else \

@@ -23,43 +23,44 @@ type memoryBlob struct {
 }
 
 // parseInBytes accepts either an inline hex literal / raw string, or @path to a
-// file containing a 0x-prefixed hex blob (used for large batched inputs that
-// would exceed the shell's per-argument size limit).
+// file containing one 0x-prefixed hex input.
 //
 // Endianness contract:
-//   - Inline `0x…` hex is treated as a big-endian wire value and is
-//     byte-reversed here so that RAM ends up in little-endian byte order. This
-//     preserves the legacy contract documented in README.md and exercised by
-//     the Blake guest (rust/src/blake/blake_with_in_bytes.rs), whose `.all`
-//     lines are stored byte-reversed on disk and need un-reversing before
-//     reaching RAM.
-//   - `@path` hex is taken to be already in canonical RAM order and is *not*
-//     reversed. This is used by batched vector inputs, where selected `.all`
-//     lines are concatenated in the exact byte order the guest reads.
+//   - `0x…` hex is treated as a big-endian `IN_BYTES` value and is byte-reversed
+//     here before reaching RAM.
+//   - `@path` files use the same rule, but keep large inputs out of the command
+//     line.
 //   - Raw (non-hex) inputs are passed through verbatim.
 func parseInBytes(arg string) ([]byte, error) {
-	fromFile := false
 	if strings.HasPrefix(arg, "@") {
 		data, err := os.ReadFile(strings.TrimPrefix(arg, "@"))
 		if err != nil {
 			return nil, fmt.Errorf("reading inBytes file: %w", err)
 		}
-		arg = strings.TrimSpace(string(data))
-		fromFile = true
+		fields := strings.Fields(string(data))
+		if len(fields) != 1 {
+			return nil, fmt.Errorf("expected @path to contain one 0x-prefixed input, got %d", len(fields))
+		}
+		return parseHexInBytes(fields[0])
 	}
 	if strings.HasPrefix(arg, "0x") || strings.HasPrefix(arg, "0X") {
-		inBytes, err := hex.DecodeString(arg[2:])
-		if err != nil {
-			return nil, fmt.Errorf("decoding hex input bytes: %w", err)
-		}
-		if !fromFile {
-			for i, j := 0, len(inBytes)-1; i < j; i, j = i+1, j-1 {
-				inBytes[i], inBytes[j] = inBytes[j], inBytes[i]
-			}
-		}
-		return inBytes, nil
+		return parseHexInBytes(arg)
 	}
 	return []byte(arg), nil
+}
+
+func parseHexInBytes(arg string) ([]byte, error) {
+	if !strings.HasPrefix(arg, "0x") && !strings.HasPrefix(arg, "0X") {
+		return nil, fmt.Errorf("expected 0x-prefixed input bytes, got %q", arg)
+	}
+	inBytes, err := hex.DecodeString(arg[2:])
+	if err != nil {
+		return nil, fmt.Errorf("decoding hex input bytes: %w", err)
+	}
+	for i, j := 0, len(inBytes)-1; i < j; i, j = i+1, j-1 {
+		inBytes[i], inBytes[j] = inBytes[j], inBytes[i]
+	}
+	return inBytes, nil
 }
 
 // The purpose of this program is simply to generate a suitable ZkC json input
@@ -131,6 +132,9 @@ func extractProgramBlobs(progs []*elf.Prog, sections []*elf.Section) []memoryBlo
 		if p.Type != elf.PT_LOAD || p.Memsz == 0 {
 			continue
 		}
+		// Vaddr is where the segment is mapped in guest RAM. Memsz is the
+		// number of bytes it occupies there; Filesz can be smaller when the
+		// segment ends with zero-initialized memory.
 		if p.Filesz > p.Memsz {
 			panic(fmt.Sprintf("loadable segment at %#x has file size larger than memory size", p.Vaddr))
 		}
