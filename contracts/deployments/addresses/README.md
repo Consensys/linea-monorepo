@@ -15,10 +15,13 @@ This directory contains the PR-reviewed, per-network deployed address registry f
 
 ## How Addresses Are Used
 
-Deploy scripts call `requireAddressFromRegistryOrEnv(networkName, contractKey, envVarName)` for single
-addresses, or `requireAddressesFromRegistryOrEnv(...)` for comma-delimited env vars such as operator lists.
-Lookup tries `contractKey` first, then `envVarName` when they differ (so exports keyed by env var name
-also work). The resolution order is:
+Deploy scripts call one of three registry helpers:
+
+- `requireAddressFromRegistryOrEnv(networkName, contractKey, envVarName)` — single required address; hard fails if neither source provides one.
+- `requireAddressesFromRegistryOrEnv(networkName, contractKey, envVarName)` — comma-delimited required list; hard fails if neither source provides one.
+- `getAddressesFromRegistryOrEnv(networkName, contractKey, envVarName)` — comma-delimited **optional** list; returns `[]` if neither source provides one. Used for reserved-token address lists.
+
+Lookup tries `contractKey` first, then `envVarName` when they differ (so exports keyed by env var name also work). The resolution order is:
 
 | Registry entry | Env var set | Outcome |
 |---|---|---|
@@ -26,10 +29,10 @@ also work). The resolution order is:
 | Present (non-zero) | **Matches** registry | Registry address used |
 | Present (non-zero) | **Conflicts** with registry | **Hard fail before any transaction** |
 | Absent or zero address | Set | Env var used (format-validated) |
-| Absent or zero address | Not set | Hard fail — no source available |
+| Absent or zero address | Not set | Hard fail (required helpers) or `[]` / `undefined` (optional helpers) |
 
 Networks without a registry file (`custom`, `zkevm_dev`, `l2`) skip the registry entirely
-and fall back to requiring the env var.
+and fall back to requiring the env var (or returning the default for optional helpers).
 
 ## How to Update an Address
 
@@ -109,5 +112,7 @@ Deploy scripts look up `contractKey` first, then `envVarName` when they differ. 
 | `LINEA_TOKEN` | `LINEA_TOKEN` | Linea token for the current chain registry |
 | `LINEA_ROLLUP_OPERATORS` | `LINEA_ROLLUP_OPERATORS` | Comma-delimited L1 operator EOAs |
 | `VALIDIUM_OPERATORS` | `VALIDIUM_OPERATORS` | Comma-delimited Validium operator EOAs |
+| `L1_RESERVED_TOKEN_ADDRESSES` | `L1_RESERVED_TOKEN_ADDRESSES` | Optional comma-delimited L1 reserved token addresses (defaults to `[]` if absent) |
+| `L2_RESERVED_TOKEN_ADDRESSES` | `L2_RESERVED_TOKEN_ADDRESSES` | Optional comma-delimited L2 reserved token addresses (defaults to `[]` if absent) |
 
 > **Note:** `VERIFIER_ADDRESS` rotates with each proof system upgrade.
