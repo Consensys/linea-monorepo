@@ -32,7 +32,7 @@ class ExecutionWitness:
     parent-header matching rule directly.
 
     The `state` pool must include MPT paths for every account/slot the
-    execution-proof guest reads — both what block execution naturally touches
+    l2-execution guest reads — both what block execution naturally touches
     and any extra reads the guest performs (e.g., L1->L2 rolling-hash slots at
     boundary state roots, FTX-sender accounts for §6.5 'Invalid' checks).
     """

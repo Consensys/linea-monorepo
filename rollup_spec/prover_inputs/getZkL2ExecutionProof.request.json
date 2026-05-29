@@ -1,5 +1,5 @@
 {
-    "_comment": "Execution proof request schema. Covers a contiguous range of L2 blocks; emits the 15-field PI tuple defined in §2.1.",
+    "_comment": "l2-execution proof request schema. Covers a contiguous range of L2 blocks; emits the 15-field PI tuple defined in §2.1.",
 
     "proverVersion": "4.0.0-riscv",
     "blockRange": {

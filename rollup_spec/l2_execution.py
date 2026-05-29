@@ -220,9 +220,9 @@ def validate_forced_transactions(
 
 
 @dataclass
-class ExecutionProofPublicInput:
+class L2ExecutionProofPublicInput:
     """
-    The 15-field execution-proof public input tuple from Readme.md section 2.1.
+    The 15-field l2-execution public input tuple from Readme.md section 2.1.
     """
     parent_block_hash: Hash32
     end_block_hash: Hash32
@@ -242,9 +242,9 @@ class ExecutionProofPublicInput:
 
 
 @dataclass
-class ExecutionProofPrivateInput:
+class L2ExecutionProofPrivateInput:
     """
-    Logical execution-proof request. `blocks` carries canonical block RLP bytes
+    Logical l2-execution request. `blocks` carries canonical block RLP bytes
     plus per-block FTX metadata. `execution_witnesses` carries the corresponding
     Besu `debug_executionWitness` payload for each block. The first witness must
     contain the parent header whose hash is `blocks[0].header.parent_hash`.
@@ -263,13 +263,13 @@ class ExecutionProofPrivateInput:
 
 
 @dataclass
-class ExecutionProof:
+class L2ExecutionProof:
     """
-    Reference wrapper for an execution proof plus the hash preimages consumed by
-    the blob guest. `proof` stands in for the execution STARK bytes that the
-    blob guest recursively verifies.
+    Reference wrapper for an l2-execution proof plus the hash preimages consumed
+    by the rollup guest. `proof` stands in for the STARK bytes that the rollup
+    guest recursively verifies.
     """
-    public_inputs: ExecutionProofPublicInput
+    public_inputs: L2ExecutionProofPublicInput
     start_block_number: U64
     end_block_number: U64
     proof: bytes = b""
@@ -278,13 +278,13 @@ class ExecutionProof:
     filtered_addresses: List[Address] = field(default_factory=list)
 
 
-def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> ExecutionProof:
+def run_l2_execution_guest(execution_input: L2ExecutionProofPrivateInput) -> L2ExecutionProof:
     """
-    Execution proof: validates the EVM state transition for a contiguous block
-    range and emits the 15-field execution PI (§2.1).
+    l2-execution: validates the EVM state transition for a contiguous block
+    range and emits the 15-field l2-execution PI (§2.1).
     """
     if len(execution_input.blocks) == 0:
-        raise Exception("execution proof must cover at least one block")
+        raise Exception("l2-execution proof must cover at least one block")
     decoded_blocks = [
         decode_block_rlp(rollup_block.block_rlp)
         for rollup_block in execution_input.blocks
@@ -324,7 +324,7 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
     filtered_addresses: List[Address] = []
 
     if decoded_blocks[0].header.number != start_block_number:
-        raise Exception("execution proof block range does not start after parent block")
+        raise Exception("l2-execution proof block range does not start after parent block")
 
     for rollup_block, execution_witness, block in zip(
         execution_input.blocks,
@@ -332,7 +332,7 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
         decoded_blocks,
     ):
         if Uint(block.header.base_fee_per_gas) != base_fee:
-            raise Exception("baseFee must be constant across an execution proof")
+            raise Exception("baseFee must be constant across an l2-execution proof")
         if block.header.coinbase != execution_input.chain_config.coinbase:
             raise Exception("block coinbase does not match chain configuration")
         # Sequencer consensus rules: parent-hash chain & monotonic timestamps
@@ -376,7 +376,7 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
         filtered_addresses.extend(block_filtered_addresses)
 
         # PRECOMPILE-INTENSIVE (production guest): full EVM state transition.
-        # `state_transition_modified` is the heart of the execution proof —
+        # `state_transition_modified` is the heart of the l2-execution proof —
         # it replays the block and verifies the resulting header (state root,
         # receipts root, transactions root, …). Internally it leans on
         # zkVM-native primitives for keccak256, secp256k1 ecrecover, sha256
@@ -412,7 +412,7 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
     if end_rolling_hash_number < parent_rolling_hash_number:
         raise Exception("L1-to-L2 rolling-hash message number cannot decrease")
 
-    public_inputs = ExecutionProofPublicInput(
+    public_inputs = L2ExecutionProofPublicInput(
         parent_block_hash=parent_block_hash,
         end_block_hash=block_hash(current_block.header),
         end_block_number=current_block.header.number,
@@ -430,7 +430,7 @@ def check_execution_proof(execution_input: ExecutionProofPrivateInput) -> Execut
         tx_froms_hash=hash_address_list(tx_froms),
     )
 
-    return ExecutionProof(
+    return L2ExecutionProof(
         public_inputs=public_inputs,
         start_block_number=start_block_number,
         end_block_number=current_block.header.number,

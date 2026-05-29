@@ -35,7 +35,7 @@ class ChainConfig:
 
     def hash(self, base_fee: Uint) -> Hash32:
         """
-        Hash the dynamic chain configuration exposed by the execution proof:
+        Hash the dynamic chain configuration exposed by the l2-execution proof:
 
             keccak256(uint256_be(chainID) || coinbase || L2MessageServiceContract || uint256_be(baseFee))
 
@@ -143,7 +143,7 @@ class ResolvedForcedTransaction:
 @dataclass
 class RollupBlock:
     """
-    Logical execution-proof block witness.
+    Logical l2-execution block witness.
 
     `block_rlp` is the canonical private input supplied by the coordinator. The
     Python reference decodes an `EthereumBlock` from these bytes internally when
@@ -160,7 +160,7 @@ def block_hash(header: Header) -> Hash32:
 
 def decode_block_rlp(block_rlp: bytes) -> EthereumBlock:
     """
-    Decode the canonical block RLP carried by the execution-proof private input
+    Decode the canonical block RLP carried by the l2-execution private input
     into the Ethereum execution-specs block view.
     """
     return rlp.decode_to(EthereumBlock, block_rlp)
@@ -225,4 +225,3 @@ def parse_block_transaction_rlps(block_rlp: bytes) -> List[bytes]:
         _canonical_transaction_bytes(transaction)
         for transaction in block.transactions
     ]
-
