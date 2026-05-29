@@ -13,7 +13,7 @@ name: Arithmetization zkc interpreter benchmark (base vs optim)
 
 # Benchmark data : 
 # -- For Keccak
-# In arithmetization/src/test/examples/rust/src/keccak/keccak.accepts
+# In arithmetization/src/test/examples/rust/src/keccak/keccak.all
 # There are 20k test vectors you can select from to run the benchmark.
 # Each test vector has a raw message of 16 * 32 bytes, ie fits in 4 blocks of 1088 bits.
 # 1 test vector = 4 blocks
@@ -58,7 +58,7 @@ on:
         type: string
         default: main
       n_vectors_keccak:
-        description: 'First N Keccak test vectors from keccak.accepts (x4 for number of blocks)'
+        description: 'First N Keccak test vectors from keccak.all (x4 for number of blocks)'
         required: false
         type: number
         default: 10

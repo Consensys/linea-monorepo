@@ -34,10 +34,8 @@ type memoryBlob struct {
 //     lines are stored byte-reversed on disk and need un-reversing before
 //     reaching RAM.
 //   - `@path` hex is taken to be already in canonical RAM order and is *not*
-//     reversed. This matches helpers that produce bulk inputs directly in
-//     RAM layout (e.g. scripts/keccak_accepts_to_in_bytes, whose 720-byte
-//     per-vector layout is the exact byte order rust/src/keccak/keccak.rs
-//     reads).
+//     reversed. This is used by batched vector inputs, where selected `.all`
+//     lines are concatenated in the exact byte order the guest reads.
 //   - Raw (non-hex) inputs are passed through verbatim.
 func parseInBytes(arg string) ([]byte, error) {
 	fromFile := false
