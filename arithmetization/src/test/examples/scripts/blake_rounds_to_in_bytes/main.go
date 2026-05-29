@@ -11,12 +11,12 @@
 // passes.
 //
 // Output: one `0x<hex>` line on stdout (277 bytes = 554 hex chars) in the
-// on-disk `.all` layout consumed by the blake_accepts_to_in_bytes helper and
-// the blake-rust-json Makefile target. That layout is the canonical
-// EIP-152 buffer (rounds BE, then h/m/t little-endian, then f, then h_out
-// little-endian) byte-reversed end-to-end: the ELF-to-JSON helper reverses
-// these bytes again before they reach guest RAM, so the guest sees the canonical
-// EIP-152 order at run time (see rust/src/blake/blake_with_in_bytes.rs).
+// on-disk `.all` layout consumed by the blake-rust-json Makefile target. That
+// layout is the canonical EIP-152 buffer (rounds BE, then h/m/t little-endian,
+// then f, then h_out little-endian) byte-reversed end-to-end: the ELF-to-JSON
+// helper reverses these bytes again before they reach guest RAM, so the guest
+// sees the canonical EIP-152 order at run time (see
+// rust/src/blake/blake_with_in_bytes.rs).
 //
 // Field order in the emitted hex (reading left-to-right, byte offsets 0..276):
 //
@@ -29,7 +29,7 @@
 //
 // Usage:
 //
-//	blake_rounds_to_accepts <rounds>
+//	blake_rounds_to_in_bytes <rounds>
 //
 // Reference: RFC 7693 / EIP-152. Cross-checked against the rounds=12 test
 // vector documented in blake_with_in_bytes.rs (canonical Blake2b-512("abc")).
@@ -138,7 +138,7 @@ func compress(rounds uint32, h [8]uint64, m [16]uint64, t [2]uint64, f byte) [8]
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: blake_rounds_to_accepts <rounds>")
+		fmt.Fprintln(os.Stderr, "usage: blake_rounds_to_in_bytes <rounds>")
 		os.Exit(1)
 	}
 	roundsU64, err := strconv.ParseUint(os.Args[1], 0, 32)
