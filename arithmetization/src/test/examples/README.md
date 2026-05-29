@@ -45,7 +45,7 @@ Then build the ACT4 ELFs on the host:
 
 ```bash
 cd arithmetization/src/test/examples
-make build-act4
+make act4-build
 ```
 
 #### Note for MacOS
@@ -89,7 +89,7 @@ Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 riscv-test() {
     local makefile="path/to/linea-monorepo/arithmetization/src/test/examples/Makefile"
     case "$1" in
-        clean-all|linker-script|vector-exec|blake-rust-build|blake-rust-json|blake-rust-exec|keccak-rust-build|keccak-rust-json|keccak-rust-exec|build-act4|run-act4|install-zkc|exec-elf|elf-to-json)
+        clean-all|linker-script|vector-exec|blake-rust-build|blake-rust-json|blake-rust-exec|keccak-rust-build|keccak-rust-json|keccak-rust-exec|act4-build|act4-exec|install-zkc|exec-elf|elf-to-json)
             # targets that do NOT require TEST argument
             make -f "$makefile" "$1" "${@:2}"
             ;;
@@ -135,9 +135,9 @@ riscv-test blake-rust-exec
 # Build one batched Keccak JSON
 riscv-test keccak-rust-json KECCAK_N_VECTORS=10 KECCAK_JSON=/tmp/keccak.json
 # Build ACT4 ELFs
-riscv-test build-act4
+riscv-test act4-build
 # Run ACT4 ELFs through zkc
-riscv-test run-act4
+riscv-test act4-exec
 # Run blake_with_in_embedded.rs (input bytes are embedded in main())
 riscv-test blake/blake_with_in_embedded.rs
 # Run blake_with_in_bytes.rs
@@ -178,8 +178,8 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `make keccak-rust-build`                                 | Build the Keccak Rust vector test and helper binaries                                  |
 | `make keccak-rust-json`                                  | Generate one batched Keccak vector JSON input                                          |
 | `make keccak-rust-exec`                                  | Run the batched Keccak vector JSON input                                               |
-| `make build-act4`                                        | Build ACT4 ELFs with the Linea ACT4 config                                             |
-| `make run-act4`                                          | Build and run ACT4 ELFs through zkc and write results/logs under `act4/bin/`           |
+| `make act4-build`                                        | Build ACT4 ELFs with the Linea ACT4 config                                             |
+| `make act4-exec`                                         | Build and run ACT4 ELFs through zkc and write results/logs under `act4/bin/`           |
 
 `require-*` targets are internal support targets used to validate mandatory command-line variables before running the targets above.
 
@@ -248,7 +248,7 @@ https://github.com/riscv/riscv-arch-test/tree/act4/tests/rv64i/M
 ```
 
 ACT4 uses the configuration in `act4/config/linea-rv64im-zicclsm/`.
-`make build-act4` clones `riscv-arch-test` next to `linea-monorepo` if needed, checks out `ACT4_REF`, and builds ELFs either with Docker or on the host.
+`make act4-build` clones `riscv-arch-test` next to `linea-monorepo` if needed, checks out `ACT4_REF`, and builds ELFs either with Docker or on the host.
 The folder structure is the following:
 
 ```text
@@ -269,19 +269,19 @@ parent/
 From `linea-monorepo/arithmetization/src/test/examples`:
 
 ```bash
-make run-act4                         # build on the host and run
-make run-act4 ACT4_BUILD_MODE=docker  # build with Docker and run
+make act4-exec                         # build on the host and run
+make act4-exec ACT4_BUILD_MODE=docker  # build with Docker and run
 ```
 
 By default, ACT4 is built with debug artifacts enabled and fast mode disabled.
 To build faster without objdumps, traces and trap reports:
 
 ```bash
-make build-act4 ACT4_DEBUG=false ACT4_FAST=true
+make act4-build ACT4_DEBUG=false ACT4_FAST=true
 ```
 
 The `build/` directory contains ACT4 intermediate and debug artifacts: signature-generating ELFs, signatures, objdumps, traces and trap reports.
-The `elfs/` directory contains the final self-checking ELFs run by `make run-act4`.
+The `elfs/` directory contains the final self-checking ELFs run by `make act4-exec`.
 The `logs/` directory contains one JSON input per test, non-empty JSON conversion stderr in `.json.err`, and the filtered ecall output (for `exit` or `write`) in `.out`.
 Add `export ELF2JSON_WRITE_SECTIONS=true` to your shell startup file (e.g. `~/.bashrc` or `~/.zshrc`) to also write `.sections` files next to the ELF files, listing the sparse blobs included in the generated JSON input with their indexes, offsets, sizes and names.
 The full zkc output is kept as `.full` only for failing tests. A summary of ACT4 results is written in `results.txt`.

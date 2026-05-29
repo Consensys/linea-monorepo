@@ -3,7 +3,7 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-build vector-json vector-exec blake-rust-build blake-rust-json blake-rust-exec keccak-rust-build keccak-rust-json keccak-rust-exec build-act4 run-act4 require-test require-src require-bin-ext require-vector-accepts require-vector-json-tools
+.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-build vector-json vector-exec blake-rust-build blake-rust-json blake-rust-exec keccak-rust-build keccak-rust-json keccak-rust-exec act4-build act4-exec require-test require-src require-bin-ext require-vector-accepts require-vector-json-tools
 
 # Keep validation, build, and execution targets running in order
 .NOTPARALLEL:
@@ -383,7 +383,7 @@ blake-rust-exec: blake-rust-json
 # Build the ACT4 self-checking ELFs with the Linea ACT4 config 
 # Note: build if needed
 # Note: clone https://github.com/riscv/riscv-arch-test.git if needed
-build-act4:
+act4-build:
 	@if [ -n "$$(find "$(ACT4_ELF_DIR)" -name '*.elf' -print -quit 2>/dev/null)" ]; then \
 		echo "ACT4 ELFs already built in $(ACT4_ELF_DIR)"; \
 		exit 0; \
@@ -431,7 +431,7 @@ build-act4:
 	fi
 
 # Build and run the ACT4 self-checking ELFs with the Linea ACT4 config.
-run-act4: install-zkc build-act4
+act4-exec: install-zkc act4-build
 	@rm -f "$(ACT4_LOGS)"/*; \
 	mkdir -p "$(ACT4_LOGS)"; \
 	> "$(ACT4_RESULTS)"; \
