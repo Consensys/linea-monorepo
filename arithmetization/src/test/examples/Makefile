@@ -3,7 +3,7 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-build vector-json vector-exec keccak-rust-build keccak-rust-json keccak-rust-exec blake-rust-build blake-rust-json blake-rust-exec act4-build act4-exec require-test require-src require-bin-ext require-vector-file require-vector-count require-vector-converter
+.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-build vector-json vector-exec keccak-rust-build keccak-rust-json keccak-rust-exec blake-rust-build blake-rust-json blake-rust-exec act4-build act4-exec require-test require-src require-bin-ext require-vector-file require-positive-n-vectors require-vector-converter require-vector-build-artifacts require-vector-json-mode
 
 # Keep validation, build, and execution targets running in order
 .NOTPARALLEL:
@@ -246,10 +246,7 @@ vector-build: require-src require-vector-converter
 	@echo "building $(VECTOR_FILE_TO_IN_BYTES_BIN)..."
 	go build -o $(VECTOR_FILE_TO_IN_BYTES_BIN) $(VECTOR_FILE_TO_IN_BYTES_GO)
 
-vector-json: require-src require-vector-file require-vector-count
-	@[ -f $(BIN) ] || { echo "BIN not found: $(BIN). Run vector-build first"; exit 1; }
-	@[ -x $(VECTOR_ELF_TO_JSON_BIN) ] || { echo "VECTOR_ELF_TO_JSON_BIN not found or not executable: $(VECTOR_ELF_TO_JSON_BIN). Run vector-build first"; exit 1; }
-	@[ -x $(VECTOR_FILE_TO_IN_BYTES_BIN) ] || { echo "VECTOR_FILE_TO_IN_BYTES_BIN not found or not executable: $(VECTOR_FILE_TO_IN_BYTES_BIN). Run vector-build first"; exit 1; }
+vector-json: require-src require-vector-file require-positive-n-vectors require-vector-build-artifacts require-vector-json-mode
 	@echo "selecting $(VECTOR_N_VECTORS) vector(s) from $(VECTOR_FILE)"
 	$(VECTOR_FILE_TO_IN_BYTES_BIN) "$(VECTOR_FILE)" $(VECTOR_N_VECTORS) > $(VECTOR_IN_BYTES_FILE)
 	@if [ "$(VECTOR_JSON_MODE)" = "single" ]; then \
@@ -264,12 +261,9 @@ vector-json: require-src require-vector-file require-vector-count
 			$(VECTOR_ELF_TO_JSON_BIN) $(BIN) "$$in_bytes" $(IN_BYTES_OFFSET) > "$(VECTOR_JSON_DIR)/$$idx.json" || exit $$?; \
 		done < $(VECTOR_IN_BYTES_FILE); \
 		echo "generated $$n vector JSON(s) in $(VECTOR_JSON_DIR)"; \
-	else \
-		echo "error: VECTOR_JSON_MODE must be single or dir"; \
-		exit 2; \
 	fi
 
-vector-exec: install-zkc
+vector-exec: require-vector-json-mode install-zkc
 	@if [ "$(VECTOR_JSON_MODE)" = "single" ]; then \
 		[ -f $(VECTOR_JSON_FILE) ] || { echo "VECTOR_JSON_FILE not found: $(VECTOR_JSON_FILE). Run vector-json first"; exit 1; }; \
 		exit_line=$$(zkc exec $(VECTOR_JSON_FILE) $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
@@ -300,9 +294,6 @@ vector-exec: install-zkc
 		done; \
 		echo "DONE: $$i vectors   PASS: $$pass   FAIL: $$fail"; \
 		if [ "$$fail" -ne 0 ]; then echo "error: $$fail vector(s) failed" >&2; exit 1; fi; \
-	else \
-		echo "error: VECTOR_JSON_MODE must be single or dir"; \
-		exit 2; \
 	fi
 
 #####################################################################
@@ -484,10 +475,18 @@ require-vector-file:
 	@[ -n "$(VECTOR_FILE)" ] || { echo "VECTOR_FILE is mandatory. Usage: make vector-json TEST=src_optional_subfolder/your_test(.s|.zig|.rs) VECTOR_FILE=path/to/vectors"; exit 1; }
 	@[ -f $(VECTOR_FILE) ] || { echo "VECTOR_FILE file not found: $(VECTOR_FILE)"; exit 1; }
 
-require-vector-count:
+require-positive-n-vectors:
 	@[ -n "$(VECTOR_N_VECTORS)" ] || { echo "VECTOR_N_VECTORS is mandatory and must be positive"; exit 1; }
 	@[ "$(VECTOR_N_VECTORS)" -gt 0 ] 2>/dev/null || { echo "VECTOR_N_VECTORS must be a positive integer, got: $(VECTOR_N_VECTORS)"; exit 1; }
 
 require-vector-converter:
 	@[ -n "$(VECTOR_FILE_TO_IN_BYTES_GO)" ] || { echo "VECTOR_FILE_TO_IN_BYTES_GO is mandatory. Usage: make vector-build TEST=src_optional_subfolder/your_test(.s|.zig|.rs) VECTOR_FILE_TO_IN_BYTES_GO=path/to/converter.go"; exit 1; }
 	@[ -f $(VECTOR_FILE_TO_IN_BYTES_GO) ] || { echo "VECTOR_FILE_TO_IN_BYTES_GO file not found: $(VECTOR_FILE_TO_IN_BYTES_GO)"; exit 1; }
+
+require-vector-build-artifacts:
+	@[ -f $(BIN) ] || { echo "BIN not found: $(BIN). Run vector-build first"; exit 1; }
+	@[ -x $(VECTOR_ELF_TO_JSON_BIN) ] || { echo "VECTOR_ELF_TO_JSON_BIN not found or not executable: $(VECTOR_ELF_TO_JSON_BIN). Run vector-build first"; exit 1; }
+	@[ -x $(VECTOR_FILE_TO_IN_BYTES_BIN) ] || { echo "VECTOR_FILE_TO_IN_BYTES_BIN not found or not executable: $(VECTOR_FILE_TO_IN_BYTES_BIN). Run vector-build first"; exit 1; }
+
+require-vector-json-mode:
+	@[ "$(VECTOR_JSON_MODE)" = "single" ] || [ "$(VECTOR_JSON_MODE)" = "dir" ] || { echo "VECTOR_JSON_MODE must be single or dir, got: $(VECTOR_JSON_MODE)"; exit 1; }
