@@ -120,7 +120,7 @@ zkc-build: build-r5
 	go run $(ELF_TO_JSON) $(R5_BIN) "$(IN_BYTES)" $(IN_BYTES_OFFSET) > $(R5_JSON)
 
 zkc-verify: zkc-build
-	zkc exec $(R5_JSON) $(ZKC_MAIN)
+	zkc exec -q $(R5_JSON) $(ZKC_MAIN)
 
 zkc-verify-passing:
 	$(MAKE) zkc-verify INPUT_FILE=$(PASSING_INPUT_FILE)
