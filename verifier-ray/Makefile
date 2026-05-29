@@ -14,6 +14,7 @@ INPUT_FILE ?= $(PASSING_INPUT_FILE)
 IN_BYTES ?= 0x$(shell xxd -p -c 256 $(INPUT_FILE))
 IN_BYTES_OFFSET ?= 0x08800000
 NATIVE_INPUT_FILE := zig-out/input.bin
+IN_BYTES_FILE ?= zig-out/input.hex
 
 ci: fmt build-release run-passing run-failing-expected test zkc-verify-passing zkc-verify-failing-expected
 
@@ -46,6 +47,7 @@ help:
 		'  INPUT_FILE            Binary input fixture for native and zkc runs, default testdata/inputs/passing.bin' \
 		'  IN_BYTES              0x transport string for zkc; defaults to encoded INPUT_FILE bytes' \
 		'  NATIVE_INPUT_FILE     Fixed native input path; must match main.zig' \
+		'  IN_BYTES_FILE         Hex transport file for zkc; @file preserves RAM byte order' \
 		'' \
 		'zkc variables:' \
 		'  IN_BYTES_OFFSET       Input bytes address, default 0x08800000'
@@ -117,7 +119,9 @@ verify-testdata: generate-testdata
 
 zkc-build: build-r5
 	@echo "Generating $(R5_JSON)"
-	go run $(ELF_TO_JSON) $(R5_BIN) "$(IN_BYTES)" $(IN_BYTES_OFFSET) > $(R5_JSON)
+	mkdir -p $(dir $(IN_BYTES_FILE))
+	printf '%s\n' "$(IN_BYTES)" > $(IN_BYTES_FILE)
+	go run $(ELF_TO_JSON) $(R5_BIN) "@$(IN_BYTES_FILE)" $(IN_BYTES_OFFSET) > $(R5_JSON)
 
 zkc-verify: zkc-build
 	zkc exec -q $(R5_JSON) $(ZKC_MAIN)
