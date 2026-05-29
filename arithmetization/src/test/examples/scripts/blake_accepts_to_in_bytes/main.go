@@ -11,8 +11,8 @@
 //
 //	blake_accepts_to_in_bytes <accepts-file> <n-vectors>
 //
-// `n-vectors == 0` means "all lines". Exits non-zero if any line fails
-// validation or fewer than N vectors are available.
+// Exits non-zero if any line fails validation or fewer than N vectors are
+// available.
 package main
 
 import (
@@ -45,12 +45,12 @@ func validateLine(line string, lineno int) (string, error) {
 
 func run(args []string) error {
 	if len(args) != 2 {
-		return fmt.Errorf("usage: blake_accepts_to_in_bytes <accepts-file> <n-vectors>  (n=0 means all lines)")
+		return fmt.Errorf("usage: blake_accepts_to_in_bytes <accepts-file> <n-vectors>")
 	}
 	path := args[0]
 	n, err := strconv.Atoi(args[1])
-	if err != nil || n < 0 {
-		return fmt.Errorf("n-vectors must be a non-negative integer, got %q", args[1])
+	if err != nil || n <= 0 {
+		return fmt.Errorf("n-vectors must be a positive integer, got %q", args[1])
 	}
 
 	f, err := os.Open(path)
@@ -80,14 +80,14 @@ func run(args []string) error {
 			return fmt.Errorf("write stdout: %w", err)
 		}
 		emitted++
-		if n > 0 && emitted >= n {
+		if emitted >= n {
 			break
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("scan %s: %w", path, err)
 	}
-	if n > 0 && emitted < n {
+	if emitted < n {
 		return fmt.Errorf("%s: only %d vector(s) available, requested %d", path, emitted, n)
 	}
 
