@@ -10,6 +10,7 @@
 - *(prover)* Update rlp_blocks.bin path in shnarf_calculator tests (#3129)
 - *(coordinator)* Export FTX number metrics (#3165)
 - *(prover)* Stronger soundness binding for euclidean division and crumb decomposition (#2910)
+- *(prover)* Valid-nonce-ftx (#3179)
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -29,3 +30,5 @@
 - Update to latest gnark and gnark-crypto (#3142)
 - *(misc)* Besu-plugin acceptance test cleanup of deadcode (#3152)
 - *(coordinator)* Log and message error improvements (#3193)
+- *(maru)* Remove spring dependency management (#3205)
+- Update gnark dependency (#3215)
