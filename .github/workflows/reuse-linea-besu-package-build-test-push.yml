@@ -187,7 +187,6 @@ jobs:
 
       - name: Remove the Besu fleet plugin after image build (if existed)
         shell: bash
-        if: ${{ !inputs.skip_docker_image_build_and_push }}
         run: |
           rm -fr linea-besu/package/linea-besu/besu/plugins/besu-fleet-plugin* || true
 
