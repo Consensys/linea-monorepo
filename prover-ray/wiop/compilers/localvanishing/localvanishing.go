@@ -140,7 +140,7 @@ func reduce(
 	})
 
 	lifted := wiop.Mul(shifted, lagCol.View())
-	m.NewVanishing(ctx.Childf("global"), lifted)
+	m.NewVanishingManual(ctx.Childf("global"), lifted)
 
 	v.MarkAsReduced()
 }
