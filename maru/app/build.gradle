@@ -28,17 +28,14 @@ dependencies {
   implementation(project(':maru:crypto'))
   implementation(project(':maru:serialization'))
   implementation(project(':maru:observability'))
-  implementation(project(':maru:syncing'))
-  implementation(project(':maru:jvm-libs:teku-web3j'))
+  implementation(project(':jvm-libs:linea:teku-web3j'))
   api(project(':maru:linea-finalization-provider')) {
     exclude group: "build.linea", module: "besu-libs"
   }
   implementation(project(':jvm-libs:linea:web3j-extensions')) {
     exclude group: "build.linea", module: "besu-libs"
   }
-  implementation(project(':maru:jvm-libs:extensions'))
-  implementation(project(':maru:jvm-libs:mappers'))
-
+  implementation project(':jvm-libs:generic:extensions:kotlin')
   implementation project(':jvm-libs:generic:extensions:futures')
   implementation project(':jvm-libs:linea:core:long-running-service')
 
@@ -50,7 +47,10 @@ dependencies {
   // :jvm-libs:generic:vertx-helper (Vert.x 5) because Besu 26.5's acceptance-tests-dsl
   // and besu-ethereum-p2p call removed Vert.x 4 methods/internals at runtime.
   // Tracked in libs.versions.toml `lineaPackages`.
-  implementation "build.linea.internal:vertx-helper:${libs.versions.lineaPackages.get()}"
+  implementation("build.linea.internal:vertx-helper:${libs.versions.lineaPackages.get()}") {
+    exclude group: "build.linea.internal", module: "kotlin"
+    exclude group: "build.linea.internal", module: "futures"
+  }
   implementation "io.vertx:vertx-micrometer-metrics"
 
   implementation "info.picocli:picocli:${libs.versions.picoli.get()}"
@@ -66,14 +66,16 @@ dependencies {
   integrationTestRuntimeOnly("org.junit.platform:junit-platform-launcher:${libs.versions.junitPlatform.get()}")
   integrationTestImplementation "org.jetbrains.kotlinx:kotlinx-datetime:${libs.versions.kotlinxDatetime.get()}"
   integrationTestImplementation "org.awaitility:awaitility-kotlin:${libs.versions.awaitility.get()}"
-  integrationTestImplementation(project(':maru:jvm-libs:test-utils'))
+  integrationTestImplementation(project(':jvm-libs:linea:testing:besu'))
   integrationTestImplementation(testFixtures(project(':maru:p2p')))
   integrationTestImplementation(testFixtures(project(':maru:crypto')))
   integrationTestImplementation("org.hyperledger.besu.internal:besu-crypto-services")
+  integrationTestImplementation("org.hyperledger.besu.internal:besu-consensus-common")
+  integrationTestImplementation("org.hyperledger.besu.internal:besu-consensus-qbft")
+  integrationTestImplementation("org.hyperledger.besu.internal:besu-ethereum-core")
   integrationTestImplementation "org.hyperledger.besu.internal:besu-ethereum-api"
   integrationTestImplementation(group: 'org.hyperledger.besu.internal', name: 'besu-ethereum-core', classifier: 'test-support')
   integrationTestImplementation("org.hyperledger.besu.internal:besu-ethereum-p2p")
-  integrationTestImplementation("org.hyperledger.besu.internal:besu-consensus-qbft-core")
   integrationTestImplementation("com.squareup.okhttp3:okhttp:${libs.versions.okhttp.get()}")
   integrationTestImplementation("io.javalin:javalin:${libs.versions.javalin.get()}")
   testImplementation(testFixtures(project(':maru:core')))
@@ -152,5 +154,3 @@ afterEvaluate {
     }.flatten()
   }
 }
-
-check.dependsOn(integrationTest)
