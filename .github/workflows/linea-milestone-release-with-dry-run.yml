@@ -209,10 +209,17 @@ jobs:
           RUN_ID: ${{ needs.create-temp-branch-and-dispatch-release.outputs.run_id }}
         run: |
           set -euo pipefail
+          if [[ -z "${RUN_ID}" ]]; then
+            echo "::warning::Dispatched run ID was not resolved; skipping wait/status lookup so cleanup can continue."
+            echo "Dispatched run ID was not resolved; cleanup will continue." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
           # Watch the dispatched run until terminal. We intentionally ignore
           # exit code: even a failed/cancelled run should still be cleaned up.
           gh run watch "${RUN_ID}" --interval 30 --exit-status || true
-          STATE=$(gh run view "${RUN_ID}" --json status,conclusion --jq '.status + "/" + (.conclusion // "")')
+          STATE=$(gh run view "${RUN_ID}" --json status,conclusion --jq '.status + "/" + (.conclusion // "")' || true)
+          STATE="${STATE:-unknown/view-failed}"
           echo "Dispatched run terminal state: ${STATE}"
           echo "Dispatched run terminal state: ${STATE}" >> "$GITHUB_STEP_SUMMARY"
 
