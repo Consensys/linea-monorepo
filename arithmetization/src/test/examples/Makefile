@@ -277,13 +277,16 @@ vector-exec: require-vector-json-mode install-zkc
 	@if [ "$(VECTOR_JSON_MODE)" = "batched" ]; then \
 		[ -f $(VECTOR_JSON_FILE) ] || { echo "VECTOR_JSON_FILE not found: $(VECTOR_JSON_FILE). Run vector-json first"; exit 1; }; \
 		echo "RUN   $(VECTOR_JSON_FILE)"; \
-		stderr=$$(zkc exec -q $(VECTOR_JSON_FILE) $(ZKC_MAIN) 2>&1 >/dev/null); \
+		err="$(VECTOR_JSON_FILE).err"; \
+		zkc exec -q $(VECTOR_JSON_FILE) $(ZKC_MAIN) > /dev/null 2> "$$err"; \
 		status=$$?; \
-		if [ "$$status" -eq 0 ] && [ -z "$$stderr" ]; then \
+		if [ "$$status" -eq 0 ] && [ ! -s "$$err" ]; then \
 			echo "PASS"; \
+			rm -f "$$err"; \
 		else \
 			echo "FAIL"; \
-			if [ -n "$$stderr" ]; then printf '%s\n' "$$stderr"; else echo "zkc exited with code $$status"; fi; \
+			if [ ! -s "$$err" ]; then echo "zkc exited with code $$status" > "$$err"; fi; \
+			cat "$$err"; \
 			exit 1; \
 		fi; \
 	elif [ "$(VECTOR_JSON_MODE)" = "per-vector" ]; then \
@@ -292,14 +295,17 @@ vector-exec: require-vector-json-mode install-zkc
 			[ -f "$$json" ] || { echo "error: no vector JSONs found in $(VECTOR_JSON_DIR)" >&2; exit 1; }; \
 			i=$$((i + 1)); \
 			echo "RUN   case $$i  $$json"; \
-			stderr=$$(zkc exec -q "$$json" $(ZKC_MAIN) 2>&1 >/dev/null); \
+			err="$$json.err"; \
+			zkc exec -q "$$json" $(ZKC_MAIN) > /dev/null 2> "$$err"; \
 			status=$$?; \
-			if [ "$$status" -eq 0 ] && [ -z "$$stderr" ]; then \
+			if [ "$$status" -eq 0 ] && [ ! -s "$$err" ]; then \
 				echo "PASS"; \
+				rm -f "$$err"; \
 				pass=$$((pass + 1)); \
 			else \
 				echo "FAIL"; \
-				if [ -n "$$stderr" ]; then printf '%s\n' "$$stderr"; else echo "zkc exited with code $$status"; fi; \
+				if [ ! -s "$$err" ]; then echo "zkc exited with code $$status" > "$$err"; fi; \
+				cat "$$err"; \
 				fail=$$((fail + 1)); \
 			fi; \
 		done; \
