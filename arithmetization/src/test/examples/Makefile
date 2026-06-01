@@ -278,11 +278,12 @@ vector-exec: require-vector-json-mode install-zkc
 		[ -f $(VECTOR_JSON_FILE) ] || { echo "VECTOR_JSON_FILE not found: $(VECTOR_JSON_FILE). Run vector-json first"; exit 1; }; \
 		echo "RUN   $(VECTOR_JSON_FILE)"; \
 		stderr=$$(zkc exec -q $(VECTOR_JSON_FILE) $(ZKC_MAIN) 2>&1 >/dev/null); \
-		if [ -z "$$stderr" ]; then \
+		status=$$?; \
+		if [ "$$status" -eq 0 ] && [ -z "$$stderr" ]; then \
 			echo "PASS"; \
 		else \
 			echo "FAIL"; \
-			printf '%s\n' "$$stderr"; \
+			if [ -n "$$stderr" ]; then printf '%s\n' "$$stderr"; else echo "zkc exited with code $$status"; fi; \
 			exit 1; \
 		fi; \
 	elif [ "$(VECTOR_JSON_MODE)" = "per-vector" ]; then \
@@ -292,12 +293,13 @@ vector-exec: require-vector-json-mode install-zkc
 			i=$$((i + 1)); \
 			echo "RUN   case $$i  $$json"; \
 			stderr=$$(zkc exec -q "$$json" $(ZKC_MAIN) 2>&1 >/dev/null); \
-			if [ -z "$$stderr" ]; then \
+			status=$$?; \
+			if [ "$$status" -eq 0 ] && [ -z "$$stderr" ]; then \
 				echo "PASS"; \
 				pass=$$((pass + 1)); \
 			else \
 				echo "FAIL"; \
-				printf '%s\n' "$$stderr"; \
+				if [ -n "$$stderr" ]; then printf '%s\n' "$$stderr"; else echo "zkc exited with code $$status"; fi; \
 				fail=$$((fail + 1)); \
 			fi; \
 		done; \
@@ -453,7 +455,8 @@ act4-exec: install-zkc act4-build
 		count=$$((count + 1)); \
 		echo "RUN   $$name  $$json"; \
 		zkc exec -q "$$json" $(ZKC_MAIN) > /dev/null 2> "$$base.err"; \
-		if [ ! -s "$$base.err" ]; then \
+		status=$$?; \
+		if [ "$$status" -eq 0 ] && [ ! -s "$$base.err" ]; then \
 			echo "PASS"; \
 			echo "PASS" >> "$(ACT4_RESULTS)"; \
 			pass=$$((pass + 1)); \
@@ -461,6 +464,7 @@ act4-exec: install-zkc act4-build
 		else \
 			echo "FAIL"; \
 			echo "FAIL" >> "$(ACT4_RESULTS)"; \
+			if [ ! -s "$$base.err" ]; then echo "zkc exited with code $$status" > "$$base.err"; fi; \
 			cat "$$base.err"; \
 			cat "$$base.err" >> "$(ACT4_RESULTS)"; \
 			fail=$$((fail + 1)); \
