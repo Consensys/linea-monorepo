@@ -468,12 +468,12 @@ act4-exec: install-zkc act4-build
 		status=$$?; \
 		if [ "$$status" -eq 0 ] && [ ! -s "$$base.err" ]; then \
 			echo "PASS"; \
-			echo "PASS" >> "$(ACT4_RESULTS)"; \
+			echo "PASS  $$name" >> "$(ACT4_RESULTS)"; \
 			pass=$$((pass + 1)); \
 			rm -f "$$base.err"; \
 		else \
 			echo "FAIL"; \
-			echo "FAIL" >> "$(ACT4_RESULTS)"; \
+			echo "FAIL  $$name" >> "$(ACT4_RESULTS)"; \
 			if [ ! -s "$$base.err" ]; then echo "zkc exited with code $$status" > "$$base.err"; fi; \
 			cat "$$base.err"; \
 			cat "$$base.err" >> "$(ACT4_RESULTS)"; \
