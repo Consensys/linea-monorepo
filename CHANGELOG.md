@@ -1,5 +1,9 @@
 ## [unreleased]
 
+### 🚀 Features
+
+- *(linea-besu)* Add interfaces module: security and LineaTransactionSelectionResult (#3238)
+
 ### 🐛 Bug Fixes
 
 - *(sequencer)* Bypass background scheduler collision in buildNewBlockAndWait(Long) (#3072)
@@ -11,6 +15,7 @@
 - *(coordinator)* Export FTX number metrics (#3165)
 - *(prover)* Stronger soundness binding for euclidean division and crumb decomposition (#2910)
 - *(prover)* Valid-nonce-ftx (#3179)
+- *(arithmetization)* Fix alert 514 (#3246)
 
 ### ⚙️ Miscellaneous Tasks
 
