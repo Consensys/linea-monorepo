@@ -323,15 +323,19 @@ fn traceDimensions(comptime cases: anytype) TraceDimensions {
             var commitments: usize = 0;
             var message_columns: usize = 0;
             for (round.columns) |column| {
-                commitments += column.commitments.len;
-                switch (column.visibility) {
-                    vectors.prover_visibility_oracle => message_columns += column.commitments.len,
-                    vectors.prover_visibility_public => {
-                        message_columns += 1;
-                        dimensions.values = @max(dimensions.values, column.base_values.len);
-                        dimensions.values = @max(dimensions.values, column.ext_values.len);
+                switch (column) {
+                    .oracle => |commitments_for_column| {
+                        commitments += commitments_for_column.len;
+                        message_columns += commitments_for_column.len;
                     },
-                    else => {},
+                    .public_base => |values| {
+                        message_columns += 1;
+                        dimensions.values = @max(dimensions.values, values.len);
+                    },
+                    .public_ext => |values| {
+                        message_columns += 1;
+                        dimensions.values = @max(dimensions.values, values.len);
+                    },
                 }
             }
             dimensions.commitments = @max(dimensions.commitments, commitments);
@@ -361,10 +365,9 @@ const TraceRoundBacking = struct {
         var oracle_commitment_count: usize = 0;
         var column_count: usize = 0;
         for (round_case.columns, 0..) |column_case, i| {
-            try std.testing.expect(column_case.is_assigned);
-            switch (@as(runtime.Visibility, @enumFromInt(column_case.visibility))) {
-                .oracle => {
-                    for (column_case.commitments) |commitment| {
+            switch (column_case) {
+                .oracle => |commitments| {
+                    for (commitments) |commitment| {
                         self.oracle_commitments[oracle_commitment_count] = uintsToCommitment(commitment);
                         if (tamper_first_absorb and !tampered) {
                             self.oracle_commitments[oracle_commitment_count][0] = elem(self.oracle_commitments[oracle_commitment_count][0].value ^ 1);
@@ -375,31 +378,30 @@ const TraceRoundBacking = struct {
                         column_count += 1;
                     }
                 },
-                .public => {
-                    self.columns[column_count] = .{ .public_column = if (column_case.is_ext) assignment: {
-                        try std.testing.expect(column_case.ext_values.len <= max_trace_values);
-                        fillExts(&self.ext_values[i], column_case.ext_values);
-                        break :assignment .{ .ext = self.ext_values[i][0..column_case.ext_values.len] };
-                    } else assignment: {
-                        try std.testing.expect(column_case.base_values.len <= max_trace_values);
-                        fillElems(&self.base_values[i], column_case.base_values);
-                        if (tamper_first_absorb and !tampered and column_case.base_values.len != 0) {
-                            self.base_values[i][0] = elem(self.base_values[i][0].value ^ 1);
-                            tampered = true;
-                        }
-                        break :assignment .{ .base = self.base_values[i][0..column_case.base_values.len] };
-                    } };
+                .public_base => |values| {
+                    try std.testing.expect(values.len <= max_trace_values);
+                    fillElems(&self.base_values[i], values);
+                    if (tamper_first_absorb and !tampered and values.len != 0) {
+                        self.base_values[i][0] = elem(self.base_values[i][0].value ^ 1);
+                        tampered = true;
+                    }
+                    self.columns[column_count] = .{ .public_column = .{ .base = self.base_values[i][0..values.len] } };
+                    column_count += 1;
+                },
+                .public_ext => |values| {
+                    try std.testing.expect(values.len <= max_trace_values);
+                    fillExts(&self.ext_values[i], values);
+                    self.columns[column_count] = .{ .public_column = .{ .ext = self.ext_values[i][0..values.len] } };
                     column_count += 1;
                 },
             }
         }
 
         for (round_case.cells, 0..) |cell_case, i| {
-            try std.testing.expect(cell_case.is_assigned);
-            self.cells[i] = if (cell_case.is_ext)
-                .{ .ext = uintsToExt(cell_case.ext_value) }
-            else
-                .{ .base = elem(cell_case.base_value) };
+            self.cells[i] = switch (cell_case) {
+                .base => |base_value| .{ .base = elem(base_value) },
+                .ext => |ext_value| .{ .ext = uintsToExt(ext_value) },
+            };
         }
 
         return .{

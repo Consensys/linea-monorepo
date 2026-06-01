@@ -96,8 +96,8 @@ func writeHeader(out *bytes.Buffer) {
 	fmt.Fprintf(out, "pub const prover_visibility_oracle: u8 = %d;\n", int(wiop.VisibilityOracle))
 	fmt.Fprintf(out, "pub const prover_visibility_public: u8 = %d;\n", int(wiop.VisibilityPublic))
 	fmt.Fprintln(out)
-	fmt.Fprintln(out, "pub const RuntimeTraceColumn = struct { visibility: u8, is_assigned: bool, is_ext: bool, base_values: []const u32, ext_values: []const [6]u32, commitments: []const [8]u32 };")
-	fmt.Fprintln(out, "pub const RuntimeTraceCell = struct { is_assigned: bool, is_ext: bool, base_value: u32, ext_value: [6]u32 };")
+	fmt.Fprintln(out, "pub const RuntimeTraceColumn = union(enum) { oracle: []const [8]u32, public_base: []const u32, public_ext: []const [6]u32 };")
+	fmt.Fprintln(out, "pub const RuntimeTraceCell = union(enum) { base: u32, ext: [6]u32 };")
 	fmt.Fprintln(out, "pub const RuntimeTraceRound = struct { columns: []const RuntimeTraceColumn, cells: []const RuntimeTraceCell, expected_coins: []const [6]u32 };")
 	fmt.Fprintln(out, "pub const RuntimeTraceCase = struct { rounds: []const RuntimeTraceRound };")
 	fmt.Fprintln(out)
@@ -384,22 +384,17 @@ type runtimeTraceRound struct {
 // may have internal columns in the source protocol, but they are intentionally
 // not exported to verifier-ray traces.
 type runtimeTraceColumn struct {
-	visibility  wiop.Visibility
-	assigned    bool
-	isExt       bool
-	baseValues  []field.Element
-	extValues   []field.Ext
-	commitments []field.Octuplet
+	commitments      []field.Octuplet
+	publicBaseValues []field.Element
+	publicExtValues  []field.Ext
 }
 
 // runtimeTraceCell records a scalar value opened in the round. Unlike internal
 // columns, cells are always verifier-visible in prover-ray AdvanceRound and must
 // be assigned.
 type runtimeTraceCell struct {
-	assigned  bool
-	isExt     bool
-	baseValue field.Element
-	extValue  field.Ext
+	baseValue *field.Element
+	extValue  *field.Ext
 }
 
 // writeRuntimeTraceCases emits the scripted multi-round WIOP trace used by
@@ -488,22 +483,22 @@ func buildRuntimeTraceCases() []runtimeTraceCase {
 		rounds: []runtimeTraceRound{
 			{
 				columns: []runtimeTraceColumn{
-					{visibility: wiop.VisibilityOracle, assigned: true, commitments: []field.Octuplet{r0OracleCommitment}},
-					{visibility: wiop.VisibilityPublic, assigned: true, isExt: true, extValues: r0PublicExtValues},
+					{commitments: []field.Octuplet{r0OracleCommitment}},
+					{publicExtValues: r0PublicExtValues},
 				},
 				cells: []runtimeTraceCell{
-					{assigned: true, baseValue: r0BaseCellValue},
-					{assigned: true, isExt: true, extValue: r0ExtCellValue},
+					baseTraceCell(r0BaseCellValue),
+					extTraceCell(r0ExtCellValue),
 				},
 				expectedCoins: r1Coins,
 			},
 			{
 				columns: []runtimeTraceColumn{
-					{visibility: wiop.VisibilityOracle, assigned: true, isExt: true, commitments: []field.Octuplet{r1OracleCommitment}},
-					{visibility: wiop.VisibilityPublic, assigned: true, baseValues: r1PublicBaseValues},
+					{commitments: []field.Octuplet{r1OracleCommitment}},
+					{publicBaseValues: r1PublicBaseValues},
 				},
 				cells: []runtimeTraceCell{
-					{assigned: true, baseValue: r1BaseCellValue},
+					baseTraceCell(r1BaseCellValue),
 				},
 				expectedCoins: r2Coins,
 			},
@@ -529,44 +524,35 @@ func writeRuntimeTraceRound(out *bytes.Buffer, round runtimeTraceRound) {
 }
 
 func writeRuntimeTraceColumn(out *bytes.Buffer, column runtimeTraceColumn) {
-	baseValues := ".{}"
-	if column.assigned && column.visibility == wiop.VisibilityPublic && !column.isExt {
-		baseValues = elemSlice(column.baseValues)
-	}
-	extValues := ".{}"
-	if column.assigned && column.visibility == wiop.VisibilityPublic && column.isExt {
-		extValues = extSlice(column.extValues)
-	}
-	commitments := ".{}"
-	if column.assigned && column.visibility == wiop.VisibilityOracle {
-		commitments = commitmentSlice(column.commitments)
-	}
-	fmt.Fprintf(out, "                .{ .visibility = %s, .is_assigned = %t, .is_ext = %t, .base_values = &%s, .ext_values = &%s, .commitments = &%s },\n",
-		visibilityLiteral(column.visibility), column.assigned, column.isExt, baseValues, extValues, commitments)
-}
-
-func visibilityLiteral(visibility wiop.Visibility) string {
-	switch visibility {
-	case wiop.VisibilityOracle:
-		return "prover_visibility_oracle"
-	case wiop.VisibilityPublic:
-		return "prover_visibility_public"
+	switch {
+	case column.commitments != nil:
+		fmt.Fprintf(out, "                .{ .oracle = &%s },\n", commitmentSlice(column.commitments))
+	case column.publicBaseValues != nil:
+		fmt.Fprintf(out, "                .{ .public_base = &%s },\n", elemSlice(column.publicBaseValues))
+	case column.publicExtValues != nil:
+		fmt.Fprintf(out, "                .{ .public_ext = &%s },\n", extSlice(column.publicExtValues))
 	default:
-		panic(fmt.Sprintf("unknown prover-ray visibility %v", visibility))
+		panic("runtime trace column has no data variant")
 	}
 }
 
 func writeRuntimeTraceCell(out *bytes.Buffer, cell runtimeTraceCell) {
-	baseValue := uint64(0)
-	if cell.assigned && !cell.isExt {
-		baseValue = u(cell.baseValue)
+	switch {
+	case cell.baseValue != nil:
+		fmt.Fprintf(out, "                .{ .base = %d },\n", u(*cell.baseValue))
+	case cell.extValue != nil:
+		fmt.Fprintf(out, "                .{ .ext = %s },\n", ext6(*cell.extValue))
+	default:
+		panic("runtime trace cell has no data variant")
 	}
-	extValue := field.ZeroExt()
-	if cell.assigned && cell.isExt {
-		extValue = cell.extValue
-	}
-	fmt.Fprintf(out, "                .{ .is_assigned = %t, .is_ext = %t, .base_value = %d, .ext_value = %s },\n",
-		cell.assigned, cell.isExt, baseValue, ext6(extValue))
+}
+
+func baseTraceCell(value field.Element) runtimeTraceCell {
+	return runtimeTraceCell{baseValue: &value}
+}
+
+func extTraceCell(value field.Ext) runtimeTraceCell {
+	return runtimeTraceCell{extValue: &value}
 }
 
 func elem(v uint64) field.Element {
