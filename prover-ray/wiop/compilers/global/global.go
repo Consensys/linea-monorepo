@@ -101,11 +101,11 @@ type proverBucket struct {
 	scratchAgg []field.Ext // aggregate[j], length N = n*ratio
 }
 
-// verifierBucket holds everything the verifier needs for one ratio bucket.
-type verifierBucket struct {
-	ratio          int
-	vanishings     []*wiop.Vanishing
-	quotientClaims []*wiop.Cell // Q_k(r) claim cells, length = ratio
+// VerifierBucket holds everything the verifier needs for one ratio bucket.
+type VerifierBucket struct {
+	Ratio          int
+	Vanishings     []*wiop.Vanishing
+	QuotientClaims []*wiop.Cell // Q_k(r) claim cells, length = ratio
 }
 
 // ---------------------------------------------------------------------------
@@ -229,22 +229,22 @@ func compileModule(
 	})
 
 	// --- Step 10: register verifier action ---
-	vBuckets := make([]verifierBucket, len(rawBuckets))
+	vBuckets := make([]VerifierBucket, len(rawBuckets))
 	for i, bkt := range rawBuckets {
-		vBuckets[i] = verifierBucket{
-			ratio:          bkt.ratio,
-			vanishings:     bkt.vanishings,
-			quotientClaims: quotientBucketClaims[i],
+		vBuckets[i] = VerifierBucket{
+			Ratio:          bkt.ratio,
+			Vanishings:     bkt.vanishings,
+			QuotientClaims: quotientBucketClaims[i],
 		}
 	}
 	evalRound.RegisterVerifierAction(&Verifier{
 		m:             m,
-		mergeCoin:     mergeCoin,
-		evalCoin:      evalCoin,
-		witnessViews:  views,
-		witnessClaims: witnessClaims,
-		viewKeyToIdx:  viewKeyToIdx,
-		buckets:       vBuckets,
+		MergeCoin:     mergeCoin,
+		EvalCoin:      evalCoin,
+		WitnessViews:  views,
+		WitnessClaims: witnessClaims,
+		ViewKeyToIdx:  viewKeyToIdx,
+		Buckets:       vBuckets,
 	})
 }
 
@@ -623,12 +623,12 @@ func (a *EvalProverAction) Run(rt wiop.Runtime) {
 // It runs in evalRound.
 type Verifier struct {
 	m             *wiop.Module
-	mergeCoin     *wiop.CoinField
-	evalCoin      *wiop.CoinField
-	witnessViews  []*wiop.ColumnView
-	witnessClaims []*wiop.Cell
-	viewKeyToIdx  map[colViewKey]int
-	buckets       []verifierBucket
+	MergeCoin     *wiop.CoinField
+	EvalCoin      *wiop.CoinField
+	WitnessViews  []*wiop.ColumnView
+	WitnessClaims []*wiop.Cell
+	ViewKeyToIdx  map[colViewKey]int
+	Buckets       []VerifierBucket
 }
 
 // Check verifies the PLONK quotient identity for the module using the runtime's claimed values.
@@ -642,24 +642,24 @@ func (gv *Verifier) Check(rt wiop.Runtime) error {
 			gv.m.Size(),
 		))
 	}
-	r := rt.GetCoinValue(gv.evalCoin)
-	coinExt := rt.GetCoinValue(gv.mergeCoin).Ext
+	r := rt.GetCoinValue(gv.EvalCoin)
+	coinExt := rt.GetCoinValue(gv.MergeCoin).Ext
 
 	// Build the map from column-view key → evaluation at r.
-	viewEvals := make(map[colViewKey]field.Gen, len(gv.witnessViews))
-	for i, cv := range gv.witnessViews {
+	viewEvals := make(map[colViewKey]field.Gen, len(gv.WitnessViews))
+	for i, cv := range gv.WitnessViews {
 		key := colViewKey{id: cv.Column.Context.ID, shift: cv.ShiftingOffset}
-		viewEvals[key] = rt.GetCellValue(gv.witnessClaims[i])
+		viewEvals[key] = rt.GetCellValue(gv.WitnessClaims[i])
 	}
 
 	// Compute annihilator r^n − 1.
 	annihilator := computeAnnihilator(r, n)
 
-	for _, bkt := range gv.buckets {
+	for _, bkt := range gv.Buckets {
 		// --- Recombine quotient shares: Q(r) = Σ_k r^{kn} · Q_k(r) ---
 		qr := field.ElemZero()
 		rPowKN := field.ElemOne() // r^{kn}, starts at r^0 = 1
-		for k, claim := range bkt.quotientClaims {
+		for k, claim := range bkt.QuotientClaims {
 			_ = k
 			qk := rt.GetCellValue(claim) // Q_k(r)
 			qr = qr.Add(rPowKN.Mul(qk))
@@ -673,7 +673,7 @@ func (gv *Verifier) Check(rt wiop.Runtime) error {
 		pagg := field.ElemZero()
 		var coinPow field.Ext
 		coinPow.SetOne()
-		for _, v := range bkt.vanishings {
+		for _, v := range bkt.Vanishings {
 			pr := evalExprAtPoint(v.Expression, viewEvals, rt)
 			cr := evalCancellationAtPoint(v.CancelledPositions, n, r)
 			pTimesC := pr.Mul(cr)
@@ -697,7 +697,7 @@ func (gv *Verifier) Check(rt wiop.Runtime) error {
 		if !diff.IsZero() {
 			return fmt.Errorf(
 				"wiop/compilers: global quotient check failed for module (n=%d, ratio=%d): P_agg(r) ≠ (r^n−1)·Q(r)",
-				n, bkt.ratio,
+				n, bkt.Ratio,
 			)
 		}
 	}
