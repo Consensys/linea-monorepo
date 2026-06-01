@@ -1,4 +1,4 @@
-name: Reusable Component Push Tag and Changelog and GitHub Release
+name: "Reusable: Component Push Tag and Changelog and GitHub Release"
 
 permissions:
   actions: read

@@ -1,4 +1,4 @@
-name: coordinator-build
+name: coordinator-build-and-publish
 
 permissions:
   contents: read

@@ -1,4 +1,4 @@
-name: Reusable Linea-besu-package Push Tag and Changelog and GitHub Release
+name: "Reusable: Linea-besu-package Push Tag and Changelog and GitHub Release"
 
 permissions:
   actions: read
@@ -73,7 +73,7 @@ jobs:
 
   build-linea-besu-docker-image-and-gh-release:
     needs: [release-linea-besu-push-tag-changelog]
-    uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
+    uses: ./.github/workflows/reusable-linea-besu-package-build-test-push.yml
     with:
       release_version: ${{ needs.release-linea-besu-push-tag-changelog.outputs.release_version}}
       release_tag: ${{ needs.release-linea-besu-push-tag-changelog.outputs.release_tag }}

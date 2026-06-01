@@ -1,4 +1,4 @@
-name: postman-build
+name: postman-build-and-publish
 
 permissions:
   contents: read

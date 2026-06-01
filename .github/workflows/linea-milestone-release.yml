@@ -163,7 +163,7 @@ jobs:
       - component-latest-docker-tags
       - build-local-linea-besu-package
     if: always() && !cancelled() && needs.component-latest-docker-tags.result == 'success'
-    uses: ./.github/workflows/reuse-run-e2e-tests.yml
+    uses: ./.github/workflows/reusable-run-e2e-tests.yml
     with:
       image_tag: local
       coordinator_tag: ${{ fromJson(needs.component-release-metadata.outputs.coordinator).tag_changed != 'true' && needs.component-latest-docker-tags.outputs.coordinator || '' }}
