@@ -148,7 +148,6 @@ jobs:
     with:
       image_tag: local
       develop_tag: develop
-      image_name: consensys/linea-coordinator
       push_image: false
     secrets: inherit
 
@@ -163,7 +162,6 @@ jobs:
     with:
       image_tag: local
       develop_tag: develop
-      image_name: consensys/linea-postman
       push_image: false
     secrets: inherit
 
@@ -178,7 +176,6 @@ jobs:
     with:
       image_tag: local
       develop_tag: develop
-      image_name: consensys/linea-prover
       push_image: false
     secrets: inherit
 
@@ -193,7 +190,6 @@ jobs:
     with:
       image_tag: local
       develop_tag: develop
-      image_name: consensys/maru
       push_image: false
     secrets: inherit
 
@@ -208,7 +204,6 @@ jobs:
     with:
       image_tag: local
       develop_tag: develop
-      image_name: consensys/linea-transaction-exclusion-api
       push_image: false
     secrets: inherit
 

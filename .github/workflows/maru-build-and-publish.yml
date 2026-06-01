@@ -19,8 +19,9 @@ on:
         required: true
         type: string
       image_name:
-        required: true
+        required: false
         type: string
+        default: consensys/maru
       push_image:
         required: false
         type: boolean
@@ -30,30 +31,7 @@ on:
         required: false
       DOCKERHUB_TOKEN:
         required: false
-  workflow_dispatch:
-    inputs:
-      image_tag:
-        description: 'Image tag, if not given, HEAD commit hash will be used'
-        required: false
-        type: string
-        default: ''
-      develop_tag:
-        description: 'Image tag will be "develop" if target branch is main'
-        required: true
-        type: choice
-        options:
-          - develop
-        default: 'develop'
-      image_name:
-        description: 'Image name'
-        required: true
-        type: string
-        default: 'consensys/maru'
-      push_image:
-        description: 'Toggle whether to push image to docker registry'
-        required: false
-        type: boolean
-        default: true
+
 
 concurrency:
   group: maru-docker-build-and-publish-${{ github.workflow }}-${{ github.ref }}
