@@ -1,4 +1,4 @@
-## [unreleased]
+## [1.0.1-rc1] - 2026-06-01
 
 ### 🐛 Bug Fixes
 
@@ -11,5 +11,8 @@
 
 ### ⚙️ Miscellaneous Tasks
 
+- *(ci)* Fix merge conflict
+- *(ci)* Fix merge conflict
 - *(maru)* Follow up for pr 3236 (#3237)
 - *(maru)* Split testing workflow (#3234)
+- *(ci)* Reset CHANGELOG.md to be the same content as latest main

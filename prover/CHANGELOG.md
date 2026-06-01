@@ -1,4 +1,4 @@
-## [unreleased]
+## [1.0.1-rc1] - 2026-06-01
 
 ### 🐛 Bug Fixes
 
@@ -13,3 +13,4 @@
 - Update gnark (#3089)
 - Update to latest gnark and gnark-crypto (#3142)
 - Update gnark dependency (#3215)
+- *(ci)* Reset CHANGELOG.md to be the same content as latest main
