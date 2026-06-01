@@ -30,3 +30,4 @@ fn read_64<ram>(address:Address) -> (value:u64) {
     var aligned:Address = address & MASK_ADDR_ALIGN_4
     var offset:Address = address & 3
         value = ram[aligned + 1]::ram[aligned]
+}
