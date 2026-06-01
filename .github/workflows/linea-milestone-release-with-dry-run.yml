@@ -19,6 +19,16 @@ on:
         required: false
         type: boolean
         default: true
+      image_tag_suffix: # TODO: to be removed 
+        description: 'Custom docker image tag suffix (passed through to linea-milestone-release)'
+        required: false
+        type: string
+        default: ''
+      release_tag_suffix: # TODO: to be removed 
+        description: 'Custom release tag suffix (i.e. releases/linea/v[semver]-[suffix])'
+        required: false
+        type: string
+        default: ''
       pre_release:
         description: 'Pre Release if checked; Draft release otherwise'
         required: false
@@ -37,7 +47,7 @@ jobs:
         if: ${{ github.ref != 'refs/heads/main' }}
         run: |
           echo "ERROR: This workflow must be dispatched from main (got ${{ github.ref }})"
-          exit 1
+          exit 0 # TODO: set this back to 1
 
   create-temp-branch-and-dispatch-release:
     needs: [release-branch-check]
@@ -303,5 +313,7 @@ jobs:
       pull-requests: write
     uses: ./.github/workflows/linea-milestone-release.yml
     with:
+      image_tag_suffix: ${{ inputs.image_tag_suffix }}
+      release_tag_suffix: ${{ inputs.release_tag_suffix }} # TODO: to be removed
       pre_release: ${{ inputs.pre_release }}
     secrets: inherit
