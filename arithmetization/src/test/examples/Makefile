@@ -155,7 +155,7 @@ zkc-debug: require-test install-zkc
 	zkc debug $(JSON) $(ZKC_MAIN)
 
 clean: require-test
-	rm -f $(BIN) $(JSON) $(BIN).objdump $(VECTOR_ELF_TO_JSON_BIN) $(VECTOR_SUBSET_FILE) $(LINKER_SCRIPT)
+	rm -f $(BIN) $(JSON) $(BIN).objdump $(VECTOR_SUBSET_FILE) $(LINKER_SCRIPT)
 
 clean-all:
 	rm -rf $(MAKEFILE_DIR)asm/bin/
@@ -232,12 +232,13 @@ VECTOR_JSON_MODE               ?= per-vector
 VECTOR_JSON_FILE               ?= $(JSON)
 VECTOR_JSON_DIR                ?= $(dir $(JSON))vector_json
 VECTOR_SUBSET_FILE             ?= $(BIN).all
-VECTOR_ELF_TO_JSON_BIN         ?= $(BIN)_elf2json
 
 vector-build: require-src
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=$(TEST)
-	@echo "building $(VECTOR_ELF_TO_JSON_BIN)..."
-	go build -o $(VECTOR_ELF_TO_JSON_BIN) $(ELF_TO_JSON_GEN)
+	@elf_to_json_bin="$(MAKEFILE_DIR)bin/elf_to_json_gen"; \
+	mkdir -p "$(MAKEFILE_DIR)bin"; \
+	echo "building $$elf_to_json_bin..."; \
+	go build -o "$$elf_to_json_bin" $(ELF_TO_JSON_GEN)
 
 vector-json: require-src require-vector-file require-n-vectors require-vector-build-artifacts require-vector-json-mode
 	@echo "selecting $(if $(filter -1,$(VECTOR_N_VECTORS)),all,$(VECTOR_N_VECTORS)) vector(s) from $(VECTOR_FILE)"
@@ -256,16 +257,18 @@ vector-json: require-src require-vector-file require-n-vectors require-vector-bu
 	else \
 		head -n $(VECTOR_N_VECTORS) "$(VECTOR_FILE)" > $(VECTOR_SUBSET_FILE); \
 	fi
-	@if [ "$(VECTOR_JSON_MODE)" = "batched" ]; then \
+	@elf_to_json_bin="$(MAKEFILE_DIR)bin/elf_to_json_gen"; \
+	[ -x "$$elf_to_json_bin" ] || { echo "ELF-to-JSON helper not found. Run vector-build first"; exit 1; }; \
+	if [ "$(VECTOR_JSON_MODE)" = "batched" ]; then \
 		echo "rendering ZKC JSON to $(VECTOR_JSON_FILE)"; \
-		$(VECTOR_ELF_TO_JSON_BIN) $(BIN) @$(VECTOR_SUBSET_FILE) $(IN_BYTES_OFFSET) > $(VECTOR_JSON_FILE) || exit $$?; \
+		"$$elf_to_json_bin" $(BIN) @$(VECTOR_SUBSET_FILE) $(IN_BYTES_OFFSET) > $(VECTOR_JSON_FILE) || exit $$?; \
 	elif [ "$(VECTOR_JSON_MODE)" = "per-vector" ]; then \
 		mkdir -p $(VECTOR_JSON_DIR); \
 		rm -f $(VECTOR_JSON_DIR)/*.json; \
 		echo "rendering one ZKC JSON per vector under $(VECTOR_JSON_DIR)"; \
 		n=0; while IFS= read -r in_bytes; do \
 			n=$$((n + 1)); idx=$$(printf '%03d' $$n); \
-			$(VECTOR_ELF_TO_JSON_BIN) $(BIN) "$$in_bytes" $(IN_BYTES_OFFSET) > "$(VECTOR_JSON_DIR)/$$idx.json" || exit $$?; \
+			"$$elf_to_json_bin" $(BIN) "$$in_bytes" $(IN_BYTES_OFFSET) > "$(VECTOR_JSON_DIR)/$$idx.json" || exit $$?; \
 		done < $(VECTOR_SUBSET_FILE); \
 		echo "generated $$n vector JSON(s) in $(VECTOR_JSON_DIR)"; \
 	fi
@@ -424,12 +427,16 @@ act4-build:
 		exit 2; \
 	fi; \
 	rm -f "$(ACT4_LOGS)"/*.json "$(ACT4_LOGS)"/*.json.err "$(ACT4_LOGS)"/*.err "$(ACT4_LOGS)"/*.out "$(ACT4_LOGS)"/*.full || exit $$?; \
+	elf_to_json_bin="$(MAKEFILE_DIR)bin/elf_to_json_gen"; \
+	mkdir -p "$(MAKEFILE_DIR)bin" || exit $$?; \
+	echo "building $$elf_to_json_bin..."; \
+	go build -o "$$elf_to_json_bin" $(ELF_TO_JSON_GEN) || exit $$?; \
 	count=0; \
 	for elf in $$(find "$(ACT4_ELF_DIR)" -name '*.elf' | sort); do \
 		name=$$(basename "$$elf" .elf); \
 		base="$(ACT4_LOGS)/$$name"; \
 		count=$$((count + 1)); \
-		go run $(ELF_TO_JSON_GEN) "$$elf" "" 0 > "$$base.json" 2> "$$base.json.err" || exit $$?; \
+		"$$elf_to_json_bin" "$$elf" "" 0 > "$$base.json" 2> "$$base.json.err" || exit $$?; \
 		[ -s "$$base.json.err" ] || rm -f "$$base.json.err"; \
 	done; \
 	if [ "$$count" -eq 0 ]; then echo "error: no ACT4 ELFs found in $(ACT4_ELF_DIR)" >&2; exit 1; fi; \
@@ -491,7 +498,6 @@ require-n-vectors:
 
 require-vector-build-artifacts:
 	@[ -f $(BIN) ] || { echo "BIN not found: $(BIN). Run vector-build first"; exit 1; }
-	@[ -x $(VECTOR_ELF_TO_JSON_BIN) ] || { echo "VECTOR_ELF_TO_JSON_BIN not found or not executable: $(VECTOR_ELF_TO_JSON_BIN). Run vector-build first"; exit 1; }
 
 require-vector-json-mode:
 	@[ "$(VECTOR_JSON_MODE)" = "per-vector" ] || [ "$(VECTOR_JSON_MODE)" = "batched" ] || { echo "VECTOR_JSON_MODE must be per-vector or batched, got: $(VECTOR_JSON_MODE)"; exit 1; }
