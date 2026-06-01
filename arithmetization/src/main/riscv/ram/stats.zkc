@@ -1,0 +1,112 @@
+include "../utils/type.zkc"
+
+// Scratch counters for RAM read/write usage during program execution.
+memory ram_access_stats(i:u8) -> (count:u64)
+
+const STAT_READ_8:u8 = 0
+const STAT_READ_8_ALIGNED:u8 = 1
+const STAT_READ_8_MISALIGNED:u8 = 2
+const STAT_READ_16:u8 = 3
+const STAT_READ_16_ALIGNED:u8 = 4
+const STAT_READ_16_MISALIGNED:u8 = 5
+const STAT_READ_32:u8 = 6
+const STAT_READ_32_ALIGNED:u8 = 7
+const STAT_READ_32_MISALIGNED:u8 = 8
+const STAT_READ_64:u8 = 9
+const STAT_READ_64_ALIGNED:u8 = 10
+const STAT_READ_64_MISALIGNED:u8 = 11
+const STAT_WRITE_8:u8 = 12
+const STAT_WRITE_8_ALIGNED:u8 = 13
+const STAT_WRITE_8_MISALIGNED:u8 = 14
+const STAT_WRITE_16:u8 = 15
+const STAT_WRITE_16_ALIGNED:u8 = 16
+const STAT_WRITE_16_MISALIGNED:u8 = 17
+const STAT_WRITE_32:u8 = 18
+const STAT_WRITE_32_ALIGNED:u8 = 19
+const STAT_WRITE_32_MISALIGNED:u8 = 20
+const STAT_WRITE_64:u8 = 21
+const STAT_WRITE_64_ALIGNED:u8 = 22
+const STAT_WRITE_64_MISALIGNED:u8 = 23
+
+fn inc_stat<ram_access_stats>(idx:u8) {
+    ram_access_stats[idx] = ram_access_stats[idx] + 1
+}
+
+fn record_read_8<ram_access_stats>(address:Address) {
+    inc_stat(STAT_READ_8)
+    // Byte accesses are naturally aligned at every address.
+    inc_stat(STAT_READ_8_ALIGNED)
+}
+
+fn record_read_16<ram_access_stats>(address:Address) {
+    inc_stat(STAT_READ_16)
+    if (address & 1) == 0 {
+        inc_stat(STAT_READ_16_ALIGNED)
+    } else {
+        inc_stat(STAT_READ_16_MISALIGNED)
+    }
+}
+
+fn record_read_32<ram_access_stats>(address:Address) {
+    inc_stat(STAT_READ_32)
+    if (address & 3) == 0 {
+        inc_stat(STAT_READ_32_ALIGNED)
+    } else {
+        inc_stat(STAT_READ_32_MISALIGNED)
+    }
+}
+
+fn record_read_64<ram_access_stats>(address:Address) {
+    inc_stat(STAT_READ_64)
+    if (address & 7) == 0 {
+        inc_stat(STAT_READ_64_ALIGNED)
+    } else {
+        inc_stat(STAT_READ_64_MISALIGNED)
+    }
+}
+
+fn record_write_8<ram_access_stats>(address:Address) {
+    inc_stat(STAT_WRITE_8)
+    // Byte accesses are naturally aligned at every address.
+    inc_stat(STAT_WRITE_8_ALIGNED)
+}
+
+fn record_write_16<ram_access_stats>(address:Address) {
+    inc_stat(STAT_WRITE_16)
+    if (address & 1) == 0 {
+        inc_stat(STAT_WRITE_16_ALIGNED)
+    } else {
+        inc_stat(STAT_WRITE_16_MISALIGNED)
+    }
+}
+
+fn record_write_32<ram_access_stats>(address:Address) {
+    inc_stat(STAT_WRITE_32)
+    if (address & 3) == 0 {
+        inc_stat(STAT_WRITE_32_ALIGNED)
+    } else {
+        inc_stat(STAT_WRITE_32_MISALIGNED)
+    }
+}
+
+fn record_write_64<ram_access_stats>(address:Address) {
+    inc_stat(STAT_WRITE_64)
+    if (address & 7) == 0 {
+        inc_stat(STAT_WRITE_64_ALIGNED)
+    } else {
+        inc_stat(STAT_WRITE_64_MISALIGNED)
+    }
+}
+
+fn print_ram_access_stats<ram_access_stats>() {
+    printf "========== RAM access statistics ==========\n"
+    printf "read_8   total=%d  aligned=%d  misaligned=%d\n", ram_access_stats[STAT_READ_8], ram_access_stats[STAT_READ_8_ALIGNED], ram_access_stats[STAT_READ_8_MISALIGNED]
+    printf "read_16  total=%d  aligned=%d  misaligned=%d\n", ram_access_stats[STAT_READ_16], ram_access_stats[STAT_READ_16_ALIGNED], ram_access_stats[STAT_READ_16_MISALIGNED]
+    printf "read_32  total=%d  aligned=%d  misaligned=%d\n", ram_access_stats[STAT_READ_32], ram_access_stats[STAT_READ_32_ALIGNED], ram_access_stats[STAT_READ_32_MISALIGNED]
+    printf "read_64  total=%d  aligned=%d  misaligned=%d\n", ram_access_stats[STAT_READ_64], ram_access_stats[STAT_READ_64_ALIGNED], ram_access_stats[STAT_READ_64_MISALIGNED]
+    printf "write_8  total=%d  aligned=%d  misaligned=%d\n", ram_access_stats[STAT_WRITE_8], ram_access_stats[STAT_WRITE_8_ALIGNED], ram_access_stats[STAT_WRITE_8_MISALIGNED]
+    printf "write_16 total=%d  aligned=%d  misaligned=%d\n", ram_access_stats[STAT_WRITE_16], ram_access_stats[STAT_WRITE_16_ALIGNED], ram_access_stats[STAT_WRITE_16_MISALIGNED]
+    printf "write_32 total=%d  aligned=%d  misaligned=%d\n", ram_access_stats[STAT_WRITE_32], ram_access_stats[STAT_WRITE_32_ALIGNED], ram_access_stats[STAT_WRITE_32_MISALIGNED]
+    printf "write_64 total=%d  aligned=%d  misaligned=%d\n", ram_access_stats[STAT_WRITE_64], ram_access_stats[STAT_WRITE_64_ALIGNED], ram_access_stats[STAT_WRITE_64_MISALIGNED]
+    printf "===========================================\n"
+}

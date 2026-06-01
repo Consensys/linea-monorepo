@@ -1,7 +1,9 @@
 include "../memory.zkc"
 include "../utils/constants.zkc"
+include "stats.zkc"
 
-fn write_8<ram>(address:Address, value:u8) -> () {
+fn write_8<ram, ram_access_stats>(address:Address, value:u8) -> () {
+    record_write_8(address)
     var aligned:Address = address & MASK_ADDR_ALIGN_4
     var offset:Address = address & 3
     var old_word:u32 = ram[aligned]
@@ -23,7 +25,8 @@ fn write_8<ram>(address:Address, value:u8) -> () {
     }
 }
 
-fn write_16<ram>(address:Address, value:u16) -> () {
+fn write_16<ram, ram_access_stats>(address:Address, value:u16) -> () {
+    record_write_16(address)
     var aligned:Address = address & MASK_ADDR_ALIGN_4
     var offset:Address = address & 3
     if offset == 0 {
@@ -44,7 +47,8 @@ fn write_16<ram>(address:Address, value:u16) -> () {
     }
 }
 
-fn write_32<ram>(address:Address, value:u32) -> () {
+fn write_32<ram, ram_access_stats>(address:Address, value:u32) -> () {
+    record_write_32(address)
     var aligned:Address = address & MASK_ADDR_ALIGN_4
     var offset:Address = address & 3
     if offset == 0 {
@@ -62,7 +66,8 @@ fn write_32<ram>(address:Address, value:u32) -> () {
     }
 }
 
-fn write_64<ram>(address:Address, value:u64) -> () {
+fn write_64<ram, ram_access_stats>(address:Address, value:u64) -> () {
+    record_write_64(address)
     var aligned:Address = address & MASK_ADDR_ALIGN_4
     var offset:Address = address & 3
     if offset == 0 {
