@@ -306,14 +306,14 @@ make act4-build ACT4_DEBUG=false ACT4_FAST=true
 
 The `build/` directory contains ACT4 intermediate and debug artifacts: signature-generating ELFs, signatures, objdumps, traces and trap reports.
 The `elfs/` directory contains the final self-checking ELFs run by `make act4-exec`.
-The `logs/` directory contains one JSON input per test, non-empty JSON conversion stderr in `.json.err`, and the filtered ecall output (for `exit` or `write`) in `.out`.
+The `logs/` directory contains one JSON input per test, non-empty JSON conversion stderr in `.json.err`, and non-empty zkc stderr in `.err` for failing tests.
 Add `export ELF2JSON_WRITE_SECTIONS=true` to your shell startup file (e.g. `~/.bashrc` or `~/.zshrc`) to also write `.sections` files next to the ELF files, listing the sparse blobs included in the generated JSON input with their indexes, offsets, sizes and names.
-The full zkc output is kept as `.full` only for failing tests. A summary of ACT4 results is written in `results.txt`.
+`act4-exec` runs `zkc exec -q`, so stdout is suppressed and a test passes when stderr is empty. A summary of ACT4 results is written in `results.txt`.
 
 To rerun one generated ACT4 test through zkc:
 
 ```bash
-zkc exec act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
+zkc exec -q act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
 ```
 
 ## Default memory layout

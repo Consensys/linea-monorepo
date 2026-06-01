@@ -72,9 +72,6 @@ ENTRY_POINT_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) 
 SP_FROM_ELF              = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _stack_start | awk '{print "0x"$$1}')
 VERIFY_ELF               ?= false             
 
-# String to determine if a program is exiting with exit code 0
-EXIT_SUCCESS_STRING := "EXIT CODE = 0"
-
 # Support function to generate JSON from an ELF
 define ELF_TO_JSON
 	@echo "\nGenerating $(2) from $(1)"
@@ -277,13 +274,12 @@ vector-exec: require-vector-json-mode install-zkc
 	@if [ "$(VECTOR_JSON_MODE)" = "batched" ]; then \
 		[ -f $(VECTOR_JSON_FILE) ] || { echo "VECTOR_JSON_FILE not found: $(VECTOR_JSON_FILE). Run vector-json first"; exit 1; }; \
 		echo "RUN   $(VECTOR_JSON_FILE)"; \
-		exit_line=$$(zkc exec $(VECTOR_JSON_FILE) $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
-		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
+		stderr=$$(zkc exec -q $(VECTOR_JSON_FILE) $(ZKC_MAIN) 2>&1 >/dev/null); \
+		if [ -z "$$stderr" ]; then \
 			echo "PASS"; \
-			echo "  $$exit_line"; \
 		else \
 			echo "FAIL"; \
-			echo "  $$exit_line"; \
+			printf '%s\n' "$$stderr"; \
 			exit 1; \
 		fi; \
 	elif [ "$(VECTOR_JSON_MODE)" = "per-vector" ]; then \
@@ -292,14 +288,13 @@ vector-exec: require-vector-json-mode install-zkc
 			[ -f "$$json" ] || { echo "error: no vector JSONs found in $(VECTOR_JSON_DIR)" >&2; exit 1; }; \
 			i=$$((i + 1)); \
 			echo "RUN   case $$i  $$json"; \
-			exit_line=$$(zkc exec "$$json" $(ZKC_MAIN) 2>&1 | awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }'); \
-			if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
+			stderr=$$(zkc exec -q "$$json" $(ZKC_MAIN) 2>&1 >/dev/null); \
+			if [ -z "$$stderr" ]; then \
 				echo "PASS"; \
-				echo "  $$exit_line"; \
 				pass=$$((pass + 1)); \
 			else \
 				echo "FAIL"; \
-				echo "  $$exit_line"; \
+				printf '%s\n' "$$stderr"; \
 				fail=$$((fail + 1)); \
 			fi; \
 		done; \
@@ -444,21 +439,17 @@ act4-exec: install-zkc act4-build
 		go run $(GO_MAIN) "$$elf" "" 0 > "$$base.json" 2> "$$base.json.err"; \
 		[ -s "$$base.json.err" ] || rm -f "$$base.json.err"; \
 		echo "RUN   $$name  $$base.json"; \
-		zkc exec "$$base.json" $(ZKC_MAIN) > "$$base.full" 2>&1; \
-		awk '(previous == "ECALL for write" || previous == "ECALL for exit") && $$0 != "" { print } { previous = $$0 }' "$$base.full" > "$$base.out"; \
-		exit_line=$$(awk 'previous == "ECALL for exit" { print; exit } { previous = $$0 }' "$$base.full"); \
-		if [ "$$exit_line" = $(EXIT_SUCCESS_STRING) ]; then \
+		zkc exec -q "$$base.json" $(ZKC_MAIN) > /dev/null 2> "$$base.err"; \
+		if [ ! -s "$$base.err" ]; then \
 			echo "PASS"; \
 			echo "PASS" >> "$(ACT4_RESULTS)"; \
-			awk '{ print "  " $$0 }' "$$base.out"; \
-			awk '{ print "  " $$0 }' "$$base.out" >> "$(ACT4_RESULTS)"; \
 			pass=$$((pass + 1)); \
-			rm -f "$$base.full"; \
+			rm -f "$$base.err"; \
 		else \
 			echo "FAIL"; \
 			echo "FAIL" >> "$(ACT4_RESULTS)"; \
-			awk '{ print "  " $$0 }' "$$base.out"; \
-			awk '{ print "  " $$0 }' "$$base.out" >> "$(ACT4_RESULTS)"; \
+			cat "$$base.err"; \
+			cat "$$base.err" >> "$(ACT4_RESULTS)"; \
 			fail=$$((fail + 1)); \
 		fi; \
 	done; \
