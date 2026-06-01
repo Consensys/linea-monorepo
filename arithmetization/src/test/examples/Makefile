@@ -377,8 +377,10 @@ ACT4_FAST       ?= false
 ACT4_DEBUG      ?= true
 
 # Build the ACT4 self-checking ELFs with the Linea ACT4 config 
-# Note: always rebuild because the ACT4 config can change
-# Note: clone https://github.com/riscv/riscv-arch-test.git if needed
+# Note: 
+#	- clone https://github.com/riscv/riscv-arch-test.git if needed
+#	- ELFs are built at every invocation (in case Linea ACT4 config changes)
+#   - JSONs are generated from the ELFs at every invocation
 act4-build:
 	@mkdir -p "$(ACT4_WORK_DIR)" "$(ACT4_LOGS)" || exit $$?; \
 	work_dir=$$(cd "$(ACT4_WORK_DIR)" && pwd) || exit $$?; \
