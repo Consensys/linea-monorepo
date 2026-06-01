@@ -33,7 +33,7 @@ include "../utils/signed_sum.zkc"
 //   SYSTEM    — system calls (not yet implemented)
 //
 // For all opcodes except JALR, new_pc = pc + 4 (sequential fall-through).
-fn process_I_type_instruction<ram, registers, ram_access_stats>(opcode:Opcode, instruction_parameters:u25, pc:Address) -> (new_pc:Address) {
+fn process_I_type_instruction<ram, registers>(opcode:Opcode, instruction_parameters:u25, pc:Address) -> (new_pc:Address) {
 
     var funct3:Funct3
     var imm12:Imm12
@@ -230,7 +230,7 @@ fn process_I_type_instruction<ram, registers, ram_access_stats>(opcode:Opcode, i
     }
 }
 
-fn process_syscall<registers, ram, ram_access_stats>(pc:Address) -> (new_pc:Address) {
+fn process_syscall<registers, ram>(pc:Address) -> (new_pc:Address) {
     var call_num:DoubleWord = registers[17]
     //
     switch call_num {
