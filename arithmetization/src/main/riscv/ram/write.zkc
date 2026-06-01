@@ -75,7 +75,7 @@ fn write_64<ram, ram_access_stats>(address:Address, value:u64) -> () {
         var hi:u32
         hi::lo = value
         ram[aligned] = lo
-        ram[aligned + 4] = hi
+        ram[aligned + 1] = hi
     } else {
         var lo:u32
         var hi:u32

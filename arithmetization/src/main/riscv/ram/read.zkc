@@ -41,7 +41,7 @@ fn read_16<ram, ram_access_stats>(address:Address) -> (value:u16) {
         return 
     } else {
         var word_lo:u32 = ram[aligned]
-        var word_hi:u32 = ram[aligned + 4]
+        var word_hi:u32 = ram[aligned + 1]
         value = ((word_lo >> 24) | ((word_hi & 0xFF) << 8)) as u16
         return 
     }
@@ -57,18 +57,18 @@ fn read_32<ram, ram_access_stats>(address:Address) -> (value:u32) {
     }
     if offset == 1 {
         var word_lo:u32 = ram[aligned]
-        var word_hi:u32 = ram[aligned + 4]
+        var word_hi:u32 = ram[aligned + 1]
         value = (word_lo >> 8) | ((word_hi & 0xFF) << 24)
         return 
     }
     if offset == 2 {
         var word_lo:u32 = ram[aligned]
-        var word_hi:u32 = ram[aligned + 4]
+        var word_hi:u32 = ram[aligned + 1]
         value = (word_lo >> 16) | ((word_hi & 0xFFFF) << 16)
         return 
     } else {
         var word_lo:u32 = ram[aligned]
-        var word_hi:u32 = ram[aligned + 4]
+        var word_hi:u32 = ram[aligned + 1]
         value = (word_lo >> 24) | ((word_hi & 0xFFFFFF) << 8)
         return 
     }
@@ -79,7 +79,7 @@ fn read_64<ram, ram_access_stats>(address:Address) -> (value:u64) {
     var aligned:Address = address & MASK_ADDR_ALIGN_4
     var offset:Address = address & 3
     if offset == 0 {
-        value = ram[aligned + 4]::ram[aligned]
+        value = ram[aligned + 1]::ram[aligned]
     } else {
         var lo:u32 = read_32(address)
         var hi:u32 = read_32(address + 4)
