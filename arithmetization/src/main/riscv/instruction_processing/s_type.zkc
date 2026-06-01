@@ -23,7 +23,7 @@ include "../utils/signed_sum.zkc"
 //   SH (funct3 = 0b001) — store halfword (16 bits)
 //   SW (funct3 = 0b010) — store word     (32 bits)
 //   SD (funct3 = 0b011) — store doubleword (64 bits)
-fn process_S_type_instruction<ram, registers>(instruction_parameters:u25) {
+fn process_S_type_instruction<ram, registers, ram_access_stats>(instruction_parameters:u25) {
 
     // var funct3 : Funct3
     // var funct7 : Funct7
