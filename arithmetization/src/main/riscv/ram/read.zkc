@@ -5,79 +5,28 @@ fn read_8<ram>(address:Address) -> (value:u8) {
     var aligned:Address = address & MASK_ADDR_ALIGN_4
     var offset:Address = address & 3
     var word:u32 = ram[aligned]
-    if offset == 0 {
         value = (word & 0xFF) as u8
         return 
-    } 
-    if offset == 1 {
-        value = ((word >> 8) & 0xFF) as u8  
-        return 
-    } 
-    if offset == 2 {
-        value = ((word >> 16) & 0xFF) as u8
-        return 
-    } else {
-        value = ((word >> 24) & 0xFF) as u8
-        return 
-    }
+    
 }
 
 fn read_16<ram>(address:Address) -> (value:u16) {
     var aligned:Address = address & MASK_ADDR_ALIGN_4
     var offset:Address = address & 3
-    if offset == 0 {
         value = (ram[aligned] & 0xFFFF) as u16
         return 
-    }
-    if offset == 1 {
-        value = ((ram[aligned] >> 8) & 0xFFFF) as u16
-        return 
-    }
-    if offset == 2 {
-        value = ((ram[aligned] >> 16) & 0xFFFF) as u16
-        return 
-    } else {
-        var word_lo:u32 = ram[aligned]
-        var word_hi:u32 = ram[aligned + 1]
-        value = ((word_lo >> 24) | ((word_hi & 0xFF) << 8)) as u16
-        return 
-    }
+    
 }
 
 fn read_32<ram>(address:Address) -> (value:u32) {
     var aligned:Address = address & MASK_ADDR_ALIGN_4
     var offset:Address = address & 3
-    if offset == 0 {
         value = ram[aligned]
         return 
-    }
-    if offset == 1 {
-        var word_lo:u32 = ram[aligned]
-        var word_hi:u32 = ram[aligned + 1]
-        value = (word_lo >> 8) | ((word_hi & 0xFF) << 24)
-        return 
-    }
-    if offset == 2 {
-        var word_lo:u32 = ram[aligned]
-        var word_hi:u32 = ram[aligned + 1]
-        value = (word_lo >> 16) | ((word_hi & 0xFFFF) << 16)
-        return 
-    } else {
-        var word_lo:u32 = ram[aligned]
-        var word_hi:u32 = ram[aligned + 1]
-        value = (word_lo >> 24) | ((word_hi & 0xFFFFFF) << 8)
-        return 
-    }
+    
 }
 
 fn read_64<ram>(address:Address) -> (value:u64) {
     var aligned:Address = address & MASK_ADDR_ALIGN_4
     var offset:Address = address & 3
-    if offset == 0 {
         value = ram[aligned + 1]::ram[aligned]
-    } else {
-        var lo:u32 = read_32(address)
-        var hi:u32 = read_32(address + 4)
-        value = hi::lo
-    }
-}
