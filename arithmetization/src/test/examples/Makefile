@@ -377,7 +377,7 @@ ACT4_FAST       ?= false
 ACT4_DEBUG      ?= true
 
 # Build the ACT4 self-checking ELFs with the Linea ACT4 config 
-# Note: build if needed
+# Note: always rebuild because the ACT4 config can change
 # Note: clone https://github.com/riscv/riscv-arch-test.git if needed
 act4-build:
 	@mkdir -p "$(ACT4_WORK_DIR)" "$(ACT4_LOGS)" || exit $$?; \
@@ -394,9 +394,7 @@ act4-build:
 			git -C "$(ACT4_REPO)" checkout --detach "$(ACT4_REF)" || exit $$?; \
 		fi; \
 	}; \
-	if [ -n "$$(find "$(ACT4_ELF_DIR)" -name '*.elf' -print -quit 2>/dev/null)" ]; then \
-		echo "ACT4 ELFs already built in $(ACT4_ELF_DIR)"; \
-	elif [ "$(ACT4_BUILD_MODE)" = "docker" ]; then \
+	if [ "$(ACT4_BUILD_MODE)" = "docker" ]; then \
 		config_dir=$$(cd "$(ACT4_CONFIG_DIR)" && pwd) || exit $$?; \
 		if ! docker image inspect "$(ACT4_IMAGE)" >/dev/null 2>&1; then \
 			ensure_act4_repo; \

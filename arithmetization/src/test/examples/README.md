@@ -272,7 +272,7 @@ https://github.com/riscv/riscv-arch-test/tree/act4/tests/rv64i/M
 ```
 
 ACT4 uses the configuration in `act4/config/linea-rv64im-zicclsm/`.
-`make act4-build` clones `riscv-arch-test` next to `linea-monorepo` if needed, checks out `ACT4_REF`, builds ELFs either with Docker or on the host, and generates one JSON input per ELF.
+`make act4-build` clones `riscv-arch-test` next to `linea-monorepo` if needed, checks out `ACT4_REF`, rebuilds ELFs either with Docker or on the host, and generates one JSON input per ELF.
 The folder structure is the following:
 
 ```text
