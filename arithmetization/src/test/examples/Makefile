@@ -17,9 +17,9 @@ MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
 
 # Paths to go main (to turn BIN into JSON), zkc main (to execute/debug the json) and linker script
-GO_MAIN       := $(MAKEFILE_DIR)main.go
-ZKC_MAIN      := $(MAKEFILE_DIR)../../main/riscv/main.zkc
-LINKER_SCRIPT := $(MAKEFILE_DIR)linker_script.ld
+ELF_TO_JSON_GEN := $(MAKEFILE_DIR)scripts/elf_to_json_gen/main.go
+ZKC_MAIN        := $(MAKEFILE_DIR)../../main/riscv/main.zkc
+LINKER_SCRIPT   := $(MAKEFILE_DIR)linker_script.ld
 # Assembly, Zig, or Rust test file to execute with exec target (TEST=src_optional_subfolder/your_test(.s|.zig|.rs)
 TEST ?=
 
@@ -75,7 +75,7 @@ VERIFY_ELF               ?= false
 # Support function to generate JSON from an ELF
 define ELF_TO_JSON
 	@echo "\nGenerating $(2) from $(1)"
-	@go run $(GO_MAIN) "$(1)" "$(IN_BYTES)" $(IN_BYTES_OFFSET) > "$(2)"
+	@go run $(ELF_TO_JSON_GEN) "$(1)" "$(IN_BYTES)" $(IN_BYTES_OFFSET) > "$(2)"
 endef
 
 #####################################################################
@@ -237,7 +237,7 @@ VECTOR_ELF_TO_JSON_BIN         ?= $(BIN)_elf2json
 vector-build: require-src
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile compile TEST=$(TEST)
 	@echo "building $(VECTOR_ELF_TO_JSON_BIN)..."
-	go build -o $(VECTOR_ELF_TO_JSON_BIN) $(GO_MAIN)
+	go build -o $(VECTOR_ELF_TO_JSON_BIN) $(ELF_TO_JSON_GEN)
 
 vector-json: require-src require-vector-file require-n-vectors require-vector-build-artifacts require-vector-json-mode
 	@echo "selecting $(if $(filter -1,$(VECTOR_N_VECTORS)),all,$(VECTOR_N_VECTORS)) vector(s) from $(VECTOR_FILE)"
@@ -429,7 +429,7 @@ act4-build:
 		name=$$(basename "$$elf" .elf); \
 		base="$(ACT4_LOGS)/$$name"; \
 		count=$$((count + 1)); \
-		go run $(GO_MAIN) "$$elf" "" 0 > "$$base.json" 2> "$$base.json.err" || exit $$?; \
+		go run $(ELF_TO_JSON_GEN) "$$elf" "" 0 > "$$base.json" 2> "$$base.json.err" || exit $$?; \
 		[ -s "$$base.json.err" ] || rm -f "$$base.json.err"; \
 	done; \
 	if [ "$$count" -eq 0 ]; then echo "error: no ACT4 ELFs found in $(ACT4_ELF_DIR)" >&2; exit 1; fi; \
