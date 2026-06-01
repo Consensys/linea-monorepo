@@ -2,39 +2,39 @@ include "../memory.zkc"
 include "../utils/constants.zkc"
 
 fn write_8<ram>(address:Address, value:u8) -> () {
-    var aligned:Address = address & MASK_ADDR_ALIGN_4
+    var word_idx:Address = (address & MASK_ADDR_ALIGN_4) >> 2
     var offset:Address = address & 3
-    var old_word:u32 = ram[aligned]
+    var old_word:u32 = ram[word_idx]
     var inserted:u32 = value as u32
     if offset == 0 {
-        ram[aligned] = (old_word & 0xFFFFFF00) | inserted
-        return 
+        ram[word_idx] = (old_word & 0xFFFFFF00) | inserted
+        return
     }
     if offset == 1 {
-        ram[aligned] = (old_word & 0xFFFF00FF) | (inserted << 8)
-        return 
+        ram[word_idx] = (old_word & 0xFFFF00FF) | (inserted << 8)
+        return
     }
     if offset == 2 {
-        ram[aligned] = (old_word & 0xFF00FFFF) | (inserted << 16)
-        return 
+        ram[word_idx] = (old_word & 0xFF00FFFF) | (inserted << 16)
+        return
     } else {
-        ram[aligned] = (old_word & 0x00FFFFFF) | (inserted << 24)
+        ram[word_idx] = (old_word & 0x00FFFFFF) | (inserted << 24)
         return
     }
 }
 
 fn write_16<ram>(address:Address, value:u16) -> () {
-    var aligned:Address = address & MASK_ADDR_ALIGN_4
+    var word_idx:Address = (address & MASK_ADDR_ALIGN_4) >> 2
     var offset:Address = address & 3
     if offset == 0 {
-        var word:u32 = ram[aligned]
-        ram[aligned] = (word & 0xFFFF0000) | (value as u32)
-        return 
-    } 
+        var word:u32 = ram[word_idx]
+        ram[word_idx] = (word & 0xFFFF0000) | (value as u32)
+        return
+    }
     if offset == 2 {
-        var word:u32 = ram[aligned]
-        ram[aligned] = (word & 0xFFFF) | ((value as u32) << 16)
-        return 
+        var word:u32 = ram[word_idx]
+        ram[word_idx] = (word & 0xFFFF) | ((value as u32) << 16)
+        return
     } else {
         var b0:u8
         var b1:u8
@@ -45,10 +45,10 @@ fn write_16<ram>(address:Address, value:u16) -> () {
 }
 
 fn write_32<ram>(address:Address, value:u32) -> () {
-    var aligned:Address = address & MASK_ADDR_ALIGN_4
+    var word_idx:Address = (address & MASK_ADDR_ALIGN_4) >> 2
     var offset:Address = address & 3
     if offset == 0 {
-        ram[aligned] = value
+        ram[word_idx] = value
     } else {
         var b0:u8
         var b1:u8
@@ -63,14 +63,14 @@ fn write_32<ram>(address:Address, value:u32) -> () {
 }
 
 fn write_64<ram>(address:Address, value:u64) -> () {
-    var aligned:Address = address & MASK_ADDR_ALIGN_4
+    var word_idx:Address = (address & MASK_ADDR_ALIGN_4) >> 2
     var offset:Address = address & 3
     if offset == 0 {
         var lo:u32
         var hi:u32
         hi::lo = value
-        ram[aligned] = lo
-        ram[aligned + 1] = hi
+        ram[word_idx] = lo
+        ram[word_idx + 1] = hi
     } else {
         var lo:u32
         var hi:u32
