@@ -8,10 +8,9 @@ permissions:
 on:
   workflow_call:
     inputs:
-      image_tag: #TODO: should be required as true when maru-release.yml get removed
-        required: false
+      image_tag:
+        required: true
         type: string
-        default: ''
       image_tag_with_suffix:
         required: false
         type: string
@@ -23,10 +22,6 @@ on:
         required: true
         type: string
       push_image:
-        required: false
-        type: boolean
-        default: false
-      upload_dist_artifact: # Used for release process to reuse the artifact #TODO: to be removed when maru-release.yml get removed
         required: false
         type: boolean
         default: false
@@ -101,13 +96,6 @@ jobs:
       - name: Build dist
         run: |
           ./gradlew :maru:app:installDist
-      - name: Upload distribution artifact
-        if: ${{ inputs.upload_dist_artifact }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: maru-distribution
-          path: maru/app/build/install/app/
-          retention-days: 1
       - name: Build and publish Docker image
         uses: ./.github/actions/docker-build-publish
         with:
