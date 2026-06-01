@@ -84,7 +84,7 @@ jobs:
       (github.ref_name == 'main' || (needs.run-test-linea-sequencer.result == 'success' && needs.run-test-constraints.result == 'success'))
     uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
     with:
-      release_tag_prefix: ${{ needs.compute-linea-besu-release-metadata.outputs.release_version }}
+      release_version: ${{ needs.compute-linea-besu-release-metadata.outputs.release_version }}
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
     secrets: inherit
 

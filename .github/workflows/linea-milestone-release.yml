@@ -141,7 +141,7 @@ jobs:
     if: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).tag_changed == 'true' }}
     uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
     with:
-      release_tag_prefix: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_version }}
+      release_version: ${{ fromJson(needs.component-release-metadata.outputs.linea-besu-package).release_version }}
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
     secrets: inherit
 
