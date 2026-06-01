@@ -191,12 +191,12 @@ test "fiat-shamir transcript matches prover-ray golden cases" {
 
 test "runtime round coin derivation matches generated verifier transcript" {
     for (vectors.runtime_trace_cases) |case| {
-        var rt = runtime.Runtime.initWithRoundCount(case.rounds.len);
+        var rt = runtime.Runtime.initWithRoundCount(case.rounds.len + 1);
         var coins: [max_trace_coins]runtime.Coin = undefined;
 
         // The trace is generated from prover-ray data at the verifier boundary:
         // oracle commitments, public values, and public cells.
-        for (case.rounds[0 .. case.rounds.len - 1], 0..) |round_case, round_index| {
+        for (case.rounds, 0..) |round_case, round_index| {
             var backing = TraceRoundBacking{};
             const message = try backing.fill(round_case, false);
             // all the random coins generated via zig runtime
@@ -211,7 +211,7 @@ test "runtime round coin derivation matches generated verifier transcript" {
 
 test "runtime downstream coin diverges after tampered absorb" {
     const case = vectors.runtime_trace_cases[0];
-    var rt = runtime.Runtime.initWithRoundCount(case.rounds.len);
+    var rt = runtime.Runtime.initWithRoundCount(case.rounds.len + 1);
     var backing = TraceRoundBacking{};
     const message = try backing.fill(case.rounds[0], true);
     var coins: [max_trace_coins]runtime.Coin = undefined;

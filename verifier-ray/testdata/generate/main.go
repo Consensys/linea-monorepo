@@ -502,7 +502,6 @@ func buildRuntimeTraceCases() []runtimeTraceCase {
 				},
 				expectedCoins: r2Coins,
 			},
-			{},
 		},
 	}}
 }

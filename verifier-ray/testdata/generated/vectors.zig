@@ -163,10 +163,5 @@ pub const runtime_trace_cases = [_]RuntimeTraceCase{
             },
             .expected_coins = &.{.{ 599462548, 106956218, 1562197620, 1802592085, 1991170243, 971914108 }},
         },
-        .{
-            .columns = &.{},
-            .cells = &.{},
-            .expected_coins = &.{},
-        },
     } },
 };
