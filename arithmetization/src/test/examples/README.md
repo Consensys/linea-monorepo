@@ -89,7 +89,7 @@ Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 riscv-test() {
     local makefile="path/to/linea-monorepo/arithmetization/src/test/examples/Makefile"
     case "$1" in
-        exec-elf|elf-to-json|install-zkc|clean-all|linker-script|vector-exec|keccak-rust-build|keccak-rust-json|keccak-rust-exec|blake-rust-build|blake-rust-json|blake-rust-exec|act4-build|act4-exec)
+        elf-exec|elf-to-json|install-zkc|clean-all|linker-script|vector-exec|keccak-rust-build|keccak-rust-json|keccak-rust-exec|blake-rust-build|blake-rust-json|blake-rust-exec|act4-build|act4-exec)
             # targets that do NOT require TEST argument
             make -f "$makefile" "$1" "${@:2}"
             ;;
@@ -133,7 +133,7 @@ riscv-test vector-exec VECTOR_JSON_MODE=batched VECTOR_JSON_FILE=path/to/vectors
 # Convert an already compiled ELF to JSON
 riscv-test elf-to-json BIN_EXT=asm/bin/test
 # Execute an already compiled ELF
-riscv-test exec-elf BIN_EXT=asm/bin/test
+riscv-test elf-exec BIN_EXT=asm/bin/test
 # Clean build artifacts for a specific test
 riscv-test clean <name>.<ext>
 # Clean all build artifacts
@@ -168,7 +168,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `make TEST=foo.<ext>`                                    | Compile and execute (default)                                                          |
 | `make debug TEST=foo.<ext>`                              | Compile and debug                                                                      |
 | `make compile TEST=foo.<ext>`                            | Compile only                                                                           |
-| `make exec-elf BIN_EXT=foo`                              | Convert and execute an already compiled ELF (`JSON_EXT=foo.json` by default)           |
+| `make elf-exec BIN_EXT=foo`                              | Convert and execute an already compiled ELF (`JSON_EXT=foo.json` by default)           |
 | `make elf-to-json BIN_EXT=foo`                           | Convert an already compiled ELF to JSON (`JSON_EXT=foo.json` by default)               |
 | `make install-zkc`                                       | Invoke `../../../Makefile install-zkc` to install zkc if not already installed         |
 | `make zkc-exec TEST=foo.<ext>`                           | Execute without recompiling                                                            |
@@ -196,8 +196,8 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | Variable                     | Default                                                        | Description                                                                                                                                   |
 |------------------------------|----------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------                                 |
 | `TEST`                       | `""`                                                           | Source file path with extension, relative to the corresponding `src/` folder                                                                  |
-| `BIN_EXT`                    | `""`                                                           | Already compiled ELF used by `elf-to-json` and `exec-elf`                                                                                     |
-| `JSON_EXT`                   | `$(BIN_EXT).json`                                              | JSON output path used by `elf-to-json` and `exec-elf`                                                                                         |
+| `BIN_EXT`                    | `""`                                                           | Already compiled ELF used by `elf-to-json` and `elf-exec`                                                                                     |
+| `JSON_EXT`                   | `$(BIN_EXT).json`                                              | JSON output path used by `elf-to-json` and `elf-exec`                                                                                         |
 | `VECTOR_FILE`                | `""`                                                           | `.all` vector file consumed by `vector-json`; one `IN_BYTES` per line                                                                         |
 | `VECTOR_N_VECTORS`           | `""`                                                           | Number of vectors selected by `vector-json`; `-1` means all vectors                                                                           |
 | `VECTOR_JSON_MODE`           | `per-vector`                                                   | `per-vector` for one JSON per vector, `batched` for one JSON with selected vectors concatenated                                               |

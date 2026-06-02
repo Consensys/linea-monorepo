@@ -3,7 +3,7 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile exec-elf elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-build vector-json vector-exec keccak-rust-build keccak-rust-json keccak-rust-exec blake-rust-build blake-rust-json blake-rust-exec act4-build act4-exec require-test require-src require-bin-ext require-vector-file require-n-vectors require-vector-build-artifacts require-vector-json-mode
+.PHONY: exec debug compile elf-exec elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-build vector-json vector-exec keccak-rust-build keccak-rust-json keccak-rust-exec blake-rust-build blake-rust-json blake-rust-exec act4-build act4-exec require-test require-src require-bin-ext require-vector-file require-n-vectors require-vector-build-artifacts require-vector-json-mode
 
 # Keep validation, build, and execution targets running in order
 .NOTPARALLEL:
@@ -23,7 +23,7 @@ LINKER_SCRIPT   := $(MAKEFILE_DIR)linker_script.ld
 # Assembly, Zig, or Rust test file to execute with exec target (TEST=src_optional_subfolder/your_test(.s|.zig|.rs)
 TEST ?=
 
-# Already compiled binary to execute with exec-elf target (BIN_EXT=path/to/your_bin)
+# Already compiled binary to execute with elf-exec target (BIN_EXT=path/to/your_bin)
 BIN_EXT  ?=
 JSON_EXT ?= $(BIN_EXT).json
 
@@ -137,7 +137,7 @@ compile: require-src linker-script
 # Note: we use opt-level=2 to remove unused code.
 
 # Convert and execute an already compiled external ELF
-exec-elf: elf-to-json
+elf-exec: elf-to-json
 	zkc exec $(JSON_EXT) $(ZKC_MAIN)
 
 # Convert an already compiled external ELF to a JSON
