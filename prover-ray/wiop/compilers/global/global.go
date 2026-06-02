@@ -238,7 +238,7 @@ func compileModule(
 		}
 	}
 	evalRound.RegisterVerifierAction(&Verifier{
-		m:             m,
+		Module:        m,
 		MergeCoin:     mergeCoin,
 		EvalCoin:      evalCoin,
 		WitnessViews:  views,
@@ -622,7 +622,7 @@ func (a *EvalProverAction) Run(rt wiop.Runtime) {
 // Verifier checks the PLONK quotient identity for one module.
 // It runs in evalRound.
 type Verifier struct {
-	m             *wiop.Module
+	Module        *wiop.Module
 	MergeCoin     *wiop.CoinField
 	EvalCoin      *wiop.CoinField
 	WitnessViews  []*wiop.ColumnView
@@ -633,13 +633,13 @@ type Verifier struct {
 
 // Check verifies the PLONK quotient identity for the module using the runtime's claimed values.
 func (gv *Verifier) Check(rt wiop.Runtime) error {
-	n := gv.m.RuntimeSize(rt)
+	n := gv.Module.RuntimeSize(rt)
 
-	if !gv.m.IsDynamic() && n != gv.m.Size() {
+	if !gv.Module.IsDynamic() && n != gv.Module.Size() {
 		panic(fmt.Sprintf(
 			"wiop/compilers: global quotient Check called with runtime size %d but module size is %d",
 			n,
-			gv.m.Size(),
+			gv.Module.Size(),
 		))
 	}
 	r := rt.GetCoinValue(gv.EvalCoin)
