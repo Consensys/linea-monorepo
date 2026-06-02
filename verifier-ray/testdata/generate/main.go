@@ -21,6 +21,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/polynomials"
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
+	"github.com/consensys/linea-monorepo/prover-ray/wiop/compilers/global"
+	"github.com/consensys/linea-monorepo/prover-ray/wiop/wioptest"
+	"github.com/consensys/linea-monorepo/verifier-ray/codegen"
 )
 
 const koalaModulus = uint64(2_130_706_433)
@@ -34,6 +37,7 @@ func main() {
 	writePoseidonCases(&out)
 	writeFiatShamirCases(&out)
 	writeRuntimeTraceCases(&out)
+	vanishingCases, vanishingSystems := buildVanishingFixtureCases()
 
 	data := out.Bytes()
 	zigfmt, err := runZigFmt(data)
@@ -43,6 +47,9 @@ func main() {
 
 	outputPath := filepath.Join("..", "generated", "vectors.zig")
 	if err := os.WriteFile(outputPath, data, 0o644); err != nil {
+		panic(err)
+	}
+	if err := writeVanishingFixtures(vanishingCases, vanishingSystems); err != nil {
 		panic(err)
 	}
 }
@@ -554,6 +561,250 @@ func extTraceCell(value field.Ext) runtimeTraceCell {
 	return runtimeTraceCell{extValue: &value}
 }
 
+type vanishingFixtureCase struct {
+	name    string
+	honest  vanishingProofView
+	invalid vanishingProofView
+}
+
+type vanishingProofView struct {
+	initialRound   runtimeTraceRound
+	quotientRound  runtimeTraceRound
+	witnessClaims  []field.Ext
+	quotientClaims []field.Ext
+	moduleSizes    []int
+}
+
+func buildVanishingFixtureCases() ([]vanishingFixtureCase, []codegen.NamedVanishingSystem) {
+	var cases []vanishingFixtureCase
+	var systems []codegen.NamedVanishingSystem
+	for _, factory := range wioptest.VanishingScenarios() {
+		sc := factory()
+		global.Compile(sc.Sys)
+		vanishingSystem, err := codegen.BuildVanishingSystem(sc.Sys)
+		if err != nil {
+			if codegen.IsUnsupportedExpression(err) {
+				continue
+			}
+			panic(fmt.Sprintf("build vanishing system %s: %v", sc.Name, err))
+		}
+
+		honest := buildVanishingProofView(sc.Sys, sc.AssignHonest)
+		invalid := buildVanishingProofView(sc.Sys, sc.AssignInvalid)
+		cases = append(cases, vanishingFixtureCase{name: sc.Name, honest: honest, invalid: invalid})
+		systems = append(systems, codegen.NamedVanishingSystem{Name: sc.Name, System: vanishingSystem})
+	}
+	return cases, systems
+}
+
+func buildVanishingProofView(sys *wiop.System, assign func(rt *wiop.Runtime)) vanishingProofView {
+	rt := wiop.NewRuntime(sys)
+	assign(&rt)
+	runVanishingProver(&rt)
+
+	initialRound := sys.Rounds[0]
+	quotientRound := sys.Rounds[len(sys.Rounds)-2]
+	exports := globalVerifierExports(sys)
+
+	var witnessClaims []field.Ext
+	var quotientClaims []field.Ext
+	for _, exp := range exports {
+		for _, claim := range exp.WitnessClaims {
+			witnessClaims = append(witnessClaims, rt.GetCellValue(claim).AsExt())
+		}
+		for _, bucket := range exp.Buckets {
+			for _, claim := range bucket.QuotientClaims {
+				quotientClaims = append(quotientClaims, rt.GetCellValue(claim).AsExt())
+			}
+		}
+	}
+
+	return vanishingProofView{
+		initialRound:   runtimeTraceRoundFromRuntime(rt, initialRound),
+		quotientRound:  runtimeTraceRoundFromRuntime(rt, quotientRound),
+		witnessClaims:  witnessClaims,
+		quotientClaims: quotientClaims,
+		moduleSizes:    dynamicModuleSizes(exports, rt),
+	}
+}
+
+func runVanishingProver(rt *wiop.Runtime) {
+	for _, action := range rt.CurrentRound().ProverActions {
+		action.Run(*rt)
+	}
+	for rt.CurrentRound().ID < len(rt.System.Rounds)-1 {
+		rt.AdvanceRound()
+		for _, action := range rt.CurrentRound().ProverActions {
+			action.Run(*rt)
+		}
+	}
+}
+
+func globalVerifierExports(sys *wiop.System) []global.VerifierExport {
+	var exports []global.VerifierExport
+	for _, round := range sys.Rounds {
+		for _, action := range round.VerifierActions {
+			if verifier, ok := action.(*global.Verifier); ok {
+				exports = append(exports, verifier.Export())
+			}
+		}
+	}
+	return exports
+}
+
+func dynamicModuleSizes(exports []global.VerifierExport, rt wiop.Runtime) []int {
+	indices := map[*wiop.Module]int{}
+	for _, exp := range exports {
+		if !exp.ModuleSize.Dynamic {
+			continue
+		}
+		if _, ok := indices[exp.Module]; !ok {
+			indices[exp.Module] = len(indices)
+		}
+	}
+	out := make([]int, len(indices))
+	for module, idx := range indices {
+		out[idx] = module.RuntimeSize(rt)
+	}
+	return out
+}
+
+func runtimeTraceRoundFromRuntime(rt wiop.Runtime, round *wiop.Round) runtimeTraceRound {
+	var trace runtimeTraceRound
+	for _, col := range round.Columns {
+		if col.Visibility < wiop.VisibilityOracle || !rt.HasColumnAssignment(col) {
+			continue
+		}
+		vec := rt.GetColumnAssignment(col).Plain
+		if vec.IsBase() {
+			trace.columns = append(trace.columns, runtimeTraceColumn{publicBaseValues: append([]field.Element(nil), vec.AsBase()...)})
+		} else {
+			trace.columns = append(trace.columns, runtimeTraceColumn{publicExtValues: append([]field.Ext(nil), vec.AsExt()...)})
+		}
+	}
+	for _, cell := range round.Cells {
+		if !rt.HasCellValue(cell) {
+			continue
+		}
+		value := rt.GetCellValue(cell)
+		if value.IsBase() {
+			trace.cells = append(trace.cells, baseTraceCell(value.AsBase()))
+		} else {
+			trace.cells = append(trace.cells, extTraceCell(value.AsExt()))
+		}
+	}
+	return trace
+}
+
+func writeVanishingFixtures(cases []vanishingFixtureCase, systems []codegen.NamedVanishingSystem) error {
+	var out bytes.Buffer
+	writeVanishingHeader(&out)
+	for i := range cases {
+		if err := codegen.WriteVanishingSystemZigWithOptions(&out, i, systems[i], codegen.VanishingZigOptions{
+			FieldImport:     "verifier_ray.field.koalabear",
+			VanishingImport: "verifier_ray.query.vanishing",
+		}); err != nil {
+			return err
+		}
+		writeVanishingScenario(&out, i, cases[i])
+	}
+	writeVanishingScenarioList(&out, len(cases))
+
+	data := out.Bytes()
+	zigfmt, err := runZigFmt(data)
+	if err == nil {
+		data = zigfmt
+	}
+	return os.WriteFile(filepath.Join("..", "generated", "vanishing.zig"), data, 0o644)
+}
+
+func writeVanishingHeader(out *bytes.Buffer) {
+	fmt.Fprintln(out, "// Code generated by verifier-ray/testdata/generate; DO NOT EDIT.")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "const verifier_ray = @import(\"verifier_ray\");")
+	fmt.Fprintln(out, "const field = verifier_ray.field.koalabear;")
+	fmt.Fprintln(out, "const vanishing = verifier_ray.query.vanishing;")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "pub const RuntimeTraceColumn = union(enum) { oracle: []const [8]u32, public_base: []const u32, public_ext: []const [6]u32 };")
+	fmt.Fprintln(out, "pub const RuntimeTraceCell = union(enum) { base: u32, ext: [6]u32 };")
+	fmt.Fprintln(out, "pub const RuntimeTraceRound = struct { columns: []const RuntimeTraceColumn, cells: []const RuntimeTraceCell, expected_coins: []const [6]u32 = &.{} };")
+	fmt.Fprintln(out, "pub const VanishingProofView = struct { initial_round: RuntimeTraceRound, quotient_round: RuntimeTraceRound, witness_claims: []const [6]u32, quotient_claims: []const [6]u32, module_sizes: []const usize };")
+	fmt.Fprintln(out, "pub const VanishingScenario = struct { name: []const u8, system: vanishing.System, honest: VanishingProofView, invalid: VanishingProofView };")
+	fmt.Fprintln(out)
+}
+
+func writeVanishingScenario(out *bytes.Buffer, idx int, tc vanishingFixtureCase) {
+	fmt.Fprintf(out, "const vanishing_scenario_%d = VanishingScenario{\n", idx)
+	fmt.Fprintf(out, "    .name = \"%s\",\n", zigString(tc.name))
+	fmt.Fprintf(out, "    .system = system_%d,\n", idx)
+	fmt.Fprintln(out, "    .honest =")
+	writeVanishingProofView(out, tc.honest, "        ")
+	fmt.Fprintln(out, "    .invalid =")
+	writeVanishingProofView(out, tc.invalid, "        ")
+	fmt.Fprintln(out, "};")
+	fmt.Fprintln(out)
+}
+
+func writeVanishingScenarioList(out *bytes.Buffer, count int) {
+	fmt.Fprintln(out, "pub const scenarios = [_]VanishingScenario{")
+	for i := range count {
+		fmt.Fprintf(out, "    vanishing_scenario_%d,\n", i)
+	}
+	fmt.Fprintln(out, "};")
+}
+
+func writeVanishingProofView(out *bytes.Buffer, proof vanishingProofView, indent string) {
+	fmt.Fprintf(out, "%s.{\n", indent)
+	fmt.Fprintf(out, "%s    .initial_round =\n", indent)
+	writeVanishingRuntimeTraceRound(out, proof.initialRound, indent+"        ")
+	fmt.Fprintf(out, "%s    .quotient_round =\n", indent)
+	writeVanishingRuntimeTraceRound(out, proof.quotientRound, indent+"        ")
+	fmt.Fprintf(out, "%s    .witness_claims = &%s,\n", indent, extSlice(proof.witnessClaims))
+	fmt.Fprintf(out, "%s    .quotient_claims = &%s,\n", indent, extSlice(proof.quotientClaims))
+	fmt.Fprintf(out, "%s    .module_sizes = &%s,\n", indent, intSlice(proof.moduleSizes))
+	fmt.Fprintf(out, "%s},\n", indent)
+}
+
+func writeVanishingRuntimeTraceRound(out *bytes.Buffer, round runtimeTraceRound, indent string) {
+	fmt.Fprintf(out, "%s.{\n", indent)
+	fmt.Fprintf(out, "%s    .columns = &.{\n", indent)
+	for _, column := range round.columns {
+		writeVanishingRuntimeTraceColumn(out, column, indent+"        ")
+	}
+	fmt.Fprintf(out, "%s    },\n", indent)
+	fmt.Fprintf(out, "%s    .cells = &.{\n", indent)
+	for _, cell := range round.cells {
+		writeVanishingRuntimeTraceCell(out, cell, indent+"        ")
+	}
+	fmt.Fprintf(out, "%s    },\n", indent)
+	fmt.Fprintf(out, "%s    .expected_coins = &%s,\n", indent, extSlice(round.expectedCoins))
+	fmt.Fprintf(out, "%s},\n", indent)
+}
+
+func writeVanishingRuntimeTraceColumn(out *bytes.Buffer, column runtimeTraceColumn, indent string) {
+	switch {
+	case column.commitments != nil:
+		fmt.Fprintf(out, "%s.{ .oracle = &%s },\n", indent, commitmentSlice(column.commitments))
+	case column.publicBaseValues != nil:
+		fmt.Fprintf(out, "%s.{ .public_base = &%s },\n", indent, elemSlice(column.publicBaseValues))
+	case column.publicExtValues != nil:
+		fmt.Fprintf(out, "%s.{ .public_ext = &%s },\n", indent, extSlice(column.publicExtValues))
+	default:
+		panic("runtime trace column has no data variant")
+	}
+}
+
+func writeVanishingRuntimeTraceCell(out *bytes.Buffer, cell runtimeTraceCell, indent string) {
+	switch {
+	case cell.baseValue != nil:
+		fmt.Fprintf(out, "%s.{ .base = %d },\n", indent, u(*cell.baseValue))
+	case cell.extValue != nil:
+		fmt.Fprintf(out, "%s.{ .ext = %s },\n", indent, ext6(*cell.extValue))
+	default:
+		panic("runtime trace cell has no data variant")
+	}
+}
+
 func elem(v uint64) field.Element {
 	var e field.Element
 	e.SetUint64(v)
@@ -643,6 +894,18 @@ func extSlice(values []field.Ext) string {
 		parts[i] = ext6(value)
 	}
 	return ".{ " + strings.Join(parts, ", ") + " }"
+}
+
+func intSlice(values []int) string {
+	parts := make([]string, len(values))
+	for i, value := range values {
+		parts[i] = fmt.Sprintf("%d", value)
+	}
+	return ".{ " + strings.Join(parts, ", ") + " }"
+}
+
+func zigString(value string) string {
+	return strings.NewReplacer("\\", "\\\\", "\"", "\\\"").Replace(value)
 }
 
 func commitmentSlice(values []field.Octuplet) string {
