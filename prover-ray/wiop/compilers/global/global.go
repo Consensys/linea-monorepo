@@ -243,7 +243,7 @@ func compileModule(
 		EvalCoin:      evalCoin,
 		WitnessViews:  views,
 		WitnessClaims: witnessClaims,
-		ViewKeyToIdx:  viewKeyToIdx,
+		viewKeyToIdx:  viewKeyToIdx,
 		Buckets:       vBuckets,
 	})
 }
@@ -627,7 +627,7 @@ type Verifier struct {
 	EvalCoin      *wiop.CoinField
 	WitnessViews  []*wiop.ColumnView
 	WitnessClaims []*wiop.Cell
-	ViewKeyToIdx  map[colViewKey]int
+	viewKeyToIdx  map[colViewKey]int
 	Buckets       []VerifierBucket
 }
 
