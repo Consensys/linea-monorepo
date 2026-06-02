@@ -4,6 +4,10 @@
 
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+#########################################################################
+# Potentially new logic wrt /arithmetization/src/test/examples/Makefile
+#########################################################################
+
 GUEST  ?= l2-execution
 ZIG    ?= zig
 GO     ?= go
@@ -21,34 +25,8 @@ else
 $(error Unsupported GUEST '$(GUEST)'. Supported guests: l2-execution)
 endif
 
-BIN             := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN)
-JSON            := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN).json
-ELF_TO_JSON_GEN := $(MAKEFILE_DIR)../arithmetization/src/test/examples/scripts/elf_to_json_gen/main.go
-ZKC_MAIN        := $(abspath $(MAKEFILE_DIR)../arithmetization/src/main/riscv/main.zkc)
-
-IN_BYTES        ?=
-IN_BYTES_OFFSET ?= 0x08800000
-SP              ?= 0x08800000
-
 fetch:
 	$(ZIG) build $(ZIG_BUILD_FLAGS) --fetch
-
-compile:
-	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS) -Dprogram-offset=$(PROGRAM_OFFSET) -Dinput-offset=$(IN_BYTES_OFFSET) -Dsp=$(SP)
-	@if command -v riscv64-unknown-elf-objdump >/dev/null 2>&1; then \
-		echo "\nDisassembling $(BIN)"; \
-		LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN).objdump; \
-	else \
-		echo "\nSkipping objdump: riscv64-unknown-elf-objdump is not on PATH"; \
-	fi
-
-json: compile
-	@echo "\nGenerating $(JSON) from $(BIN)"
-	@$(GO_ENV) $(GO) run $(ELF_TO_JSON_GEN) $(BIN) "$(IN_BYTES)" $(IN_BYTES_OFFSET) > "$(JSON)"
-
-exec: json zkc-exec
-
-debug: json zkc-debug
 
 fixture-exec:
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile exec GUEST=$(GUEST) IN_BYTES="$$(sed -n 's/.*"payload": "\(0x[0-9a-fA-F]*\)".*/\1/p' "$(FIXTURE_JSON)")"
@@ -62,6 +40,36 @@ test:
 write-fixtures:
 	$(ZIG) build write-fixtures $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS)
 
+#########################################################################
+# Mostly duplicated wrt /arithmetization/src/test/examples/Makefile
+#########################################################################
+
+BIN             := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN)
+JSON            := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN).json
+ELF_TO_JSON_GEN := $(MAKEFILE_DIR)../arithmetization/src/test/examples/scripts/elf_to_json_gen/main.go
+ZKC_MAIN        := $(abspath $(MAKEFILE_DIR)../arithmetization/src/main/riscv/main.zkc)
+
+IN_BYTES        ?=
+IN_BYTES_OFFSET ?= 0x08800000
+SP              ?= 0x08800000
+
+exec: elf-to-json zkc-exec
+
+debug: elf-to-json zkc-debug
+
+compile:
+	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS) -Dprogram-offset=$(PROGRAM_OFFSET) -Dinput-offset=$(IN_BYTES_OFFSET) -Dsp=$(SP)
+	@if command -v riscv64-unknown-elf-objdump >/dev/null 2>&1; then \
+		echo "\nDisassembling $(BIN)"; \
+		LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN).objdump; \
+	else \
+		echo "\nSkipping objdump: riscv64-unknown-elf-objdump is not on PATH"; \
+	fi
+
+elf-to-json: compile
+	@echo "\nGenerating $(JSON) from $(BIN)"
+	@$(GO_ENV) $(GO) run $(ELF_TO_JSON_GEN) "$(BIN)" "$(IN_BYTES)" $(IN_BYTES_OFFSET) > "$(JSON)"
+
 zkc-exec:
 	$(ZKC) exec $(JSON) $(ZKC_MAIN)
 
@@ -71,3 +79,4 @@ zkc-debug:
 clean:
 	rm -rf $(MAKEFILE_DIR)zig-out/
 	rm -rf $(BUILD_CACHE_DIR)
+
