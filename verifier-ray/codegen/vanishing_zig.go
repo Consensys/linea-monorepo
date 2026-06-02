@@ -169,7 +169,7 @@ func exprNodeLiteral(expr ExprNode) string {
 	case ExprColumnClaim:
 		return fmt.Sprintf(".{ .column_claim = %d }, // col: \"%s\"", expr.ColumnClaim, zigString(expr.ColumnSourceName))
 	case ExprConstant:
-		return fmt.Sprintf(".{ .constant = field.Element.init(%d) },", uint64(expr.Constant.Bits()[0]))
+		return fmt.Sprintf(".{ .constant = field.Element.init(%d) },", expr.Constant.Uint64())
 	case ExprOp:
 		return fmt.Sprintf(".{ .op = .{ .operator = .%s, .operands = &%s } },", expr.Operator, intSlice(expr.Operands))
 	default:

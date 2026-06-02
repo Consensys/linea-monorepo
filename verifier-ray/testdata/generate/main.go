@@ -865,7 +865,7 @@ func elementsFromExts(values []field.Ext) []field.Element {
 }
 
 func u(e field.Element) uint64 {
-	return uint64(e.Bits()[0])
+	return e.Uint64()
 }
 
 func ext6(e field.Ext) string {
