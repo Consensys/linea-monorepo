@@ -23,6 +23,10 @@ LINKER_SCRIPT   := $(MAKEFILE_DIR)linker_script.ld
 # Assembly, Zig, or Rust test file to execute with exec target (TEST=src_optional_subfolder/your_test(.s|.zig|.rs)
 TEST ?=
 
+# Flags to use when invoking zkc exec within zkc-exec and elf-exec targets:  
+# 	-q for quiet mode
+ZKC_EXEC_FLAGS ?=
+
 # Already compiled binary to execute with elf-exec target (BIN_EXT=path/to/your_bin)
 BIN_EXT  ?=
 JSON_EXT ?= $(BIN_EXT).json
@@ -138,7 +142,7 @@ compile: require-src linker-script
 
 # Convert and execute an already compiled external ELF
 elf-exec: elf-to-json
-	zkc exec $(JSON_EXT) $(ZKC_MAIN)
+	zkc exec $(ZKC_EXEC_FLAGS) $(JSON_EXT) $(ZKC_MAIN)
 
 # Convert an already compiled external ELF to a JSON
 elf-to-json: require-bin-ext
@@ -149,7 +153,7 @@ install-zkc:
 	$(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc
 
 zkc-exec: require-test install-zkc
-	zkc exec $(JSON) $(ZKC_MAIN)
+	zkc exec $(ZKC_EXEC_FLAGS) $(JSON) $(ZKC_MAIN)
 
 zkc-debug: require-test install-zkc
 	zkc debug $(JSON) $(ZKC_MAIN)

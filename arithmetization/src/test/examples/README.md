@@ -134,6 +134,8 @@ riscv-test vector-exec VECTOR_JSON_MODE=batched VECTOR_JSON_FILE=path/to/vectors
 riscv-test elf-to-json BIN_EXT=asm/bin/test
 # Execute an already compiled ELF
 riscv-test elf-exec BIN_EXT=asm/bin/test
+# Execute an already compiled ELF in quiet mode
+riscv-test zkc-exec BIN_EXT=asm/bin/test ZKC_EXEC_FLAGS=-q
 # Clean build artifacts for a specific test
 riscv-test clean <name>.<ext>
 # Clean all build artifacts
@@ -194,8 +196,9 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 ## Options
 
 | Variable                     | Default                                                        | Description                                                                                                                                   |
-|------------------------------|----------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------                                 |
+|------------------------------|----------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | `TEST`                       | `""`                                                           | Source file path with extension, relative to the corresponding `src/` folder                                                                  |
+| `ZKC_EXEC_FLAGS`             | `""`                                                           | Flags to use when invoking `zkc exec` within `zkc-exec` and `elf-exec` targets                                                                |
 | `BIN_EXT`                    | `""`                                                           | Already compiled ELF used by `elf-to-json` and `elf-exec`                                                                                     |
 | `JSON_EXT`                   | `$(BIN_EXT).json`                                              | JSON output path used by `elf-to-json` and `elf-exec`                                                                                         |
 | `VECTOR_FILE`                | `""`                                                           | `.all` vector file consumed by `vector-json`; one `IN_BYTES` per line                                                                         |
