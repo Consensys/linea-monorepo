@@ -23,13 +23,11 @@ endif
 
 BIN := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN)
 JSON := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN).json
-GO_MAIN := $(MAKEFILE_DIR)tools/elf2json/main.go
+GO_MAIN := $(MAKEFILE_DIR)../arithmetization/src/test/examples/scripts/elf_to_json_gen/main.go
 ZKC_MAIN := $(abspath $(MAKEFILE_DIR)../arithmetization/src/main/riscv/main.zkc)
 
 IN_BYTES ?=
-PROGRAM_OFFSET ?= 0x00000000
 IN_BYTES_OFFSET ?= 0x08800000
-ENTRY_POINT := $(PROGRAM_OFFSET)
 SP ?= 0x08800000
 
 fetch:
@@ -46,7 +44,7 @@ compile:
 
 json: compile
 	@echo "\nGenerating $(JSON) from $(BIN)"
-	@$(GO_ENV) $(GO) run $(GO_MAIN) $(BIN) "$(IN_BYTES)" $(PROGRAM_OFFSET) $(IN_BYTES_OFFSET) $(ENTRY_POINT) > $(JSON)
+	@$(GO_ENV) $(GO) run $(GO_MAIN) $(BIN) "$(IN_BYTES)" $(IN_BYTES_OFFSET) > "$(JSON)"
 
 exec: json zkc-exec
 
