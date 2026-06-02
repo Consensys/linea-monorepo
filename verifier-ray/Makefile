@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: ci help fmt fmt-zig fmt-codegen fmt-testdata-generate build build-zig build-release build-r5 run run-passing run-failing run-failing-expected test test-zig test-generated-zig test-codegen generate-testdata verify-testdatazkc-build zkc-verify zkc-verify-passing zkc-verify-failing zkc-verify-failing-expected clean
+.PHONY: ci help fmt fmt-zig fmt-codegen fmt-testdata-generate build build-zig build-release build-r5 run run-passing run-failing run-failing-expected test test-zig test-generated-zig test-codegen generate-testdata verify-testdata zkc-build zkc-verify zkc-verify-passing zkc-verify-failing zkc-verify-failing-expected clean
 
 R5_BIN := zig-out/bin/verifier-ray
 R5_JSON := $(R5_BIN).json
