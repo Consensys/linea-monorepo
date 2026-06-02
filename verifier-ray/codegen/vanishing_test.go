@@ -90,3 +90,11 @@ func TestWriteVanishingScenariosZigEmitsSizeModes(t *testing.T) {
 		}
 	}
 }
+
+func TestExprNodeLiteralRendersZeroConstant(t *testing.T) {
+	got := exprNodeLiteral(ExprNode{Kind: ExprConstant})
+	want := ".{ .constant = field.Element.init(0) },"
+	if got != want {
+		t.Fatalf("exprNodeLiteral(zero constant) = %q, want %q", got, want)
+	}
+}
