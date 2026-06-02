@@ -133,9 +133,9 @@ riscv-test vector-exec VECTOR_JSON_MODE=batched VECTOR_JSON_FILE=path/to/vectors
 # Convert an already compiled ELF to JSON
 riscv-test elf-to-json BIN_EXT=asm/bin/test
 # Execute an already compiled ELF
-riscv-test elf-exec BIN_EXT=asm/bin/test
+riscv-test elf-exec BIN_EXT=path/to/bin
 # Execute an already compiled ELF in quiet mode
-riscv-test elf-exec BIN_EXT=asm/bin/test ZKC_EXEC_FLAGS=-q
+riscv-test elf-exec BIN_EXT=path/to/bin ZKC_EXEC_FLAGS=-q
 # Clean build artifacts for a specific test
 riscv-test clean <name>.<ext>
 # Clean all build artifacts
@@ -143,7 +143,7 @@ riscv-test clean-all
 # Run all Blake vectors from blake10.all
 riscv-test blake-rust-exec
 # Build one batched Keccak JSON
-riscv-test keccak-rust-json KECCAK_N_VECTORS=10 KECCAK_JSON_FILE=/tmp/keccak.json
+riscv-test keccak-rust-json KECCAK_N_VECTORS=10 KECCAK_JSON_FILE=/path/to/keccak.json
 # Build ACT4 ELFs
 riscv-test act4-build
 # Run ACT4 ELFs through zkc
