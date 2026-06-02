@@ -10,11 +10,10 @@ include "utils/signed_comparisons.zkc"
 include "utils/sign_bit.zkc"
 include "utils/negative.zkc"
 include "utils/register_utils.zkc"
-include "stats/opcode_stats.zkc"
 include "memory.zkc"
 
 // TODO @Ghost
-fn main<ram, registers, opcode_stats>() {
+fn main<ram, registers>() {
     var opcode:Opcode
     var instruction:Instruction
     var clock_cycle:u32 = 0
@@ -46,7 +45,5 @@ fn main<ram, registers, opcode_stats>() {
 
         pc = interpreter(instruction, pc)
     }
-
-    print_opcode_stats(clock_cycle)
 }
 
