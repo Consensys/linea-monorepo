@@ -604,15 +604,15 @@ func buildVanishingProofView(sys *wiop.System, assign func(rt *wiop.Runtime)) va
 
 	initialRound := sys.Rounds[0]
 	quotientRound := sys.Rounds[len(sys.Rounds)-2]
-	exports := globalVerifierExports(sys)
+	verifiers := globalVerifiers(sys)
 
 	var witnessClaims []field.Ext
 	var quotientClaims []field.Ext
-	for _, exp := range exports {
-		for _, claim := range exp.WitnessClaims {
+	for _, verifier := range verifiers {
+		for _, claim := range verifier.WitnessClaims {
 			witnessClaims = append(witnessClaims, rt.GetCellValue(claim).AsExt())
 		}
-		for _, bucket := range exp.Buckets {
+		for _, bucket := range verifier.Buckets {
 			for _, claim := range bucket.QuotientClaims {
 				quotientClaims = append(quotientClaims, rt.GetCellValue(claim).AsExt())
 			}
@@ -624,7 +624,7 @@ func buildVanishingProofView(sys *wiop.System, assign func(rt *wiop.Runtime)) va
 		quotientRound:  runtimeTraceRoundFromRuntime(rt, quotientRound),
 		witnessClaims:  witnessClaims,
 		quotientClaims: quotientClaims,
-		moduleSizes:    dynamicModuleSizes(exports, rt),
+		moduleSizes:    dynamicModuleSizes(verifiers, rt),
 	}
 }
 
@@ -640,26 +640,27 @@ func runVanishingProver(rt *wiop.Runtime) {
 	}
 }
 
-func globalVerifierExports(sys *wiop.System) []global.VerifierExport {
-	var exports []global.VerifierExport
+func globalVerifiers(sys *wiop.System) []*global.Verifier {
+	var verifiers []*global.Verifier
 	for _, round := range sys.Rounds {
 		for _, action := range round.VerifierActions {
 			if verifier, ok := action.(*global.Verifier); ok {
-				exports = append(exports, verifier.Export())
+				verifiers = append(verifiers, verifier)
 			}
 		}
 	}
-	return exports
+	return verifiers
 }
 
-func dynamicModuleSizes(exports []global.VerifierExport, rt wiop.Runtime) []int {
+func dynamicModuleSizes(verifiers []*global.Verifier, rt wiop.Runtime) []int {
 	indices := map[*wiop.Module]int{}
-	for _, exp := range exports {
-		if !exp.ModuleSize.Dynamic {
+	for _, verifier := range verifiers {
+		module := verifier.Module
+		if !module.IsDynamic() {
 			continue
 		}
-		if _, ok := indices[exp.Module]; !ok {
-			indices[exp.Module] = len(indices)
+		if _, ok := indices[module]; !ok {
+			indices[module] = len(indices)
 		}
 	}
 	out := make([]int, len(indices))

@@ -110,26 +110,26 @@ func BuildVanishingSystem(sys *wiop.System) (VanishingSystem, error) {
 			if !ok {
 				continue
 			}
-			exp := verifier.Export()
-			module := VanishingModule{SourceName: exp.Module.Context.Label, WitnessClaimOffset: out.TotalWitnessClaims}
-			if exp.ModuleSize.Dynamic {
-				idx, ok := dynamicIndices[exp.Module]
+			moduleRef := verifier.Module
+			module := VanishingModule{SourceName: moduleRef.Context.Label, WitnessClaimOffset: out.TotalWitnessClaims}
+			if moduleRef.IsDynamic() {
+				idx, ok := dynamicIndices[moduleRef]
 				if !ok {
 					idx = len(dynamicIndices)
-					dynamicIndices[exp.Module] = idx
+					dynamicIndices[moduleRef] = idx
 				}
 				module.Size = ModuleSize{Dynamic: true, DynamicIndex: idx}
 			} else {
-				module.Size = ModuleSize{StaticSize: exp.ModuleSize.StaticSize}
+				module.Size = ModuleSize{StaticSize: moduleRef.Size()}
 			}
 
-			views := make(map[viewKey]int, len(exp.WitnessViews))
-			for i, view := range exp.WitnessViews {
+			views := make(map[viewKey]int, len(verifier.WitnessViews))
+			for i, view := range verifier.WitnessViews {
 				views[viewKey{id: view.Column.Context.ID, shift: view.ShiftingOffset}] = i
 			}
 
-			out.TotalWitnessClaims += len(exp.WitnessClaims)
-			for _, bucket := range exp.Buckets {
+			out.TotalWitnessClaims += len(verifier.WitnessClaims)
+			for _, bucket := range verifier.Buckets {
 				b := VanishingBucket{
 					Ratio:               bucket.Ratio,
 					QuotientClaimOffset: out.TotalQuotientClaims,
