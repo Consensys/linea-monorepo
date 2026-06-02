@@ -7,6 +7,7 @@ The Zig library under `src/` is independent from `prover-ray` at runtime. Go tes
 ## Documentation
 
 - `docs/system-codegen.md` explains how compiled prover-ray systems are extracted and rendered as comptime Zig verifier data.
+- `docs/global-constraint.md` explains how the vanishing polynomial/global constraint check is asserted.
 - `docs/vanishing-pcs-integration-notes.md` tracks assumptions to revisit when PCS/FRI verification is wired in.
 
 ## Testdata Generation
