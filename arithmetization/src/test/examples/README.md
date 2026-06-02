@@ -135,7 +135,7 @@ riscv-test elf-to-json BIN_EXT=asm/bin/test
 # Execute an already compiled ELF
 riscv-test elf-exec BIN_EXT=asm/bin/test
 # Execute an already compiled ELF in quiet mode
-riscv-test zkc-exec BIN_EXT=asm/bin/test ZKC_EXEC_FLAGS=-q
+riscv-test elf-exec BIN_EXT=asm/bin/test ZKC_EXEC_FLAGS=-q
 # Clean build artifacts for a specific test
 riscv-test clean <name>.<ext>
 # Clean all build artifacts
