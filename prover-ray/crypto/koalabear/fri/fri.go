@@ -279,7 +279,7 @@ func Prove(p Params, levels []Level, ts *fiatshamir.Transcript) (Proof, []int, e
 	if err != nil {
 		return Proof{}, nil, err
 	}
-	registerChallenges(p, plan.levelAtRound, ts)
+	registerChallenges(p, plan.numLevels-1, ts)
 
 	if plan.rail == field.Ext {
 		return proveExt(p, levels, plan, ts)
@@ -348,12 +348,11 @@ func buildProvePlan(p Params, levels []Level) (provePlan, error) {
 	return plan, nil
 }
 
-func registerChallenges(p Params, levelAtRound map[int]int, ts *fiatshamir.Transcript) {
-	ts.NewChallenge(foldName(0))
-	for j := 1; j < p.numRounds; j++ {
-		if l, ok := levelAtRound[j]; ok {
-			ts.NewChallenge(levelGammaName(l))
-		}
+func registerChallenges(p Params, numExtraLevels int, ts *fiatshamir.Transcript) {
+	if numExtraLevels > 0 {
+		ts.NewChallenge(gammaName())
+	}
+	for j := 0; j < p.numRounds; j++ {
 		ts.NewChallenge(foldName(j))
 	}
 	for k := 0; k < p.NumQueries; k++ {
@@ -362,6 +361,27 @@ func registerChallenges(p Params, levelAtRound map[int]int, ts *fiatshamir.Trans
 }
 
 func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcript) (Proof, []int, error) {
+	// ── Gamma computation (all level roots, including level 0, bound upfront) ─
+	gammas := make([]koalabear.Element, plan.numLevels)
+	if plan.numLevels > 1 {
+		for l := 0; l < plan.numLevels; l++ {
+			root := levels[l].Tree.Root()
+			if err := ts.Bind(gammaName(), root[:]); err != nil {
+				return Proof{}, nil, fmt.Errorf("fri: Prove: bind level l=%d: %w", l, err)
+			}
+		}
+		challenge, err := ts.ComputeChallenge(gammaName())
+		if err != nil {
+			return Proof{}, nil, fmt.Errorf("fri: Prove: compute gamma: %w", err)
+		}
+		var gamma koalabear.Element
+		gamma.Set(&challenge[0])
+		gammas[1].Set(&gamma)
+		for l := 2; l < plan.numLevels; l++ {
+			gammas[l].Mul(&gammas[l-1], &gamma)
+		}
+	}
+
 	// ── Commit phase ─────────────────────────────────────────────────────────
 
 	// running is the current evaluation vector; copy levels[0].Evals.Base so we own it.
@@ -381,19 +401,8 @@ func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcri
 		// Level batching step (j > 0 only; j=0 reuses the caller-supplied levels[0].Tree).
 		if j > 0 {
 			if l, ok := plan.levelAtRound[j]; ok {
-				gammaName := levelGammaName(l)
-				root := levels[l].Tree.Root()
-				if err := ts.Bind(gammaName, root[:]); err != nil {
-					return Proof{}, nil, fmt.Errorf("fri: Prove: bind level l=%d: %w", l, err)
-				}
-				challenge, err := ts.ComputeChallenge(gammaName)
-				if err != nil {
-					return Proof{}, nil, fmt.Errorf("fri: Prove: compute level gamma l=%d: %w", l, err)
-				}
-				var gamma koalabear.Element
-				gamma.Set(&challenge[0])
-
-				// Mix γ * levels[l].Evals into running (pointwise).
+				gamma := gammas[l]
+				// Mix γ^l * levels[l].Evals into running (pointwise).
 				for k, v := range levels[l].Evals.Base {
 					var term koalabear.Element
 					term.Mul(&v, &gamma)
@@ -500,6 +509,26 @@ func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcri
 }
 
 func proveExt(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcript) (Proof, []int, error) {
+	// ── Gamma computation (all level roots, including level 0, bound upfront) ─
+	gammas := make([]ext.E6, plan.numLevels)
+	if plan.numLevels > 1 {
+		for l := 0; l < plan.numLevels; l++ {
+			root := levels[l].Tree.Root()
+			if err := ts.Bind(gammaName(), root[:]); err != nil {
+				return Proof{}, nil, fmt.Errorf("fri: Prove: bind level l=%d: %w", l, err)
+			}
+		}
+		challenge, err := ts.ComputeChallenge(gammaName())
+		if err != nil {
+			return Proof{}, nil, fmt.Errorf("fri: Prove: compute gamma: %w", err)
+		}
+		gamma := hash.OutputToExt(challenge)
+		gammas[1] = gamma
+		for l := 2; l < plan.numLevels; l++ {
+			gammas[l].Mul(&gammas[l-1], &gamma)
+		}
+	}
+
 	running := make([]ext.E6, p.N)
 	copy(running, levels[0].Evals.Ext)
 
@@ -515,18 +544,7 @@ func proveExt(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcrip
 	for j := 0; j < p.numRounds; j++ {
 		if j > 0 {
 			if l, ok := plan.levelAtRound[j]; ok {
-				gammaName := levelGammaName(l)
-				root := levels[l].Tree.Root()
-				if err := ts.Bind(gammaName, root[:]); err != nil {
-					return Proof{}, nil, fmt.Errorf("fri: Prove: bind level l=%d: %w", l, err)
-				}
-				challenge, err := ts.ComputeChallenge(gammaName)
-				if err != nil {
-					return Proof{}, nil, fmt.Errorf("fri: Prove: compute level gamma l=%d: %w", l, err)
-				}
-				var gamma ext.E6
-				gamma = hash.OutputToExt(challenge)
-
+				gamma := gammas[l]
 				for k, v := range levels[l].Evals.Ext {
 					var term ext.E6
 					term.Mul(&v, &gamma)
@@ -704,7 +722,7 @@ func Verify(p Params, levelRoots []hash.Digest, levelDs []int, prf Proof, ts *fi
 		levelAtRound[jl] = l
 	}
 
-	registerChallenges(p, levelAtRound, ts)
+	registerChallenges(p, numExtraLevels, ts)
 
 	// Assemble FRI running-polynomial roots: roots[0] is the level-0 root;
 	// roots[1..r-1] come from prf.FRIRoots.
@@ -729,26 +747,29 @@ func verifyBase(p Params, levelRoots, levelRootsExtra []hash.Digest, levelAtRoun
 	numLevels := len(levelRoots)
 	numExtraLevels := numLevels - 1
 
-	// ── Replay commit phase (interleaved, same order as Prove) ───────────────
-	gammas := make([]koalabear.Element, numLevels) // gammas[l] for levels[l], l = 1..numLevels-1
-	alphas := make([]koalabear.Element, p.numRounds)
-
-	for j := 0; j < p.numRounds; j++ {
-		if j > 0 {
-			if l, ok := levelAtRound[j]; ok {
-				gammaName := levelGammaName(l)
-				root := levelRoots[l]
-				if err := ts.Bind(gammaName, root[:]); err != nil {
-					return fmt.Errorf("fri: Verify: bind level l=%d: %w", l, err)
-				}
-				challenge, err := ts.ComputeChallenge(gammaName)
-				if err != nil {
-					return fmt.Errorf("fri: Verify: compute level gamma l=%d: %w", l, err)
-				}
-				gammas[l].Set(&challenge[0])
+	// ── Replay commit phase ───────────────────────────────────────────────────
+	gammas := make([]koalabear.Element, numLevels)
+	if numExtraLevels > 0 {
+		for l := 0; l < numLevels; l++ {
+			root := levelRoots[l]
+			if err := ts.Bind(gammaName(), root[:]); err != nil {
+				return fmt.Errorf("fri: Verify: bind level l=%d: %w", l, err)
 			}
 		}
+		challenge, err := ts.ComputeChallenge(gammaName())
+		if err != nil {
+			return fmt.Errorf("fri: Verify: compute gamma: %w", err)
+		}
+		var gamma koalabear.Element
+		gamma.Set(&challenge[0])
+		gammas[1].Set(&gamma)
+		for l := 2; l < numLevels; l++ {
+			gammas[l].Mul(&gammas[l-1], &gamma)
+		}
+	}
 
+	alphas := make([]koalabear.Element, p.numRounds)
+	for j := 0; j < p.numRounds; j++ {
 		name := foldName(j)
 		root := roots[j]
 		if err := ts.Bind(name, root[:]); err != nil {
@@ -801,24 +822,26 @@ func verifyExt(p Params, levelRoots, levelRootsExtra []hash.Digest, levelAtRound
 	numExtraLevels := numLevels - 1
 
 	gammas := make([]ext.E6, numLevels)
-	alphas := make([]ext.E6, p.numRounds)
-
-	for j := 0; j < p.numRounds; j++ {
-		if j > 0 {
-			if l, ok := levelAtRound[j]; ok {
-				gammaName := levelGammaName(l)
-				root := levelRoots[l]
-				if err := ts.Bind(gammaName, root[:]); err != nil {
-					return fmt.Errorf("fri: Verify: bind level l=%d: %w", l, err)
-				}
-				challenge, err := ts.ComputeChallenge(gammaName)
-				if err != nil {
-					return fmt.Errorf("fri: Verify: compute level gamma l=%d: %w", l, err)
-				}
-				gammas[l] = hash.OutputToExt(challenge)
+	if numExtraLevels > 0 {
+		for l := 0; l < numLevels; l++ {
+			root := levelRoots[l]
+			if err := ts.Bind(gammaName(), root[:]); err != nil {
+				return fmt.Errorf("fri: Verify: bind level l=%d: %w", l, err)
 			}
 		}
+		challenge, err := ts.ComputeChallenge(gammaName())
+		if err != nil {
+			return fmt.Errorf("fri: Verify: compute gamma: %w", err)
+		}
+		gamma := hash.OutputToExt(challenge)
+		gammas[1] = gamma
+		for l := 2; l < numLevels; l++ {
+			gammas[l].Mul(&gammas[l-1], &gamma)
+		}
+	}
 
+	alphas := make([]ext.E6, p.numRounds)
+	for j := 0; j < p.numRounds; j++ {
 		name := foldName(j)
 		root := roots[j]
 		if err := ts.Bind(name, root[:]); err != nil {
@@ -867,7 +890,7 @@ func verifyExt(p Params, levelRoots, levelRootsExtra []hash.Digest, levelAtRound
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-func levelGammaName(l int) string { return fmt.Sprintf("fri_level_%d_gamma", l) }
+func gammaName() string           { return "fri_gamma" }
 func foldName(j int) string       { return fmt.Sprintf("fri_fold_%d", j) }
 func queryName(k int) string      { return fmt.Sprintf("fri_query_%d", k) }
 
