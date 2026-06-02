@@ -1,6 +1,7 @@
 include "utils/constants.zkc"
 include "utils/register_utils.zkc"
 include "utils/type.zkc"
+include "stats/opcode_stats.zkc"
 include "instruction_processing/b_type.zkc"
 include "instruction_processing/r_type.zkc"
 include "instruction_processing/i_type.zkc"
@@ -8,7 +9,7 @@ include "instruction_processing/s_type.zkc"
 include "instruction_processing/j_type.zkc"
 include "instruction_processing/u_type.zkc"
 
-fn interpreter<ram, registers>(instruction:u32, pc:Address) -> (new_pc:Address) {
+fn interpreter<ram, registers, opcode_stats>(instruction:u32, pc:Address) -> (new_pc:Address) {
 
     var instruction_parameters:u25
     var instruction_type:Type
@@ -43,6 +44,7 @@ fn interpreter<ram, registers>(instruction:u32, pc:Address) -> (new_pc:Address) 
         }
         case MISC_MEM_TYPE: {
             // FENCE / FENCE.I — no caches, single hart, so this is a no-op.
+            inc_opcode_stat(STAT_FENCE)
             new_pc = pc + 4 as Address
         }
         default: {
