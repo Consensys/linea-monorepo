@@ -16,7 +16,7 @@ ZIG_FETCH_FLAGS ?= --fetch
 
 BIN             := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN)
 JSON            := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN).json
-ELF_TO_JSON_GEN := $(MAKEFILE_DIR)../elf_to_json_gen/main.go
+ELF_TO_JSON_GEN := $(MAKEFILE_DIR)../arithmetization/src/main/riscv/elf_to_json_gen/main.go
 ZKC_MAIN        := $(abspath $(MAKEFILE_DIR)../arithmetization/src/main/riscv/main.zkc)
 
 # Inputs and offsets for the program
