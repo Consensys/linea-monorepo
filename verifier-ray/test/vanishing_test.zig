@@ -19,13 +19,17 @@ test "vanishing quotient honest scenarios match prover-ray" {
 }
 
 test "vanishing quotient invalid scenarios fail identity" {
+    var invalid_case_count: usize = 0;
     inline for (fixtures.scenarios) |case| {
+        const invalid = case.invalid orelse continue;
+        invalid_case_count += 1;
         const system = case.system;
         var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
         defer arena.deinit();
-        const input = try proofInput(arena.allocator(), case.invalid);
+        const input = try proofInput(arena.allocator(), invalid);
         try std.testing.expectError(error.QuotientIdentityMismatch, vanishing.verify(system, input));
     }
+    try std.testing.expect(invalid_case_count > 0);
 }
 
 test "dynamic vanishing module sizes are required and validated" {
@@ -81,9 +85,13 @@ fn proofInput(allocator: std.mem.Allocator, proof: fixtures.VanishingProofView) 
         quotient_claims[i] = uintsToExt(claim);
     }
 
+    const rounds = try allocator.alloc(runtime.RoundMessage, proof.rounds.len);
+    for (proof.rounds, 0..) |round, i| {
+        rounds[i] = try roundMessage(allocator, round);
+    }
+
     return .{
-        .initial_round = try roundMessage(allocator, proof.initial_round),
-        .quotient_round = try roundMessage(allocator, proof.quotient_round),
+        .rounds = rounds,
         .witness_claims = witness_claims,
         .quotient_claims = quotient_claims,
         .module_sizes = proof.module_sizes,
