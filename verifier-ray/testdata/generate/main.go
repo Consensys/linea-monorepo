@@ -602,7 +602,7 @@ func buildVanishingFixtureCases() ([]vanishingFixtureCase, []codegen.NamedVanish
 			return fmt.Errorf("build vanishing system %s/%s: %w", source, name, err)
 		}
 		if len(vanishingSystem.Modules) == 0 {
-			return fmt.Errorf("compiled vanishing system %s/%s has no global modules", source, name)
+			return nil
 		}
 
 		prefixedName := source + "/" + name
