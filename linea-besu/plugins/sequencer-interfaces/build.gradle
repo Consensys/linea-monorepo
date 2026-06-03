@@ -1,7 +1,6 @@
 buildscript {
-  ext {
-    distributionIdentifier = "linea-chain-security-interfaces"
-    releaseVersion = project.findProperty('releaseVersion') ?: "SNAPSHOT"
+  dependencies {
+    classpath(libs.jreleaser)
   }
 }
 
@@ -15,10 +14,10 @@ repositories {
 
 group = 'build.linea'
 description = 'Linea chain security interfaces'
+// publishing.gradle uses project.artifactId when set, falling back to project.name
+ext.artifactId = 'chain-security-interfaces'
 
 jar { enabled = true }
-
-apply plugin: 'maven-publish'
 
 dependencies {
   // Besu Plugin API and core dependencies
@@ -27,15 +26,7 @@ dependencies {
   compileOnly "org.hyperledger.besu:besu-datatypes:${rootProject.ext.resolveBesuVersion()}"
 }
 
-publishing {
-  publications {
-    maven(MavenPublication) {
-      from components.java
-      artifactId = 'chain-security-interfaces'
-      version = releaseVersion
-    }
-  }
-}
+apply from: rootProject.file("gradle/publishing.gradle")
 
 tasks.withType(GenerateModuleMetadata).configureEach {
   suppressedValidationErrors.add('enforced-platform')
