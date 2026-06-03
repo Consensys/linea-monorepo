@@ -6,10 +6,13 @@ import { DeployFunction } from "hardhat-deploy/types";
 import {
   getOptionalEnvVar,
   getRequiredEnvVar,
+  requireAddressFromRegistryOrEnv,
+  setHandoffAddress,
   LogContractDeployment,
   tryVerifyContract,
   tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
+import { formatEnvVarValueForMessage } from "../common/helpers/envVarLogging";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployFromFactory, deployFromFactoryWithOpts } from "../scripts/hardhat/utils";
 
@@ -22,7 +25,11 @@ const func: DeployFunction = withSignerUiSession(
     const chainId = getRequiredEnvVar("VERIFIER_CHAIN_ID");
     const baseFee = getRequiredEnvVar("VERIFIER_BASE_FEE");
     const coinbase = getRequiredEnvVar("VERIFIER_COINBASE");
-    const l2MessageServiceAddress = getRequiredEnvVar("L2_MESSAGE_SERVICE_ADDRESS");
+    const l2MessageServiceAddress = requireAddressFromRegistryOrEnv(
+      hre.network.name,
+      "L2MessageService",
+      "L2_MESSAGE_SERVICE_ADDRESS",
+    );
     const isAllowedCircuitId = getRequiredEnvVar("VERIFIER_IS_ALLOWED_CIRCUIT_ID");
 
     const optionalMimcAddress = getOptionalEnvVar("VERIFIER_MIMC_ADDRESS")?.trim();
@@ -30,7 +37,9 @@ const func: DeployFunction = withSignerUiSession(
 
     if (optionalMimcAddress) {
       if (!ethers.isAddress(optionalMimcAddress)) {
-        throw new Error(`VERIFIER_MIMC_ADDRESS must be a valid address, got "${optionalMimcAddress}"`);
+        throw new Error(
+          `VERIFIER_MIMC_ADDRESS must be a valid address, got "${formatEnvVarValueForMessage("VERIFIER_MIMC_ADDRESS", optionalMimcAddress)}"`,
+        );
       }
       mimcAddress = ethers.getAddress(optionalMimcAddress);
       const code = await ethers.provider.getCode(mimcAddress);
@@ -82,7 +91,7 @@ const func: DeployFunction = withSignerUiSession(
     await LogContractDeployment(contractName, contract);
     const contractAddress = await contract.getAddress();
 
-    process.env.PLONKVERIFIER_ADDRESS = contractAddress;
+    setHandoffAddress("VERIFIER_ADDRESS", contractAddress);
 
     const setVerifierAddress = ethers.concat([
       "0xc2116974",
