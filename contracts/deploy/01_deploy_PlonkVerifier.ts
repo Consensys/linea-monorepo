@@ -7,6 +7,7 @@ import {
   getOptionalEnvVar,
   getRequiredEnvVar,
   requireAddressFromRegistryOrEnv,
+  setHandoffAddress,
   LogContractDeployment,
   tryVerifyContract,
   tryVerifyContractWithConstructorArgs,
@@ -85,7 +86,7 @@ const func: DeployFunction = withSignerUiSession(
     await LogContractDeployment(contractName, contract);
     const contractAddress = await contract.getAddress();
 
-    process.env.VERIFIER_ADDRESS = contractAddress;
+    setHandoffAddress("VERIFIER_ADDRESS", contractAddress);
 
     const setVerifierAddress = ethers.concat([
       "0xc2116974",

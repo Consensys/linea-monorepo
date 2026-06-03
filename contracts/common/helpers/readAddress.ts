@@ -12,6 +12,7 @@ import {
   REGISTRY_NETWORKS,
   sameAddressSet,
 } from "./addressRegistry";
+import { getHandoffAddress } from "./deploymentHandoff";
 import { formatEnvVarForLog, formatEnvVarValueForMessage } from "./envVarLogging";
 
 /**
@@ -94,6 +95,12 @@ export function getAddressesFromRegistry(
  * Lookup tries `contractKey` first, then `envVarName` when they differ.
  */
 export function requireAddressFromRegistryOrEnv(networkName: string, contractKey: string, envVarName?: string): string {
+  const handoffAddress = envVarName ? getHandoffAddress(envVarName) : undefined;
+  if (handoffAddress !== undefined) {
+    console.log(`Using in-process handoff address for ${contractKey}: ${handoffAddress}`);
+    return handoffAddress;
+  }
+
   const registryAddress = getAddressFromRegistry(networkName, contractKey, envVarName);
   const envAddress = envVarName ? parseEnvAddress(envVarName) : undefined;
 

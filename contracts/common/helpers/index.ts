@@ -5,6 +5,7 @@ export * from "./environment";
 export * from "./envVarLogging";
 export * from "./auditedDeployVerifier";
 export * from "./deployments";
+export * from "./deploymentHandoff";
 export * from "./environmentHelper";
 export * from "./addressRegistry";
 export * from "./readAddress";
