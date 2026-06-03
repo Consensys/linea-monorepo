@@ -83,7 +83,7 @@ public abstract class BlockDataInstruction {
       trace
           .iomf(true)
           .ctMax(nbRows - 1)
-          .ct((short) ct)
+          .ct(ct)
           .inst(opCode.unsignedByteValue()) // not fork dependant
           .coinbaseHi(hub.coinbaseAddressOfRelativeBlock(relBlock).getBytes().slice(0, 4).toLong())
           .coinbaseLo(hub.coinbaseAddressOfRelativeBlock(relBlock).getBytes().slice(4, LLARGE))
