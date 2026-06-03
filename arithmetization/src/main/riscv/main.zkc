@@ -11,10 +11,10 @@ include "utils/sign_bit.zkc"
 include "utils/negative.zkc"
 include "utils/register_utils.zkc"
 include "memory.zkc"
+include "decode.zkc"
 
 // TODO @Ghost
-fn main<ram, registers>() {
-    var opcode:Opcode
+fn main<ram, registers, funct3_buffer, imm12_buffer, rs1_buffer, rd_buffer>() {
     var instruction:Instruction
     var clock_cycle:u32 = 0
     var entry_point:Address
@@ -42,8 +42,13 @@ fn main<ram, registers>() {
         // clock cycle starts at 1
         clock_cycle = clock_cycle + 1
         printf "----------------------------------------------------------------- PC=%d, clock cycle: %d\n", pc, clock_cycle
-
-        pc = interpreter(instruction, pc)
+        
+        var instruction_parameters:u25
+        var instruction_type:Type
+        var opcode:Opcode
+        opcode, instruction_parameters, instruction_type = decode(instruction, clock_cycle)
+        
+        pc = interpreter(opcode, instruction_parameters, instruction_type, clock_cycle, pc)
     }
 }
 
