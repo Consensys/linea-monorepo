@@ -69,8 +69,7 @@ pub const System = struct {
 };
 
 pub const CheckInput = struct {
-    initial_round: runtime.RoundMessage,
-    quotient_round: runtime.RoundMessage,
+    rounds: []const runtime.RoundMessage,
     witness_claims: []const ext.Ext,
     quotient_claims: []const ext.Ext,
     module_sizes: []const usize = &.{},
