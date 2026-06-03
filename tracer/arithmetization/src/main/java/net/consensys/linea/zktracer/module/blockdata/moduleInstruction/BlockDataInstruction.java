@@ -79,11 +79,11 @@ public abstract class BlockDataInstruction {
   public void trace(
       Trace.Blockdata trace, boolean shouldTraceTsAndNb, boolean shouldTraceRelTxNumMax) {
     int nbRows = nbRows();
-    for (short ct = 0; ct < nbRows; ct++) {
+    for (int ct = 0; ct < nbRows; ct++) {
       trace
           .iomf(true)
           .ctMax(nbRows - 1)
-          .ct(ct)
+          .ct((short) ct)
           .inst(opCode.unsignedByteValue()) // not fork dependant
           .coinbaseHi(hub.coinbaseAddressOfRelativeBlock(relBlock).getBytes().slice(0, 4).toLong())
           .coinbaseLo(hub.coinbaseAddressOfRelativeBlock(relBlock).getBytes().slice(4, LLARGE))
