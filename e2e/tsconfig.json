@@ -1,17 +1,15 @@
 {
-  "extends": "../tsconfig.json",
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    "noEmit": true,
     "types": ["node", "jest"],
+    // The E2E runner is Jest-based, so this package intentionally keeps
+    // CommonJS module settings even though package.json declares ESM.
     "moduleResolution": "node",
     "module": "commonjs",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false
   },
-  "references": [
-    {
-      "path": "../ts-libs/linea-shared-utils"
-    },
-  ],
   "include": ["**/*.ts", "src/config/clients/linea-rpc"]
 }

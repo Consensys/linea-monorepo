@@ -10,6 +10,9 @@ export default defineConfig([
     dts: true,
     clean: true,
     sourcemap: true,
+    esbuildOptions(options) {
+      options.sourcesContent = false;
+    },
     minify: true,
     outDir: "dist",
   },
@@ -22,6 +25,9 @@ export default defineConfig([
     dts: false,
     clean: false,
     sourcemap: true,
+    esbuildOptions(options) {
+      options.sourcesContent = false;
+    },
     minify: false,
     outDir: "dist",
   },

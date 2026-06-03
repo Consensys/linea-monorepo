@@ -13,6 +13,9 @@ export default defineConfig([
     dts: true,
     clean: true,
     sourcemap: true,
+    esbuildOptions(options) {
+      options.sourcesContent = false;
+    },
     minify: true,
     outDir: "dist",
     // Mark Node.js built-ins as external to prevent bundling
@@ -34,6 +37,9 @@ export default defineConfig([
     dts: true,
     clean: false, // Don't clean, we need browser files
     sourcemap: true,
+    esbuildOptions(options) {
+      options.sourcesContent = false;
+    },
     minify: true,
     outDir: "dist",
   },

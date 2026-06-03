@@ -3,12 +3,9 @@
   "compilerOptions": {
     "declaration": true,
     "declarationMap": true,
-    "inlineSources": true,
     "noEmit": false,
-    "sourceMap": true,
     "outDir": "dist",
-    "rootDir": "src",
-    "composite": false
+    "rootDir": "src"
   },
   "include": ["src"],
   "exclude": ["src/cli.ts"]
