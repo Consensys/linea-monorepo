@@ -1,14 +1,8 @@
-# OUTDATED
-
 # Shared RISC-V guest build and ZKC integration.
 
 .PHONY: fetch compile json exec debug zkc-exec zkc-debug test write-fixtures fixture-exec fixture-debug clean
 
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-
-#########################################################################
-# Potentially new logic wrt /arithmetization/src/test/examples/Makefile
-#########################################################################
 
 GUEST  ?= l2-execution
 ZIG    ?= zig
@@ -19,6 +13,20 @@ ZKC    ?= zkc
 BUILD_CACHE_DIR ?= $(MAKEFILE_DIR).zig-cache
 ZIG_BUILD_FLAGS ?= --cache-dir $(BUILD_CACHE_DIR) --summary all
 ZIG_FETCH_FLAGS ?= --fetch
+
+BIN             := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN)
+JSON            := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN).json
+ELF_TO_JSON_GEN := $(MAKEFILE_DIR)../elf_to_json_gen/main.go
+ZKC_MAIN        := $(abspath $(MAKEFILE_DIR)../arithmetization/src/main/riscv/main.zkc)
+
+# Inputs and offsets for the program
+IN_BYTES        ?= ""
+
+# 1 GiB   (0x08800000 -> 0x48FFFFFF)
+IN_BYTES_OFFSET ?= 0x08800000
+
+# 8 MiB   (0x08000000 <- 0x08800000)
+SP              ?= 0x08800000
 
 ifeq ($(GUEST),l2-execution)
 GUEST_BIN    := evm_execution_guest
@@ -41,19 +49,6 @@ test:
 
 write-fixtures:
 	$(ZIG) build write-fixtures $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS)
-
-#########################################################################
-# Mostly duplicated wrt /arithmetization/src/test/examples/Makefile
-#########################################################################
-
-BIN             := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN)
-JSON            := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN).json
-ELF_TO_JSON_GEN := $(MAKEFILE_DIR)../elf_to_json_gen/main.go
-ZKC_MAIN        := $(abspath $(MAKEFILE_DIR)../arithmetization/src/main/riscv/main.zkc)
-
-IN_BYTES        ?=
-IN_BYTES_OFFSET ?= 0x08800000
-SP              ?= 0x08800000
 
 exec: elf-to-json zkc-exec
 
