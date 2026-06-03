@@ -1,3 +1,5 @@
+# OUTDATED
+
 # Shared RISC-V guest build and ZKC integration.
 
 .PHONY: fetch compile json exec debug zkc-exec zkc-debug test write-fixtures fixture-exec fixture-debug clean

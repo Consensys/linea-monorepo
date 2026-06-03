@@ -41,7 +41,7 @@ make write-fixtures ZIG=/path/to/zig
 The default memory layout can be overridden when compiling:
 
 ```bash
-make compile ZIG=/path/to/zig PROGRAM_OFFSET=0x00000000 IN_BYTES_OFFSET=0x08800000 SP=0x08800000
+make compile ZIG=/path/to/zig IN_BYTES_OFFSET=0x08800000 SP=0x08800000
 ```
 
 ## ZKC Interpreter Integration
