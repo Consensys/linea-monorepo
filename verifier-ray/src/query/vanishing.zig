@@ -30,8 +30,15 @@ pub const ExprOp = struct {
     operands: []const usize,
 };
 
+pub const ScalarRef = struct {
+    round: usize,
+    index: usize,
+};
+
 pub const ExprNode = union(enum) {
     column_claim: usize,
+    cell_value: ScalarRef,
+    coin_value: usize,
     constant: field.Element,
     op: ExprOp,
 };
