@@ -362,7 +362,7 @@ def run_l2_execution_guest(execution_input: L2ExecutionProofPrivateInput) -> L2E
             )
 
         # Forced transactions (§6.5): FTX-invalid reads the sender account at this
-        # block's parent state root through the engine's witness-backed state view.
+        # block's parent state root by walking the witness MPT (`L2State`).
         block_parent_state = L2State(state_root=result.pre_state_root, witnesses=all_witnesses)
         block_filtered_addresses, current_ftx_rolling_hash, current_last_processed_ftx_number = (
             validate_forced_transactions(
@@ -387,8 +387,8 @@ def run_l2_execution_guest(execution_input: L2ExecutionProofPrivateInput) -> L2E
 
     last_payload = stateless_inputs[-1].new_payload_request.execution_payload
 
-    # L1->L2 bridge rolling-hash boundary reads, via the engine's witness-backed
-    # state view, at the range's parent (pre) and end (post) state roots.
+    # L1->L2 bridge rolling-hash boundary reads, by walking the witness MPT
+    # (`L2State`), at the range's parent (pre) and end (post) state roots.
     parent_rolling_hash, parent_rolling_hash_number = read_l1l2_bridge_state(
         L2State(state_root=results[0].pre_state_root, witnesses=all_witnesses), l2_ms_address,
     )
