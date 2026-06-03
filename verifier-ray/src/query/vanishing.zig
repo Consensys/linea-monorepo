@@ -6,6 +6,8 @@ pub const Error = runtime.Error || error{
     MissingDynamicModuleSize,
     InvalidModuleSize,
     InvalidClaimCount,
+    InvalidRoundCount,
+    InvalidCoinCount,
     QuotientIdentityMismatch,
 };
 
@@ -63,6 +65,10 @@ pub const Module = struct {
 
 pub const System = struct {
     modules: []const Module,
+    round_coin_counts: []const usize = &.{},
+    round_coin_offsets: []const usize = &.{},
+    max_round_coins: usize = 0,
+    total_round_coins: usize = 0,
     dynamic_module_count: usize = 0,
     total_witness_claims: usize = 0,
     total_quotient_claims: usize = 0,
@@ -79,31 +85,47 @@ pub fn verify(comptime system: System, input: CheckInput) Error!void {
     if (input.witness_claims.len != system.total_witness_claims) return error.InvalidClaimCount;
     if (input.quotient_claims.len != system.total_quotient_claims) return error.InvalidClaimCount;
     if (input.module_sizes.len < system.dynamic_module_count) return error.MissingDynamicModuleSize;
+    if (system.round_coin_counts.len < 3) return error.InvalidRoundCount;
+    if (system.round_coin_offsets.len != system.round_coin_counts.len) return error.InvalidRoundCount;
+    if (input.rounds.len + 1 != system.round_coin_counts.len) return error.InvalidRoundCount;
+    if (system.max_round_coins < system.modules.len) return error.InvalidCoinCount;
 
-    var rt = runtime.Runtime.initWithRoundCount(3);
-
+    var rt = runtime.Runtime.initWithRoundCount(system.round_coin_counts.len);
+    var all_coins: [system.total_round_coins]runtime.Coin = undefined;
+    var round_coins: [system.max_round_coins]runtime.Coin = undefined;
     var merge_coins: [system.modules.len]runtime.Coin = undefined;
-    const merge_message = runtime.RoundMessage{
-        .columns = input.initial_round.columns,
-        .cells = input.initial_round.cells,
-        .next_round_coin_count = system.modules.len,
-    };
-    const merges = try rt.advanceRoundWithMessage(0, merge_message, &merge_coins);
-
     var eval_coins: [system.modules.len]runtime.Coin = undefined;
-    const eval_message = runtime.RoundMessage{
-        .columns = input.quotient_round.columns,
-        .cells = input.quotient_round.cells,
-        .next_round_coin_count = system.modules.len,
-    };
-    const evals = try rt.advanceRoundWithMessage(1, eval_message, &eval_coins);
+
+    const merge_advance_index = system.round_coin_counts.len - 3;
+    const eval_advance_index = system.round_coin_counts.len - 2;
+
+    for (input.rounds, 0..) |round, round_index| {
+        const next_coin_count = system.round_coin_counts[round_index + 1];
+        const message = runtime.RoundMessage{
+            .columns = round.columns,
+            .cells = round.cells,
+            .next_round_coin_count = next_coin_count,
+        };
+        const coins = try rt.advanceRoundWithMessage(round_index, message, round_coins[0..]);
+        const coin_offset = system.round_coin_offsets[round_index + 1];
+        if (coin_offset + coins.len > all_coins.len) return error.InvalidCoinCount;
+        for (coins, 0..) |coin, coin_index| all_coins[coin_offset + coin_index] = coin;
+
+        if (round_index == merge_advance_index) {
+            if (coins.len != system.modules.len) return error.InvalidCoinCount;
+            for (coins, 0..) |coin, coin_index| merge_coins[coin_index] = coin;
+        } else if (round_index == eval_advance_index) {
+            if (coins.len != system.modules.len) return error.InvalidCoinCount;
+            for (coins, 0..) |coin, coin_index| eval_coins[coin_index] = coin;
+        }
+    }
 
     inline for (system.modules, 0..) |module, module_index| {
         switch (module.size) {
-            .static => |n| try verifyModule(module, n, 0, input, merges[module_index], evals[module_index]),
+            .static => |n| try verifyModule(module, n, 0, input, all_coins[0..], merge_coins[module_index], eval_coins[module_index]),
             .dynamic => |size_index| {
                 if (size_index >= input.module_sizes.len) return error.MissingDynamicModuleSize;
-                try verifyModule(module, 0, input.module_sizes[size_index], input, merges[module_index], evals[module_index]);
+                try verifyModule(module, 0, input.module_sizes[size_index], input, all_coins[0..], merge_coins[module_index], eval_coins[module_index]);
             },
         }
     }
@@ -114,6 +136,7 @@ fn verifyModule(
     comptime static_n: usize,
     dynamic_n: usize,
     input: CheckInput,
+    coins: []const runtime.Coin,
     merge_coin: ext.Ext,
     eval_coin: ext.Ext,
 ) Error!void {
@@ -138,7 +161,7 @@ fn verifyModule(
     const annihilator = r_pow_n.sub(ext.Ext.one());
 
     inline for (module.buckets) |bucket| {
-        try verifyBucket(module, bucket, static_n, dynamic_n, input, merge_coin, eval_coin, r_pow_n, annihilator);
+        try verifyBucket(module, bucket, static_n, dynamic_n, input, coins, merge_coin, eval_coin, r_pow_n, annihilator);
     }
 }
 
@@ -158,6 +181,7 @@ fn verifyBucket(
     comptime static_n: usize,
     dynamic_n: usize,
     input: CheckInput,
+    coins: []const runtime.Coin,
     merge_coin: ext.Ext,
     eval_coin: ext.Ext,
     r_pow_n: ext.Ext,
@@ -177,7 +201,7 @@ fn verifyBucket(
     inline for (bucket.vanishings) |v| {
         // Aggregate the vanished numerators with the merge coin alpha:
         // P_agg(r) = sum_i alpha^i * P_i(r) * C_i(r).
-        const value = evalExpr(module, v.expression, input);
+        const value = evalExpr(module, v.expression, input, coins);
         const cancellation = try cancellationAtPoint(v.cancelled_positions, static_n, dynamic_n, eval_coin);
         aggregate = aggregate.add(coin_power.mul(value.mul(cancellation)));
         coin_power = coin_power.mul(merge_coin);
@@ -188,22 +212,31 @@ fn verifyBucket(
     if (!aggregate.eql(annihilator.mul(quotient))) return error.QuotientIdentityMismatch;
 }
 
-fn evalExpr(comptime module: Module, comptime expr_index: usize, input: CheckInput) ext.Ext {
+fn evalExpr(comptime module: Module, comptime expr_index: usize, input: CheckInput, coins: []const runtime.Coin) ext.Ext {
     const node = module.expressions[expr_index];
     return switch (node) {
         .column_claim => |claim_index| input.witness_claims[module.witness_claim_offset + claim_index],
+        .cell_value => |ref| scalarToExt(input.rounds[ref.round].cells[ref.index]),
+        .coin_value => |coin_index| coins[coin_index],
         .constant => |value| ext.Ext.lift(value),
-        .op => |op| evalOp(module, op, input),
+        .op => |op| evalOp(module, op, input, coins),
     };
 }
 
-fn evalOp(comptime module: Module, comptime op: ExprOp, input: CheckInput) ext.Ext {
-    const a = evalExpr(module, op.operands[0], input);
+fn scalarToExt(value: runtime.Scalar) ext.Ext {
+    return switch (value) {
+        .base => |base| ext.Ext.lift(base),
+        .ext => |extended| extended,
+    };
+}
+
+fn evalOp(comptime module: Module, comptime op: ExprOp, input: CheckInput, coins: []const runtime.Coin) ext.Ext {
+    const a = evalExpr(module, op.operands[0], input, coins);
     return switch (op.operator) {
-        .add => a.add(evalExpr(module, op.operands[1], input)),
-        .mul => a.mul(evalExpr(module, op.operands[1], input)),
-        .sub => a.sub(evalExpr(module, op.operands[1], input)),
-        .div => a.div(evalExpr(module, op.operands[1], input)),
+        .add => a.add(evalExpr(module, op.operands[1], input, coins)),
+        .mul => a.mul(evalExpr(module, op.operands[1], input, coins)),
+        .sub => a.sub(evalExpr(module, op.operands[1], input, coins)),
+        .div => a.div(evalExpr(module, op.operands[1], input, coins)),
         .double => a.add(a),
         .square => a.square(),
         .negate => a.neg(),
