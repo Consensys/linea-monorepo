@@ -18,3 +18,8 @@ pub input blobs_offset_and_size(i:u64) -> (blob_offset:Address, blob_size:Length
 
 // Concatenated bytes for all sparse memory blobs, in blob order
 pub input blobs_data(i:Address) -> (byte:u8)
+
+memory funct3_buffer(clockcycle:u32) -> (value:Funct3)
+memory imm12_buffer(clockcycle:u32) -> (value:Imm12)
+memory rs1_buffer(clockcycle:u32) -> (value:Register)
+memory rd_buffer(clockcycle:u32) -> (value:Register)
