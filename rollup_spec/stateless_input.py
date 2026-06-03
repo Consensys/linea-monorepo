@@ -265,12 +265,19 @@ def _strip_stateless_input_framing(data: bytes) -> bytes:
     """
     payload = bytes(data)
 
-    # Ere wraps stdin with a 4-byte little-endian length prefix. Raw SSZ starts
-    # with the schema id, so a length match is unambiguous for real payloads.
-    if len(payload) >= 4:
-        declared_length = int.from_bytes(payload[:4], "little")
-        if declared_length == len(payload) - 4:
-            payload = payload[4:]
+    # Ere wraps stdin with a 4-byte little-endian length prefix immediately
+    # followed by the schema id. Strip it only when BOTH the declared length
+    # matches AND the schema id appears right after: requiring the schema id
+    # prevents a raw SSZ payload whose first four bytes happen to satisfy the
+    # length relation from being mis-framed (which would let two distinct byte
+    # strings decode to the same input, or reject a valid raw input outright).
+    if (
+        len(payload) >= 4 + STATELESS_INPUT_SCHEMA_ID_SIZE
+        and int.from_bytes(payload[:4], "little") == len(payload) - 4
+        and int.from_bytes(payload[4 : 4 + STATELESS_INPUT_SCHEMA_ID_SIZE], "big")
+        == STATELESS_INPUT_SCHEMA_ID
+    ):
+        payload = payload[4:]
 
     if (
         len(payload) < STATELESS_INPUT_SCHEMA_ID_SIZE

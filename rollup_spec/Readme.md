@@ -66,6 +66,10 @@ checks modeled separately in `l1_rollup.py`:
 `l1_rollup.py` models the contract-facing blob anchoring and finalization checks
 against L1 storage. It is intentionally not one of the RISC-V guest programs.
 
+**Reference environment.** The Python reference targets **Python 3.11+** (it uses
+`enum.StrEnum`) and pins its dependencies in `rollup_spec/requirements.txt`
+(`remerkleable`, a commit-pinned `ethereum-execution`, `ckzg`, `lz4`).
+
 ### 2.1 l2-execution Proof
 The l2-execution proof covers a contiguous range of L2 blocks and proves the EVM state transition, deposit processing, and withdrawal emission.
 The sequencer's forced-transaction handling decision is supplied per forced
@@ -293,7 +297,7 @@ The Python reference uses `raise Exception(...)` as compact notation for proof, 
 Classification:
 
 - Guest invariant failures in `l2_execution.py`, `rollup.py`, `rollup_aggregation.py`, `block.py`, and the MPT/account/storage checks in `state_transition.py` are proof rejection points. Zig/Rust implementations should return explicit deterministic error codes and terminate as failed executions rather than relying on an uncontrolled panic path.
-- Python-only stubs such as `state_transition.py::materialize_blockchain_from_execution_witness` are reference gaps, not guest semantics. They must not remain on an implementable production guest path.
+- `state_transition.py::execute_stateless_input` raises `NotImplementedError`: it marks the delegation boundary to the underlying stateless-execution engine, not a guest rejection point. A production guest satisfies it by calling that engine, not by terminating.
 - L1 finalization failures in `l1_rollup.py` model Solidity reverts, not zkVM guest termination.
 - Host/environment failures in this Python reference, such as a missing trusted setup file or a host library/runtime fault, must not be collapsed into ordinary proof-invalid errors in production. The production guest should use fixed trusted-setup semantics and typed errors around KZG, MPT, compression, and recursive-verifier primitives.
 - The current Python MPT helper rejects inline child nodes as "not supported in this reference". Inline MPT children are valid Ethereum trie encodings; production must either support them or document and enforce a witness-normalization rule that rejects them with a standardized failed-termination code.
@@ -341,7 +345,7 @@ Python reference; this section does not restate their field lists, to avoid a
 second source of truth that drifts. See:
 
 - `l2_execution.py`
-- `block.py
+- `block.py`
 - `state_transition.py`
 
 The on-wire SSZ schema (the `Ssz*` containers) lives in `stateless_input.py` and

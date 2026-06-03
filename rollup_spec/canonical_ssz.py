@@ -5,7 +5,8 @@ library consensus-specs generates against), so the class bodies are identical to
 upstream — only the imports and `source:` comments are local.
 
 To re-sync: bump the tag, re-copy the affected `class`/alias/constant bodies from
-the referenced spec files, and run `python -m scripts.check_ssz_decode`.
+the referenced spec files, and re-run the stateless-input SSZ decode round-trip
+(`stateless_input.py::decode_stateless_input_ssz`, guarded by `_strict_decode`).
 
 Only canonical CL containers live here; the bespoke EIP-8025 stateless-input
 envelope is in `stateless_input.py`.
