@@ -12,7 +12,7 @@ const func: DeployFunction = withSignerUiSession(
     const signer = await getUiSigner(hre);
     const contractName = "TokenBridge";
 
-    const tokenBridgeKey = process.env.TOKEN_BRIDGE_L1 === "true" ? "TokenBridge_L1" : "TokenBridge_L2";
+    const tokenBridgeKey = process.env.DEPLOY_TOKEN_BRIDGE_ON_L1 === "true" ? "TokenBridge_L1" : "TokenBridge_L2";
     const proxyAddress = requireAddressFromRegistryOrEnv(hre.network.name, tokenBridgeKey, "TOKEN_BRIDGE_ADDRESS");
 
     const factory = await ethers.getContractFactory(contractName, signer);

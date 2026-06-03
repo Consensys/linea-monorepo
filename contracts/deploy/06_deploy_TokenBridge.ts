@@ -54,14 +54,14 @@ const func: DeployFunction = withSignerUiSession(
     let deployingChainMessageService = l2MessageServiceAddress;
     let reservedAddresses: string[];
 
-    if (process.env.TOKEN_BRIDGE_L1 === "true") {
+    if (process.env.DEPLOY_TOKEN_BRIDGE_ON_L1 === "true") {
       securityCouncilAddress = requireAddressFromRegistryOrEnv(
         network.name,
         "L1_SECURITY_COUNCIL",
         "L1_SECURITY_COUNCIL",
       );
       console.log(
-        `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES from registry or env`,
+        `DEPLOY_TOKEN_BRIDGE_ON_L1=${process.env.DEPLOY_TOKEN_BRIDGE_ON_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES from registry or env`,
       );
       deployingChainMessageService = lineaRollupAddress;
       reservedAddresses = getAddressesFromRegistryOrEnv(
@@ -76,7 +76,7 @@ const func: DeployFunction = withSignerUiSession(
         "L2_SECURITY_COUNCIL",
       );
       console.log(
-        `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES from registry or env`,
+        `DEPLOY_TOKEN_BRIDGE_ON_L1=${process.env.DEPLOY_TOKEN_BRIDGE_ON_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES from registry or env`,
       );
       reservedAddresses = getAddressesFromRegistryOrEnv(
         network.name,
@@ -128,7 +128,7 @@ const func: DeployFunction = withSignerUiSession(
 
     const tokenBridgeAddress = await tokenBridge.getAddress();
 
-    if (process.env.TOKEN_BRIDGE_L1 === "true") {
+    if (process.env.DEPLOY_TOKEN_BRIDGE_ON_L1 === "true") {
       console.log(`L1 TokenBridge deployed on ${network.name}, at address: ${tokenBridgeAddress}`);
     } else {
       console.log(`L2 TokenBridge deployed on ${network.name}, at address: ${tokenBridgeAddress}`);

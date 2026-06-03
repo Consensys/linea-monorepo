@@ -97,8 +97,8 @@ Deploy scripts look up `contractKey` first, then `envVarName` when they differ. 
 | `LineaRollup` | `LINEA_ROLLUP_ADDRESS` | Transparent upgradeable proxy (L1) |
 | `Validium` | — | Transparent upgradeable proxy (L1) |
 | `L2MessageService` | `L2_MESSAGE_SERVICE_ADDRESS` | Transparent upgradeable proxy (L2) |
-| `TokenBridge_L1` | `TOKEN_BRIDGE_ADDRESS` (when `TOKEN_BRIDGE_L1=true`) | L1 token bridge proxy |
-| `TokenBridge_L2` | `TOKEN_BRIDGE_ADDRESS` (when `TOKEN_BRIDGE_L1` unset) | L2 token bridge proxy |
+| `TokenBridge_L1` | `TOKEN_BRIDGE_ADDRESS` (when `DEPLOY_TOKEN_BRIDGE_ON_L1=true`) | L1 token bridge proxy |
+| `TokenBridge_L2` | `TOKEN_BRIDGE_ADDRESS` (when `DEPLOY_TOKEN_BRIDGE_ON_L1` unset) | L2 token bridge proxy |
 | `CallForwardingProxy` | — | CallForwardingProxy (L1) |
 | `YieldManager` | `YIELD_MANAGER_ADDRESS` | YieldManager proxy (L1) |
 | `AddressFilter` | `LINEA_ROLLUP_ADDRESS_FILTER` | AddressFilter (L1) |

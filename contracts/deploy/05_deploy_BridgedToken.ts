@@ -44,7 +44,7 @@ const func: DeployFunction = withSignerUiSession(
       throw "Contract deployment transaction receipt not found.";
     }
 
-    if (process.env.TOKEN_BRIDGE_L1 === "true") {
+    if (process.env.DEPLOY_TOKEN_BRIDGE_ON_L1 === "true") {
       console.log(`L1 BridgedToken beacon deployed on ${hre.network.name}, at address:`, bridgedTokenAddress);
     } else {
       console.log(`L2 BridgedToken beacon deployed on ${hre.network.name}, at address:`, bridgedTokenAddress);

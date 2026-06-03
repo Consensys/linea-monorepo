@@ -45,7 +45,7 @@ async function main() {
 
   let securityCouncilAddress: string;
 
-  if (process.env.TOKEN_BRIDGE_L1 === "true") {
+  if (process.env.DEPLOY_TOKEN_BRIDGE_ON_L1 === "true") {
     securityCouncilAddress = requireAddressFromRegistryOrEnv(networkName, "L1_SECURITY_COUNCIL", "L1_SECURITY_COUNCIL");
   } else {
     securityCouncilAddress = requireAddressFromRegistryOrEnv(networkName, "L2_SECURITY_COUNCIL", "L2_SECURITY_COUNCIL");
@@ -71,7 +71,7 @@ async function main() {
   let remoteDeployerNonce;
   let fees = {};
 
-  if (process.env.TOKEN_BRIDGE_L1 === "true") {
+  if (process.env.DEPLOY_TOKEN_BRIDGE_ON_L1 === "true") {
     walletNonce = await getL1DeployerNonce();
     remoteDeployerNonce = await getL2DeployerNonce();
   } else {
@@ -142,9 +142,9 @@ async function main() {
     nonce: remoteDeployerNonce + 4,
   });
 
-  if (process.env.TOKEN_BRIDGE_L1 === "true") {
+  if (process.env.DEPLOY_TOKEN_BRIDGE_ON_L1 === "true") {
     console.log(
-      `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES from registry or env and remoteSender=${remoteSender}`,
+      `DEPLOY_TOKEN_BRIDGE_ON_L1=${process.env.DEPLOY_TOKEN_BRIDGE_ON_L1}. Deploying TokenBridge on L1, using L1_RESERVED_TOKEN_ADDRESSES from registry or env and remoteSender=${remoteSender}`,
     );
     deployingChainMessageService = lineaRollupAddress;
     reservedAddresses = getAddressesFromRegistryOrEnv(
@@ -154,7 +154,7 @@ async function main() {
     );
   } else {
     console.log(
-      `TOKEN_BRIDGE_L1=${process.env.TOKEN_BRIDGE_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES from registry or env and remoteSender=${remoteSender}`,
+      `DEPLOY_TOKEN_BRIDGE_ON_L1=${process.env.DEPLOY_TOKEN_BRIDGE_ON_L1}. Deploying TokenBridge on L2, using L2_RESERVED_TOKEN_ADDRESSES from registry or env and remoteSender=${remoteSender}`,
     );
     reservedAddresses = getAddressesFromRegistryOrEnv(
       networkName,

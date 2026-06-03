@@ -128,11 +128,11 @@ This will run the script that deploys the TokenBridge and BridgedToken contracts
 | LINEA_ROLLUP_ADDRESS         | registry\|env    | address       | L1 Rollup address. Read from registry on stable networks; env var used as fallback. |
 | REMOTE_CHAIN_ID       | true      |   uint256     | ChainID of the remote (target) network |
 | REMOTE_SENDER_ADDRESS | registry\|env | address | Remote sender address (the TokenBridge on the other chain). Read from registry if present; env var used as fallback. |
-| TOKEN_BRIDGE_L1       | false     |true\|false| If Token Bridge is deployed on L1, TOKEN_BRIDGE_L1 should be set to `true`. Otherwise it should be `false`|
-| L1_SECURITY_COUNCIL | registry\|env | address | L1 Security Council address. Required when `TOKEN_BRIDGE_L1=true`. Read from registry on stable networks; env var used as fallback. |
-| L2_SECURITY_COUNCIL | registry\|env | address | L2 Security Council address. Required when `TOKEN_BRIDGE_L1=false`. Read from registry on stable networks; env var used as fallback. |
-| L1_RESERVED_TOKEN_ADDRESSES | false   | address   | If TOKEN_BRIDGE_L1=true, then L1_RESERVED_TOKEN_ADDRESSES should be defined. If multiple addresses, provide them in a comma-delimited array.|
-| L2_RESERVED_TOKEN_ADDRESSES | false   | address   | If TOKEN_BRIDGE_L1=false, then L2_RESERVED_TOKEN_ADDRESSES should be defined. If multiple addresses, provide them in a comma-delimited array.|
+| DEPLOY_TOKEN_BRIDGE_ON_L1       | false     |true\|false| If Token Bridge is deployed on L1, DEPLOY_TOKEN_BRIDGE_ON_L1 should be set to `true`. Otherwise it should be `false`|
+| L1_SECURITY_COUNCIL | registry\|env | address | L1 Security Council address. Required when `DEPLOY_TOKEN_BRIDGE_ON_L1=true`. Read from registry on stable networks; env var used as fallback. |
+| L2_SECURITY_COUNCIL | registry\|env | address | L2 Security Council address. Required when `DEPLOY_TOKEN_BRIDGE_ON_L1=false`. Read from registry on stable networks; env var used as fallback. |
+| L1_RESERVED_TOKEN_ADDRESSES | false   | address   | If DEPLOY_TOKEN_BRIDGE_ON_L1=true, then L1_RESERVED_TOKEN_ADDRESSES should be defined. If multiple addresses, provide them in a comma-delimited array.|
+| L2_RESERVED_TOKEN_ADDRESSES | false   | address   | If DEPLOY_TOKEN_BRIDGE_ON_L1=false, then L2_RESERVED_TOKEN_ADDRESSES should be defined. If multiple addresses, provide them in a comma-delimited array.|
 
 
 Base command:
@@ -142,6 +142,6 @@ pnpm exec hardhat deploy --network linea_sepolia --tags BridgedToken,TokenBridge
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> REMOTE_CHAIN_ID=<uint256> TOKEN_BRIDGE_L1=true L1_SECURITY_COUNCIL=<address> L1_RESERVED_TOKEN_ADDRESSES=<address> L2_MESSAGE_SERVICE_ADDRESS=<address> LINEA_ROLLUP_ADDRESS=<address> REMOTE_SENDER_ADDRESS=<address> pnpm exec hardhat deploy --network linea_sepolia --tags BridgedToken,TokenBridge
+VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> REMOTE_CHAIN_ID=<uint256> DEPLOY_TOKEN_BRIDGE_ON_L1=true L1_SECURITY_COUNCIL=<address> L1_RESERVED_TOKEN_ADDRESSES=<address> L2_MESSAGE_SERVICE_ADDRESS=<address> LINEA_ROLLUP_ADDRESS=<address> REMOTE_SENDER_ADDRESS=<address> pnpm exec hardhat deploy --network linea_sepolia --tags BridgedToken,TokenBridge
 ```
 (make sure to replace `<value>` `<key>` `<address>` with actual values)

@@ -13,7 +13,7 @@ const func: DeployFunction = withSignerUiSession(
 
     const registryKey =
       contractName === "TokenBridge"
-        ? process.env.TOKEN_BRIDGE_L1 === "true"
+        ? process.env.DEPLOY_TOKEN_BRIDGE_ON_L1 === "true"
           ? "TokenBridge_L1"
           : "TokenBridge_L2"
         : contractName;
