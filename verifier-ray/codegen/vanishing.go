@@ -32,6 +32,10 @@ type NamedVanishingSystem struct {
 type VanishingSystem struct {
 	SourceName          string
 	Modules             []VanishingModule
+	RoundCoinCounts     []int
+	RoundCoinOffsets    []int
+	MaxRoundCoins       int
+	TotalRoundCoins     int
 	DynamicModuleCount  int
 	TotalWitnessClaims  int
 	TotalQuotientClaims int
@@ -67,6 +71,8 @@ type ExprNode struct {
 	Kind             ExprKind
 	ColumnClaim      int
 	ColumnSourceName string
+	Cell             ScalarRef
+	Coin             ScalarRef
 	Constant         field.Element
 	Operator         Operator
 	Operands         []int
@@ -76,9 +82,18 @@ type ExprKind int
 
 const (
 	ExprColumnClaim ExprKind = iota
+	ExprCellValue
+	ExprCoinValue
 	ExprConstant
 	ExprOp
 )
+
+type ScalarRef struct {
+	Round      int
+	Index      int
+	FlatIndex  int
+	SourceName string
+}
 
 type Operator string
 
@@ -102,6 +117,16 @@ type viewKey struct {
 // and converts them to the compact data representation consumed by Zig.
 func BuildVanishingSystem(sys *wiop.System) (VanishingSystem, error) {
 	out := VanishingSystem{SourceName: sys.Context.Path()}
+	out.RoundCoinCounts = make([]int, len(sys.Rounds))
+	out.RoundCoinOffsets = make([]int, len(sys.Rounds))
+	for i, round := range sys.Rounds {
+		out.RoundCoinOffsets[i] = out.TotalRoundCoins
+		out.RoundCoinCounts[i] = len(round.Coins)
+		out.TotalRoundCoins += len(round.Coins)
+		if len(round.Coins) > out.MaxRoundCoins {
+			out.MaxRoundCoins = len(round.Coins)
+		}
+	}
 	dynamicIndices := map[*wiop.Module]int{}
 
 	for _, round := range sys.Rounds {
@@ -137,7 +162,7 @@ func BuildVanishingSystem(sys *wiop.System) (VanishingSystem, error) {
 				out.TotalQuotientClaims += len(bucket.QuotientClaims)
 
 				for _, v := range bucket.Vanishings {
-					exprIdx, err := appendExpr(&module, views, v.Expression)
+					exprIdx, err := appendExpr(&module, views, out.RoundCoinOffsets, v.Expression)
 					if err != nil {
 						return VanishingSystem{}, err
 					}
@@ -158,7 +183,7 @@ func BuildVanishingSystem(sys *wiop.System) (VanishingSystem, error) {
 	return out, nil
 }
 
-func appendExpr(module *VanishingModule, views map[viewKey]int, expr wiop.Expression) (int, error) {
+func appendExpr(module *VanishingModule, views map[viewKey]int, roundCoinOffsets []int, expr wiop.Expression) (int, error) {
 	switch e := expr.(type) {
 	case *wiop.ColumnView:
 		idx, ok := views[viewKey{id: e.Column.Context.ID, shift: e.ShiftingOffset}]
@@ -173,7 +198,7 @@ func appendExpr(module *VanishingModule, views map[viewKey]int, expr wiop.Expres
 	case *wiop.ArithmeticOperation:
 		operands := make([]int, len(e.Operands))
 		for i, operand := range e.Operands {
-			idx, err := appendExpr(module, views, operand)
+			idx, err := appendExpr(module, views, roundCoinOffsets, operand)
 			if err != nil {
 				return 0, err
 			}
@@ -186,9 +211,27 @@ func appendExpr(module *VanishingModule, views map[viewKey]int, expr wiop.Expres
 		module.Expressions = append(module.Expressions, ExprNode{Kind: ExprOp, Operator: op, Operands: operands})
 		return len(module.Expressions) - 1, nil
 	case *wiop.Cell:
-		return 0, &UnsupportedExpressionError{Type: "Cell"}
+		module.Expressions = append(module.Expressions, ExprNode{
+			Kind: ExprCellValue,
+			Cell: ScalarRef{
+				Round:      e.Context.ID.Slot(),
+				Index:      e.Context.ID.Position(),
+				SourceName: e.Context.Label,
+			},
+		})
+		return len(module.Expressions) - 1, nil
 	case *wiop.CoinField:
-		return 0, &UnsupportedExpressionError{Type: "CoinField"}
+		round := e.Context.ID.Slot()
+		module.Expressions = append(module.Expressions, ExprNode{
+			Kind: ExprCoinValue,
+			Coin: ScalarRef{
+				Round:      round,
+				Index:      e.Context.ID.Position(),
+				FlatIndex:  roundCoinOffsets[round] + e.Context.ID.Position(),
+				SourceName: e.Context.Label,
+			},
+		})
+		return len(module.Expressions) - 1, nil
 	default:
 		return 0, &UnsupportedExpressionError{Type: fmt.Sprintf("%T", expr)}
 	}

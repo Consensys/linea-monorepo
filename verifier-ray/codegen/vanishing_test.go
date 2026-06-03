@@ -91,6 +91,43 @@ func TestWriteVanishingScenariosZigEmitsSizeModes(t *testing.T) {
 	}
 }
 
+func TestBuildVanishingSystemSupportsCellAndCoinLeaves(t *testing.T) {
+	sys := wiop.NewSystemf("cell-coin")
+	r0 := sys.NewRound()
+	r1 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
+	col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
+	cell := r0.NewCell(sys.Context.Childf("cell"), false)
+	coin := r1.NewCoinField(sys.Context.Childf("coin"))
+	mod.NewVanishing(sys.Context.Childf("coinScaled"), wiop.Mul(coin, wiop.Sub(col.View(), cell)))
+
+	global.Compile(sys)
+	vanishingSystem, err := BuildVanishingSystem(sys)
+	if err != nil {
+		t.Fatalf("BuildVanishingSystem() error = %v", err)
+	}
+
+	var sawCell, sawCoin bool
+	for _, expr := range vanishingSystem.Modules[0].Expressions {
+		sawCell = sawCell || expr.Kind == ExprCellValue
+		sawCoin = sawCoin || expr.Kind == ExprCoinValue
+	}
+	if !sawCell || !sawCoin {
+		t.Fatalf("cell/coin leaves exported: cell=%v coin=%v", sawCell, sawCoin)
+	}
+
+	var out bytes.Buffer
+	if err := WriteVanishingScenariosZig(&out, []NamedVanishingSystem{{Name: "cell-coin", System: vanishingSystem}}); err != nil {
+		t.Fatalf("WriteVanishingScenariosZig() error = %v", err)
+	}
+	zig := out.String()
+	for _, want := range []string{".cell_value", ".coin_value"} {
+		if !strings.Contains(zig, want) {
+			t.Fatalf("generated Zig missing %q:\n%s", want, zig)
+		}
+	}
+}
+
 func TestExprNodeLiteralRendersZeroConstant(t *testing.T) {
 	got := exprNodeLiteral(ExprNode{Kind: ExprConstant})
 	want := ".{ .constant = field.Element.init(0) },"

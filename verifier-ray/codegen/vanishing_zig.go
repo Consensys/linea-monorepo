@@ -59,6 +59,7 @@ func executeVanishingTemplate(w io.Writer, data vanishingTemplateData) error {
 	tmpl, err := template.New("vanishing_scenarios").Funcs(template.FuncMap{
 		"expr":       exprNodeLiteral,
 		"ints":       intSlice,
+		"intArray":   intArray,
 		"moduleSize": moduleSizeLiteral,
 		"zig":        zigString,
 	}).Parse(vanishingScenariosTemplate)
@@ -151,9 +152,16 @@ const vanishing = {{.Options.VanishingImport}};
     .{ .size = {{moduleSize .Module.Size}}, .expressions = &system_{{$case.Index}}_module_{{.Index}}_expressions, .buckets = &system_{{$case.Index}}_module_{{.Index}}_buckets, .witness_claim_offset = {{.Module.WitnessClaimOffset}} },
 {{end}}};
 
+const system_{{$case.Index}}_round_coin_counts = [_]usize{{intArray $case.System.RoundCoinCounts}};
+const system_{{$case.Index}}_round_coin_offsets = [_]usize{{intArray $case.System.RoundCoinOffsets}};
+
 // system: "{{zig $case.System.SourceName}}"
 const system_{{$case.Index}} = vanishing.System{
     .modules = &system_{{$case.Index}}_modules,
+    .round_coin_counts = &system_{{$case.Index}}_round_coin_counts,
+    .round_coin_offsets = &system_{{$case.Index}}_round_coin_offsets,
+    .max_round_coins = {{$case.System.MaxRoundCoins}},
+    .total_round_coins = {{$case.System.TotalRoundCoins}},
     .dynamic_module_count = {{$case.System.DynamicModuleCount}},
     .total_witness_claims = {{$case.System.TotalWitnessClaims}},
     .total_quotient_claims = {{$case.System.TotalQuotientClaims}},
@@ -168,6 +176,10 @@ func exprNodeLiteral(expr ExprNode) string {
 	switch expr.Kind {
 	case ExprColumnClaim:
 		return fmt.Sprintf(".{ .column_claim = %d }, // col: \"%s\"", expr.ColumnClaim, zigString(expr.ColumnSourceName))
+	case ExprCellValue:
+		return fmt.Sprintf(".{ .cell_value = .{ .round = %d, .index = %d } }, // cell: \"%s\"", expr.Cell.Round, expr.Cell.Index, zigString(expr.Cell.SourceName))
+	case ExprCoinValue:
+		return fmt.Sprintf(".{ .coin_value = %d }, // coin: \"%s\"", expr.Coin.FlatIndex, zigString(expr.Coin.SourceName))
 	case ExprConstant:
 		return fmt.Sprintf(".{ .constant = field.Element.init(%d) },", expr.Constant.Uint64())
 	case ExprOp:
@@ -185,11 +197,15 @@ func moduleSizeLiteral(size ModuleSize) string {
 }
 
 func intSlice(values []int) string {
+	return "." + intArray(values)
+}
+
+func intArray(values []int) string {
 	parts := make([]string, len(values))
 	for i, value := range values {
 		parts[i] = fmt.Sprintf("%d", value)
 	}
-	return ".{ " + strings.Join(parts, ", ") + " }"
+	return "{ " + strings.Join(parts, ", ") + " }"
 }
 
 func zigString(value string) string {
