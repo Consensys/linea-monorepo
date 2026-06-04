@@ -1,6 +1,6 @@
 # Shared RISC-V guest build and ZKC integration.
 
-.PHONY: fetch compile json exec debug zkc-exec zkc-debug test write-fixtures fixture-exec fixture-debug clean
+.PHONY: fetch compile json exec debug zkc-exec zkc-debug test fixture-exec fixture-debug clean
 
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
@@ -12,9 +12,15 @@ ZKC    ?= zkc
 
 BUILD_CACHE_DIR ?= $(MAKEFILE_DIR).zig-cache
 ZIG_BUILD_FLAGS ?= --cache-dir $(BUILD_CACHE_DIR) --summary all
-ZIG_FETCH_FLAGS ?= --fetch
+# NOTE: `zig build --fetch` fetches the dependency tree and EXITS without building or running.
+# It must NOT be passed to build/test targets (that would make them silent no-ops). Pre-fetching
+# is done by the dedicated `fetch` target, which passes `--fetch` literally.
+ZIG_FETCH_FLAGS ?=
 
-BIN             := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN)
+# Guest artifact is a relocatable object (zig-out/lib/<guest>.o), same as zesu.rv64im.o: zkvm_* are
+# left unresolved for the proving system to supply. It is NOT a runnable ELF until the prover links
+# it, so the elf-to-json / zkc-exec pipeline below cannot run it yet (the prover system is not ready).
+BIN             := $(MAKEFILE_DIR)zig-out/lib/$(GUEST_BIN).o
 JSON            := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN).json
 ELF_TO_JSON_GEN := $(MAKEFILE_DIR)../arithmetization/src/main/riscv/elf_to_json_gen/main.go
 ZKC_MAIN        := $(abspath $(MAKEFILE_DIR)../arithmetization/src/main/riscv/main.zkc)
@@ -47,15 +53,12 @@ fixture-debug:
 test:
 	$(ZIG) build test $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS)
 
-write-fixtures:
-	$(ZIG) build write-fixtures $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS)
-
 exec: elf-to-json zkc-exec
 
 debug: elf-to-json zkc-debug
 
 compile:
-	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS) -Dprogram-offset=$(PROGRAM_OFFSET) -Dinput-offset=$(IN_BYTES_OFFSET) -Dsp=$(SP)
+	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS) -Dinput-offset=$(IN_BYTES_OFFSET)
 	@if command -v riscv64-unknown-elf-objdump >/dev/null 2>&1; then \
 		echo "\nDisassembling $(BIN)"; \
 		LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN).objdump; \

@@ -4,9 +4,21 @@
     .fingerprint = 0x12189ef5bd7663a,
     .minimum_zig_version = "0.16.0-dev.3153+d6f43caad",
     .dependencies = .{
+        // TODO: repoint to the upstream Consensys/zesu repo once these changes are merged there
+        // (currently pinned to the Filter94/zesu fork). Update both .url and .hash.
+        // zesu `more-import-fixes` (PR #44): exposed module graph + accel_impl include-path fix
+        // + -Dcrypto-prefix.
         .zesu = .{
-            .url = "https://github.com/Consensys/zesu/archive/e2cbe69cfa89eab8a6d272d0ebc51d0912a22429.tar.gz",
-            .hash = "zesu-0.1.0-UtqpAB2qQwC8KwS2gsdhWKWgF2nlHFMO0oHaNLO-5GtY",
+            .url = "https://github.com/Filter94/zesu/archive/14afa86779d17ecab89f273ec05d8c25b658a8f7.tar.gz",
+            .hash = "zesu-0.1.0-UtqpACqhQwBSoTBtoHT1VCPoGI0DJ7OKUs5b6ZTXzKBQ",
+        },
+        // execution-spec-tests zkevm stateless fixtures (tests-zkevm@v0.4.1) — the same SSZ
+        // SszStatelessInput vectors zesu validates against. Lazy: only fetched when the native test
+        // (which reads a fixture from it) is built.
+        .execution_spec_tests_zkevm = .{
+            .url = "https://github.com/ethereum/execution-specs/releases/download/tests-zkevm%40v0.4.1/fixtures_zkevm.tar.gz",
+            .hash = "N-V-__8AAOKjNuwrs7f2UozWmLSRumAsqbHVgWvai3e75cbJ",
+            .lazy = true,
         },
     },
     .paths = .{

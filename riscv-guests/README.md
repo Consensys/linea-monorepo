@@ -24,7 +24,26 @@ Set `ZIG=/path/to/zig` when the required Zig binary is not first on `PATH`.
 
 ## Local Dependencies
 
-External Zig dependencies, including Zesu, are pinned in `build.zig.zon` with URL and hash metadata. The shared Makefile passes `--fetch` to Zig so missing dependencies are resolved automatically, then reused by later builds.
+External Zig dependencies are pinned in `build.zig.zon` with URL and hash metadata: **Zesu** (the EVM/stateless execution library) and the **execution-spec-tests `tests-zkevm` fixtures** (a `lazy` dependency, fetched only when the native test that consumes it is built). Zig resolves them automatically on first build and reuses them afterwards; the dedicated `make fetch` target can pre-fetch them.
+
+## Native test dependencies
+
+`make test` (`zig build test`) runs the guest logic on the **host**, where Zesu's `default.zig` accelerator backend is linked against native crypto C libraries. They must be installed:
+
+| Library | Provides |
+| --- | --- |
+| `libsecp256k1` | ecrecover / signature verification |
+| OpenSSL (`libssl`, `libcrypto`) | secp256r1 (P-256) |
+| `libblst` | BLS12-381 + KZG point evaluation |
+| `libmcl` | BN254 |
+
+They are expected under a single prefix — `/opt/homebrew` on macOS, `/usr/local` on Linux — overridable with the `-Dcrypto-prefix=<prefix>` build option. The simplest way to install them all is Zesu's helper, run from a Zesu checkout:
+
+```bash
+make install-deps   # brew install secp256k1 openssl; builds blst + mcl from source into <prefix>/lib
+```
+
+The freestanding guest object (`make compile`) needs **none** of these — its crypto symbols (`zkvm_*`) are left unresolved for the prover to supply. Only the native host test links the libraries.
 
 ## Development
 
@@ -33,15 +52,14 @@ Run commands from `riscv-guests/`:
 ```bash
 make compile ZIG=/path/to/zig
 make test ZIG=/path/to/zig
-make write-fixtures ZIG=/path/to/zig
 ```
 
-`make compile` builds the currently supported guest ELFs under `zig-out/bin/`. `make test` runs the native Zig unit tests. `make write-fixtures` regenerates checked-in fixture payloads.
+`make compile` builds the guest as a relocatable rv64im **object** under `zig-out/lib/` (its `zkvm_*` crypto symbols are left unresolved for the prover, so it is not a runnable ELF on its own). `make test` runs the native Zig unit tests (see [Native test dependencies](#native-test-dependencies)).
 
-The default memory layout can be overridden when compiling:
+The guest input offset can be overridden when compiling:
 
 ```bash
-make compile ZIG=/path/to/zig IN_BYTES_OFFSET=0x08800000 SP=0x08800000
+make compile ZIG=/path/to/zig IN_BYTES_OFFSET=0x08800000
 ```
 
 ## ZKC Interpreter Integration
