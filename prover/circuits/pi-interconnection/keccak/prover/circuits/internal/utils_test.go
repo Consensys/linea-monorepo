@@ -9,9 +9,9 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	snarkTestUtils "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits/internal/test_utils"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/test_utils"
+	snarkTestUtils "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/stretchr/testify/assert"
 )
 

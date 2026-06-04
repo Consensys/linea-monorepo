@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark/std/compress"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits/internal/test_utils"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/dummy"
 
