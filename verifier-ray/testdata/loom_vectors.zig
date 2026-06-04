@@ -7,6 +7,22 @@ pub const LoomNodeHashCase = struct { left: [8]u32, right: [8]u32, expected: [8]
 pub const LoomMerkleCase = struct { leaf_idx: u32, leaf: [8]u32, siblings: []const [8]u32, root: [8]u32 };
 pub const LoomNamedTranscriptCase = struct { first_name: []const u8, first_bindings: []const u32, first_expected: [8]u32, second_name: []const u8, second_bindings: []const u32, second_expected: [8]u32, second_ext_expected: [6]u32 };
 pub const LoomPowTranscriptCase = struct { name: []const u8, bindings: []const u32, nb_bits: u32, salt: u32, expected: [8]u32 };
+pub const LoomFriBasePath = struct { leaf_idx: u32, siblings: []const [8]u32 };
+pub const LoomFriBaseLayer = struct { leaf_p_base: u32, leaf_q_base: u32, path: LoomFriBasePath };
+pub const LoomFriBaseQuery = struct { layers: []const LoomFriBaseLayer };
+pub const LoomFriBaseProofCase = struct {
+    n: u32,
+    d: u32,
+    num_queries: u32,
+    num_rounds: u32,
+    query_positions: []const u32,
+    level_ds: []const u32,
+    level_roots: []const [8]u32,
+    fri_roots: []const [8]u32,
+    final_poly_base: []const u32,
+    queries: []const LoomFriBaseQuery,
+    level_queries: []const []const LoomFriBaseLayer,
+};
 
 pub const loom_leaf_hash_cases = [_]LoomLeafHashCase{
     .{ .base_pairs = &.{ .{ 1, 2 }, .{ 3, 4 } }, .ext_pairs = &.{}, .expected = .{ 175048833, 176667958, 412629434, 70021978, 663448090, 765878282, 380110844, 1591199718 } },
@@ -29,4 +45,128 @@ pub const loom_named_transcript_cases = [_]LoomNamedTranscriptCase{
 
 pub const loom_pow_transcript_cases = [_]LoomPowTranscriptCase{
     .{ .name = "fri_fold_0", .bindings = &.{ 13, 21, 34 }, .nb_bits = 4, .salt = 2, .expected = .{ 1036995264, 1561072429, 614459829, 1073122740, 598664813, 1873880090, 1102096053, 1822996418 } },
+};
+
+pub const loom_fri_base_proof_cases = [_]LoomFriBaseProofCase{
+    .{
+        .n = 8,
+        .d = 4,
+        .num_queries = 2,
+        .num_rounds = 2,
+        .query_positions = &.{ 1, 1 },
+        .level_ds = &.{ 4, 2 },
+        .level_roots = &.{
+            .{
+                1311698669, 1600935566, 714527879,  444614802,
+                145319519,  369009251,  2092486502, 2114405806,
+            },
+            .{
+                1329994265, 1233760365, 1501189393, 344478793,
+                446316974,  256892691,  1929242376, 1085209314,
+            },
+        },
+        .fri_roots = &.{
+            .{
+                1444458290, 1100667758, 980185168,  2126409268,
+                646655311,  379330508,  1038611611, 1195401577,
+            },
+        },
+        .final_poly_base = &.{ 528454837, 528454837 },
+        .queries = &.{
+            .{ .layers = &.{
+                .{
+                    .leaf_p_base = 1094654546,
+                    .leaf_q_base = 1086186937,
+                    .path = .{
+                        .leaf_idx = 1,
+                        .siblings = &.{
+                            .{
+                                1938657132, 608563037,  2054503475, 618587819,
+                                435415525,  1885267907, 508410595,  1624050423,
+                            },
+                            .{
+                                549227889,  1894024582, 1342281538, 1258376197,
+                                1355045349, 1496055927, 1967437364, 651131834,
+                            },
+                        },
+                    },
+                },
+                .{
+                    .leaf_p_base = 548458436,
+                    .leaf_q_base = 1783131113,
+                    .path = .{
+                        .leaf_idx = 1,
+                        .siblings = &.{
+                            .{
+                                1308405383, 348428047,  1629336995, 1723797536,
+                                381071500,  1133847830, 1952793076, 97941298,
+                            },
+                        },
+                    },
+                },
+            } },
+            .{ .layers = &.{
+                .{
+                    .leaf_p_base = 1094654546,
+                    .leaf_q_base = 1086186937,
+                    .path = .{
+                        .leaf_idx = 1,
+                        .siblings = &.{
+                            .{
+                                1938657132, 608563037,  2054503475, 618587819,
+                                435415525,  1885267907, 508410595,  1624050423,
+                            },
+                            .{
+                                549227889,  1894024582, 1342281538, 1258376197,
+                                1355045349, 1496055927, 1967437364, 651131834,
+                            },
+                        },
+                    },
+                },
+                .{
+                    .leaf_p_base = 548458436,
+                    .leaf_q_base = 1783131113,
+                    .path = .{
+                        .leaf_idx = 1,
+                        .siblings = &.{
+                            .{
+                                1308405383, 348428047,  1629336995, 1723797536,
+                                381071500,  1133847830, 1952793076, 97941298,
+                            },
+                        },
+                    },
+                },
+            } },
+        },
+        .level_queries = &.{
+            &.{
+                .{
+                    .leaf_p_base = 33423373,
+                    .leaf_q_base = 2097283090,
+                    .path = .{
+                        .leaf_idx = 1,
+                        .siblings = &.{
+                            .{
+                                1438707571, 113552651,  1529682627, 881818930,
+                                1316257531, 1695113173, 1924615579, 875133569,
+                            },
+                        },
+                    },
+                },
+                .{
+                    .leaf_p_base = 33423373,
+                    .leaf_q_base = 2097283090,
+                    .path = .{
+                        .leaf_idx = 1,
+                        .siblings = &.{
+                            .{
+                                1438707571, 113552651,  1529682627, 881818930,
+                                1316257531, 1695113173, 1924615579, 875133569,
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
 };

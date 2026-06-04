@@ -100,6 +100,113 @@ test "loom proof-of-work transcript challenges match static vectors" {
     }
 }
 
+test "loom FRI base proof vector verifies" {
+    for (loom_vectors.loom_fri_base_proof_cases) |case| {
+        const round_count: usize = @intCast(case.num_rounds);
+        const query_count: usize = @intCast(case.num_queries);
+        try std.testing.expect(round_count <= 4);
+        try std.testing.expect(query_count <= 4);
+        try std.testing.expect(case.level_roots.len <= 4);
+        try std.testing.expect(case.fri_roots.len <= 4);
+
+        var level_roots: [4]fri.Digest = undefined;
+        var fri_roots: [4]fri.Digest = undefined;
+        var final_poly: [8]field.Element = undefined;
+        var domain_gens: [4]field.Element = undefined;
+        var domain_gens_inv: [4]field.Element = undefined;
+        var pow: [4]?fri.ProofOfWork = undefined;
+        var query_siblings: [4][4][4]fri.Digest = undefined;
+        var query_layers: [4][4]fri.QueryLayer = undefined;
+        var queries: [4]fri.Query = undefined;
+        var level_siblings: [4][4][4]fri.Digest = undefined;
+        var level_layers: [4][4]fri.QueryLayer = undefined;
+        var level_query_rows: [4][]const fri.QueryLayer = undefined;
+
+        fillDigests(level_roots[0..case.level_roots.len], case.level_roots);
+        fillDigests(fri_roots[0..case.fri_roots.len], case.fri_roots);
+        fillElems(final_poly[0..case.final_poly_base.len], case.final_poly_base);
+        for (pow[0..round_count]) |*slot| {
+            slot.* = null;
+        }
+        for (0..round_count) |round| {
+            const shift: u5 = @intCast(round);
+            const domain_size = case.n >> shift;
+            domain_gens[round] = try field.rootOfUnityBy(@intCast(domain_size));
+            domain_gens_inv[round] = domain_gens[round].inverse();
+        }
+
+        for (case.queries, 0..) |case_query, query_index| {
+            try std.testing.expect(case_query.layers.len <= 4);
+            for (case_query.layers, 0..) |case_layer, layer_index| {
+                try std.testing.expect(case_layer.path.siblings.len <= 4);
+                fillDigests(
+                    query_siblings[query_index][layer_index][0..case_layer.path.siblings.len],
+                    case_layer.path.siblings,
+                );
+                query_layers[query_index][layer_index] = .{
+                    .rail = .base,
+                    .leaf_p_base = elem(case_layer.leaf_p_base),
+                    .leaf_q_base = elem(case_layer.leaf_q_base),
+                    .path = .{
+                        .leaf_idx = case_layer.path.leaf_idx,
+                        .siblings = query_siblings[query_index][layer_index][0..case_layer.path.siblings.len],
+                    },
+                };
+            }
+            queries[query_index] = .{ .layers = query_layers[query_index][0..case_query.layers.len] };
+        }
+
+        for (case.level_queries, 0..) |case_level_queries, level_index| {
+            try std.testing.expect(case_level_queries.len <= 4);
+            for (case_level_queries, 0..) |case_layer, query_index| {
+                try std.testing.expect(case_layer.path.siblings.len <= 4);
+                fillDigests(
+                    level_siblings[level_index][query_index][0..case_layer.path.siblings.len],
+                    case_layer.path.siblings,
+                );
+                level_layers[level_index][query_index] = .{
+                    .rail = .base,
+                    .leaf_p_base = elem(case_layer.leaf_p_base),
+                    .leaf_q_base = elem(case_layer.leaf_q_base),
+                    .path = .{
+                        .leaf_idx = case_layer.path.leaf_idx,
+                        .siblings = level_siblings[level_index][query_index][0..case_layer.path.siblings.len],
+                    },
+                };
+            }
+            level_query_rows[level_index] = level_layers[level_index][0..case_level_queries.len];
+        }
+
+        const proof = fri.FriProof{
+            .fri_roots = fri_roots[0..case.fri_roots.len],
+            .final_rail = .base,
+            .final_poly_base = final_poly[0..case.final_poly_base.len],
+            .queries = queries[0..case.queries.len],
+            .level_queries = level_query_rows[0..case.level_queries.len],
+            .pow = pow[0..round_count],
+        };
+        const params = fri.Params{
+            .n = case.n,
+            .d = case.d,
+            .num_queries = case.num_queries,
+            .num_rounds = case.num_rounds,
+            .domain_gens = domain_gens[0..round_count],
+            .domain_gens_inv = domain_gens_inv[0..round_count],
+            .grinding = 0,
+        };
+
+        var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+        try fri.verify.friVerify(params, level_roots[0..case.level_roots.len], case.level_ds, proof, &ts);
+
+        for (case.query_positions, 0..) |expected_position, query_index| {
+            var name_buf: [32]u8 = undefined;
+            const name = try std.fmt.bufPrint(&name_buf, "fri_query_{d}", .{query_index});
+            const challenge = try ts.computeChallenge(name);
+            try std.testing.expectEqual(expected_position, queryIndexForTest(challenge, case.n / 2));
+        }
+    }
+}
+
 test "fri leaf hash and merkle proof verify paired leaves" {
     const leaf0_base = [_]fri.PairBase{.{ elem(1), elem(2) }};
     const leaf1_ext = [_]fri.PairExt{.{ ext.Ext.fromUints(3, 4, 5, 6, 7, 8), ext.Ext.fromUints(8, 7, 6, 5, 4, 3) }};
@@ -169,105 +276,38 @@ test "fri verifier accepts empty-query shape and rejects missing grinding" {
     );
 }
 
-test "fri verifier reports unsupported before accepting unchecked queries" {
-    const root = zeroDigest();
-    const roots = [_]fri.Digest{root};
-    const level_ds = [_]u32{4};
-    const gens = [_]field.Element{field.Element.one()};
+test "fri verifier accepts one-round base query" {
+    const domain_gen = try field.rootOfUnityBy(4);
+    const domain_gens = [_]field.Element{domain_gen};
+    const domain_gens_inv = [_]field.Element{domain_gen.inverse()};
+    const level_ds = [_]u32{2};
     const pow = [_]?fri.ProofOfWork{null};
-    const final_poly = [_]ext.Ext{ext.Ext.one()};
-    const layers = [_]fri.QueryLayer{.{
-        .rail = .ext,
-        .leaf_p_ext = ext.Ext.one(),
-        .leaf_q_ext = ext.Ext.one(),
-        .path = .{ .leaf_idx = 0, .siblings = &.{} },
-    }};
-    const queries = [_]fri.Query{.{ .layers = layers[0..] }};
-    const proof = fri.FriProof{
-        .final_poly_ext = final_poly[0..],
-        .queries = queries[0..],
-        .pow = pow[0..],
+    const leaf_pairs = [_]fri.PairBase{
+        .{ elem(3), elem(9) },
+        .{ elem(12), elem(4) },
     };
-    const params = fri.Params{
-        .n = 16,
-        .d = 4,
-        .num_queries = 1,
-        .num_rounds = 1,
-        .domain_gens = gens[0..],
-        .domain_gens_inv = gens[0..],
-        .grinding = 0,
-    };
-
-    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    try std.testing.expectError(
-        error.Unsupported,
-        fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts),
-    );
-}
-
-test "fri verifier tags ext final poly before query challenge" {
-    const root = zeroDigest();
+    const leaf0 = hashBasePairForTest(leaf_pairs[0]);
+    const leaf1 = hashBasePairForTest(leaf_pairs[1]);
+    const root = fri.leaf_hash.hashNode(leaf0, leaf1);
     const roots = [_]fri.Digest{root};
-    const level_ds = [_]u32{4};
-    const gens = [_]field.Element{field.Element.one()};
-    const pow = [_]?fri.ProofOfWork{null};
-    const final_poly = [_]ext.Ext{
-        ext.Ext.fromUints(2, 3, 5, 7, 11, 13),
-        ext.Ext.fromUints(17, 19, 23, 29, 31, 37),
-    };
-    const layers = [_]fri.QueryLayer{.{
-        .rail = .ext,
-        .leaf_p_ext = ext.Ext.one(),
-        .leaf_q_ext = ext.Ext.one(),
-        .path = .{ .leaf_idx = 0, .siblings = &.{} },
-    }};
-    const queries = [_]fri.Query{.{ .layers = layers[0..] }};
-    const proof = fri.FriProof{
-        .final_poly_ext = final_poly[0..],
-        .queries = queries[0..],
-        .pow = pow[0..],
-    };
-    const params = fri.Params{
-        .n = 16,
-        .d = 4,
-        .num_queries = 1,
-        .num_rounds = 1,
-        .domain_gens = gens[0..],
-        .domain_gens_inv = gens[0..],
-        .grinding = 0,
-    };
-
-    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    try std.testing.expectError(error.Unsupported, fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts));
-    const actual = try ts.computeChallenge("fri_query_0");
 
     var expected_ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    try bindSingleRoundFold(&expected_ts, root);
-    try expected_ts.newChallenge("fri_query_0");
-    try expected_ts.bindElements("fri_query_0", &.{
-        field.Element.init(0x45585450),
-        field.Element.init(final_poly.len),
-    });
-    for (final_poly) |value| {
-        var limbs = extLimbs(value);
-        try expected_ts.bindElements("fri_query_0", limbs[0..]);
-    }
+    const alpha_digest = try bindSingleRoundFoldDigest(&expected_ts, root);
+    const alpha = alpha_digest[0];
+    const final_poly = [_]field.Element{
+        foldBasePairForTest(leaf_pairs[0][0], leaf_pairs[0][1], alpha, field.Element.one()),
+        foldBasePairForTest(leaf_pairs[1][0], leaf_pairs[1][1], alpha, domain_gen.inverse()),
+    };
 
-    try std.testing.expect(digestEql(actual, try expected_ts.computeChallenge("fri_query_0")));
-}
-
-test "fri verifier tags base final poly before query challenge" {
-    const root = zeroDigest();
-    const roots = [_]fri.Digest{root};
-    const level_ds = [_]u32{4};
-    const gens = [_]field.Element{field.Element.one()};
-    const pow = [_]?fri.ProofOfWork{null};
-    const final_poly = [_]field.Element{ elem(41), elem(43), elem(47) };
+    const expected_query = try bindBaseFinalPolyAndQuery(&expected_ts, final_poly[0..]);
+    const query_pos = queryIndexForTest(expected_query, 2);
+    const query_pos_usize: usize = @intCast(query_pos);
+    const sibling = [_]fri.Digest{if (query_pos == 0) leaf1 else leaf0};
     const layers = [_]fri.QueryLayer{.{
         .rail = .base,
-        .leaf_p_base = elem(1),
-        .leaf_q_base = elem(2),
-        .path = .{ .leaf_idx = 0, .siblings = &.{} },
+        .leaf_p_base = leaf_pairs[query_pos_usize][0],
+        .leaf_q_base = leaf_pairs[query_pos_usize][1],
+        .path = .{ .leaf_idx = query_pos, .siblings = sibling[0..] },
     }};
     const queries = [_]fri.Query{.{ .layers = layers[0..] }};
     const proof = fri.FriProof{
@@ -277,29 +317,256 @@ test "fri verifier tags base final poly before query challenge" {
         .pow = pow[0..],
     };
     const params = fri.Params{
-        .n = 16,
-        .d = 4,
+        .n = 4,
+        .d = 2,
         .num_queries = 1,
         .num_rounds = 1,
-        .domain_gens = gens[0..],
-        .domain_gens_inv = gens[0..],
+        .domain_gens = domain_gens[0..],
+        .domain_gens_inv = domain_gens_inv[0..],
         .grinding = 0,
     };
 
     var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    try std.testing.expectError(error.Unsupported, fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts));
-    const actual = try ts.computeChallenge("fri_query_0");
+    try fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts);
+    try std.testing.expect(digestEql(expected_query, try ts.computeChallenge("fri_query_0")));
+}
+
+test "fri verifier accepts one-round ext query" {
+    const domain_gen = try field.rootOfUnityBy(4);
+    const domain_gens = [_]field.Element{domain_gen};
+    const domain_gens_inv = [_]field.Element{domain_gen.inverse()};
+    const level_ds = [_]u32{2};
+    const pow = [_]?fri.ProofOfWork{null};
+    const leaf_pairs = [_]fri.PairExt{
+        .{ ext.Ext.fromUints(2, 3, 5, 7, 11, 13), ext.Ext.fromUints(17, 19, 23, 29, 31, 37) },
+        .{ ext.Ext.fromUints(41, 43, 47, 53, 59, 61), ext.Ext.fromUints(67, 71, 73, 79, 83, 89) },
+    };
+    const leaf0 = hashExtPairForTest(leaf_pairs[0]);
+    const leaf1 = hashExtPairForTest(leaf_pairs[1]);
+    const root = fri.leaf_hash.hashNode(leaf0, leaf1);
+    const roots = [_]fri.Digest{root};
 
     var expected_ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    try bindSingleRoundFold(&expected_ts, root);
-    try expected_ts.newChallenge("fri_query_0");
-    try expected_ts.bindElements("fri_query_0", &.{
-        field.Element.init(0x42415345),
-        field.Element.init(final_poly.len),
+    const alpha_digest = try bindSingleRoundFoldDigest(&expected_ts, root);
+    const alpha = uintsToExt(.{
+        alpha_digest[0].value,
+        alpha_digest[1].value,
+        alpha_digest[2].value,
+        alpha_digest[3].value,
+        alpha_digest[4].value,
+        alpha_digest[5].value,
     });
-    try expected_ts.bindElements("fri_query_0", final_poly[0..]);
+    const final_poly = [_]ext.Ext{
+        foldExtPairForTest(leaf_pairs[0][0], leaf_pairs[0][1], alpha, field.Element.one()),
+        foldExtPairForTest(leaf_pairs[1][0], leaf_pairs[1][1], alpha, domain_gen.inverse()),
+    };
 
-    try std.testing.expect(digestEql(actual, try expected_ts.computeChallenge("fri_query_0")));
+    const expected_query = try bindExtFinalPolyAndQuery(&expected_ts, final_poly[0..]);
+    const query_pos = queryIndexForTest(expected_query, 2);
+    const query_pos_usize: usize = @intCast(query_pos);
+    const sibling = [_]fri.Digest{if (query_pos == 0) leaf1 else leaf0};
+    const layers = [_]fri.QueryLayer{.{
+        .rail = .ext,
+        .leaf_p_ext = leaf_pairs[query_pos_usize][0],
+        .leaf_q_ext = leaf_pairs[query_pos_usize][1],
+        .path = .{ .leaf_idx = query_pos, .siblings = sibling[0..] },
+    }};
+    const queries = [_]fri.Query{.{ .layers = layers[0..] }};
+    const proof = fri.FriProof{
+        .final_poly_ext = final_poly[0..],
+        .queries = queries[0..],
+        .pow = pow[0..],
+    };
+    const params = fri.Params{
+        .n = 4,
+        .d = 2,
+        .num_queries = 1,
+        .num_rounds = 1,
+        .domain_gens = domain_gens[0..],
+        .domain_gens_inv = domain_gens_inv[0..],
+        .grinding = 0,
+    };
+
+    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    try fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts);
+    try std.testing.expect(digestEql(expected_query, try ts.computeChallenge("fri_query_0")));
+}
+
+test "fri verifier mixes extra level during query fold" {
+    const domain_gen_0 = try field.rootOfUnityBy(8);
+    const domain_gen_1 = try field.rootOfUnityBy(4);
+    const domain_gens = [_]field.Element{ domain_gen_0, domain_gen_1 };
+    const domain_gens_inv = [_]field.Element{ domain_gen_0.inverse(), domain_gen_1.inverse() };
+    const level_ds = [_]u32{ 4, 2 };
+    const pow = [_]?fri.ProofOfWork{ null, null };
+
+    const layer0_pairs = [_]fri.PairBase{
+        .{ elem(2), elem(11) },
+        .{ elem(5), elem(13) },
+        .{ elem(7), elem(17) },
+        .{ elem(19), elem(23) },
+    };
+    const layer0_leaves = [_]fri.Digest{
+        hashBasePairForTest(layer0_pairs[0]),
+        hashBasePairForTest(layer0_pairs[1]),
+        hashBasePairForTest(layer0_pairs[2]),
+        hashBasePairForTest(layer0_pairs[3]),
+    };
+    const root0 = merkleRoot4(layer0_leaves);
+
+    var expected_ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    const alpha0_digest = try bindSingleRoundFoldDigest(&expected_ts, root0);
+    const alpha0 = alpha0_digest[0];
+    var folded0: [4]field.Element = undefined;
+    for (&folded0, layer0_pairs, 0..) |*dst, pair, i| {
+        dst.* = foldBasePairForTest(pair[0], pair[1], alpha0, domain_gens_inv[0].pow(@intCast(i)));
+    }
+
+    const extra_evals = [_]field.Element{ elem(29), elem(31), elem(37), elem(41) };
+    const extra_pairs = [_]fri.PairBase{
+        .{ extra_evals[0], extra_evals[2] },
+        .{ extra_evals[1], extra_evals[3] },
+    };
+    const extra_leaves = [_]fri.Digest{
+        hashBasePairForTest(extra_pairs[0]),
+        hashBasePairForTest(extra_pairs[1]),
+    };
+    const extra_root = fri.leaf_hash.hashNode(extra_leaves[0], extra_leaves[1]);
+
+    try expected_ts.newChallenge("fri_level_1_gamma");
+    try expected_ts.bindDigest("fri_level_1_gamma", extra_root);
+    const gamma_digest = try expected_ts.computeChallenge("fri_level_1_gamma");
+    const gamma = gamma_digest[0];
+
+    var mixed: [4]field.Element = undefined;
+    for (&mixed, folded0, extra_evals) |*dst, folded, extra_value| {
+        dst.* = folded.add(extra_value.mul(gamma));
+    }
+    const layer1_pairs = [_]fri.PairBase{
+        .{ mixed[0], mixed[2] },
+        .{ mixed[1], mixed[3] },
+    };
+    const layer1_leaves = [_]fri.Digest{
+        hashBasePairForTest(layer1_pairs[0]),
+        hashBasePairForTest(layer1_pairs[1]),
+    };
+    const root1 = fri.leaf_hash.hashNode(layer1_leaves[0], layer1_leaves[1]);
+
+    try expected_ts.newChallenge("fri_fold_1");
+    try expected_ts.bindDigest("fri_fold_1", root1);
+    const alpha1_digest = try expected_ts.computeChallenge("fri_fold_1");
+    const alpha1 = alpha1_digest[0];
+    const final_poly = [_]field.Element{
+        foldBasePairForTest(layer1_pairs[0][0], layer1_pairs[0][1], alpha1, field.Element.one()),
+        foldBasePairForTest(layer1_pairs[1][0], layer1_pairs[1][1], alpha1, domain_gens_inv[1]),
+    };
+
+    const expected_query = try bindBaseFinalPolyAndQuery(&expected_ts, final_poly[0..]);
+    const query_pos = queryIndexForTest(expected_query, 4);
+    const layer0_base = query_pos % 4;
+    const layer1_base = query_pos % 2;
+    const layer0_path_siblings = merklePath4(layer0_leaves, layer0_base);
+    const layer1_path_siblings = merklePath2(layer1_leaves, layer1_base);
+    const extra_path_siblings = merklePath2(extra_leaves, layer1_base);
+
+    const query_layers = [_]fri.QueryLayer{
+        .{
+            .rail = .base,
+            .leaf_p_base = layer0_pairs[@intCast(layer0_base)][0],
+            .leaf_q_base = layer0_pairs[@intCast(layer0_base)][1],
+            .path = .{ .leaf_idx = layer0_base, .siblings = layer0_path_siblings[0..] },
+        },
+        .{
+            .rail = .base,
+            .leaf_p_base = layer1_pairs[@intCast(layer1_base)][0],
+            .leaf_q_base = layer1_pairs[@intCast(layer1_base)][1],
+            .path = .{ .leaf_idx = layer1_base, .siblings = layer1_path_siblings[0..] },
+        },
+    };
+    const queries = [_]fri.Query{.{ .layers = query_layers[0..] }};
+    const extra_query_layers = [_]fri.QueryLayer{.{
+        .rail = .base,
+        .leaf_p_base = extra_pairs[@intCast(layer1_base)][0],
+        .leaf_q_base = extra_pairs[@intCast(layer1_base)][1],
+        .path = .{ .leaf_idx = layer1_base, .siblings = extra_path_siblings[0..] },
+    }};
+    const level_queries = [_][]const fri.QueryLayer{extra_query_layers[0..]};
+    const roots = [_]fri.Digest{ root0, extra_root };
+    const fri_roots = [_]fri.Digest{root1};
+    const proof = fri.FriProof{
+        .fri_roots = fri_roots[0..],
+        .final_rail = .base,
+        .final_poly_base = final_poly[0..],
+        .queries = queries[0..],
+        .level_queries = level_queries[0..],
+        .pow = pow[0..],
+    };
+    const params = fri.Params{
+        .n = 8,
+        .d = 4,
+        .num_queries = 1,
+        .num_rounds = 2,
+        .domain_gens = domain_gens[0..],
+        .domain_gens_inv = domain_gens_inv[0..],
+        .grinding = 0,
+    };
+
+    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    try fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts);
+    try std.testing.expect(digestEql(expected_query, try ts.computeChallenge("fri_query_0")));
+}
+
+test "fri verifier rejects final fold mismatch" {
+    const domain_gen = try field.rootOfUnityBy(4);
+    const domain_gens = [_]field.Element{domain_gen};
+    const domain_gens_inv = [_]field.Element{domain_gen.inverse()};
+    const level_ds = [_]u32{2};
+    const pow = [_]?fri.ProofOfWork{null};
+    const leaf_pairs = [_]fri.PairBase{
+        .{ elem(6), elem(7) },
+        .{ elem(8), elem(10) },
+    };
+    const leaf0 = hashBasePairForTest(leaf_pairs[0]);
+    const leaf1 = hashBasePairForTest(leaf_pairs[1]);
+    const root = fri.leaf_hash.hashNode(leaf0, leaf1);
+    const roots = [_]fri.Digest{root};
+
+    var expected_ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    _ = try bindSingleRoundFoldDigest(&expected_ts, root);
+    const final_poly = [_]field.Element{ elem(123), elem(456) };
+
+    const expected_query = try bindBaseFinalPolyAndQuery(&expected_ts, final_poly[0..]);
+    const query_pos = queryIndexForTest(expected_query, 2);
+    const query_pos_usize: usize = @intCast(query_pos);
+    const sibling = [_]fri.Digest{if (query_pos == 0) leaf1 else leaf0};
+    const layers = [_]fri.QueryLayer{.{
+        .rail = .base,
+        .leaf_p_base = leaf_pairs[query_pos_usize][0],
+        .leaf_q_base = leaf_pairs[query_pos_usize][1],
+        .path = .{ .leaf_idx = query_pos, .siblings = sibling[0..] },
+    }};
+    const queries = [_]fri.Query{.{ .layers = layers[0..] }};
+    const proof = fri.FriProof{
+        .final_rail = .base,
+        .final_poly_base = final_poly[0..],
+        .queries = queries[0..],
+        .pow = pow[0..],
+    };
+    const params = fri.Params{
+        .n = 4,
+        .d = 2,
+        .num_queries = 1,
+        .num_rounds = 1,
+        .domain_gens = domain_gens[0..],
+        .domain_gens_inv = domain_gens_inv[0..],
+        .grinding = 0,
+    };
+
+    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    try std.testing.expectError(
+        error.FoldMismatch,
+        fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts),
+    );
 }
 
 test "fri verifier rejects duplicate level introduction rounds" {
@@ -386,10 +653,77 @@ fn zeroDigest() fri.Digest {
     };
 }
 
-fn bindSingleRoundFold(ts: *fiat_shamir.Transcript, root: fri.Digest) !void {
+fn bindSingleRoundFoldDigest(ts: *fiat_shamir.Transcript, root: fri.Digest) !fri.Digest {
     try ts.newChallenge("fri_fold_0");
     try ts.bindDigest("fri_fold_0", root);
-    _ = try ts.computeChallengeExt("fri_fold_0");
+    return ts.computeChallenge("fri_fold_0");
+}
+
+fn bindBaseFinalPolyAndQuery(ts: *fiat_shamir.Transcript, final_poly: []const field.Element) !fri.Digest {
+    try ts.newChallenge("fri_query_0");
+    try ts.bindElements("fri_query_0", &.{
+        field.Element.init(0x42415345),
+        field.Element.init(final_poly.len),
+    });
+    try ts.bindElements("fri_query_0", final_poly);
+    return ts.computeChallenge("fri_query_0");
+}
+
+fn bindExtFinalPolyAndQuery(ts: *fiat_shamir.Transcript, final_poly: []const ext.Ext) !fri.Digest {
+    try ts.newChallenge("fri_query_0");
+    try ts.bindElements("fri_query_0", &.{
+        field.Element.init(0x45585450),
+        field.Element.init(final_poly.len),
+    });
+    for (final_poly) |value| {
+        var limbs = extLimbs(value);
+        try ts.bindElements("fri_query_0", limbs[0..]);
+    }
+    return ts.computeChallenge("fri_query_0");
+}
+
+fn hashBasePairForTest(pair: fri.PairBase) fri.Digest {
+    const pairs = [_]fri.PairBase{pair};
+    return fri.leaf_hash.hashLeaf(pairs[0..], &.{});
+}
+
+fn hashExtPairForTest(pair: fri.PairExt) fri.Digest {
+    const pairs = [_]fri.PairExt{pair};
+    return fri.leaf_hash.hashLeaf(&.{}, pairs[0..]);
+}
+
+fn merkleRoot4(leaves: [4]fri.Digest) fri.Digest {
+    const left = fri.leaf_hash.hashNode(leaves[0], leaves[1]);
+    const right = fri.leaf_hash.hashNode(leaves[2], leaves[3]);
+    return fri.leaf_hash.hashNode(left, right);
+}
+
+fn merklePath2(leaves: [2]fri.Digest, index: u32) [1]fri.Digest {
+    return .{if (index == 0) leaves[1] else leaves[0]};
+}
+
+fn merklePath4(leaves: [4]fri.Digest, index: u32) [2]fri.Digest {
+    const left = fri.leaf_hash.hashNode(leaves[0], leaves[1]);
+    const right = fri.leaf_hash.hashNode(leaves[2], leaves[3]);
+    return .{
+        if ((index & 1) == 0) leaves[@as(usize, @intCast(index + 1))] else leaves[@as(usize, @intCast(index - 1))],
+        if (index < 2) right else left,
+    };
+}
+
+fn foldBasePairForTest(p: field.Element, q: field.Element, alpha: field.Element, x_inv: field.Element) field.Element {
+    return p.add(q).halve().add(p.sub(q).halve().mul(x_inv).mul(alpha));
+}
+
+fn foldExtPairForTest(p: ext.Ext, q: ext.Ext, alpha: ext.Ext, x_inv: field.Element) ext.Ext {
+    const inv_two = field.Element.init(2).inverse();
+    return p.add(q).mulByBase(inv_two).add(p.sub(q).mulByBase(inv_two).mulByBase(x_inv).mul(alpha));
+}
+
+fn queryIndexForTest(challenge: fri.Digest, modulus: u32) u32 {
+    if (modulus == 0) return 0;
+    const wide = (@as(u64, challenge[0].value) << 31) ^ @as(u64, challenge[1].value);
+    return @intCast(wide % modulus);
 }
 
 fn extLimbs(value: ext.Ext) [6]field.Element {
