@@ -26,7 +26,7 @@ ZKC_BINDIR ?= $(MAKEFILE_DIR)bin
 ZKC_BINARY ?= riscv.bin
 ZKC_INPUT ?= input.json
 
-.PHONY: checkout-go-corset install-go-corset install-zkc install-sail zkc-compile zkc-check zkc-compile-and-check check decode-profile
+.PHONY: checkout-go-corset install-go-corset install-zkc install-sail zkc-compile zkc-check zkc-compile-and-check check
 
 # Fetch go-corset if missing (no-op when CI already checked it out into GO_CORSET).
 checkout-go-corset:
@@ -77,12 +77,6 @@ zkc-lint-apply:
 riscv-check-compilation: install-zkc zkc-compile
 
 riscv-check-lint: install-zkc zkc-lint
-
-# Run the interpreter and aggregate printsteps decode-region deltas.
-# Usage: make decode-profile ZKC_INPUT=path/to/input.json
-decode-profile: zkc-compile
-	zkc exec -v -q $(ZKC_INPUT) $(ZKC_BINDIR)/$(ZKC_BINARY) 2>&1 \
-		| go run $(MAKEFILE_DIR)src/test/examples/scripts/parse_decode_steps/main.go
 
 # Install the go-corset CLI from a released version (skips if already at the target version).
 install-go-corset:
