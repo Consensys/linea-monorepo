@@ -42,10 +42,6 @@ pub const Runtime = struct {
     current_round: usize,
     total_rounds: usize,
 
-    pub fn init() Runtime {
-        return initWithRoundCount(0);
-    }
-
     pub fn initWithRoundCount(round_count: usize) Runtime {
         return .{
             .transcript = fiat_shamir.Transcript.init(),
