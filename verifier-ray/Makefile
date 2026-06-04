@@ -34,6 +34,8 @@ help:
 		'  test                  Run Zig tests and Go codegen tests' \
 		'  test-zig              Generate testdata and run Zig tests' \
 		'  test-codegen          Run Go codegen tests' \
+		'  generate-testdata     Generate testdata for Zig tests' \
+		'  verify-testdata       Verify generated testdata is up to date with git (for CI)' \
 		'  zkc-build             Build the R5 ELF and generate the zkc JSON input' \
 		'  zkc-verify            Run verifier-ray through the zkc RISC-V interpreter with INPUT_FILE' \
 		'  zkc-verify-passing    Run zkc with the passing fixture' \
