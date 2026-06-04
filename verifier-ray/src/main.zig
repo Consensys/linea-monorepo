@@ -12,7 +12,7 @@ const is_native_os = builtin.target.os.tag == .linux or builtin.target.os.tag ==
 const is_native_arch = builtin.target.cpu.arch == .x86_64 or builtin.target.cpu.arch == .aarch64;
 const is_supported_native = is_native_os and is_native_arch;
 
-const Commitment = verifier_ray.proof.Commitment;
+const Commitment = verifier_ray.crypto.commitment.Commitment;
 const Digest = poseidon2.Digest;
 
 // Temporary smoke-test fixture shape. These values are currently hand-picked
