@@ -11,7 +11,7 @@ REPO_ROOT := $(abspath $(MAKEFILE_DIR)/..)
 GO_CORSET ?= $(REPO_ROOT)/go-corset
 GO_CORSET_REPO ?= https://github.com/consensys/go-corset.git
 # Optional: pin a commit or branch (e.g. 763f30878e5fc260f0d88863c9883c904f8fc056). Leave empty for default branch.
-GO_CORSET_REF_FOR_ZKC ?=414e7b73971eaa77afcb6a4797b44d0fdf8c99db
+GO_CORSET_REF_FOR_ZKC ?=
 
 # Used to install go-corset
 GO_CORSET_VERSION ?= v1.2.17
@@ -26,7 +26,7 @@ ZKC_BINDIR ?= $(MAKEFILE_DIR)bin
 ZKC_BINARY ?= riscv.bin
 ZKC_INPUT ?= input.json
 
-.PHONY: checkout-go-corset install-go-corset install-zkc install-sail zkc-compile zkc-check zkc-compile-and-check check
+.PHONY: checkout-go-corset install-go-corset install-zkc install-sail zkc-compile zkc-check zkc-compile-and-check decode-profile check
 
 # Fetch go-corset if missing (no-op when CI already checked it out into GO_CORSET).
 checkout-go-corset:
@@ -66,6 +66,14 @@ zkc-check:
 	zkc exec --check $(ZKC_INPUT) $(ZKC_BINDIR)/$(ZKC_BINARY)
 
 zkc-compile-and-check: install-zkc zkc-compile zkc-check
+
+# Run the interpreter and extract decode vs execution timing from zkc -v stderr.
+# Requires go-corset with VM execution profiling (decode_* function prefix).
+# Usage: make decode-profile ZKC_INPUT=src/test/examples/.../foo.json
+decode-profile: install-zkc zkc-compile
+	zkc execute -v -q $(ZKC_INPUT) $(ZKC_MAIN) 2>&1 | tee $(ZKC_BINDIR)/decode-profile.log
+	@echo "--- decode profile ---"
+	@grep -E 'Interpreter decode|Interpreter execution|Decode share:' $(ZKC_BINDIR)/decode-profile.log
 
 zkc-lint:
 	zkc format --check $(ZKC_FILES)
