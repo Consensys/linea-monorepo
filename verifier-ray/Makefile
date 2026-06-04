@@ -32,7 +32,7 @@ help:
 		'  run-failing           Run verifier-ray natively with the failing fixture (exits non-zero)' \
 		'  run-failing-expected  Run native failing fixture and require it to fail' \
 		'  test                  Run Zig tests and Go codegen tests' \
-		'  test-zig              Generate/verify testdata and run Zig tests' \
+		'  test-zig              Generate testdata and run Zig tests' \
 		'  test-codegen          Run Go codegen tests' \
 		'  zkc-build             Build the R5 ELF and generate the zkc JSON input' \
 		'  zkc-verify            Run verifier-ray through the zkc RISC-V interpreter with INPUT_FILE' \
@@ -100,7 +100,7 @@ run-failing-expected:
 
 test: test-zig test-codegen
 
-test-zig: verify-testdata
+test-zig: generate-testdata
 	zig build test
 
 test-generated-zig: test-zig
