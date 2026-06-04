@@ -1,4 +1,5 @@
 const fiat_shamir = @import("crypto/fiat_shamir.zig");
+const poseidon2 = @import("crypto/poseidon2.zig");
 const ext = @import("field/koalabear_ext.zig");
 const value = @import("field/value.zig");
 
@@ -89,5 +90,17 @@ pub const Runtime = struct {
             coin.* = self.transcript.randomExt();
         }
         return coins;
+    }
+
+    pub fn bindCommitmentsAndSampleCoin(
+        self: *Runtime,
+        name: []const u8,
+        commitments: []const poseidon2.Digest,
+    ) fiat_shamir.Error!Coin {
+        try self.transcript.newChallenge(name);
+        for (commitments) |commitment| {
+            try self.transcript.bindDigest(name, commitment);
+        }
+        return self.transcript.computeChallengeExt(name);
     }
 };

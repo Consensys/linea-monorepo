@@ -1,6 +1,8 @@
 pub const proof = @import("proof.zig");
 pub const runtime = @import("runtime.zig");
 pub const verifier = @import("verifier.zig");
+pub const layout = @import("layout.zig");
+pub const dq_layout = @import("dq_layout.zig");
 
 pub const field = struct {
     pub const koalabear = @import("field/koalabear.zig");
@@ -22,6 +24,26 @@ pub const precompiles = struct {
     pub const interface = @import("precompiles/interface.zig");
     pub const native = @import("precompiles/native.zig");
     pub const riscv = @import("precompiles/riscv.zig");
+};
+
+pub const fri = struct {
+    pub const types = @import("fri/types.zig");
+    pub const leaf_hash = @import("fri/leaf_hash.zig");
+    pub const merkle = @import("fri/merkle.zig");
+    pub const verify = @import("fri/verify.zig");
+    pub const bridge = @import("fri/bridge.zig");
+
+    pub const Digest = types.Digest;
+    pub const PairBase = types.PairBase;
+    pub const PairExt = types.PairExt;
+    pub const ProofOfWork = types.ProofOfWork;
+    pub const Rail = types.Rail;
+    pub const MerklePath = types.MerklePath;
+    pub const MerkleProof = types.MerkleProof;
+    pub const QueryLayer = types.QueryLayer;
+    pub const Query = types.Query;
+    pub const FriProof = types.FriProof;
+    pub const Params = types.Params;
 };
 
 pub const vortex = struct {
