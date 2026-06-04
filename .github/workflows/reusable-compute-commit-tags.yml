@@ -1,4 +1,4 @@
-name: "Reusable: Check Images Tags and Push"
+name: "Reusable: Compute Commit Tags"
 
 permissions:
   contents: read
@@ -9,18 +9,18 @@ on:
   workflow_call:
     outputs:
       commit_tag:
-        value: ${{ jobs.check_image_tags_exist.outputs.commit_tag }}
+        value: ${{ jobs.compute_commit_tags.outputs.commit_tag }}
       last_commit_tag:
-        value: ${{ jobs.check_image_tags_exist.outputs.last_commit_tag }}
+        value: ${{ jobs.compute_commit_tags.outputs.last_commit_tag }}
       develop_tag:
-        value: ${{ jobs.check_image_tags_exist.outputs.develop_tag }}
+        value: ${{ jobs.compute_commit_tags.outputs.develop_tag }}
 
 concurrency:
   group: check-images-tags-and-push-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  check_image_tags_exist:
+  compute_commit_tags:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: Check image tags exist
     env:

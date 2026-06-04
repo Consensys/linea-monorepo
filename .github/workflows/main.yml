@@ -195,16 +195,16 @@ jobs:
           # For 'has-changes-requiring-build', it means we have an exclusion list that we can append to.
           predicate-quantifier: "every"
 
-  check-and-tag-images:
+  compute-commit-tags:
     needs: [filter-commit-changes]
-    uses: ./.github/workflows/reusable-check-images-tags-and-push.yml
+    uses: ./.github/workflows/reusable-compute-commit-tags.yml
 
   testing:
-    needs: [filter-commit-changes, check-and-tag-images]
-    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' && needs.check-and-tag-images.outputs.commit_tag != '' }}
+    needs: [filter-commit-changes, compute-commit-tags]
+    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' && needs.compute-commit-tags.outputs.commit_tag != '' }}
     uses: ./.github/workflows/testing.yml
     with:
-      commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
+      commit_tag: ${{ needs.compute-commit-tags.outputs.commit_tag }}
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
       linea_sequencer_changed: ${{ needs.filter-commit-changes.outputs.linea-sequencer-plugin }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
@@ -226,7 +226,7 @@ jobs:
 
   manual-docker-build-and-e2e-tests:
     runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
-    needs: [check-and-tag-images, get-has-changes-requiring-e2e-testing]
+    needs: [compute-commit-tags, get-has-changes-requiring-e2e-testing]
     if: ${{ needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing == 'true' }}
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     concurrency:
@@ -241,13 +241,13 @@ jobs:
     needs:
       [
         filter-commit-changes,
-        check-and-tag-images,
+        compute-commit-tags,
         manual-docker-build-and-e2e-tests,
       ]
     uses: ./.github/workflows/build-and-publish.yml
     with:
-      commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
-      develop_tag: ${{ needs.check-and-tag-images.outputs.develop_tag }}
+      commit_tag: ${{ needs.compute-commit-tags.outputs.commit_tag }}
+      develop_tag: ${{ needs.compute-commit-tags.outputs.develop_tag }}
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
@@ -261,7 +261,7 @@ jobs:
   run-e2e-tests:
     needs:
       [
-        check-and-tag-images,
+        compute-commit-tags,
         docker-build,
         get-has-changes-requiring-e2e-testing,
         manual-docker-build-and-e2e-tests,
@@ -273,7 +273,7 @@ jobs:
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     uses: ./.github/workflows/reusable-run-e2e-tests.yml
     with:
-      image_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
+      image_tag: ${{ needs.compute-commit-tags.outputs.commit_tag }}
       linea_besu_package_tag: ${{ needs.docker-build.outputs.linea_besu_package_tag }}
       e2e-tests-logs-dump: true
       has-changes-requiring-e2e-testing: ${{ needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing }}
@@ -311,7 +311,7 @@ jobs:
     needs:
       [
         filter-commit-changes,
-        check-and-tag-images,
+        compute-commit-tags,
         code-analysis,
         testing,
         get-has-changes-requiring-e2e-testing,
