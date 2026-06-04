@@ -38,6 +38,8 @@ include "../utils/signed_comparisons.zkc"
 // and signed overflow (INT_MIN / −1) returns INT_MIN (or 0 for REM).
 fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u25) {
 
+    printsteps "R-type before decode"
+
     var funct7:Funct7
     var rs2:Register
     var rs1:Register
@@ -68,6 +70,8 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
     var sign_bit:SignBit
 
     funct7::rs2::rs1::funct3::rd = instruction_parameters
+    
+    printsteps "R-type after decode"
 
     v1 = registers[rs1]
     v2 = registers[rs2]
