@@ -234,6 +234,7 @@ fn writeStringElements(hasher: *poseidon2.SpongeHasher, domain_tag: field.Elemen
 
 fn hasLowZeroBits(digest: poseidon2.Digest, nb_bits: u32) bool {
     var remaining = nb_bits;
+    // Loom caps grinding at 31 bits today, so only limb 0 is reached; keep this generic for future wider salts.
     for (digest) |limb| {
         if (remaining == 0) return true;
         const take = @min(remaining, 31);

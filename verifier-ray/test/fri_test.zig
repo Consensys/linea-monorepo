@@ -205,6 +205,134 @@ test "fri verifier reports unsupported before accepting unchecked queries" {
     );
 }
 
+test "fri verifier tags ext final poly before query challenge" {
+    const root = zeroDigest();
+    const roots = [_]fri.Digest{root};
+    const level_ds = [_]u32{4};
+    const gens = [_]field.Element{field.Element.one()};
+    const pow = [_]?fri.ProofOfWork{null};
+    const final_poly = [_]ext.Ext{
+        ext.Ext.fromUints(2, 3, 5, 7, 11, 13),
+        ext.Ext.fromUints(17, 19, 23, 29, 31, 37),
+    };
+    const layers = [_]fri.QueryLayer{.{
+        .rail = .ext,
+        .leaf_p_ext = ext.Ext.one(),
+        .leaf_q_ext = ext.Ext.one(),
+        .path = .{ .leaf_idx = 0, .siblings = &.{} },
+    }};
+    const queries = [_]fri.Query{.{ .layers = layers[0..] }};
+    const proof = fri.FriProof{
+        .final_poly_ext = final_poly[0..],
+        .queries = queries[0..],
+        .pow = pow[0..],
+    };
+    const params = fri.Params{
+        .n = 16,
+        .d = 4,
+        .num_queries = 1,
+        .num_rounds = 1,
+        .domain_gens = gens[0..],
+        .domain_gens_inv = gens[0..],
+        .grinding = 0,
+    };
+
+    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    try std.testing.expectError(error.Unsupported, fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts));
+    const actual = try ts.computeChallenge("fri_query_0");
+
+    var expected_ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    try bindSingleRoundFold(&expected_ts, root);
+    try expected_ts.newChallenge("fri_query_0");
+    try expected_ts.bindElements("fri_query_0", &.{
+        field.Element.init(0x45585450),
+        field.Element.init(final_poly.len),
+    });
+    for (final_poly) |value| {
+        var limbs = extLimbs(value);
+        try expected_ts.bindElements("fri_query_0", limbs[0..]);
+    }
+
+    try std.testing.expect(digestEql(actual, try expected_ts.computeChallenge("fri_query_0")));
+}
+
+test "fri verifier tags base final poly before query challenge" {
+    const root = zeroDigest();
+    const roots = [_]fri.Digest{root};
+    const level_ds = [_]u32{4};
+    const gens = [_]field.Element{field.Element.one()};
+    const pow = [_]?fri.ProofOfWork{null};
+    const final_poly = [_]field.Element{ elem(41), elem(43), elem(47) };
+    const layers = [_]fri.QueryLayer{.{
+        .rail = .base,
+        .leaf_p_base = elem(1),
+        .leaf_q_base = elem(2),
+        .path = .{ .leaf_idx = 0, .siblings = &.{} },
+    }};
+    const queries = [_]fri.Query{.{ .layers = layers[0..] }};
+    const proof = fri.FriProof{
+        .final_rail = .base,
+        .final_poly_base = final_poly[0..],
+        .queries = queries[0..],
+        .pow = pow[0..],
+    };
+    const params = fri.Params{
+        .n = 16,
+        .d = 4,
+        .num_queries = 1,
+        .num_rounds = 1,
+        .domain_gens = gens[0..],
+        .domain_gens_inv = gens[0..],
+        .grinding = 0,
+    };
+
+    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    try std.testing.expectError(error.Unsupported, fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts));
+    const actual = try ts.computeChallenge("fri_query_0");
+
+    var expected_ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    try bindSingleRoundFold(&expected_ts, root);
+    try expected_ts.newChallenge("fri_query_0");
+    try expected_ts.bindElements("fri_query_0", &.{
+        field.Element.init(0x42415345),
+        field.Element.init(final_poly.len),
+    });
+    try expected_ts.bindElements("fri_query_0", final_poly[0..]);
+
+    try std.testing.expect(digestEql(actual, try expected_ts.computeChallenge("fri_query_0")));
+}
+
+test "fri verifier rejects duplicate level introduction rounds" {
+    const roots = [_]fri.Digest{ zeroDigest(), zeroDigest(), zeroDigest() };
+    const level_ds = [_]u32{ 8, 4, 4 };
+    const fri_roots = [_]fri.Digest{ zeroDigest(), zeroDigest() };
+    const gens = [_]field.Element{ field.Element.one(), field.Element.one(), field.Element.one() };
+    const pow = [_]?fri.ProofOfWork{ null, null, null };
+    const final_poly = [_]ext.Ext{ext.Ext.one()};
+    const level_queries = [_][]const fri.QueryLayer{ &.{}, &.{} };
+    const proof = fri.FriProof{
+        .fri_roots = fri_roots[0..],
+        .final_poly_ext = final_poly[0..],
+        .level_queries = level_queries[0..],
+        .pow = pow[0..],
+    };
+    const params = fri.Params{
+        .n = 32,
+        .d = 8,
+        .num_queries = 0,
+        .num_rounds = 3,
+        .domain_gens = gens[0..],
+        .domain_gens_inv = gens[0..],
+        .grinding = 0,
+    };
+
+    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    try std.testing.expectError(
+        error.BadDimensions,
+        fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts),
+    );
+}
+
 fn elem(value: u32) field.Element {
     return field.Element.init(value);
 }
@@ -255,6 +383,23 @@ fn zeroDigest() fri.Digest {
         field.Element.zero(),
         field.Element.zero(),
         field.Element.zero(),
+    };
+}
+
+fn bindSingleRoundFold(ts: *fiat_shamir.Transcript, root: fri.Digest) !void {
+    try ts.newChallenge("fri_fold_0");
+    try ts.bindDigest("fri_fold_0", root);
+    _ = try ts.computeChallengeExt("fri_fold_0");
+}
+
+fn extLimbs(value: ext.Ext) [6]field.Element {
+    return .{
+        value.B0.a0,
+        value.B0.a1,
+        value.B1.a0,
+        value.B1.a1,
+        value.B2.a0,
+        value.B2.a1,
     };
 }
 

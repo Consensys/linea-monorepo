@@ -5,6 +5,9 @@ const field = @import("../field/koalabear.zig");
 const ext = @import("../field/koalabear_ext.zig");
 const types = @import("types.zig");
 
+const tag_final_poly_base = field.Element.init(0x42415345); // "BASE"
+const tag_final_poly_ext = field.Element.init(0x45585450); // "EXTP"
+
 pub const FriError = error{
     BadDimensions,
     BadFinalPoly,
@@ -62,9 +65,13 @@ fn checkDimensions(
         if (level_query.len != query_count) return FriError.BadDimensions;
     }
 
-    for (level_ds[1..]) |level_d| {
+    for (level_ds[1..], 0..) |level_d, offset| {
         const round = try introducedRound(level_ds[0], level_d, params.num_rounds);
         if (round == 0) return FriError.BadDimensions;
+        for (level_ds[1..][0..offset]) |previous_level_d| {
+            const previous_round = try introducedRound(level_ds[0], previous_level_d, params.num_rounds);
+            if (previous_round == round) return FriError.BadDimensions;
+        }
     }
 }
 
@@ -120,13 +127,31 @@ fn bindCommitPhase(
 
     if (params.num_queries != 0) {
         ts.newChallenge("fri_query_0") catch return FriError.BadDimensions;
-        switch (proof.final_rail) {
-            .base => ts.bindElements("fri_query_0", proof.final_poly_base) catch return FriError.BadDimensions,
-            .ext => for (proof.final_poly_ext) |value| {
+        try bindFinalPoly(ts, proof);
+    }
+}
+
+fn bindFinalPoly(ts: *fiat_shamir.Transcript, proof: types.FriProof) FriError!void {
+    switch (proof.final_rail) {
+        .base => {
+            const header = [_]field.Element{
+                tag_final_poly_base,
+                field.Element.init(proof.final_poly_base.len),
+            };
+            ts.bindElements("fri_query_0", header[0..]) catch return FriError.BadDimensions;
+            ts.bindElements("fri_query_0", proof.final_poly_base) catch return FriError.BadDimensions;
+        },
+        .ext => {
+            const header = [_]field.Element{
+                tag_final_poly_ext,
+                field.Element.init(proof.final_poly_ext.len),
+            };
+            ts.bindElements("fri_query_0", header[0..]) catch return FriError.BadDimensions;
+            for (proof.final_poly_ext) |value| {
                 var limbs = extLimbs(value);
                 ts.bindElements("fri_query_0", limbs[0..]) catch return FriError.BadDimensions;
-            },
-        }
+            }
+        },
     }
 }
 
