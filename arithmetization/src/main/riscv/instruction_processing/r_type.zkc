@@ -36,13 +36,8 @@ include "../utils/signed_comparisons.zkc"
 // treat register values as two's-complement integers.  Division and remainder
 // follow RISC-V semantics: division by zero returns −1 (or the dividend for REM),
 // and signed overflow (INT_MIN / −1) returns INT_MIN (or 0 for REM).
-fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u25) {
+fn process_R_type_instruction<registers>(opcode:Opcode, funct7:Funct7, rs2:Register, rs1:Register, funct3:Funct3, rd:Register) {
 
-    var funct7:Funct7
-    var rs2:Register
-    var rs1:Register
-    var funct3:Funct3
-    var rd:Register
     var v1:DoubleWord
     var v2:DoubleWord
     var v1_sign:SignBit
@@ -66,8 +61,6 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
     var product_lower:Word
     var word_wip:Word
     var sign_bit:SignBit
-
-    funct7::rs2::rs1::funct3::rd = instruction_parameters
 
     v1 = registers[rs1]
     v2 = registers[rs2]
