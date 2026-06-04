@@ -3,7 +3,7 @@ const verifier_ray = @import("verifier_ray");
 
 const field = verifier_ray.field.koalabear;
 const ext = verifier_ray.field.koalabear_ext;
-const polynomial = verifier_ray.pcs.polynomial;
+const polynomial = verifier_ray.polynomial.canonical;
 const poseidon2 = verifier_ray.crypto.poseidon2;
 const Transcript = verifier_ray.crypto.fiat_shamir.Transcript;
 
@@ -96,7 +96,7 @@ fn runVerifierSmoke(input: *const Input) u8 {
 
 fn exerciseTemporaryTraceWork(input: *const Input) bool {
     // Temporary zkVM trace exercise. Remove this once main verifies a realistic proof.
-    const evaluation = polynomial.evaluateBaseCanonicalAtExt(input.coefficients[0..], input.point);
+    const evaluation = polynomial.evaluateBaseAtExt(input.coefficients[0..], input.point);
 
     var transcript = Transcript.init();
     transcript.updateElements(input.coefficients[0..]);

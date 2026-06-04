@@ -13,8 +13,8 @@ const field = verifier_ray.field.koalabear;
 const ext = verifier_ray.field.koalabear_ext;
 const fiat_shamir = verifier_ray.crypto.fiat_shamir;
 const poseidon2 = verifier_ray.crypto.poseidon2;
-const lagrange = verifier_ray.pcs.lagrange;
-const polynomial = verifier_ray.pcs.polynomial;
+const poly_lagrange = verifier_ray.polynomial.lagrange;
+const poly_canonical = verifier_ray.polynomial.canonical;
 const runtime = verifier_ray.runtime;
 
 test "runtime visibility tags match prover-ray" {
@@ -67,14 +67,14 @@ test "canonical polynomial evaluation matches prover-ray golden cases" {
     for (vectors.canonical_base_cases) |case| {
         var coeffs: [16]field.Element = undefined;
         fillElems(&coeffs, case.coeffs);
-        try expectElem(polynomial.evaluateBaseCanonical(coeffs[0..case.coeffs.len], elem(case.point)), case.expected);
+        try expectElem(poly_canonical.evaluateBaseAtBase(coeffs[0..case.coeffs.len], elem(case.point)), case.expected);
     }
 
     for (vectors.canonical_base_at_ext_cases) |case| {
         var coeffs: [16]field.Element = undefined;
         fillElems(&coeffs, case.coeffs);
         try expectExt(
-            polynomial.evaluateBaseCanonicalAtExt(coeffs[0..case.coeffs.len], uintsToExt(case.point)),
+            poly_canonical.evaluateBaseAtExt(coeffs[0..case.coeffs.len], uintsToExt(case.point)),
             uintsToExt(case.expected),
         );
     }
@@ -83,7 +83,7 @@ test "canonical polynomial evaluation matches prover-ray golden cases" {
         var coeffs: [16]ext.Ext = undefined;
         fillExts(&coeffs, case.coeffs);
         try expectExt(
-            polynomial.evaluateExtCanonicalAtBase(coeffs[0..case.coeffs.len], elem(case.point)),
+            poly_canonical.evaluateExtAtBase(coeffs[0..case.coeffs.len], elem(case.point)),
             uintsToExt(case.expected),
         );
     }
@@ -92,7 +92,7 @@ test "canonical polynomial evaluation matches prover-ray golden cases" {
         var coeffs: [16]ext.Ext = undefined;
         fillExts(&coeffs, case.coeffs);
         try expectExt(
-            polynomial.evaluateExtCanonical(coeffs[0..case.coeffs.len], uintsToExt(case.point)),
+            poly_canonical.evaluateExtAtExt(coeffs[0..case.coeffs.len], uintsToExt(case.point)),
             uintsToExt(case.expected),
         );
     }
@@ -102,14 +102,14 @@ test "lagrange polynomial evaluation matches prover-ray golden cases" {
     for (vectors.lagrange_base_cases) |case| {
         var coeffs: [16]field.Element = undefined;
         fillElems(&coeffs, case.coeffs);
-        try expectElem(try lagrange.evaluateBaseAtBase(coeffs[0..case.coeffs.len], elem(case.point)), case.expected);
+        try expectElem(try poly_lagrange.evaluateBaseAtBase(coeffs[0..case.coeffs.len], elem(case.point)), case.expected);
     }
 
     for (vectors.lagrange_base_at_ext_cases) |case| {
         var coeffs: [16]field.Element = undefined;
         fillElems(&coeffs, case.coeffs);
         try expectExt(
-            try lagrange.evaluateBaseAtExt(coeffs[0..case.coeffs.len], uintsToExt(case.point)),
+            try poly_lagrange.evaluateBaseAtExt(coeffs[0..case.coeffs.len], uintsToExt(case.point)),
             uintsToExt(case.expected),
         );
     }
@@ -118,7 +118,7 @@ test "lagrange polynomial evaluation matches prover-ray golden cases" {
         var coeffs: [16]ext.Ext = undefined;
         fillExts(&coeffs, case.coeffs);
         try expectExt(
-            try lagrange.evaluateExtAtBase(coeffs[0..case.coeffs.len], elem(case.point)),
+            try poly_lagrange.evaluateExtAtBase(coeffs[0..case.coeffs.len], elem(case.point)),
             uintsToExt(case.expected),
         );
     }
@@ -127,7 +127,7 @@ test "lagrange polynomial evaluation matches prover-ray golden cases" {
         var coeffs: [16]ext.Ext = undefined;
         fillExts(&coeffs, case.coeffs);
         try expectExt(
-            try lagrange.evaluateExtAtExt(coeffs[0..case.coeffs.len], uintsToExt(case.point)),
+            try poly_lagrange.evaluateExtAtExt(coeffs[0..case.coeffs.len], uintsToExt(case.point)),
             uintsToExt(case.expected),
         );
     }
@@ -150,10 +150,10 @@ test "lagrange evaluation returns domain value at roots of unity" {
     const omega = try field.rootOfUnityBy(base_values.len);
     var domain_point = field.Element.one();
     for (base_values, ext_values) |base_value, ext_value| {
-        try expectElem(try lagrange.evaluateBaseAtBase(&base_values, domain_point), base_value.value);
-        try expectExt(try lagrange.evaluateBaseAtExt(&base_values, ext.Ext.lift(domain_point)), ext.Ext.lift(base_value));
-        try expectExt(try lagrange.evaluateExtAtBase(&ext_values, domain_point), ext_value);
-        try expectExt(try lagrange.evaluateExtAtExt(&ext_values, ext.Ext.lift(domain_point)), ext_value);
+        try expectElem(try poly_lagrange.evaluateBaseAtBase(&base_values, domain_point), base_value.value);
+        try expectExt(try poly_lagrange.evaluateBaseAtExt(&base_values, ext.Ext.lift(domain_point)), ext.Ext.lift(base_value));
+        try expectExt(try poly_lagrange.evaluateExtAtBase(&ext_values, domain_point), ext_value);
+        try expectExt(try poly_lagrange.evaluateExtAtExt(&ext_values, ext.Ext.lift(domain_point)), ext_value);
         domain_point = domain_point.mul(omega);
     }
 }
