@@ -19,7 +19,7 @@ repositories {
 group = 'build.linea'
 description = 'Linea chain security interfaces'
 // publishing.gradle uses project.artifactId when set (or else falling back to project.name)
-ext.artifactId = 'chain-security-interfaces'
+ext.artifactId = 'sequencer-interfaces'
 
 jar { enabled = true }
 
