@@ -27,7 +27,7 @@ const max_bindings_per_challenge = 1024;
 
 const tag_fsid = field.Element.init(0x46534944); // "FSID"
 const tag_fspw = field.Element.init(0x46535057); // "FSPW"
-const tag_backend = field.Element.init(0x4241434b); // "BACK"
+const string_chunk_size = 3;
 
 const ChallengeSlot = struct {
     name: [max_challenge_name_len]u8,
@@ -169,13 +169,8 @@ pub const Transcript = struct {
         var slot = &self.challenges[index];
         if (slot.computed) return slot.digest;
 
-        var h = poseidon2.MDHasher.init();
-        h.writeElement(tag_fsid);
-        writeBytesAsElements(&h, slot.name[0..slot.name_len]);
-        if (index == 0 and self.backend_id.len != 0) {
-            h.writeElement(tag_backend);
-            writeBytesAsElements(&h, self.backend_id);
-        }
+        var h = poseidon2.SpongeHasher.init();
+        writeStringElements(&h, tag_fsid, slot.name[0..slot.name_len]);
         if (index != 0) {
             h.writeElements(self.challenges[index - 1].digest[0..]);
         }
@@ -222,10 +217,18 @@ fn emptyChallenges() [max_challenges]ChallengeSlot {
     return challenges;
 }
 
-fn writeBytesAsElements(hasher: *poseidon2.MDHasher, bytes: []const u8) void {
+fn writeStringElements(hasher: *poseidon2.SpongeHasher, domain_tag: field.Element, bytes: []const u8) void {
+    hasher.writeElement(domain_tag);
     hasher.writeElement(field.Element.init(@intCast(bytes.len)));
-    for (bytes) |byte| {
-        hasher.writeElement(field.Element.init(byte));
+    var i: usize = 0;
+    while (i < bytes.len) : (i += string_chunk_size) {
+        var limb: u64 = 0;
+        var j: usize = 0;
+        while (j < string_chunk_size and i + j < bytes.len) : (j += 1) {
+            const shift: u6 = @intCast(8 * j);
+            limb |= @as(u64, bytes[i + j]) << shift;
+        }
+        hasher.writeElement(field.Element.init(limb));
     }
 }
 

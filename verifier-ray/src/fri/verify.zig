@@ -63,7 +63,8 @@ fn checkDimensions(
     }
 
     for (level_ds[1..]) |level_d| {
-        _ = try introducedRound(level_ds[0], level_d, params.num_rounds);
+        const round = try introducedRound(level_ds[0], level_d, params.num_rounds);
+        if (round == 0) return FriError.BadDimensions;
     }
 }
 
@@ -78,7 +79,7 @@ fn bindCommitPhase(
     while (round < params.num_rounds) : (round += 1) {
         for (level_ds[1..], 1..) |level_d, level_index| {
             const intro = try introducedRound(level_ds[0], level_d, params.num_rounds);
-            if (intro == round) {
+            if (intro != 0 and intro == round) {
                 var gamma_name_buf: [48]u8 = undefined;
                 const gamma_name = std.fmt.bufPrint(&gamma_name_buf, "fri_level_{d}_gamma", .{level_index}) catch {
                     return FriError.BadDimensions;

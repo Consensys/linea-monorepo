@@ -1,10 +1,14 @@
 const field = @import("../field/koalabear.zig");
-const constants = @import("poseidon2_constants.zig");
+const ext = @import("../field/koalabear_ext.zig");
+const constants16 = @import("poseidon2_constants.zig");
+const constants24 = @import("poseidon2_constants_width24.zig");
 
 pub const Error = field.Error || error{InvalidInputLength};
 pub const Digest = [8]field.Element;
 pub const block_size = 8;
 pub const digest_bytes = block_size * field.bytes;
+pub const sponge_width = 24;
+pub const sponge_rate = 16;
 
 const full_rounds = 6;
 const partial_rounds = 21;
@@ -30,6 +34,18 @@ pub fn compress(left: Digest, right: Digest) Digest {
 pub fn compressSlices(left: []const field.Element, right: []const field.Element) Error!Digest {
     if (left.len != block_size or right.len != block_size) return Error.InvalidInputLength;
     return compress(left[0..block_size].*, right[0..block_size].*);
+}
+
+pub fn nodeCompress(domain_tag: field.Element, left: Digest, right: Digest) Digest {
+    var state: [sponge_width]field.Element = zeroArray(sponge_width);
+    state[0] = domain_tag;
+    @memcpy(state[block_size .. block_size * 2], &left);
+    @memcpy(state[block_size * 2 .. block_size * 3], &right);
+    permutation(sponge_width, &state);
+
+    var out: Digest = undefined;
+    @memcpy(out[0..], state[0..block_size]);
+    return out;
 }
 
 pub fn digestToBytes(digest: Digest) [digest_bytes]u8 {
@@ -103,6 +119,101 @@ pub const MDHasher = struct {
     }
 };
 
+pub const SpongeHasher = struct {
+    state: [sponge_width]field.Element,
+    block: [sponge_rate]field.Element,
+    block_len: usize,
+    wrote: bool,
+    finalized: bool,
+
+    pub fn init() SpongeHasher {
+        return .{
+            .state = zeroArray(sponge_width),
+            .block = zeroArray(sponge_rate),
+            .block_len = 0,
+            .wrote = false,
+            .finalized = false,
+        };
+    }
+
+    pub fn reset(self: *SpongeHasher) void {
+        self.state = zeroArray(sponge_width);
+        self.block = zeroArray(sponge_rate);
+        self.block_len = 0;
+        self.wrote = false;
+        self.finalized = false;
+    }
+
+    pub fn writeElement(self: *SpongeHasher, value: field.Element) void {
+        self.block[self.block_len] = value;
+        self.block_len += 1;
+        self.finalized = false;
+        if (self.block_len == sponge_rate) {
+            self.absorbFullBlock();
+        }
+    }
+
+    pub fn writeElements(self: *SpongeHasher, values: []const field.Element) void {
+        for (values) |value| {
+            self.writeElement(value);
+        }
+    }
+
+    pub fn writeExt(self: *SpongeHasher, values: []const ext.Ext) void {
+        for (values) |value| {
+            self.writeElements(&.{
+                value.B0.a0,
+                value.B0.a1,
+                value.B1.a0,
+                value.B1.a1,
+                value.B2.a0,
+                value.B2.a1,
+            });
+        }
+    }
+
+    pub fn sumDigest(self: *SpongeHasher) Digest {
+        if (self.finalized) return self.digest();
+        if (!self.wrote and self.block_len == 0) {
+            self.finalized = true;
+            return zeroDigest();
+        }
+        if (self.block_len > 0) {
+            self.absorbPartialBlock();
+        }
+        self.finalized = true;
+        return self.digest();
+    }
+
+    fn absorbFullBlock(self: *SpongeHasher) void {
+        @memcpy(self.state[0..sponge_rate], &self.block);
+        permutation(sponge_width, &self.state);
+        self.clearBlock();
+        self.block_len = 0;
+        self.wrote = true;
+    }
+
+    fn absorbPartialBlock(self: *SpongeHasher) void {
+        for (self.block[0..self.block_len], 0..) |limb, i| {
+            self.state[i] = limb;
+        }
+        permutation(sponge_width, &self.state);
+        self.clearBlock();
+        self.block_len = 0;
+        self.wrote = true;
+    }
+
+    fn clearBlock(self: *SpongeHasher) void {
+        self.block = zeroArray(sponge_rate);
+    }
+
+    fn digest(self: *const SpongeHasher) Digest {
+        var out: Digest = undefined;
+        @memcpy(out[0..], self.state[0..block_size]);
+        return out;
+    }
+};
+
 pub fn hashElements(values: []const field.Element) Digest {
     var h = MDHasher.init();
     h.writeElements(values);
@@ -110,9 +221,18 @@ pub fn hashElements(values: []const field.Element) Digest {
 }
 
 fn permutation(comptime width: usize, state: *[width]field.Element) void {
-    if (width != constants.width) @compileError("Poseidon2 Koalabear verifier constants support width 16");
-    const round_keys = &constants.round_keys;
+    switch (width) {
+        constants16.width => permutationWithRoundKeys(width, state, &constants16.round_keys),
+        constants24.width => permutationWithRoundKeys(width, state, &constants24.round_keys),
+        else => @compileError("Poseidon2 Koalabear verifier constants support width 16 and 24"),
+    }
+}
 
+fn permutationWithRoundKeys(
+    comptime width: usize,
+    state: *[width]field.Element,
+    round_keys: *const [total_rounds][width]field.Element,
+) void {
     matMulExternalInPlace(width, state);
 
     const half_full = full_rounds / 2;

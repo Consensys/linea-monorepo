@@ -1,5 +1,6 @@
 const std = @import("std");
 const verifier_ray = @import("verifier_ray");
+const loom_vectors = @import("loom_test_vectors");
 
 const field = verifier_ray.field.koalabear;
 const ext = verifier_ray.field.koalabear_ext;
@@ -29,6 +30,74 @@ test "named transcript rejects invalid proof of work" {
         error.InvalidProofOfWork,
         ts.setProofOfWork("fri_fold_0", .{ .nb_bits = 32, .salt = elem(0) }),
     );
+}
+
+test "loom FRI leaf hashes match static vectors" {
+    for (loom_vectors.loom_leaf_hash_cases) |case| {
+        var base_pairs: [8]fri.PairBase = undefined;
+        var ext_pairs: [8]fri.PairExt = undefined;
+        fillBasePairs(&base_pairs, case.base_pairs);
+        fillExtPairs(&ext_pairs, case.ext_pairs);
+
+        try expectDigest(
+            fri.leaf_hash.hashLeaf(base_pairs[0..case.base_pairs.len], ext_pairs[0..case.ext_pairs.len]),
+            case.expected,
+        );
+    }
+}
+
+test "loom FRI node hashes match static vectors" {
+    for (loom_vectors.loom_node_hash_cases) |case| {
+        try expectDigest(fri.leaf_hash.hashNode(digest(case.left), digest(case.right)), case.expected);
+    }
+}
+
+test "loom FRI merkle paths match static vectors" {
+    for (loom_vectors.loom_merkle_cases) |case| {
+        var siblings: [8]fri.Digest = undefined;
+        fillDigests(&siblings, case.siblings);
+
+        const path = fri.MerklePath{
+            .leaf_idx = case.leaf_idx,
+            .siblings = siblings[0..case.siblings.len],
+        };
+        try std.testing.expect(fri.merkle.merkleVerify(digest(case.root), path, digest(case.leaf)));
+    }
+}
+
+test "loom named transcript challenges match static vectors" {
+    for (loom_vectors.loom_named_transcript_cases) |case| {
+        var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+        var first_bindings: [16]field.Element = undefined;
+        var second_bindings: [16]field.Element = undefined;
+
+        try ts.newChallenge(case.first_name);
+        fillElems(&first_bindings, case.first_bindings);
+        try ts.bindElements(case.first_name, first_bindings[0..case.first_bindings.len]);
+        try expectDigest(try ts.computeChallenge(case.first_name), case.first_expected);
+
+        try ts.newChallenge(case.second_name);
+        fillElems(&second_bindings, case.second_bindings);
+        try ts.bindElements(case.second_name, second_bindings[0..case.second_bindings.len]);
+        try expectDigest(try ts.computeChallenge(case.second_name), case.second_expected);
+        try expectExt(try ts.computeChallengeExt(case.second_name), uintsToExt(case.second_ext_expected));
+    }
+}
+
+test "loom proof-of-work transcript challenges match static vectors" {
+    for (loom_vectors.loom_pow_transcript_cases) |case| {
+        var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+        var bindings: [16]field.Element = undefined;
+
+        try ts.newChallenge(case.name);
+        fillElems(&bindings, case.bindings);
+        try ts.bindElements(case.name, bindings[0..case.bindings.len]);
+        try ts.setProofOfWork(case.name, .{
+            .nb_bits = case.nb_bits,
+            .salt = elem(case.salt),
+        });
+        try expectDigest(try ts.computeChallenge(case.name), case.expected);
+    }
 }
 
 test "fri leaf hash and merkle proof verify paired leaves" {
@@ -140,6 +209,42 @@ fn elem(value: u32) field.Element {
     return field.Element.init(value);
 }
 
+fn uintsToExt(limbs: [6]u32) ext.Ext {
+    return ext.Ext.fromUints(limbs[0], limbs[1], limbs[2], limbs[3], limbs[4], limbs[5]);
+}
+
+fn digest(values: [8]u32) fri.Digest {
+    var out: fri.Digest = undefined;
+    for (&out, values) |*dst, value| {
+        dst.* = elem(value);
+    }
+    return out;
+}
+
+fn fillElems(out: []field.Element, values: []const u32) void {
+    for (values, 0..) |value, i| {
+        out[i] = elem(value);
+    }
+}
+
+fn fillBasePairs(out: []fri.PairBase, values: []const [2]u32) void {
+    for (values, 0..) |value, i| {
+        out[i] = .{ elem(value[0]), elem(value[1]) };
+    }
+}
+
+fn fillExtPairs(out: []fri.PairExt, values: []const [2][6]u32) void {
+    for (values, 0..) |value, i| {
+        out[i] = .{ uintsToExt(value[0]), uintsToExt(value[1]) };
+    }
+}
+
+fn fillDigests(out: []fri.Digest, values: []const [8]u32) void {
+    for (values, 0..) |value, i| {
+        out[i] = digest(value);
+    }
+}
+
 fn zeroDigest() fri.Digest {
     return .{
         field.Element.zero(),
@@ -151,6 +256,16 @@ fn zeroDigest() fri.Digest {
         field.Element.zero(),
         field.Element.zero(),
     };
+}
+
+fn expectDigest(actual: fri.Digest, expected: [8]u32) !void {
+    for (actual, expected) |actual_limb, expected_limb| {
+        try std.testing.expectEqual(expected_limb, actual_limb.value);
+    }
+}
+
+fn expectExt(actual: ext.Ext, expected: ext.Ext) !void {
+    try std.testing.expect(actual.eql(expected));
 }
 
 fn digestEql(left: fri.Digest, right: fri.Digest) bool {

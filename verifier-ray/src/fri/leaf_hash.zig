@@ -11,7 +11,7 @@ const tag_leaf = field.Element.init(0x4c454146); // "LEAF"
 const tag_node = field.Element.init(0x4e4f4445); // "NODE"
 
 pub fn hashLeaf(base: []const PairBase, ext_: []const PairExt) Digest {
-    var h = poseidon2.MDHasher.init();
+    var h = poseidon2.SpongeHasher.init();
     h.writeElement(tag_leaf);
     h.writeElement(field.Element.init(@intCast(base.len)));
     h.writeElement(field.Element.init(@intCast(ext_.len)));
@@ -30,14 +30,10 @@ pub fn hashLeaf(base: []const PairBase, ext_: []const PairExt) Digest {
 }
 
 pub fn hashNode(left: Digest, right: Digest) Digest {
-    var h = poseidon2.MDHasher.init();
-    h.writeElement(tag_node);
-    h.writeElements(left[0..]);
-    h.writeElements(right[0..]);
-    return h.sumDigest();
+    return poseidon2.nodeCompress(tag_node, left, right);
 }
 
-fn writeExt(hasher: *poseidon2.MDHasher, value: ext.Ext) void {
+fn writeExt(hasher: *poseidon2.SpongeHasher, value: ext.Ext) void {
     hasher.writeElements(&.{
         value.B0.a0,
         value.B0.a1,

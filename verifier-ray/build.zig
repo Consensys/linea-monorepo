@@ -33,6 +33,11 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const loom_test_vectors_mod = b.addModule("loom_test_vectors", .{
+        .root_source_file = b.path("testdata/loom_vectors.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
 
     const exe = b.addExecutable(.{
         .name = "verifier-ray",
@@ -77,6 +82,7 @@ pub fn build(b: *std.Build) void {
                 .imports = &.{
                     .{ .name = "verifier_ray", .module = verifier_mod },
                     .{ .name = "test_vectors", .module = test_vectors_mod },
+                    .{ .name = "loom_test_vectors", .module = loom_test_vectors_mod },
                 },
             }),
         });

@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	gnarkposeidon2 "github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	fiatshamir "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamir"
 	poseidon2 "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poseidon2"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
@@ -45,6 +46,8 @@ func main() {
 	if err := os.WriteFile(outputPath, data, 0o644); err != nil {
 		panic(err)
 	}
+
+	writePoseidonWidth24Constants()
 }
 
 func writeHeader(out *bytes.Buffer) {
@@ -551,6 +554,44 @@ func writeRuntimeTraceCell(out *bytes.Buffer, cell runtimeTraceCell) {
 	}
 	fmt.Fprintf(out, "                .{ .is_assigned = %t, .is_ext = %t, .base_value = %d, .ext_value = %s },\n",
 		cell.assigned, cell.isExt, baseValue, ext6(extValue))
+}
+
+func writePoseidonWidth24Constants() {
+	params := gnarkposeidon2.NewParameters(24, 6, 21)
+	var out bytes.Buffer
+	fmt.Fprintln(&out, "// Constants generated from gnark-crypto Koalabear Poseidon2 parameters.")
+	fmt.Fprintln(&out, "// Width = 24, full rounds = 6, partial rounds = 21, S-box degree = 3.")
+	fmt.Fprintln(&out, "const field = @import(\"../field/koalabear.zig\");")
+	fmt.Fprintln(&out)
+	fmt.Fprintln(&out, "pub const width = 24;")
+	fmt.Fprintln(&out)
+	fmt.Fprintln(&out, "pub const round_keys = [_][width]field.Element{")
+	for _, roundKeys := range params.RoundKeys {
+		fmt.Fprint(&out, "    .{ ")
+		for i := 0; i < params.Width; i++ {
+			if i != 0 {
+				fmt.Fprint(&out, ", ")
+			}
+			value := uint64(0)
+			if i < len(roundKeys) {
+				value = u(roundKeys[i])
+			}
+			fmt.Fprintf(&out, "field.Element.init(%d)", value)
+		}
+		fmt.Fprintln(&out, " },")
+	}
+	fmt.Fprintln(&out, "};")
+
+	data := out.Bytes()
+	zigfmt, err := runZigFmt(data)
+	if err == nil {
+		data = zigfmt
+	}
+
+	path := filepath.Join("..", "..", "src", "crypto", "poseidon2_constants_width24.zig")
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		panic(err)
+	}
 }
 
 func elem(v uint64) field.Element {
