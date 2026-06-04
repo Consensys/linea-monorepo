@@ -28,13 +28,6 @@ pub const precompiles = struct {
     pub const riscv = @import("precompiles/riscv.zig");
 };
 
-pub const vortex = struct {
-    pub const reed_solomon = @import("vortex/reed_solomon.zig");
-    pub const ringsis = @import("vortex/ringsis.zig");
-    pub const smt = @import("vortex/smt.zig");
-    pub const verifier = @import("vortex/verifier.zig");
-};
-
 pub const generated = struct {
     pub const stub = @import("generated/stub.zig");
 };
