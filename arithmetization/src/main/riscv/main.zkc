@@ -11,11 +11,10 @@ include "utils/sign_bit.zkc"
 include "utils/negative.zkc"
 include "utils/register_utils.zkc"
 include "memory.zkc"
-include "decode.zkc"
 
 // TODO @Ghost
-fn main<ram, registers, is_decoded_buffer, instruction_parameters_buffer, instruction_type_buffer, opcode_buffer, funct3_buffer, imm12_buffer, rs1_buffer, rd_buffer, signext_imm12_64_buffer, rs1_plus_signext_imm12_buffer>() {
-
+fn main<ram, registers>() {
+    var opcode:Opcode
     var instruction:Instruction
     var clock_cycle:u32 = 0
     var entry_point:Address
@@ -44,10 +43,6 @@ fn main<ram, registers, is_decoded_buffer, instruction_parameters_buffer, instru
         clock_cycle = clock_cycle + 1
         printf "----------------------------------------------------------------- PC=%d, clock cycle: %d\n", pc, clock_cycle
 
-        var is_decoded:Boolean = is_decoded_buffer[instruction]
-        if is_decoded == 0 {
-            decode(instruction)
-        }
         pc = interpreter(instruction, pc)
     }
 }
