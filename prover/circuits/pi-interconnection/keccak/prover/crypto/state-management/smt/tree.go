@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Config specifies the parameters of the tree (choice of hash function, depth).

@@ -15,8 +15,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/collection"
+	kcollection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/sirupsen/logrus"
 )
 
@@ -62,7 +63,7 @@ type StandardModule struct {
 // QueryBasedModule represents a set of columns grouped by constraints.
 type QueryBasedModule struct {
 	ModuleName   ModuleName
-	Ds           *utils.DisjointSet[ifaces.ColID] // Uses a disjoint set to track relationships among columns.
+	Ds           *collection.DisjointSet[ifaces.ColID] // Uses a disjoint set to track relationships among columns.
 	OriginalSize int
 	// NbConstraintsOfPlonkCirc counts the number of constraints in a Plonk
 	// in wizard module if one is found. If several circuits are stores
@@ -175,7 +176,7 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		found := false
 		muteMissingAdviceErr := false
 
-		for c := range qbm.Ds.Rank {
+		for c := range qbm.Ds.Parent {
 
 			advice, foundAdvice := adviceOfColumn[c]
 
@@ -213,7 +214,7 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		}
 
 		if !found && !muteMissingAdviceErr {
-			columnList := utils.SortedKeysOf(qbm.Ds.Rank, func(a, b ifaces.ColID) bool { return a < b })
+			columnList := utils.SortedKeysOf(qbm.Ds.Parent, func(a, b ifaces.ColID) bool { return a < b })
 			e := fmt.Errorf(
 				"Could not find advice for %v, columns=[%v], raw-qbm=%++v. You may want to attach an advice to one of these columns: try doing `[pragmas.AddModuleRef(col, \"<module-name>\")]` and adding an advice passing `Column:\"<module-name>\"` in limtless.go",
 				qbm.ModuleName, columnList, qbm)
@@ -787,7 +788,7 @@ func (disc *QueryBasedModuleDiscoverer) CreateModule(columns []column.Natural) *
 
 	module := &QueryBasedModule{
 		ModuleName:          ModuleName(fmt.Sprintf("Module_%d_%s", len(disc.Modules), colID)),
-		Ds:                  utils.NewDisjointSetFromList(columnIDs),
+		Ds:                  collection.NewDisjointSetFromList(columnIDs),
 		NbSegmentCache:      make(map[unsafe.Pointer][3]int),
 		NbSegmentCacheMutex: &sync.Mutex{},
 	}
@@ -1321,17 +1322,17 @@ func (m *QueryBasedModule) mustHaveConsistentLength(comp *wizard.CompiledIOP) {
 // module.
 func groupQBModulesByAffinity(qbModules []*QueryBasedModule, affinities [][]column.Natural) (groups [][]*QueryBasedModule) {
 
-	sets := make([]*collection.Set[*QueryBasedModule], len(qbModules))
+	sets := make([]*kcollection.Set[*QueryBasedModule], len(qbModules))
 
 	for i := range qbModules {
-		s := collection.NewSet[*QueryBasedModule]()
+		s := kcollection.NewSet[*QueryBasedModule]()
 		sets[i] = &s
 		sets[i].Insert(qbModules[i])
 	}
 
 	for _, aff := range affinities {
 
-		matched := make([]*collection.Set[*QueryBasedModule], 0)
+		matched := make([]*kcollection.Set[*QueryBasedModule], 0)
 		for i := range sets {
 
 			isSetMatched := false
