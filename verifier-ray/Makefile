@@ -10,9 +10,6 @@ ZKC_MAIN := ../arithmetization/src/main/riscv/main.zkc
 PASSING_INPUT_FILE := testdata/inputs/passing.bin
 FAILING_INPUT_FILE := testdata/inputs/failing.bin
 INPUT_FILE ?= $(PASSING_INPUT_FILE)
-# The ELF-to-JSON helper treats 0x input as a big-endian integer and reverses it
-# before writing guest RAM, so encode binary fixtures in reverse transport order.
-IN_BYTES ?= 0x$(shell xxd -p -c1 $(INPUT_FILE) | tac | tr -d '\n')
 IN_BYTES_OFFSET ?= 0x08800000
 NATIVE_INPUT_FILE := zig-out/input.bin
 IN_BYTES_FILE ?= zig-out/input.hex
@@ -46,7 +43,6 @@ help:
 		'' \
 		'input variables:' \
 		'  INPUT_FILE            Binary input fixture for native and zkc runs, default testdata/inputs/passing.bin' \
-		'  IN_BYTES              0x transport string for zkc; defaults to encoded INPUT_FILE bytes' \
 		'  NATIVE_INPUT_FILE     Fixed native input path; must match main.zig' \
 		'  IN_BYTES_FILE         Big-endian hex transport file for zkc' \
 		'' \
@@ -118,10 +114,13 @@ generate-testdata:
 verify-testdata: generate-testdata
 	git diff --exit-code -- testdata/generated/vectors.zig
 
-zkc-build: build-r5
-	@echo "Generating $(R5_JSON)"
+prepare-zkc-input:
+	@# The ELF-to-JSON helper treats 0x input as a big-endian integer and reverses it
+	@# before writing guest RAM, so encode binary fixtures in reverse transport order.
 	mkdir -p $(dir $(IN_BYTES_FILE))
-	printf '%s\n' "$(IN_BYTES)" > $(IN_BYTES_FILE)
+	{ printf "0x"; xxd -p -c1 $(INPUT_FILE) | awk 'BEGIN{i=0} {lines[i++]=$$0} END{for(j=i-1;j>=0;j--) print lines[j]}' | tr -d '\n'; } > $(IN_BYTES_FILE)
+
+zkc-build: build-r5 prepare-zkc-input
 	go run $(ELF_TO_JSON) $(R5_BIN) "@$(IN_BYTES_FILE)" $(IN_BYTES_OFFSET) > $(R5_JSON)
 
 zkc-verify: zkc-build
