@@ -1,8 +1,6 @@
 const field = @import("../field/koalabear.zig");
 const ext = @import("../field/koalabear_ext.zig");
 
-pub const Error = error{LengthMismatch};
-
 pub fn evaluateBaseAtBase(coefficients: []const field.Element, point: field.Element) field.Element {
     var acc = field.Element.zero();
     var i = coefficients.len;
