@@ -1,6 +1,5 @@
 pub const proof = @import("proof.zig");
 pub const runtime = @import("runtime.zig");
-pub const verifier = @import("verifier.zig");
 
 pub const field = struct {
     pub const koalabear = @import("field/koalabear.zig");
@@ -28,13 +27,4 @@ pub const precompiles = struct {
     pub const riscv = @import("precompiles/riscv.zig");
 };
 
-pub const generated = struct {
-    pub const stub = @import("generated/stub.zig");
-};
-
 pub const Proof = proof.Proof;
-pub const VerifyError = verifier.VerifyError;
-
-pub fn verify(p: Proof) VerifyError!void {
-    return verifier.verify(p);
-}
