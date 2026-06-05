@@ -88,8 +88,8 @@ pub fn verify(comptime system: System, input: CheckInput) Error!void {
     if (system.round_coin_counts.len < 3) return error.InvalidRoundCount;
     if (system.round_coin_offsets.len != system.round_coin_counts.len) return error.InvalidRoundCount;
     if (input.rounds.len + 1 != system.round_coin_counts.len) return error.InvalidRoundCount;
+    if (system.round_coin_counts[0] != 0) return error.InvalidCoinCount;
     if (system.max_round_coins < system.modules.len) return error.InvalidCoinCount;
-
     var rt = runtime.Runtime.initWithRoundCount(system.round_coin_counts.len);
     var all_coins: [system.total_round_coins]runtime.Coin = undefined;
     var round_coins: [system.max_round_coins]runtime.Coin = undefined;
