@@ -90,3 +90,75 @@ func TestLagrangeSelector_EvaluateOutOfDomain_PanicsOnOwnRow(t *testing.T) {
 		ls.EvaluateOutOfDomain(rt, field.ElemFromBase(omegaPos))
 	})
 }
+
+// TestLagrangeSelector_InExpression checks that a LagrangeSelector composes as
+// an ordinary leaf inside an arithmetic expression and is evaluated correctly
+// by the expression compiler on the runtime (in-domain) path. The product
+// col · L_pos must equal col[pos] at row pos and 0 at every other row.
+func TestLagrangeSelector_InExpression(t *testing.T) {
+	const size = 8
+	const pos = 5
+
+	sys := wiop.NewSystemf("ls-expr")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), size, wiop.PaddingDirectionNone)
+	col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
+	ls := wiop.NewLagrangeSelector(mod, pos)
+
+	expr := wiop.Mul(col.View(), ls)
+
+	rt := wiop.NewRuntime(sys)
+	elems := make([]field.Element, size)
+	for i := range elems {
+		elems[i].SetUint64(uint64(i + 1)) // col[i] = i+1, so col[pos] = pos+1
+	}
+	rt.AssignColumn(col, &wiop.ConcreteVector{Plain: field.VecFromBase(elems)})
+
+	out := expr.EvaluateVector(rt).Plain
+	require.Equal(t, size, out.Len())
+	for i := 0; i < size; i++ {
+		got := out.AsBase()[i]
+		var want field.Element
+		if i == pos {
+			want.SetUint64(uint64(pos + 1))
+		}
+		require.Truef(t, got.Equal(&want), "row %d: got %v want %v", i, got, want)
+	}
+}
+
+// TestLagrangeSelector_InVanishing checks that a LagrangeSelector works inside a
+// Vanishing constraint, mirroring the shape produced by the localvanishing lift
+// (predicate · L_pos). The constraint holds across the whole domain exactly when
+// the pinned predicate holds at row pos.
+func TestLagrangeSelector_InVanishing(t *testing.T) {
+	const size = 8
+	const pos = 3
+
+	build := func(rowPosVal uint64) (*wiop.Vanishing, wiop.Runtime) {
+		sys := wiop.NewSystemf("ls-vanish")
+		r0 := sys.NewRound()
+		mod := sys.NewSizedModule(sys.Context.Childf("mod"), size, wiop.PaddingDirectionNone)
+		col := mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
+		ls := wiop.NewLagrangeSelector(mod, pos)
+
+		// Lifted local predicate "col == 0 at row pos": col · L_pos must vanish.
+		v := mod.NewVanishingManual(sys.Context.Childf("v"), wiop.Mul(col.View(), ls))
+
+		rt := wiop.NewRuntime(sys)
+		elems := make([]field.Element, size)
+		for i := range elems {
+			elems[i].SetUint64(7) // non-zero everywhere by default
+		}
+		elems[pos].SetUint64(rowPosVal)
+		rt.AssignColumn(col, &wiop.ConcreteVector{Plain: field.VecFromBase(elems)})
+		return v, rt
+	}
+
+	// Honest: col[pos] = 0 → the product vanishes on every row.
+	v, rt := build(0)
+	require.NoError(t, v.Check(rt))
+
+	// Invalid: col[pos] = 5 → non-zero at row pos.
+	v, rt = build(5)
+	require.Error(t, v.Check(rt))
+}

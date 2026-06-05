@@ -26,8 +26,23 @@ type LagrangeSelector struct {
 // (and thereby [Expression]) interface.
 var _ VectorPromise = (*LagrangeSelector)(nil)
 
-// NewLagrangeSelector returns a new LagrangeSelector.
+// NewLagrangeSelector returns a new LagrangeSelector that is 1 at the given
+// row position and 0 elsewhere.
+//
+// Panics if position is negative, or — when the module is statically sized — if
+// position is outside [0, module.Size()). For dynamic modules the upper bound
+// cannot be checked at construction time and is enforced lazily by
+// [LagrangeSelector.EvaluateVector] against the runtime size.
 func NewLagrangeSelector(module *Module, position int) *LagrangeSelector {
+	if position < 0 {
+		panic(fmt.Sprintf("wiop: NewLagrangeSelector: position must be non-negative, got %d", position))
+	}
+	if module.IsSized() && position >= module.Size() {
+		panic(fmt.Sprintf(
+			"wiop: NewLagrangeSelector: position %d out of range [0, %d) for module %q",
+			position, module.Size(), module.Context.Path(),
+		))
+	}
 	return &LagrangeSelector{module: module, Position: position}
 }
 
@@ -49,8 +64,6 @@ func (ls *LagrangeSelector) Degree() int {
 func (ls *LagrangeSelector) DegreeFactor() int { return 1 }
 
 // Size implements [VectorPromise].
-//
-// TODO: @alex: should we return 0 as for the columns?
 func (ls *LagrangeSelector) Size() int {
 	if ls.module.IsDynamic() {
 		panic(fmt.Sprintf("wiop: Size() called on dynamic-sized module: %s", ls.module.Context.Path()))
