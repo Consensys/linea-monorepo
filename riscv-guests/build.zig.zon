@@ -9,7 +9,7 @@
         // zesu `more-import-fixes` (PR #44): exposed module graph + accel_impl include-path fix
         // + -Dcrypto-prefix.
         .zesu = .{
-            .url = "https://github.com/Filter94/zesu/archive/14afa86779d17ecab89f273ec05d8c25b658a8f7.tar.gz",
+            .url = "https://github.com/Consensys/zesu/archive/61f9a5e250977a40a39a80d9bfe9748157a9141d.tar.gz",
             .hash = "zesu-0.1.0-UtqpACqhQwBSoTBtoHT1VCPoGI0DJ7OKUs5b6ZTXzKBQ",
         },
         // execution-spec-tests zkevm stateless fixtures (tests-zkevm@v0.4.1) — the same SSZ
