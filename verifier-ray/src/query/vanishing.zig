@@ -149,8 +149,9 @@ fn verifyModule(
     // dispatch. Data loops, such as quotient-share recombination, remain plain
     // for loops.
     comptime {
-        if (static_n != 0 and !validModuleSize(static_n)) {
-            @compileError("static vanishing module size must be a non-zero power of two");
+        if (static_n != 0) {
+            if (!validModuleSize(static_n)) @compileError("static vanishing module size must be a non-zero power of two");
+            _ = field.rootOfUnityBy(static_n) catch @compileError("static vanishing module size exceeds supported KoalaBear root-of-unity order");
         }
     }
     if (static_n == 0 and !validModuleSize(dynamic_n)) return error.InvalidModuleSize;
