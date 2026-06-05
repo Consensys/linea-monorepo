@@ -236,10 +236,11 @@ The same 14-field tuple as the rollup proof (§2.2) and as the final rollup-aggr
 - Their complete 14-field public-input tuples `PI_B₁ … PI_Bₘ`
 - For each `i`, the ordered L2L1 root array whose committed hash is `PI_Bᵢ.L2L1BridgeTransactionTree`
 - For each `i`, the ordered filtered-address list whose committed hash is `PI_Bᵢ.filteredAddressesHash`
+- The environment-dependent `isAllowedCircuitID` bitmask gating which inner circuit/program identities step 1 may accept (bit *i*, LSb→MSb, allows circuit ID *i*). It mirrors the prover's `Aggregation.is_allowed_circuit_id` config and is a proving-policy input only — not one of the 14 public-input fields and not part of `dynamicChainConfigHash`.
 
 **Statement (RISC-V Guest)**
 
-1. **Verify** all `M` inner proofs cryptographically against their claimed public inputs using recursive STARK verification.
+1. **Verify** all `M` inner proofs cryptographically against their claimed public inputs using recursive STARK verification, accepting an inner proof only if its circuit/program identity is permitted by the `isAllowedCircuitID` bitmask.
 
 2. **Assert continuity** in software, for each consecutive pair `(Bᵢ, Bᵢ₊₁)`:
    ```
