@@ -136,7 +136,7 @@ RISC-V's defined behaviour for division by zero and signed overflow. These
 semantics are realized through shared helper functions (sign bit, sign
 extension, absolute value, negation, signed comparison) that the family
 processors call — and which, per §2.2, are realized as their own tables that
-handlers reach over the message bus.
+handlers reach via lookups.
 
 This specification deliberately describes opcode handling at the level of *which
 families exist and how they are dispatched and constrained*, and relies on the
