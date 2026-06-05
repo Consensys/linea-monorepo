@@ -6,6 +6,8 @@ const field = verifier_ray.field.koalabear;
 const ext = verifier_ray.field.koalabear_ext;
 const fiat_shamir = verifier_ray.crypto.fiat_shamir;
 const fri = verifier_ray.fri;
+const layout_types = verifier_ray.layout;
+const dq_layout_types = verifier_ray.dq_layout;
 
 test "named transcript chains challenge digests" {
     var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
@@ -372,6 +374,143 @@ test "point samplings verify every query tree proof" {
     const samplings = [_][]const fri.MerkleProof{row[0..]};
 
     try fri.bridge.checkPointSamplings(roots[0..], samplings[0..]);
+}
+
+test "loom DEEP bridge vector verifies and detects tampering" {
+    for (loom_vectors.loom_bridge_cases) |case| {
+        try std.testing.expect(case.sizes.len <= 4);
+        try std.testing.expect(case.queries.len != 0);
+        try std.testing.expect(case.queries.len <= 4);
+
+        var eval_points: [4][4]ext.Ext = undefined;
+        var eval_point_rows: [4][]const ext.Ext = undefined;
+        for (case.eval_points, 0..) |case_points, level_index| {
+            try std.testing.expect(case_points.len <= 4);
+            fillExtValues(eval_points[level_index][0..case_points.len], case_points);
+            eval_point_rows[level_index] = eval_points[level_index][0..case_points.len];
+        }
+
+        const dq_layout = dq_layout_types.DQLayout{
+            .sizes = case.sizes,
+            .eval_points = eval_point_rows[0..case.eval_points.len],
+            .column_names = case.column_names,
+            .column_keys = case.column_keys,
+            .air_chunks = case.air_chunks,
+        };
+
+        var values_at_zeta = std.StringHashMap(ext.Ext).init(std.testing.allocator);
+        defer values_at_zeta.deinit();
+        for (case.values_at_zeta) |value| {
+            try values_at_zeta.put(value.name, uintsToExt(value.value));
+        }
+
+        var col_slots = std.StringHashMap(layout_types.Slot).init(std.testing.allocator);
+        defer col_slots.deinit();
+        for (case.col_slots) |slot| {
+            try col_slots.put(slot.name, .{
+                .tree_idx = slot.tree_idx,
+                .poly_idx = slot.poly_idx,
+                .rail = bridgeRail(slot.rail),
+            });
+        }
+
+        var air_chunk_slots = std.StringHashMap(layout_types.Slot).init(std.testing.allocator);
+        defer air_chunk_slots.deinit();
+        for (case.air_chunk_slots) |slot| {
+            try air_chunk_slots.put(slot.name, .{
+                .tree_idx = slot.tree_idx,
+                .poly_idx = slot.poly_idx,
+                .rail = bridgeRail(slot.rail),
+            });
+        }
+
+        const tree_count: u32 = @intCast(case.queries[0].point_samplings.len);
+        try std.testing.expect(case.tree_sizes.len == @as(usize, @intCast(tree_count)));
+        const layout = layout_types.Layout{
+            .num_trees = tree_count,
+            .air_begin = 0,
+            .air_end = 0,
+            .setup_begin = 0,
+            .setup_end = 0,
+            .tree_size = case.tree_sizes,
+            .col_slot = col_slots,
+            .air_chunk_slot = air_chunk_slots,
+        };
+
+        var raw_base: [4][8][4]fri.PairBase = undefined;
+        var raw_ext: [4][8][4]fri.PairExt = undefined;
+        var point_sampling_storage: [4][8]fri.MerkleProof = undefined;
+        var point_sampling_rows: [4][]const fri.MerkleProof = undefined;
+        var query_layers: [4][1]fri.QueryLayer = undefined;
+        var queries: [4]fri.Query = undefined;
+        var level_layers: [4][4]fri.QueryLayer = undefined;
+        var level_query_rows: [4][]const fri.QueryLayer = undefined;
+
+        const extra_levels = case.sizes.len - 1;
+        for (case.queries, 0..) |case_query, query_index| {
+            try std.testing.expect(case_query.point_samplings.len <= 8);
+            try std.testing.expect(case_query.point_samplings.len == @as(usize, @intCast(tree_count)));
+            try std.testing.expect(case_query.level_layers.len == extra_levels);
+
+            for (case_query.point_samplings, 0..) |sampling, tree_index| {
+                try std.testing.expect(sampling.base_pairs.len <= 4);
+                try std.testing.expect(sampling.ext_pairs.len <= 4);
+                fillBasePairs(raw_base[query_index][tree_index][0..sampling.base_pairs.len], sampling.base_pairs);
+                fillExtPairs(raw_ext[query_index][tree_index][0..sampling.ext_pairs.len], sampling.ext_pairs);
+                point_sampling_storage[query_index][tree_index] = .{
+                    .raw_leaf_base = raw_base[query_index][tree_index][0..sampling.base_pairs.len],
+                    .raw_leaf_ext = raw_ext[query_index][tree_index][0..sampling.ext_pairs.len],
+                    .path = .{ .leaf_idx = sampling.leaf_idx, .siblings = &.{} },
+                };
+            }
+            point_sampling_rows[query_index] = point_sampling_storage[query_index][0..case_query.point_samplings.len];
+
+            query_layers[query_index][0] = bridgeLayer(case_query.fri_layer);
+            queries[query_index] = .{ .layers = query_layers[query_index][0..1] };
+        }
+
+        for (0..extra_levels) |level_index| {
+            for (case.queries, 0..) |case_query, query_index| {
+                level_layers[level_index][query_index] = bridgeLayer(case_query.level_layers[level_index]);
+            }
+            level_query_rows[level_index] = level_layers[level_index][0..case.queries.len];
+        }
+
+        var level_roots: [4]fri.Digest = undefined;
+        for (level_roots[0..case.sizes.len]) |*root| root.* = zeroDigest();
+        const proof = fri.types.Proof{
+            .deep_quotient_commitment = level_roots[0..case.sizes.len],
+            .level_ds = case.sizes,
+            .fri = .{
+                .queries = queries[0..case.queries.len],
+                .level_queries = level_query_rows[0..extra_levels],
+            },
+            .point_samplings = point_sampling_rows[0..case.queries.len],
+        };
+
+        const zeta = uintsToExt(case.zeta);
+        const alpha = uintsToExt(case.alpha);
+        try fri.bridge.checkFRIBridge(layout, dq_layout, proof, &values_at_zeta, zeta, alpha);
+
+        const original_leaf_idx = point_sampling_storage[0][0].path.leaf_idx;
+        point_sampling_storage[0][0].path.leaf_idx = original_leaf_idx + 1;
+        try expectBridgeError(error.BadDimensions, layout, dq_layout, proof, &values_at_zeta, zeta, alpha);
+        point_sampling_storage[0][0].path.leaf_idx = original_leaf_idx;
+
+        const original_raw = raw_base[0][0][0][0];
+        raw_base[0][0][0][0] = original_raw.add(elem(1));
+        try expectBridgeError(error.BridgeMismatch, layout, dq_layout, proof, &values_at_zeta, zeta, alpha);
+        raw_base[0][0][0][0] = original_raw;
+
+        const original_value = values_at_zeta.get("base_col").?;
+        try values_at_zeta.put("base_col", original_value.add(ext.Ext.one()));
+        try expectBridgeError(error.BridgeMismatch, layout, dq_layout, proof, &values_at_zeta, zeta, alpha);
+        try values_at_zeta.put("base_col", original_value);
+
+        _ = values_at_zeta.remove("base_col");
+        try expectBridgeError(error.MissingValueAtZeta, layout, dq_layout, proof, &values_at_zeta, zeta, alpha);
+        try values_at_zeta.put("base_col", original_value);
+    }
 }
 
 test "fri verifier accepts empty-query shape and rejects missing grinding" {
@@ -912,6 +1051,37 @@ fn expectDigest(actual: fri.Digest, expected: [8]u32) !void {
 
 fn expectExt(actual: ext.Ext, expected: ext.Ext) !void {
     try std.testing.expect(actual.eql(expected));
+}
+
+fn bridgeRail(rail: loom_vectors.LoomBridgeRail) fri.Rail {
+    return switch (rail) {
+        .base => .base,
+        .ext => .ext,
+    };
+}
+
+fn bridgeLayer(layer: loom_vectors.LoomBridgeLayer) fri.QueryLayer {
+    return .{
+        .rail = .ext,
+        .leaf_p_ext = uintsToExt(layer.leaf_p_ext),
+        .leaf_q_ext = uintsToExt(layer.leaf_q_ext),
+        .path = .{ .leaf_idx = layer.leaf_idx, .siblings = &.{} },
+    };
+}
+
+fn expectBridgeError(
+    expected_error: anyerror,
+    layout: layout_types.Layout,
+    dq_layout: dq_layout_types.DQLayout,
+    proof: fri.types.Proof,
+    values_at_zeta: *const std.StringHashMap(ext.Ext),
+    zeta: ext.Ext,
+    alpha: ext.Ext,
+) !void {
+    try std.testing.expectError(
+        expected_error,
+        fri.bridge.checkFRIBridge(layout, dq_layout, proof, values_at_zeta, zeta, alpha),
+    );
 }
 
 fn expectFriVerifyError(

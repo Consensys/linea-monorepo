@@ -38,6 +38,35 @@ pub const LoomFriExtProofCase = struct {
     queries: []const LoomFriExtQuery,
     level_queries: []const []const LoomFriExtLayer,
 };
+pub const LoomBridgeRail = enum { base, ext };
+pub const LoomBridgeSlot = struct { name: []const u8, tree_idx: u32, poly_idx: u32, rail: LoomBridgeRail };
+pub const LoomBridgeValue = struct { name: []const u8, value: [6]u32 };
+pub const LoomBridgeSampling = struct {
+    leaf_idx: u32,
+    base_pairs: []const [2]u32 = &.{},
+    ext_pairs: []const [2][6]u32 = &.{},
+};
+pub const LoomBridgeLayer = struct { leaf_idx: u32, leaf_p_ext: [6]u32, leaf_q_ext: [6]u32 };
+pub const LoomBridgeQuery = struct {
+    position: u32,
+    point_samplings: []const LoomBridgeSampling,
+    fri_layer: LoomBridgeLayer,
+    level_layers: []const LoomBridgeLayer,
+};
+pub const LoomBridgeCase = struct {
+    sizes: []const u32,
+    tree_sizes: []const u32,
+    zeta: [6]u32,
+    alpha: [6]u32,
+    eval_points: []const []const [6]u32,
+    column_names: []const []const []const []const u8,
+    column_keys: []const []const []const []const u8,
+    air_chunks: []const []const []const u8,
+    values_at_zeta: []const LoomBridgeValue,
+    col_slots: []const LoomBridgeSlot,
+    air_chunk_slots: []const LoomBridgeSlot,
+    queries: []const LoomBridgeQuery,
+};
 
 pub const loom_leaf_hash_cases = [_]LoomLeafHashCase{
     .{ .base_pairs = &.{ .{ 1, 2 }, .{ 3, 4 } }, .ext_pairs = &.{}, .expected = .{ 175048833, 176667958, 412629434, 70021978, 663448090, 765878282, 380110844, 1591199718 } },
@@ -60,6 +89,108 @@ pub const loom_named_transcript_cases = [_]LoomNamedTranscriptCase{
 
 pub const loom_pow_transcript_cases = [_]LoomPowTranscriptCase{
     .{ .name = "fri_fold_0", .bindings = &.{ 13, 21, 34 }, .nb_bits = 4, .salt = 2, .expected = .{ 1036995264, 1561072429, 614459829, 1073122740, 598664813, 1873880090, 1102096053, 1822996418 } },
+};
+
+pub const loom_bridge_cases = [_]LoomBridgeCase{
+    .{
+        .sizes = &.{ 4, 2 },
+        .tree_sizes = &.{ 4, 4, 2, 4, 2 },
+        .zeta = .{ 2, 3, 5, 7, 11, 13 },
+        .alpha = .{ 17, 19, 23, 29, 31, 37 },
+        .eval_points = &.{
+            &.{
+                .{ 2, 3, 5, 7, 11, 13 },
+                .{ 2097283075, 2080571396, 2047148038, 2013724680, 1946877964, 1913454606 },
+            },
+            &.{
+                .{ 2, 3, 5, 7, 11, 13 },
+            },
+        },
+        .column_names = &.{
+            &.{ &.{ "base_col", "ext_col" }, &.{"shifted"} },
+            &.{&.{"small_col"}},
+        },
+        .column_keys = &.{
+            &.{ &.{ "base_col", "ext_col" }, &.{"shifted@1"} },
+            &.{&.{"small_col"}},
+        },
+        .air_chunks = &.{
+            &.{"air0"},
+            &.{"air1"},
+        },
+        .values_at_zeta = &.{
+            .{ .name = "base_col", .value = .{ 41, 43, 47, 53, 59, 61 } },
+            .{ .name = "ext_col", .value = .{ 67, 71, 73, 79, 83, 89 } },
+            .{ .name = "shifted@1", .value = .{ 97, 101, 103, 107, 109, 113 } },
+            .{ .name = "air0", .value = .{ 127, 131, 137, 139, 149, 151 } },
+            .{ .name = "small_col", .value = .{ 157, 163, 167, 173, 179, 181 } },
+            .{ .name = "air1", .value = .{ 191, 193, 197, 199, 211, 223 } },
+        },
+        .col_slots = &.{
+            .{ .name = "base_col", .tree_idx = 0, .poly_idx = 0, .rail = .base },
+            .{ .name = "ext_col", .tree_idx = 0, .poly_idx = 0, .rail = .ext },
+            .{ .name = "shifted", .tree_idx = 1, .poly_idx = 0, .rail = .base },
+            .{ .name = "small_col", .tree_idx = 2, .poly_idx = 0, .rail = .base },
+        },
+        .air_chunk_slots = &.{
+            .{ .name = "air0", .tree_idx = 3, .poly_idx = 0, .rail = .ext },
+            .{ .name = "air1", .tree_idx = 4, .poly_idx = 0, .rail = .base },
+        },
+        .queries = &.{
+            .{
+                .position = 5,
+                .point_samplings = &.{
+                    .{
+                        .leaf_idx = 5,
+                        .base_pairs = &.{.{ 101, 202 }},
+                        .ext_pairs = &.{.{ .{ 11, 12, 13, 14, 15, 16 }, .{ 21, 22, 23, 24, 25, 26 } }},
+                    },
+                    .{ .leaf_idx = 5, .base_pairs = &.{.{ 303, 404 }} },
+                    .{ .leaf_idx = 1, .base_pairs = &.{.{ 505, 606 }} },
+                    .{ .leaf_idx = 5, .ext_pairs = &.{.{ .{ 31, 32, 33, 34, 35, 36 }, .{ 41, 42, 43, 44, 45, 46 } }} },
+                    .{ .leaf_idx = 1, .base_pairs = &.{.{ 707, 808 }} },
+                },
+                .fri_layer = .{
+                    .leaf_idx = 5,
+                    .leaf_p_ext = .{ 325972778, 89126247, 1091765009, 1755692889, 1446411246, 1532764431 },
+                    .leaf_q_ext = .{ 1138542604, 801229393, 1951056852, 1557597112, 976467535, 239151014 },
+                },
+                .level_layers = &.{
+                    .{
+                        .leaf_idx = 1,
+                        .leaf_p_ext = .{ 2051499819, 263238869, 1427227396, 1583866796, 908593113, 1094507607 },
+                        .leaf_q_ext = .{ 1716779178, 1070011699, 403459898, 194414717, 242072824, 1574832895 },
+                    },
+                },
+            },
+            .{
+                .position = 2,
+                .point_samplings = &.{
+                    .{
+                        .leaf_idx = 2,
+                        .base_pairs = &.{.{ 909, 1001 }},
+                        .ext_pairs = &.{.{ .{ 51, 52, 53, 54, 55, 56 }, .{ 61, 62, 63, 64, 65, 66 } }},
+                    },
+                    .{ .leaf_idx = 2, .base_pairs = &.{.{ 1102, 1203 }} },
+                    .{ .leaf_idx = 2, .base_pairs = &.{.{ 1304, 1405 }} },
+                    .{ .leaf_idx = 2, .ext_pairs = &.{.{ .{ 71, 72, 73, 74, 75, 76 }, .{ 81, 82, 83, 84, 85, 86 } }} },
+                    .{ .leaf_idx = 2, .base_pairs = &.{.{ 1506, 1607 }} },
+                },
+                .fri_layer = .{
+                    .leaf_idx = 2,
+                    .leaf_p_ext = .{ 924713015, 487900529, 633930907, 643417939, 163334203, 2103493026 },
+                    .leaf_q_ext = .{ 1622673338, 951716292, 615474912, 123882709, 696786084, 1048087535 },
+                },
+                .level_layers = &.{
+                    .{
+                        .leaf_idx = 2,
+                        .leaf_p_ext = .{ 670407641, 308097103, 764665664, 1380042554, 1474896185, 1112829785 },
+                        .leaf_q_ext = .{ 1953161431, 830377977, 1199145495, 470465009, 46326097, 645461657 },
+                    },
+                },
+            },
+        },
+    },
 };
 
 pub const loom_fri_base_proof_cases = [_]LoomFriBaseProofCase{

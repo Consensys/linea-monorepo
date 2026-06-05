@@ -69,4 +69,5 @@ pub const Proof = struct {
     deep_quotient_commitment: []const Digest = &.{},
     level_ds: []const u32 = &.{},
     fri: FriProof = .{},
+    point_samplings: []const []const MerkleProof = &.{},
 };
