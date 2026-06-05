@@ -13,7 +13,7 @@ import (
 	invalidity "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 )
 
-const MAX_L2_LOGS = 16
+const MAX_L2_LOGS = 10
 
 // BadPrecompileCircuit defines the circuit for the transaction with a bad precompile.
 type BadPrecompileCircuit struct {
