@@ -35,6 +35,7 @@ func main() {
 	writePoseidonCases(&out)
 	writeFiatShamirCases(&out)
 	writeRuntimeTraceCases(&out)
+	writeLayoutLoaderCases(&out)
 
 	data := out.Bytes()
 	zigfmt, err := runZigFmt(data)
@@ -556,6 +557,179 @@ func writeRuntimeTraceCell(out *bytes.Buffer, cell runtimeTraceCell) {
 		cell.assigned, cell.isExt, baseValue, ext6(extValue))
 }
 
+type loaderRail uint8
+
+const (
+	loaderRailBase loaderRail = 0
+	loaderRailExt  loaderRail = 1
+)
+
+type loaderSlot struct {
+	name    string
+	treeIdx uint32
+	polyIdx uint32
+	rail    loaderRail
+}
+
+type layoutLoaderFixture struct {
+	numTrees      uint32
+	setupBegin    uint32
+	setupEnd      uint32
+	traceBegin    []uint32
+	traceEnd      []uint32
+	airBegin      uint32
+	airEnd        uint32
+	treeSize      []uint32
+	colSlots      []loaderSlot
+	airChunkSlots []loaderSlot
+}
+
+type dqLevelFixture struct {
+	size        uint32
+	evalPoints  [][6]uint32
+	columnNames [][]string
+	columnKeys  [][]string
+	airChunks   []string
+}
+
+func writeLayoutLoaderCases(out *bytes.Buffer) {
+	layoutFixture := layoutLoaderFixture{
+		numTrees:   3,
+		setupBegin: 0,
+		setupEnd:   1,
+		traceBegin: []uint32{1, 3},
+		traceEnd:   []uint32{3, 5},
+		airBegin:   5,
+		airEnd:     6,
+		treeSize:   []uint32{4, 2, 8},
+		colSlots: []loaderSlot{
+			{name: "A", treeIdx: 0, polyIdx: 1, rail: loaderRailBase},
+			{name: "B.shift", treeIdx: 1, polyIdx: 0, rail: loaderRailExt},
+			{name: "C", treeIdx: 2, polyIdx: 4, rail: loaderRailBase},
+		},
+		airChunkSlots: []loaderSlot{
+			{name: "air.main.0", treeIdx: 2, polyIdx: 0, rail: loaderRailExt},
+		},
+	}
+	dqFixture := []dqLevelFixture{
+		{
+			size: 4,
+			evalPoints: [][6]uint32{
+				{2, 3, 5, 7, 11, 13},
+				{17, 19, 23, 29, 31, 37},
+			},
+			columnNames: [][]string{
+				{"A", "B.shift"},
+				{"C"},
+			},
+			columnKeys: [][]string{
+				{"A", "B@1"},
+				{"C@rot"},
+			},
+			airChunks: []string{"air.main.0"},
+		},
+		{
+			size: 2,
+			evalPoints: [][6]uint32{
+				{41, 43, 47, 53, 59, 61},
+			},
+			columnNames: [][]string{
+				{"small"},
+			},
+			columnKeys: [][]string{
+				{"small"},
+			},
+			airChunks: []string{},
+		},
+	}
+
+	fmt.Fprintf(out, "pub const layout_loader_vector = [_]u8%s;\n\n", bytesLiteral(encodeLayoutFixture(layoutFixture)))
+	fmt.Fprintf(out, "pub const dq_layout_loader_vector = [_]u8%s;\n\n", bytesLiteral(encodeDQLayoutFixture(dqFixture)))
+}
+
+func encodeLayoutFixture(f layoutLoaderFixture) []byte {
+	if len(f.traceBegin) != len(f.traceEnd) {
+		panic("layout fixture trace begin/end lengths must match")
+	}
+
+	var out []byte
+	out = append(out, "LAY1"...)
+	out = appendU32LE(out, f.numTrees)
+	out = appendU32LE(out, f.setupBegin)
+	out = appendU32LE(out, f.setupEnd)
+	out = appendU32LE(out, uint32(len(f.traceBegin)))
+	out = appendU32Values(out, f.traceBegin)
+	out = appendU32Values(out, f.traceEnd)
+	out = appendU32LE(out, f.airBegin)
+	out = appendU32LE(out, f.airEnd)
+	out = appendU32LE(out, uint32(len(f.treeSize)))
+	out = appendU32Values(out, f.treeSize)
+	out = appendSlotMap(out, f.colSlots)
+	out = appendSlotMap(out, f.airChunkSlots)
+	return out
+}
+
+func encodeDQLayoutFixture(levels []dqLevelFixture) []byte {
+	var out []byte
+	out = append(out, "DQL1"...)
+	out = appendU32LE(out, uint32(len(levels)))
+	for _, level := range levels {
+		if len(level.columnNames) != len(level.evalPoints) || len(level.columnKeys) != len(level.evalPoints) {
+			panic("DQ fixture term rows must match eval point count")
+		}
+
+		out = appendU32LE(out, level.size)
+		out = appendU32LE(out, uint32(len(level.evalPoints)))
+		for _, point := range level.evalPoints {
+			for _, limb := range point {
+				out = appendU32LE(out, limb)
+			}
+		}
+		for i := range level.evalPoints {
+			if len(level.columnNames[i]) != len(level.columnKeys[i]) {
+				panic("DQ fixture term names and keys must match")
+			}
+			out = appendU32LE(out, uint32(len(level.columnNames[i])))
+			for j, name := range level.columnNames[i] {
+				out = appendString(out, name)
+				out = appendString(out, level.columnKeys[i][j])
+			}
+		}
+		out = appendU32LE(out, uint32(len(level.airChunks)))
+		for _, chunk := range level.airChunks {
+			out = appendString(out, chunk)
+		}
+	}
+	return out
+}
+
+func appendU32Values(out []byte, values []uint32) []byte {
+	for _, value := range values {
+		out = appendU32LE(out, value)
+	}
+	return out
+}
+
+func appendSlotMap(out []byte, slots []loaderSlot) []byte {
+	out = appendU32LE(out, uint32(len(slots)))
+	for _, slot := range slots {
+		out = appendString(out, slot.name)
+		out = appendU32LE(out, slot.treeIdx)
+		out = appendU32LE(out, slot.polyIdx)
+		out = append(out, byte(slot.rail))
+	}
+	return out
+}
+
+func appendString(out []byte, value string) []byte {
+	out = appendU32LE(out, uint32(len(value)))
+	return append(out, value...)
+}
+
+func appendU32LE(out []byte, value uint32) []byte {
+	return append(out, byte(value), byte(value>>8), byte(value>>16), byte(value>>24))
+}
+
 func writePoseidonWidth24Constants() {
 	params := gnarkposeidon2.NewParameters(24, 6, 21)
 	var out bytes.Buffer
@@ -670,6 +844,14 @@ func bytes24(data [24]byte) string {
 		parts[i] = fmt.Sprintf("0x%02x", b)
 	}
 	return ".{ " + strings.Join(parts, ", ") + " }"
+}
+
+func bytesLiteral(data []byte) string {
+	parts := make([]string, len(data))
+	for i, b := range data {
+		parts[i] = fmt.Sprintf("%d", b)
+	}
+	return "{ " + strings.Join(parts, ", ") + " }"
 }
 
 func runZigFmt(data []byte) ([]byte, error) {

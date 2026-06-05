@@ -3,6 +3,8 @@ const std = @import("std");
 const field = @import("field/koalabear.zig");
 const ext = @import("field/koalabear_ext.zig");
 
+const ext_wire_bytes = 6 * @sizeOf(u32);
+
 pub const DecodeError = std.mem.Allocator.Error || error{
     UnexpectedEnd,
     TrailingBytes,
@@ -49,6 +51,8 @@ pub fn decode(allocator: std.mem.Allocator, encoded: []const u8) DecodeError!Own
     try reader.expectMagic("DQL1");
 
     const level_count = try reader.readCount();
+    try reader.ensureItems(level_count, 12);
+
     var owned = OwnedDQLayout{
         .allocator = allocator,
         .value = .{
@@ -83,10 +87,12 @@ pub fn decode(allocator: std.mem.Allocator, encoded: []const u8) DecodeError!Own
         sizes[level_index] = try reader.readU32();
 
         const eval_count = try reader.readCount();
+        try reader.ensureItems(eval_count, ext_wire_bytes);
         const eval_points = try allocator.alloc(ext.Ext, eval_count);
         eval_point_rows[level_index] = eval_points;
         for (eval_points) |*point| point.* = try reader.readExt();
 
+        try reader.ensureItems(eval_count, 4);
         const level_names = try allocator.alloc([]const []const u8, eval_count);
         column_name_rows[level_index] = level_names;
         const level_keys = try allocator.alloc([]const []const u8, eval_count);
@@ -98,6 +104,7 @@ pub fn decode(allocator: std.mem.Allocator, encoded: []const u8) DecodeError!Own
 
         for (0..eval_count) |eval_index| {
             const term_count = try reader.readCount();
+            try reader.ensureItems(term_count, 8);
             const names = try allocator.alloc([]const u8, term_count);
             level_names[eval_index] = names;
             const keys = try allocator.alloc([]const u8, term_count);
@@ -109,6 +116,7 @@ pub fn decode(allocator: std.mem.Allocator, encoded: []const u8) DecodeError!Own
         }
 
         const air_count = try reader.readCount();
+        try reader.ensureItems(air_count, 4);
         const chunks = try allocator.alloc([]const u8, air_count);
         air_chunk_rows[level_index] = chunks;
         for (0..air_count) |chunk_index| {
@@ -144,6 +152,10 @@ const Reader = struct {
 
     fn remaining(self: Reader) usize {
         return self.bytes.len - self.cursor;
+    }
+
+    fn ensureItems(self: Reader, count: usize, min_bytes_per_item: usize) DecodeError!void {
+        if (count > self.remaining() / min_bytes_per_item) return DecodeError.UnexpectedEnd;
     }
 
     fn expectMagic(self: *Reader, expected: *const [4]u8) DecodeError!void {

@@ -5,9 +5,10 @@ const field = verifier_ray.field.koalabear;
 const ext = verifier_ray.field.koalabear_ext;
 const layout_mod = verifier_ray.layout;
 const dq_layout_mod = verifier_ray.dq_layout;
+const vectors = @import("test_vectors");
 
 test "layout loader decodes vectored bytes" {
-    var loaded = try layout_mod.decode(std.testing.allocator, layout_vector[0..]);
+    var loaded = try layout_mod.decode(std.testing.allocator, vectors.layout_loader_vector[0..]);
     defer loaded.deinit();
 
     const layout = loaded.value;
@@ -28,22 +29,22 @@ test "layout loader decodes vectored bytes" {
 }
 
 test "layout loader rejects malformed bytes" {
-    try std.testing.expectError(error.UnexpectedEnd, layout_mod.decode(std.testing.allocator, layout_vector[0 .. layout_vector.len - 1]));
+    try std.testing.expectError(error.UnexpectedEnd, layout_mod.decode(std.testing.allocator, vectors.layout_loader_vector[0 .. vectors.layout_loader_vector.len - 1]));
 
-    var bad_magic = layout_vector;
+    var bad_magic = vectors.layout_loader_vector;
     bad_magic[0] = 0;
     try std.testing.expectError(error.InvalidMagic, layout_mod.decode(std.testing.allocator, bad_magic[0..]));
 
-    const trailing = layout_vector ++ [_]u8{0};
+    const trailing = vectors.layout_loader_vector ++ [_]u8{0};
     try std.testing.expectError(error.TrailingBytes, layout_mod.decode(std.testing.allocator, trailing[0..]));
 
-    var bad_rail = layout_vector;
+    var bad_rail = vectors.layout_loader_vector;
     bad_rail[77] = 9;
     try std.testing.expectError(error.InvalidRail, layout_mod.decode(std.testing.allocator, bad_rail[0..]));
 }
 
 test "DQ layout loader decodes vectored bytes" {
-    var loaded = try dq_layout_mod.decode(std.testing.allocator, dq_layout_vector[0..]);
+    var loaded = try dq_layout_mod.decode(std.testing.allocator, vectors.dq_layout_loader_vector[0..]);
     defer loaded.deinit();
 
     const layout = loaded.value;
@@ -63,18 +64,58 @@ test "DQ layout loader decodes vectored bytes" {
 }
 
 test "DQ layout loader rejects malformed bytes" {
-    try std.testing.expectError(error.UnexpectedEnd, dq_layout_mod.decode(std.testing.allocator, dq_layout_vector[0 .. dq_layout_vector.len - 1]));
+    try std.testing.expectError(error.UnexpectedEnd, dq_layout_mod.decode(std.testing.allocator, vectors.dq_layout_loader_vector[0 .. vectors.dq_layout_loader_vector.len - 1]));
 
-    var bad_magic = dq_layout_vector;
+    var bad_magic = vectors.dq_layout_loader_vector;
     bad_magic[0] = 0;
     try std.testing.expectError(error.InvalidMagic, dq_layout_mod.decode(std.testing.allocator, bad_magic[0..]));
 
-    const trailing = dq_layout_vector ++ [_]u8{0};
+    const trailing = vectors.dq_layout_loader_vector ++ [_]u8{0};
     try std.testing.expectError(error.TrailingBytes, dq_layout_mod.decode(std.testing.allocator, trailing[0..]));
 
-    var bad_field = dq_layout_vector;
+    var bad_field = vectors.dq_layout_loader_vector;
     writeU32Le(&bad_field, 16, field.modulus);
     try std.testing.expectError(error.NonCanonicalField, dq_layout_mod.decode(std.testing.allocator, bad_field[0..]));
+}
+
+test "DQ layout loader rejects impossible counts before allocation" {
+    const huge_level_count = [_]u8{
+        'D', 'Q', 'L', '1',
+        255, 255, 255, 255,
+    };
+    try std.testing.expectError(error.UnexpectedEnd, dq_layout_mod.decode(std.testing.allocator, huge_level_count[0..]));
+
+    const huge_eval_count = [_]u8{
+        'D', 'Q', 'L', '1',
+        1,   0,   0,   0,
+        4,   0,   0,   0,
+        255, 255, 255, 255,
+    };
+    try std.testing.expectError(error.UnexpectedEnd, dq_layout_mod.decode(std.testing.allocator, huge_eval_count[0..]));
+
+    const huge_term_count = [_]u8{
+        'D', 'Q', 'L', '1',
+        1,   0,   0,   0,
+        4,   0,   0,   0,
+        1,   0,   0,   0,
+        0,   0,   0,   0,
+        0,   0,   0,   0,
+        0,   0,   0,   0,
+        0,   0,   0,   0,
+        0,   0,   0,   0,
+        0,   0,   0,   0,
+        255, 255, 255, 255,
+    };
+    try std.testing.expectError(error.UnexpectedEnd, dq_layout_mod.decode(std.testing.allocator, huge_term_count[0..]));
+
+    const huge_air_count = [_]u8{
+        'D', 'Q', 'L', '1',
+        1,   0,   0,   0,
+        4,   0,   0,   0,
+        0,   0,   0,   0,
+        255, 255, 255, 255,
+    };
+    try std.testing.expectError(error.UnexpectedEnd, dq_layout_mod.decode(std.testing.allocator, huge_air_count[0..]));
 }
 
 fn expectSlot(actual: layout_mod.Slot, tree_idx: u32, poly_idx: u32, rail: verifier_ray.fri.Rail) !void {
@@ -117,30 +158,3 @@ fn writeU32Le(bytes: []u8, offset: usize, value: u32) void {
     bytes[offset + 2] = @truncate(value >> 16);
     bytes[offset + 3] = @truncate(value >> 24);
 }
-
-const layout_vector = [_]u8{
-    76, 65, 89, 49, 3,   0,   0,   0,   0,   0,   0,   0,  1,   0,  0,   0,
-    2,  0,  0,  0,  1,   0,   0,   0,   3,   0,   0,   0,  3,   0,  0,   0,
-    5,  0,  0,  0,  5,   0,   0,   0,   6,   0,   0,   0,  3,   0,  0,   0,
-    4,  0,  0,  0,  2,   0,   0,   0,   8,   0,   0,   0,  3,   0,  0,   0,
-    1,  0,  0,  0,  65,  0,   0,   0,   0,   1,   0,   0,  0,   0,  7,   0,
-    0,  0,  66, 46, 115, 104, 105, 102, 116, 1,   0,   0,  0,   0,  0,   0,
-    0,  1,  1,  0,  0,   0,   67,  2,   0,   0,   0,   4,  0,   0,  0,   0,
-    1,  0,  0,  0,  10,  0,   0,   0,   97,  105, 114, 46, 109, 97, 105, 110,
-    46, 48, 2,  0,  0,   0,   0,   0,   0,   0,   1,
-};
-
-const dq_layout_vector = [_]u8{
-    68,  81,  76, 49, 2,   0,   0,   0,   4,   0,   0,  0,   2,   0,   0,   0,
-    2,   0,   0,  0,  3,   0,   0,   0,   5,   0,   0,  0,   7,   0,   0,   0,
-    11,  0,   0,  0,  13,  0,   0,   0,   17,  0,   0,  0,   19,  0,   0,   0,
-    23,  0,   0,  0,  29,  0,   0,   0,   31,  0,   0,  0,   37,  0,   0,   0,
-    2,   0,   0,  0,  1,   0,   0,   0,   65,  1,   0,  0,   0,   65,  7,   0,
-    0,   0,   66, 46, 115, 104, 105, 102, 116, 3,   0,  0,   0,   66,  64,  49,
-    1,   0,   0,  0,  1,   0,   0,   0,   67,  5,   0,  0,   0,   67,  64,  114,
-    111, 116, 1,  0,  0,   0,   10,  0,   0,   0,   97, 105, 114, 46,  109, 97,
-    105, 110, 46, 48, 2,   0,   0,   0,   1,   0,   0,  0,   41,  0,   0,   0,
-    43,  0,   0,  0,  47,  0,   0,   0,   53,  0,   0,  0,   59,  0,   0,   0,
-    61,  0,   0,  0,  1,   0,   0,   0,   5,   0,   0,  0,   115, 109, 97,  108,
-    108, 5,   0,  0,  0,   115, 109, 97,  108, 108, 0,  0,   0,   0,
-};
