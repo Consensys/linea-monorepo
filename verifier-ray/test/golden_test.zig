@@ -367,6 +367,7 @@ const TraceRoundBacking = struct {
         for (round_case.columns, 0..) |column_case, i| {
             switch (column_case) {
                 .oracle => |commitments| {
+                    try std.testing.expect(commitments.len <= max_trace_commitments);
                     for (commitments) |commitment| {
                         self.oracle_commitments[oracle_commitment_count] = uintsToCommitment(commitment);
                         if (tamper_first_absorb and !tampered) {
