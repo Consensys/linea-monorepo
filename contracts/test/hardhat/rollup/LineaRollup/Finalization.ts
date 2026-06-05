@@ -1,8 +1,6 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { AddressFilter, LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
-import { ethers } from "hardhat";
+import { LineaRollup__factory } from "contracts/typechain-types";
+import { network as hardhatNetwork } from "hardhat";
 
 import {
   expectSuccessfulFinalize,
@@ -19,7 +17,6 @@ import aggregatedProof82To153 from "../../_testData/compressedData/multipleProof
 import blobAggregatedProof1To155 from "../../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import blobMultipleAggregatedProof1To81 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json";
 import blobMultipleAggregatedProof82To153 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-82-139.json";
-ensureKzgSetup();
 import {
   GENERAL_PAUSE_TYPE,
   HASH_ZERO,
@@ -48,7 +45,17 @@ import {
   proofDataToFinalizationParams,
   expectRevertWhenPaused,
 } from "../../common/helpers";
-import { AggregatedProofData } from "../../common/types";
+
+import type { AggregatedProofData } from "../../common/types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { AddressFilter, TestLineaRollup } from "contracts/typechain-types";
+
+import { loadFixture, time as networkTime } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+
+ensureKzgSetup();
 
 describe("Linea Rollup contract: Finalization", () => {
   let lineaRollup: TestLineaRollup;
@@ -591,7 +598,7 @@ describe("Linea Rollup contract: Finalization", () => {
         gasLimit: 5_000_000,
       };
 
-      await expect(operator.sendTransaction(transaction)).to.not.be.reverted;
+      await expect(operator.sendTransaction(transaction)).to.not.revert(ethers);
     });
 
     // TODO: decide on removing - not really applicable anymore
@@ -757,7 +764,7 @@ describe("Linea Rollup contract: Finalization", () => {
         });
 
       // there is no reason
-      await expect(finalizeCompressedCall).to.be.reverted;
+      await expect(finalizeCompressedCall).to.revert(ethers);
     });
 
     it("Should fail to finalize with not enough gas to verify", async () => {

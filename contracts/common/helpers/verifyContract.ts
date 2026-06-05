@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { delay } from "./general";
 import { clearSignerUiWorkflowStatus, setSignerUiWorkflowStatus } from "./signerUiWorkflowStatus";
@@ -7,12 +8,13 @@ import { stringifyVerifyTaskArgs } from "../../scripts/hardhat/verify-task-args"
 
 const VERIFY_TIMEOUT_MS = 90_000;
 const VERIFY_PROPAGATION_DELAY_MS = 30_000;
-const VERIFY_CHILD_SCRIPT = resolve(__dirname, "../../scripts/hardhat/run-verify-task.ts");
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const VERIFY_CHILD_SCRIPT = resolve(currentDir, "../../scripts/hardhat/run-verify-task.ts");
 
 async function getCurrentHardhatNetworkName(): Promise<string> {
-  const hreModule = await import("hardhat");
-  const networkName =
-    hreModule.network?.name ?? (hreModule.default as { network?: { name?: string } } | undefined)?.network?.name;
+  const { network } = await import("hardhat");
+  const connection = await network.getOrCreate();
+  const networkName = connection.networkName === "default" ? "hardhat" : connection.networkName;
 
   if (!networkName) {
     throw new Error("Hardhat network name is not available; ensure verification runs under Hardhat.");
@@ -32,7 +34,7 @@ async function runVerifyTaskWithTimeout(
       "pnpm",
       ["exec", "hardhat", "run", "--no-compile", "--network", networkName, VERIFY_CHILD_SCRIPT],
       {
-        cwd: resolve(__dirname, "../.."),
+        cwd: resolve(currentDir, "../.."),
         env: {
           ...process.env,
           HARDHAT_VERIFY_TASK: task,

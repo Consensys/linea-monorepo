@@ -1,7 +1,12 @@
-import { ethers, upgrades } from "hardhat";
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
+import hre, { network as hardhatNetwork } from "hardhat";
 
 import { warnIfUsingPrivateKeySigning } from "../hardhat/signer-ui-bridge";
 import { requireEnv } from "../hardhat/utils";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const upgrades = await createUpgrades(hre, hardhatConnection);
 
 /*
     *******************************************************************************************
@@ -42,7 +47,7 @@ async function main() {
   console.log(
     `Changing ProxyAdmin owner of ${contractType} at ${proxyAddress} to new owner: ${proxyAdminOwnerAddress}`,
   );
-  await upgrades.admin.transferProxyAdminOwnership(proxyAdminOwnerAddress);
+  await upgrades.admin.transferProxyAdminOwnership(proxyAddress, proxyAdminOwnerAddress);
   console.log("Done");
 }
 

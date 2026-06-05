@@ -1,9 +1,16 @@
-import { SecretKey } from "@chainsafe/blst";
-import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
+import { SecretKey } from "@chainsafe/blst/index.js";
 import { hexlify, parseUnits } from "ethers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
+import { randomBytes32 } from "../../../../common/helpers/encoding";
 import {
+  FAR_FUTURE_EXIT_EPOCH,
+  GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
+  SHARD_COMMITTEE_PERIOD,
+  SLOTS_PER_EPOCH,
+} from "../../common/constants";
+
+import type {
   BeaconBlockHeader,
   BeaconProofWitness,
   EIP4788Witness,
@@ -12,13 +19,10 @@ import {
   ValidatorContainer,
   ValidatorContainerWitness,
 } from "./types";
-import { randomBytes32 } from "../../../../common/helpers/encoding";
-import {
-  FAR_FUTURE_EXIT_EPOCH,
-  GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
-  SHARD_COMMITTEE_PERIOD,
-  SLOTS_PER_EPOCH,
-} from "../../common/constants";
+import type { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 export interface LocalMerkleTree {
   sszMerkleTree: SSZMerkleTree;

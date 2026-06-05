@@ -1,13 +1,12 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
 import { expect } from "chai";
 import { SupportedChainIds } from "contracts/common/supportedNetworks";
 import { Contract } from "ethers";
-import { ethers, upgrades } from "hardhat";
+import hre, { network as hardhatNetwork } from "hardhat";
 
 import { getPermitData } from "./helpers/permitHelper";
 import { deployTokenBridgeWithMockMessaging } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
 import { deployTokens } from "../../../../scripts/tokenBridge/test/deployTokens";
-import { BridgedToken, TestTokenBridge } from "../../../../typechain-types";
 import {
   ADDRESS_ZERO,
   COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
@@ -34,6 +33,14 @@ import {
   expectNotPaused,
   serializeTokenBridgeInitData,
 } from "../../common/helpers";
+
+import type { BridgedToken, TestTokenBridge } from "../../../../typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const upgrades = await createUpgrades(hre, hardhatConnection);
 
 const initialUserBalance = BigInt(10 ** 9);
 const mockName = "L1 DAI";
@@ -917,7 +924,7 @@ describe("TokenBridge", function () {
         l1TokenBridge
           .connect(user)
           .bridgeTokenWithPermit(await L1DAI.getAddress(), 10, user.address, EMPTY_PERMIT_DATA),
-      ).to.be.not.reverted;
+      ).to.not.revert(ethers);
     });
 
     it("Should revert if permitData is invalid", async function () {

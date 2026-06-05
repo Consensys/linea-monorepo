@@ -1,15 +1,5 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import {
-  MockSTETH,
-  MockLineaRollup,
-  TestYieldManager,
-  MockDashboard,
-  MockStakingVault,
-  TestLidoStVaultYieldProvider,
-} from "contracts/typechain-types";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { ONE_ETHER, OperationType, ZERO_VALUE, YieldProviderVendor, CONNECT_DEPOSIT } from "../../common/constants";
 import { expectRevertWithCustomError, expectEvent, expectNoEvent, getAccountsFixture } from "../../common/helpers";
@@ -19,6 +9,21 @@ import {
   getBalance,
   getWithdrawLSTCall,
 } from "../helpers";
+
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type {
+  MockSTETH,
+  MockLineaRollup,
+  TestYieldManager,
+  MockDashboard,
+  MockStakingVault,
+  TestLidoStVaultYieldProvider,
+} from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("LidoStVaultYieldProvider contract - yield operations", () => {
   let yieldProvider: TestLidoStVaultYieldProvider;

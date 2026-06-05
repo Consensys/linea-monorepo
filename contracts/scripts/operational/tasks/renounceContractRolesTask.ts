@@ -1,6 +1,7 @@
 import { task } from "hardhat/config";
 
 import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper";
+import { getAddressFromRegistry } from "../../../common/helpers/readAddress";
 import { getUiSigner, runWithSignerUiSession } from "../../../scripts/hardhat/signer-ui-bridge";
 
 /*
@@ -29,18 +30,17 @@ import { getUiSigner, runWithSignerUiSession } from "../../../scripts/hardhat/si
     *******************************************************************************************
 */
 
-task("renounceContractRoles", "Sets the rate limit on a Message Service contract")
-  .addOptionalParam("oldAdminAddress")
-  .addOptionalParam("newAdminAddress")
-  .addOptionalParam("proxyAddress")
-  .addOptionalParam("contractType")
-  .addOptionalParam("contractRoles")
-  .setAction(async (taskArgs, hre) => {
+export default task("renounceContractRoles", "Sets the rate limit on a Message Service contract")
+  .addOption({ name: "oldAdminAddress", defaultValue: "" })
+  .addOption({ name: "newAdminAddress", defaultValue: "" })
+  .addOption({ name: "proxyAddress", defaultValue: "" })
+  .addOption({ name: "contractType", defaultValue: "" })
+  .addOption({ name: "contractRoles", defaultValue: "" })
+  .setInlineAction(async (taskArgs, hre) => {
+    const connection = await hre.network.getOrCreate();
     return runWithSignerUiSession(hre, "task:renounceContractRoles", async () => {
-      const ethers = hre.ethers;
-
-      const { deployments } = hre;
-      const { get } = deployments;
+      const { ethers } = connection;
+      const networkName = connection.networkName === "default" ? "hardhat" : connection.networkName;
 
       const oldAdminAddress = getTaskCliOrEnvValue(taskArgs, "oldAdminAddress", "OLD_ADMIN_ADDRESS");
       const newAdminAddress = getTaskCliOrEnvValue(taskArgs, "newAdminAddress", "NEW_ADMIN_ADDRESS");
@@ -53,7 +53,7 @@ task("renounceContractRoles", "Sets the rate limit on a Message Service contract
       }
 
       if (proxyAddress === undefined) {
-        proxyAddress = (await get(contractType)).address;
+        proxyAddress = getAddressFromRegistry(networkName, contractType);
         if (proxyAddress === undefined) {
           throw "proxyAddress is undefined";
         }
@@ -93,4 +93,5 @@ task("renounceContractRoles", "Sets the rate limit on a Message Service contract
 
       console.log("Done");
     });
-  });
+  })
+  .build();

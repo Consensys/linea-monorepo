@@ -1,5 +1,4 @@
-import { network } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
+import { network as hardhatNetwork } from "hardhat";
 
 import {
   L1_L2_MESSAGE_SETTER_ROLE,
@@ -16,19 +15,23 @@ import {
   tryVerifyContract,
   LogContractDeployment,
 } from "../common/helpers";
+import { deployScript } from "../rocketh/deploy";
 import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 
-const func: DeployFunction = withSignerUiSession("04_deploy_L2MessageService.ts", async function () {
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const networkName = hardhatConnection.networkName === "default" ? "hardhat" : hardhatConnection.networkName;
+
+const func = withSignerUiSession("04_deploy_L2MessageService.ts", async function () {
   const contractName = "L2MessageService";
 
   const l2MessageServiceSecurityCouncil = requireAddressFromRegistryOrEnv(
-    network.name,
+    networkName,
     "L2_SECURITY_COUNCIL",
     "L2_SECURITY_COUNCIL",
   );
   const l2MessageServiceL1L2MessageSetter = requireAddressFromRegistryOrEnv(
-    network.name,
+    networkName,
     "L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER",
     "L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER",
   );
@@ -69,5 +72,4 @@ const func: DeployFunction = withSignerUiSession("04_deploy_L2MessageService.ts"
 
   await tryVerifyContract(contractAddress);
 });
-export default func;
-func.tags = ["L2MessageService"];
+export default deployScript(func, { tags: ["L2MessageService"] });

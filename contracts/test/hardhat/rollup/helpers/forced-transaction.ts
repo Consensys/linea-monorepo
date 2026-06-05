@@ -1,11 +1,13 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
 import { encodeData } from "contracts/common/helpers";
-import { LineaRollup, Mimc } from "contracts/typechain-types";
 import { AccessListish, ethers, Transaction } from "ethers";
 
 import { THREE_DAYS_IN_SECONDS } from "../../common/constants";
-import { Eip1559Transaction } from "../../common/types";
+
+import type { Eip1559Transaction } from "../../common/types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { LineaRollup, Mimc } from "contracts/typechain-types";
+
+import { time as networkTime } from "#hardhat-network-helpers";
 
 const _getExpectedL2BlockNumberForForcedTx = (params: {
   blockTimestamp: bigint;

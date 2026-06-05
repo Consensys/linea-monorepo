@@ -1,7 +1,6 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import hre, { network as hardhatNetwork } from "hardhat";
 
 import {
   L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
@@ -10,7 +9,6 @@ import {
 } from "../../../../common/constants";
 import { generateRoleAssignments } from "../../../../common/helpers";
 import { encodeSendMessage } from "../../../../common/helpers/encoding";
-import { TestL2MessageService, TestReceivingContract } from "../../../../typechain-types";
 import {
   ADDRESS_ZERO,
   BLOCK_COINBASE,
@@ -48,6 +46,15 @@ import {
   expectNotPaused,
   generateKeccak256Hash,
 } from "../../common/helpers";
+
+import type { TestL2MessageService, TestReceivingContract } from "../../../../typechain-types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const upgrades = await createUpgrades(hre, hardhatConnection);
 
 describe("L2MessageService", () => {
   let l2MessageService: TestL2MessageService;
@@ -1156,7 +1163,7 @@ describe("L2MessageService", () => {
               sendCalldata,
               1,
             ),
-        ).to.not.be.reverted;
+        ).to.not.revert(ethers);
 
         const newSender = await l2MessageService.originalSender();
         expect(newSender).to.be.equal(await l2MessageService.getAddress());
@@ -1231,7 +1238,7 @@ describe("L2MessageService", () => {
               EMPTY_CALLDATA,
               1,
             ),
-        ).to.be.reverted;
+        ).to.revert(ethers);
 
         expect(await l2MessageService.inboxL1L2MessageStatus(ethers.keccak256(expectedBytes))).to.be.equal(
           INBOX_STATUS_RECEIVED,
@@ -1270,7 +1277,7 @@ describe("L2MessageService", () => {
               "0x1234",
               1,
             ),
-        ).to.be.reverted;
+        ).to.revert(ethers);
 
         expect(await l2MessageService.inboxL1L2MessageStatus(ethers.keccak256(expectedBytes))).to.be.equal(
           INBOX_STATUS_RECEIVED,

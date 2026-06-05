@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
 import {
   getPopulatedAddresses,
@@ -14,6 +15,8 @@ import {
 } from "./addressRegistry";
 import { getHandoffAddress } from "./deploymentHandoff";
 import { formatEnvVarForLog, formatEnvVarValueForMessage } from "./envVarLogging";
+
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Resolves the deployment network for standalone scripts without Hardhat runtime.
@@ -222,7 +225,7 @@ export const getDeployedContractOnNetwork = async (
   networkName: string,
   contractName: string,
 ): Promise<string | undefined> => {
-  const filePath = path.join(__dirname, "..", "..", "deployments", `${networkName}`, `${contractName}.json`);
+  const filePath = path.join(currentDir, "..", "..", "deployments", `${networkName}`, `${contractName}.json`);
   if (!fs.existsSync(filePath)) {
     return undefined;
   }

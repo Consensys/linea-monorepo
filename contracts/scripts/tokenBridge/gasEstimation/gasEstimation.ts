@@ -1,9 +1,15 @@
-import { ethers, upgrades } from "hardhat";
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
+import hre, { network as hardhatNetwork } from "hardhat";
 
 import { getPermitData } from "../../../test/hardhat/bridging/token/helpers/permitHelper";
-import { BridgedToken, MockTokenBridge } from "../../../typechain-types";
 import { deployBridgedTokenBeacon } from "../test/deployBridgedTokenBeacon";
 import { deployTokens } from "../test/deployTokens";
+
+import type { BridgedToken, MockTokenBridge } from "../../../typechain-types";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const upgrades = await createUpgrades(hre, hardhatConnection);
 
 const initialUserBalance = BigInt(10 ** 9);
 const bridgeAmount = 70;

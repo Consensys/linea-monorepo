@@ -1,8 +1,6 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/dist/utils";
-import { AbstractSigner, ContractFactory, JsonRpcProvider, Provider } from "ethers";
-import { ethers, upgrades } from "hardhat";
-import { FactoryOptions, HardhatEthersHelpers } from "hardhat/types";
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
+import { AbstractSigner, ContractFactory, JsonRpcProvider, Provider, type Overrides } from "ethers";
+import hre, { network as hardhatNetwork } from "hardhat";
 
 import {
   clearUiWorkflowStatus,
@@ -13,7 +11,23 @@ import {
 } from "./signer-ui-bridge";
 import { normalizeAddressArgs } from "../../common/helpers/normalize-address-args";
 
-type RunnerOrProvider = AbstractSigner | Provider | JsonRpcProvider | HardhatEthersHelpers["provider"] | null;
+import type { FactoryOptions, HardhatEthersProvider } from "@nomicfoundation/hardhat-ethers/types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { UpgradeOptions } from "@openzeppelin/hardhat-upgrades";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const upgrades = await createUpgrades(hre, hardhatConnection);
+
+type DeployProxyOptions = UpgradeOptions & {
+  initializer?: string | false;
+  initialOwner?: string;
+  unsafeSkipProxyAdminCheck?: boolean;
+  txOverrides?: Overrides;
+  proxyFactory?: ContractFactory;
+};
+
+type RunnerOrProvider = AbstractSigner | Provider | JsonRpcProvider | HardhatEthersProvider | null;
 
 function jsonSafeForUi(value: unknown): unknown {
   if (value === undefined) {

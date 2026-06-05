@@ -5,10 +5,14 @@ export default [
   {
     ignores: [
       ".solcover.js",
+      "artifacts/**",
+      "build/**",
+      "cache/**",
       "docs/**",
+      "generated/**",
       "integrity-verifier/**",
-      "signer-ui/.next/**",
-      "signer-ui/node_modules/**",
+      "signer-ui/**",
+      "typechain-types/**",
     ],
   },
   ...node,

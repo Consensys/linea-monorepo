@@ -1,12 +1,17 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ZeroAddress } from "ethers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
-import { LineaSequencerUptimeFeed, TestLineaSequencerUptimeFeedAccess } from "../../../typechain-types";
 import { deployFromFactory } from "../common/deployment";
 import { expectEvent, expectEvents, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";
+
+import type { LineaSequencerUptimeFeed, TestLineaSequencerUptimeFeedAccess } from "../../../typechain-types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+
+import { loadFixture, time } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("LineaSequencerUptimeFeed", () => {
   let contract: LineaSequencerUptimeFeed;

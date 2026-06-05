@@ -1,4 +1,3 @@
-import { time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers } from "ethers";
 import * as fs from "fs";
 
@@ -19,6 +18,8 @@ import {
   ShnarfDataGenerator,
 } from "../types";
 import { generateRandomBytes, range } from "./general";
+
+import { time as networkTime } from "#hardhat-network-helpers";
 
 export const generateL2MessagingBlocksOffsets = (start: number, end: number) =>
   `0x${range(start, end)

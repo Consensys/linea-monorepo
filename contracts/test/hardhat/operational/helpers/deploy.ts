@@ -1,7 +1,5 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
-import { L2MessageService, RollupRevenueVault, TestERC20, TestDexSwapAdapter } from "../../../../typechain-types";
 import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
 import { ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE } from "../constants";
 import { getRollupRevenueVaultAccountsFixture } from "./before";
@@ -13,6 +11,13 @@ import {
 import { generateRoleAssignments } from "../../../../common/helpers";
 import { deployTokenBridge } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
 import { INITIAL_WITHDRAW_LIMIT, L1_L2_MESSAGE_SETTER_ROLE, ONE_DAY_IN_SECONDS } from "../../common/constants";
+
+import type { L2MessageService, RollupRevenueVault, TestERC20, TestDexSwapAdapter } from "../../../../typechain-types";
+
+import { loadFixture, time } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 export async function deployWETH9Fixture(): Promise<string> {
   const weth9Factory = await ethers.getContractFactory("TestWETH9");

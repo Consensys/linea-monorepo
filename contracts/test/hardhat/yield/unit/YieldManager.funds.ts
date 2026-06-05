@@ -1,10 +1,5 @@
-// Unit tests on functions handling ETH transfer
-
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { MockLineaRollup, TestYieldManager } from "contracts/typechain-types";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import {
   ONE_THOUSAND_ETHER,
@@ -30,10 +25,20 @@ import {
   setBalance,
   setWithdrawalReserveToMinimum,
   setWithdrawalReserveToTarget,
-  YieldManagerInitializationData,
 } from "../helpers";
 import { deployYieldManagerForUnitTest } from "../helpers/deploy";
 import { addMockYieldProvider } from "../helpers/mocks";
+
+import type { YieldManagerInitializationData } from "../helpers/types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { MockLineaRollup, TestYieldManager } from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+
+// Unit tests on functions handling ETH transfer
 
 describe("YieldManager contract - ETH transfer operations", () => {
   let yieldManager: TestYieldManager;
@@ -395,8 +400,9 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should successfully unstake from a YieldProvider", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await expect(yieldManager.connect(nativeYieldOperator).unstake(mockYieldProviderAddress, mockWithdrawalParams)).to
-        .not.be.reverted;
+      await expect(
+        yieldManager.connect(nativeYieldOperator).unstake(mockYieldProviderAddress, mockWithdrawalParams),
+      ).to.not.revert(ethers);
     });
   });
 

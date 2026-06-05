@@ -1,9 +1,16 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import hre, { network as hardhatNetwork } from "hardhat";
 
-import { BridgedToken, UpgradedBridgedToken } from "../../../../typechain-types";
-import { expectRevertWithCustomError, expectRevertWithReason } from "../../common/helpers";
+import { expectRevertWithCustomError } from "../../common/helpers";
+
+import type { BridgedToken, UpgradedBridgedToken } from "../../../../typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const upgrades = await createUpgrades(hre, hardhatConnection);
 
 const initialUserBalance = 10000;
 
@@ -128,9 +135,8 @@ describe("BeaconProxy", function () {
     const { unknown, l1TokenBeacon, newImplementation } = await loadFixture(createTokenBeaconProxy);
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    await expectRevertWithReason(
-      l1TokenBeacon.connect(unknown).upgradeTo(await newImplementation.getAddress()),
-      "Ownable: caller is not the owner",
-    );
+    await expect(l1TokenBeacon.connect(unknown).upgradeTo(await newImplementation.getAddress()))
+      .to.be.revertedWithCustomError(l1TokenBeacon, "OwnableUnauthorizedAccount")
+      .withArgs(unknown.address);
   });
 });

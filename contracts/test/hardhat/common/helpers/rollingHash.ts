@@ -1,9 +1,12 @@
 import { expect } from "chai";
 import { BaseContract } from "ethers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { expectEvent, expectRevertWithCustomError } from "./expectations";
 import { calculateRollingHash, generateKeccak256 } from "./hashing";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 /**
  * Initial rolling hash value (zero hash)

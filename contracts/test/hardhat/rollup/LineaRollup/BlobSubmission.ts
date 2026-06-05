@@ -1,9 +1,6 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { AddressFilter, TestLineaRollup } from "contracts/typechain-types";
 import { BaseContract } from "ethers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 import { GENERAL_PAUSE_TYPE, HASH_ZERO, OPERATOR_ROLE, STATE_DATA_SUBMISSION_PAUSE_TYPE } from "../../common/constants";
@@ -26,6 +23,14 @@ import {
   sendBlobTransaction,
   submitBlobsAndGetReceipt,
 } from "../helpers";
+
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { AddressFilter, TestLineaRollup } from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 ensureKzgSetup();
 
@@ -101,7 +106,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       compressedBlobs,
     });
 
-    const signedTx = await getWalletForIndex(2).signTransaction(transaction);
+    const signedTx = await (await getWalletForIndex(2)).signTransaction(transaction);
 
     await expectRevertWithCustomError(
       lineaRollup,
@@ -123,7 +128,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       compressedBlobs,
     });
 
-    const signedTx = await getWalletForIndex(2).signTransaction(transaction);
+    const signedTx = await (await getWalletForIndex(2)).signTransaction(transaction);
 
     await expectRevertWithCustomError(
       lineaRollup,
@@ -178,7 +183,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       compressedBlobs: [compressedBlobs[0]],
     });
 
-    const signedTx = await getWalletForIndex(2).signTransaction(transaction);
+    const signedTx = await (await getWalletForIndex(2)).signTransaction(transaction);
 
     await expectRevertWithCustomError(
       lineaRollup,
@@ -206,7 +211,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       compressedBlobs,
     });
 
-    const signedTx = await getWalletForIndex(2).signTransaction(transaction);
+    const signedTx = await (await getWalletForIndex(2)).signTransaction(transaction);
 
     // TODO: Make the failure shnarf dynamic and computed
     await expectRevertWithCustomError(lineaRollup, ethers.provider.broadcastTransaction(signedTx), "FinalShnarfWrong", [
@@ -234,7 +239,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       compressedBlobs,
     });
 
-    const signedTx = await getWalletForIndex(2).signTransaction(transaction);
+    const signedTx = await (await getWalletForIndex(2)).signTransaction(transaction);
 
     await expectRevertWithCustomError(
       lineaRollup,
@@ -260,7 +265,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       compressedBlobs,
     });
 
-    const signedTx = await getWalletForIndex(2).signTransaction(transaction);
+    const signedTx = await (await getWalletForIndex(2)).signTransaction(transaction);
 
     await expectRevertWithCustomError(lineaRollup, ethers.provider.broadcastTransaction(signedTx), "FinalShnarfWrong", [
       badFinalShnarf,
@@ -287,7 +292,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       compressedBlobs,
     });
 
-    const signedTx = await getWalletForIndex(2).signTransaction(transaction);
+    const signedTx = await (await getWalletForIndex(2)).signTransaction(transaction);
 
     await expectRevertWithCustomError(
       lineaRollup,
@@ -316,7 +321,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       compressedBlobs,
     });
 
-    const signedTx = await getWalletForIndex(2).signTransaction(transaction);
+    const signedTx = await (await getWalletForIndex(2)).signTransaction(transaction);
 
     await expectRevertWithCustomError(
       lineaRollup,
@@ -347,7 +352,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       compressedBlobs,
     });
 
-    const signedTx = await getWalletForIndex(2).signTransaction(transaction);
+    const signedTx = await (await getWalletForIndex(2)).signTransaction(transaction);
 
     await expectRevertWithCustomError(
       lineaRollup,

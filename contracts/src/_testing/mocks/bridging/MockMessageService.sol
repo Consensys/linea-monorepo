@@ -4,7 +4,7 @@ pragma solidity ^0.8.33;
 import { IMessageService } from "../../../messaging/interfaces/IMessageService.sol";
 
 contract MockMessageService is IMessageService {
-  uint256 public constant CALL_GAS_LIMIT = 1000000;
+  uint256 public constant CALL_GAS_LIMIT = 25000000;
   address internal messageSender = address(0);
 
   function sendMessage(address _to, uint256 _fee, bytes calldata _calldata) external payable {

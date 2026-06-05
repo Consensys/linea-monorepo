@@ -18,11 +18,11 @@ import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper"
     *******************************************************************************************
 */
 
-task("getCurrentFinalizedBlockNumber", "Gets the finalized block number")
-  .addOptionalParam("contractType")
-  .addOptionalParam("proxyAddress")
-  .setAction(async (taskArgs, hre) => {
-    const ethers = hre.ethers;
+export default task("getCurrentFinalizedBlockNumber", "Gets the finalized block number")
+  .addOption({ name: "contractType", defaultValue: "" })
+  .addOption({ name: "proxyAddress", defaultValue: "" })
+  .setInlineAction(async (taskArgs, hre) => {
+    const { ethers } = await hre.network.getOrCreate();
 
     const contractType = getTaskCliOrEnvValue(taskArgs, "contractType", "CONTRACT_TYPE");
     const proxyAddress = getTaskCliOrEnvValue(taskArgs, "proxyAddress", "PROXY_ADDRESS");
@@ -35,4 +35,5 @@ task("getCurrentFinalizedBlockNumber", "Gets the finalized block number")
     const blockNum = await LineaRollupContract.currentL2BlockNumber();
 
     console.log("Current finalized L2 block number", blockNum);
-  });
+  })
+  .build();

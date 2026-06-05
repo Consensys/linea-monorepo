@@ -28,17 +28,17 @@ import { runWithSignerUiSession } from "../../../../scripts/hardhat/signer-ui-br
 */
 
 // TASKS
-task(
+export default task(
   "addAndClaimMessageForLST",
   "Setup and execute TestLineaRollup.claimMessageWithProofAndWithdrawLST by adding L2->L1 message merkle tree root",
 )
-  .addOptionalParam("lineaRollupAddress")
-  .addOptionalParam("from")
-  .addOptionalParam("to")
-  .addOptionalParam("value")
-  .addOptionalParam("data")
-  .addOptionalParam("yieldProvider")
-  .setAction(async (taskArgs, hre) => {
+  .addOption({ name: "lineaRollupAddress", defaultValue: "" })
+  .addOption({ name: "from", defaultValue: "" })
+  .addOption({ name: "to", defaultValue: "" })
+  .addOption({ name: "value", defaultValue: "" })
+  .addOption({ name: "data", defaultValue: "" })
+  .addOption({ name: "yieldProvider", defaultValue: "" })
+  .setInlineAction(async (taskArgs, hre) => {
     return runWithSignerUiSession(hre, "task:addAndClaimMessageForLST", async () => {
       const { claimParams, lineaRollup } = await prepareAndAddMessageMerkleRoot(taskArgs, hre, true);
 
@@ -70,4 +70,5 @@ task(
         console.log("  Transaction confirmed in block:", receipt?.blockNumber);
       }
     });
-  });
+  })
+  .build();

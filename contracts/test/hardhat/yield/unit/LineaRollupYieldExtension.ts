@@ -1,9 +1,6 @@
-// TODO rename to LineaRollupYieldExtension
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { MockYieldManager__factory, TestLineaRollup } from "contracts/typechain-types";
-import { ethers } from "hardhat";
+import { MockYieldManager__factory } from "contracts/typechain-types";
+import { network as hardhatNetwork } from "hardhat";
 
 import { encodeSendMessage } from "../../../../common/helpers/encoding";
 import {
@@ -29,6 +26,16 @@ import {
   getAccountsFixture,
 } from "../../common/helpers";
 import { deployLineaRollupFixture } from "../../rollup/helpers/deploy";
+
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { TestLineaRollup } from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+
+// TODO rename to LineaRollupYieldExtension
 
 describe("Linea Rollup Yield Extension", () => {
   let lineaRollup: TestLineaRollup;
@@ -158,7 +165,7 @@ describe("Linea Rollup Yield Extension", () => {
       const amount = ethers.parseEther("1");
       const transferCall = lineaRollup.connect(securityCouncil).transferFundsForNativeYield(amount);
 
-      await expect(transferCall).to.be.reverted;
+      await expect(transferCall).to.revert(ethers);
     });
 
     it("Should successfully transfer ETH to the YieldManager", async () => {

@@ -1,7 +1,5 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 
-import { TestEip1559RlpEncoder } from "../../../typechain-types";
 import transactionWithCalldata from "../_testData/eip1559RlpEncoderTransactions/withCalldata.json";
 import transactionWithCalldataAndAccessList from "../_testData/eip1559RlpEncoderTransactions/withCalldataAndAccessList.json";
 import transactionWithLargeCalldata from "../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
@@ -9,6 +7,10 @@ import transactionWithoutCalldata from "../_testData/eip1559RlpEncoderTransactio
 import { deployFromFactory } from "../common/deployment";
 import { generateKeccak256BytesDirectly } from "../common/helpers";
 import { buildEip1559Transaction } from "../common/helpers/typedTransactionBuilding";
+
+import type { TestEip1559RlpEncoder } from "../../../typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
 
 describe("Eip1559RlpEncoder Library", () => {
   let contract: TestEip1559RlpEncoder;

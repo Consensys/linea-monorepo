@@ -5,14 +5,23 @@ import "forge-std/Test.sol";
 
 import { EfficientLeftRightKeccak } from "src/libraries/EfficientLeftRightKeccak.sol";
 import { LineaRollup } from "src/rollup/LineaRollup.sol";
-import { ILineaRollup } from "src/rollup/interfaces/ILineaRollup.sol";
+import { CalldataBlobAcceptor } from "src/rollup/dataAvailability/CalldataBlobAcceptor.sol";
+import { IAcceptCalldataBlobs } from "src/rollup/dataAvailability/interfaces/IAcceptCalldataBlobs.sol";
+import { ILineaRollupBase } from "src/rollup/interfaces/ILineaRollupBase.sol";
 
 import { IPauseManager } from "src/security/pausing/interfaces/IPauseManager.sol";
 import { IPermissionsManager } from "src/security/access/interfaces/IPermissionsManager.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract LineaRollupTestHelper is LineaRollup {
+contract LineaRollupTestHelper is LineaRollup, CalldataBlobAcceptor {
+  function renounceRole(
+    bytes32 _role,
+    address _account
+  ) public virtual override(LineaRollup, AccessControlUpgradeable) {
+    super.renounceRole(_role, _account);
+  }
+
   function calculateY(bytes calldata data, bytes32 dataEvaluationPoint) external pure returns (bytes32) {
     return _calculateY(data, dataEvaluationPoint);
   }
@@ -37,6 +46,7 @@ contract LineaRollupTest is Test {
   address nonAuthorizedAccount;
   address securityCouncil;
   address fallbackOperator;
+  address addressFilter;
 
   bytes32 VERIFIER_SETTER_ROLE;
   bytes32 VERIFIER_UNSETTER_ROLE;
@@ -50,10 +60,11 @@ contract LineaRollupTest is Test {
     securityCouncil = defaultAdmin;
     fallbackOperator = address(0x4);
     nonAuthorizedAccount = address(0x5);
+    addressFilter = address(0x6);
 
     implementation = new LineaRollupTestHelper();
 
-    ILineaRollup.InitializationData memory initData;
+    ILineaRollupBase.BaseInitializationData memory initData;
     initData.initialStateRootHash = bytes32(0x0);
     initData.initialL2BlockNumber = 0;
     initData.genesisTimestamp = block.timestamp;
@@ -69,10 +80,15 @@ contract LineaRollupTest is Test {
 
     initData.pauseTypeRoles = new IPauseManager.PauseTypeRole[](0);
     initData.unpauseTypeRoles = new IPauseManager.PauseTypeRole[](0);
-    initData.fallbackOperator = fallbackOperator;
     initData.defaultAdmin = defaultAdmin;
+    initData.addressFilter = addressFilter;
 
-    bytes memory initializer = abi.encodeWithSelector(LineaRollup.initialize.selector, initData);
+    bytes memory initializer = abi.encodeWithSelector(
+      LineaRollup.initialize.selector,
+      initData,
+      fallbackOperator,
+      address(0x7)
+    );
 
     ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initializer);
 
@@ -88,7 +104,7 @@ contract LineaRollupTest is Test {
   }
 
   function testSubmitDataAsCalldata() public {
-    ILineaRollup.CompressedCalldataSubmission memory submission;
+    IAcceptCalldataBlobs.CompressedCalldataSubmission memory submission;
     submission.finalStateRootHash = keccak256(abi.encodePacked("finalStateRootHash"));
     submission.snarkHash = keccak256(abi.encodePacked("snarkHash"));
 

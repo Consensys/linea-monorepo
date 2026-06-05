@@ -1,9 +1,6 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
-import { RecoverFunds, TestExternalCalls } from "../../../typechain-types";
 import {
   ADDRESS_ZERO,
   DEFAULT_ADMIN_ROLE,
@@ -14,6 +11,14 @@ import {
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import { buildAccessErrorMessage, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";
+
+import type { RecoverFunds, TestExternalCalls } from "../../../typechain-types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("RecoverFunds contract", () => {
   let recoverFunds: RecoverFunds;
@@ -63,11 +68,11 @@ describe("RecoverFunds contract", () => {
     };
 
     it("Should fail to send eth to the recoverFunds contract through the fallback", async () => {
-      await expect(sendEthToContract(EMPTY_CALLDATA)).to.be.reverted;
+      await expect(sendEthToContract(EMPTY_CALLDATA)).to.revert(ethers);
     });
 
     it("Should fail to send eth to the recoverFunds contract through the receive function", async () => {
-      await expect(sendEthToContract("0x1234")).to.be.reverted;
+      await expect(sendEthToContract("0x1234")).to.revert(ethers);
     });
   });
 

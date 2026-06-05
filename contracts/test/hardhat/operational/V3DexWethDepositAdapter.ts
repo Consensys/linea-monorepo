@@ -1,15 +1,20 @@
 import { toChecksumAddress } from "@ethereumjs/util";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
-import { setNextBlockTimestamp } from "@nomicfoundation/hardhat-network-helpers/dist/src/helpers/time";
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { deployWETH9Fixture } from "./helpers/deploy";
-import { V3DexSwapWethDepositAdapter, TestDexRouter, TestERC20 } from "../../../typechain-types";
 import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants";
 import { deployFromFactory } from "../common/deployment";
 import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers";
+
+import type { V3DexSwapWethDepositAdapter, TestDexRouter, TestERC20 } from "../../../typechain-types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+
+import { setNextBlockTimestamp } from "#hardhat-network-helpers";
+import { clearSnapshots, loadFixture, time } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("V3DexSwapWethDepositAdapter", () => {
   let dexSwap: V3DexSwapWethDepositAdapter;
@@ -42,7 +47,7 @@ describe("V3DexSwapWethDepositAdapter", () => {
   }
 
   before(async () => {
-    await network.provider.send("hardhat_reset");
+    await clearSnapshots();
     [, rollupRevenueVault] = await ethers.getSigners();
   });
 

@@ -1,4 +1,7 @@
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 /**
  * Common accounts fixture for all tests.

@@ -1,9 +1,6 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { DEFAULT_ADMIN_ROLE } from "contracts/common/constants";
-import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { randomBytes32 } from "../../../../common/helpers/encoding";
 import {
@@ -23,7 +20,7 @@ import {
   expectZeroHashRevert,
 } from "../../common/helpers";
 import { expectEvent } from "../../common/helpers/expectations";
-import { deployTestValidatorContainerProofVerifier, ValidatorContainerWitness } from "../helpers";
+import { deployTestValidatorContainerProofVerifier } from "../helpers";
 import {
   ACTIVE_0X01_VALIDATOR_PROOF,
   generateBeaconHeader,
@@ -33,6 +30,15 @@ import {
   randomInt,
   setBeaconBlockRoot,
 } from "../helpers/proof";
+
+import type { ValidatorContainerWitness } from "../helpers/types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("ValidatorContainerProofVerifier", () => {
   let verifier: TestValidatorContainerProofVerifier;

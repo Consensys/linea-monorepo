@@ -1,11 +1,10 @@
-import { DeployFunction } from "hardhat-deploy/types";
-
 import { EMPTY_INITIALIZE_SIGNATURE } from "../common/constants";
 import { tryVerifyContract, LogContractDeployment } from "../common/helpers";
+import { deployScript } from "../rocketh/deploy";
 import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 
-const func: DeployFunction = withSignerUiSession("14_deploy_UpgradeableWithdrawalQueuePredeploy.ts", async function () {
+const func = withSignerUiSession("14_deploy_UpgradeableWithdrawalQueuePredeploy.ts", async function () {
   const contractName = "UpgradeableWithdrawalQueuePredeploy";
 
   const contract = await deployUpgradableFromFactory("UpgradeableWithdrawalQueuePredeploy", [], {
@@ -22,5 +21,6 @@ const func: DeployFunction = withSignerUiSession("14_deploy_UpgradeableWithdrawa
   );
 });
 
-export default func;
-func.tags = ["UpgradeableWithdrawalQueuePredeploy"];
+export default deployScript(func, {
+  tags: ["UpgradeableWithdrawalQueuePredeploy"],
+});

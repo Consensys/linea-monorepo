@@ -1,10 +1,12 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 
-import { Poseidon2 } from "../../../typechain-types";
 import poseidon2TestData from "../_testData/poseidon2-test-data.json";
 import { deployFromFactory } from "../common/deployment";
 import { expectRevertWithCustomError } from "../common/helpers";
+
+import type { Poseidon2 } from "../../../typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
 
 describe("Poseidon2", () => {
   let poseidon2: Poseidon2;

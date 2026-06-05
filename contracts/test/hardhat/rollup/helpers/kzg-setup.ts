@@ -1,7 +1,9 @@
-import * as kzg from "c-kzg";
+import kzg from "c-kzg";
 import path from "path";
+import { fileURLToPath } from "url";
 
 let initialized = false;
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Idempotent KZG trusted setup initialization.
@@ -9,7 +11,7 @@ let initialized = false;
  */
 export function ensureKzgSetup(): void {
   if (initialized) return;
-  const trustedSetupPath = path.resolve(__dirname, "../../_testData/trusted_setup.txt");
+  const trustedSetupPath = path.resolve(currentDir, "../../_testData/trusted_setup.txt");
   kzg.loadTrustedSetup(0, trustedSetupPath);
   initialized = true;
 }

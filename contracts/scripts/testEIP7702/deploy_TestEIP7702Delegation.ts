@@ -1,5 +1,8 @@
 import { LogContractDeployment } from "contracts/common/helpers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 // Deploy on devnet - DEPLOYER_PRIVATE_KEY=<...> L1_RPC_URL=https://rpc.devnet.linea.build pnpm exec hardhat run --network zkevm_dev scripts/testEIP7702/deploy_TestEIP7702Delegation.ts
 

@@ -1,18 +1,22 @@
-import { ethers, network } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
+import { network as hardhatNetwork } from "hardhat";
 
 import { tryVerifyContract, getRequiredEnvVar, requireAddressFromRegistryOrEnv } from "../common/helpers";
+import { deployScript } from "../rocketh/deploy";
 import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 
-const func: DeployFunction = withSignerUiSession("08_deploy_CustomBridgedToken.ts", async function () {
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const networkName = hardhatConnection.networkName === "default" ? "hardhat" : hardhatConnection.networkName;
+
+const func = withSignerUiSession("08_deploy_CustomBridgedToken.ts", async function () {
   const contractName = "CustomBridgedToken";
 
   const CustomTokenBridge_name = getRequiredEnvVar("CUSTOMTOKENBRIDGE_NAME");
   const CustomTokenBridge_symbol = getRequiredEnvVar("CUSTOMTOKENBRIDGE_SYMBOL");
   const CustomTokenBridge_decimals = getRequiredEnvVar("CUSTOMTOKENBRIDGE_DECIMALS");
   const CustomTokenBridge_bridge_address = requireAddressFromRegistryOrEnv(
-    network.name,
+    networkName,
     "CUSTOMTOKENBRIDGE_BRIDGE_ADDRESS",
     "CUSTOMTOKENBRIDGE_BRIDGE_ADDRESS",
   );
@@ -44,5 +48,4 @@ const func: DeployFunction = withSignerUiSession("08_deploy_CustomBridgedToken.t
   await tryVerifyContract(contractAddress);
 });
 
-export default func;
-func.tags = ["CustomBridgedToken"];
+export default deployScript(func, { tags: ["CustomBridgedToken"] });

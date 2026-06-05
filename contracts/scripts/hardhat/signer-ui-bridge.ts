@@ -18,7 +18,8 @@ import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { createServer, IncomingMessage, Server, ServerResponse } from "node:http";
 import { createRequire } from "node:module";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   assertExclusiveSignerMode,
@@ -28,15 +29,16 @@ import {
 import { getBlockchainNode, getL2BlockchainNode } from "../../common";
 import { getOptionalEnvVar } from "../../common/helpers/environment";
 
-import type { HardhatRuntimeEnvironment } from "hardhat/types";
+import type { HardhatRuntimeEnvironment as HardhatBaseRuntimeEnvironment } from "hardhat/types/hre";
+import type { NetworkConnection, NetworkManager } from "hardhat/types/network";
+
+export type HardhatRuntimeEnvironment = HardhatBaseRuntimeEnvironment & {
+  network: NetworkManager;
+};
 
 export const isSignerUiEnabled = isSignerUiEnabledFromMode;
 
-/**
- * Mirrors hardhat-deploy's `DeployFunction` without importing `hardhat-deploy/types`, which is not a
- * resolvable runtime module under Node's native ESM resolver (this file is loaded via `require` from `hardhat.config`).
- */
-export type DeployFunction = ((hre: HardhatRuntimeEnvironment) => Promise<void | boolean>) & {
+export type DeployFunction = (() => Promise<void | boolean>) & {
   skip?: (env: HardhatRuntimeEnvironment) => Promise<boolean>;
   tags?: string[];
   dependencies?: string[];
@@ -186,8 +188,10 @@ type SignerUiContext = {
   batchTagsSummary: string | null;
 };
 
-const SIGNER_UI_DIR = resolve(__dirname, "../../signer-ui");
-const requireFromSignerUiBridge = createRequire(__filename);
+const signerUiBridgeFile = fileURLToPath(import.meta.url);
+const signerUiBridgeDir = dirname(signerUiBridgeFile);
+const SIGNER_UI_DIR = resolve(signerUiBridgeDir, "../../signer-ui");
+const requireFromSignerUiBridge = createRequire(signerUiBridgeFile);
 const SIGNER_UI_CHAIN_CATALOG = requireFromSignerUiBridge(
   "../../signer-ui/shared/chainCatalog.json",
 ) as readonly SignerUiChainCatalogEntry[];
@@ -244,6 +248,7 @@ let privateKeyUsageWarningShown = false;
  */
 let signerUiHardhatDeployBatchActive = false;
 let signerUiHardhatDeployBatchTags: string | null = null;
+const connectionByRuntime = new WeakMap<HardhatRuntimeEnvironment, Promise<NetworkConnection>>();
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
@@ -251,6 +256,27 @@ async function sleep(ms: number): Promise<void> {
 
 function loadHardhatRuntime(): typeof import("hardhat") {
   return requireFromSignerUiBridge("hardhat") as typeof import("hardhat");
+}
+
+function loadHardhatRuntimeEnvironment(): HardhatRuntimeEnvironment {
+  const hardhat = loadHardhatRuntime() as typeof import("hardhat") & {
+    default?: HardhatRuntimeEnvironment;
+  };
+  return (hardhat.default ?? hardhat) as HardhatRuntimeEnvironment;
+}
+
+async function getHardhatConnection(hre?: HardhatRuntimeEnvironment): Promise<NetworkConnection> {
+  const runtime = hre ?? loadHardhatRuntimeEnvironment();
+  let connectionPromise = connectionByRuntime.get(runtime);
+  if (connectionPromise === undefined) {
+    connectionPromise = runtime.network.getOrCreate();
+    connectionByRuntime.set(runtime, connectionPromise);
+  }
+  return await connectionPromise;
+}
+
+function displayNetworkName(networkName: string): string {
+  return networkName === "default" ? "hardhat" : networkName;
 }
 
 type PrivateKeyWarningDetails = {
@@ -499,14 +525,14 @@ function getChainName(networkName: string, chainId: number): string {
   return getSignerUiChainCatalogEntry(chainId)?.chainName ?? networkName;
 }
 
-function getRpcUrl(hre: HardhatRuntimeEnvironment): string {
-  const networkConfig = hre.network.config as { url?: string };
+function getRpcUrl(connection: NetworkConnection): string {
+  const networkConfig = connection.networkConfig as { url?: string };
 
   if (typeof networkConfig.url === "string" && networkConfig.url.length > 0) {
     return networkConfig.url;
   }
 
-  switch (hre.network.name) {
+  switch (displayNetworkName(connection.networkName)) {
     case "zkevm_dev":
       return getBlockchainNode();
     case "l2":
@@ -518,14 +544,15 @@ function getRpcUrl(hre: HardhatRuntimeEnvironment): string {
   }
 }
 
-async function getChainMetadata(hre: HardhatRuntimeEnvironment): Promise<ChainMetadata> {
-  const network = await hre.ethers.provider.getNetwork();
+async function getChainMetadata(connection: NetworkConnection): Promise<ChainMetadata> {
+  const network = await connection.ethers.provider.getNetwork();
   const chainId = Number(network.chainId);
+  const networkName = displayNetworkName(connection.networkName);
 
   return {
     chainId,
-    chainName: getChainName(hre.network.name, chainId),
-    rpcUrls: [getRpcUrl(hre)].filter(Boolean),
+    chainName: getChainName(networkName, chainId),
+    rpcUrls: [getRpcUrl(connection)].filter(Boolean),
     blockExplorerUrls: getExplorerUrls(chainId),
     nativeCurrency: {
       name: "Ether",
@@ -539,7 +566,9 @@ function isSigner(value: unknown): value is AbstractSigner {
   return typeof value === "object" && value !== null && "provider" in value && "sendTransaction" in value;
 }
 
-function isProviderLike(value: unknown): value is Provider & { getSigner?: () => Promise<AbstractSigner> } {
+function isProviderLike(
+  value: unknown,
+): value is Provider & { getSigner?: (address?: string) => Promise<AbstractSigner> } {
   return typeof value === "object" && value !== null && "getNetwork" in value;
 }
 
@@ -2063,7 +2092,7 @@ class SignerUiSigner extends AbstractSigner {
 }
 
 async function getOrCreateSession(
-  hre: HardhatRuntimeEnvironment,
+  connection: NetworkConnection,
   scriptContext: string,
 ): Promise<SignerUiSession | undefined> {
   if (!isSignerUiEnabled()) {
@@ -2073,10 +2102,10 @@ async function getOrCreateSession(
   if (!activeSession) {
     activeSession = new SignerUiSession({
       scriptContext,
-      networkName: hre.network.name,
-      chain: await getChainMetadata(hre),
+      networkName: displayNetworkName(connection.networkName),
+      chain: await getChainMetadata(connection),
       expectedSignerAddress: getExpectedSignerAddressIfConfigured() ?? null,
-      provider: hre.ethers.provider,
+      provider: connection.ethers.provider,
       batchTagsSummary: signerUiHardhatDeployBatchTags,
     });
   }
@@ -2086,23 +2115,9 @@ async function getOrCreateSession(
   return activeSession;
 }
 
-async function resolveNamedDeployerAddress(
-  getNamedAccounts: (() => Promise<{ deployer?: string }>) | undefined,
-): Promise<string | undefined> {
-  if (typeof getNamedAccounts !== "function") {
-    return undefined;
-  }
-
-  try {
-    const { deployer } = await getNamedAccounts();
-    if (typeof deployer === "string" && deployer.length > 0) {
-      return deployer;
-    }
-  } catch {
-    /* fall back to provider default signer below */
-  }
-
-  return undefined;
+async function resolveDefaultDeployerAddress(connection: NetworkConnection): Promise<string | undefined> {
+  const signers = await connection.ethers.getSigners();
+  return signers[0]?.address;
 }
 
 function requireActiveSession(): SignerUiSession {
@@ -2143,15 +2158,16 @@ async function assertExpectedSignerAddressIfConfigured(signer: AbstractSigner): 
   }
 }
 
-export async function getUiSigner(hre: HardhatRuntimeEnvironment): Promise<AbstractSigner> {
+export async function getUiSigner(hre?: HardhatRuntimeEnvironment): Promise<AbstractSigner> {
   assertExclusiveSignerMode();
 
+  const connection = await getHardhatConnection(hre);
   const uiMode = isSignerUiEnabled();
   let signer: AbstractSigner;
   if (uiMode) {
-    signer = requireActiveSession().getSigner(hre.ethers.provider);
+    signer = requireActiveSession().getSigner(connection.ethers.provider);
   } else {
-    const signers = await hre.ethers.getSigners();
+    const signers = await connection.ethers.getSigners();
     if (signers.length === 0) {
       throw new Error(
         "No JSON-RPC account is configured for this network. Set DEPLOYER_PRIVATE_KEY (or your network accounts in hardhat.config), or set HARDHAT_SIGNER_UI=true to sign in the browser.",
@@ -2159,11 +2175,11 @@ export async function getUiSigner(hre: HardhatRuntimeEnvironment): Promise<Abstr
     }
 
     warnIfUsingPrivateKeySigning({
-      networkName: hre.network.name,
+      networkName: displayNetworkName(connection.networkName),
     });
 
-    const deployer = await resolveNamedDeployerAddress(hre.getNamedAccounts);
-    signer = deployer ? await hre.ethers.getSigner(deployer) : signers[0]!;
+    const deployer = await resolveDefaultDeployerAddress(connection);
+    signer = deployer ? await connection.ethers.getSigner(deployer) : signers[0]!;
   }
 
   if (!uiMode) {
@@ -2182,8 +2198,7 @@ export async function resolveUiRunner(runnerOrProvider?: AbstractSigner | Provid
   if (!runnerOrProvider) {
     // Lazy load: operational tasks import this module while Hardhat loads config; a top-level
     // `import "hardhat"` would trigger HH9 ("Hardhat can't be initialized while its config is being defined").
-    const hh = loadHardhatRuntime() as unknown as HardhatRuntimeEnvironment;
-    return await getUiSigner(hh);
+    return await getUiSigner();
   }
 
   if (isSignerUiEnabled()) {
@@ -2193,18 +2208,15 @@ export async function resolveUiRunner(runnerOrProvider?: AbstractSigner | Provid
 
   if (isProviderLike(runnerOrProvider) && typeof runnerOrProvider.getSigner === "function") {
     warnIfUsingPrivateKeySigning();
-    const hh = loadHardhatRuntime() as typeof import("hardhat") & {
-      getNamedAccounts?: () => Promise<{ deployer?: string }>;
-    };
-    const deployer = await resolveNamedDeployerAddress(hh.getNamedAccounts);
+    const connection = await getHardhatConnection();
+    const deployer = await resolveDefaultDeployerAddress(connection);
     if (deployer) {
       return await runnerOrProvider.getSigner(deployer);
     }
     return await runnerOrProvider.getSigner();
   }
 
-  const hh = loadHardhatRuntime() as unknown as HardhatRuntimeEnvironment;
-  return await getUiSigner(hh);
+  return await getUiSigner();
 }
 
 /**
@@ -2239,11 +2251,16 @@ export function clearUiWorkflowStatus(): void {
 }
 
 export function withSignerUiSession(scriptContext: string, deployFunction: DeployFunction): DeployFunction {
-  const wrapped: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    await getOrCreateSession(hre, scriptContext);
+  const wrapped: DeployFunction = async function () {
+    if (!isSignerUiEnabled()) {
+      return await deployFunction();
+    }
+
+    const connection = await getHardhatConnection();
+    await getOrCreateSession(connection, scriptContext);
 
     try {
-      return await deployFunction(hre);
+      return await deployFunction();
     } finally {
       if (!signerUiHardhatDeployBatchActive) {
         await closeActiveSignerUiSession();
@@ -2267,7 +2284,8 @@ export async function runWithSignerUiSession<T>(
     return await fn();
   }
 
-  await getOrCreateSession(hre, scriptContext);
+  const connection = await getHardhatConnection(hre);
+  await getOrCreateSession(connection, scriptContext);
 
   try {
     return await fn();

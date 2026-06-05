@@ -3,6 +3,7 @@ import { task } from "hardhat/config";
 import { LIDO_DASHBOARD_OPERATIONAL_ROLES } from "../../../common/constants";
 import { generateRoleAssignments, buildVendorInitializationData } from "../../../common/helpers";
 import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper";
+import { getDeployedContractOnNetwork } from "../../../common/helpers/readAddress";
 
 /*
   *******************************************************************************************
@@ -40,16 +41,19 @@ import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper"
     CONFIRM_EXPIRY
   *******************************************************************************************
 */
-task("addLidoStVaultYieldProvider", "Generates parameters for adding and configuring a new LidoStVaultYieldProvider")
-  .addOptionalParam("yieldManager")
-  .addOptionalParam("yieldProvider")
-  .addOptionalParam("nodeOperator")
-  .addOptionalParam("securityCouncil")
-  .addOptionalParam("nodeOperatorFee")
-  .addOptionalParam("confirmExpiry")
-  .setAction(async (taskArgs, hre) => {
-    const { deployments } = hre;
-    const { get } = deployments;
+export default task(
+  "addLidoStVaultYieldProvider",
+  "Generates parameters for adding and configuring a new LidoStVaultYieldProvider",
+)
+  .addOption({ name: "yieldManager", defaultValue: "" })
+  .addOption({ name: "yieldProvider", defaultValue: "" })
+  .addOption({ name: "nodeOperator", defaultValue: "" })
+  .addOption({ name: "securityCouncil", defaultValue: "" })
+  .addOption({ name: "nodeOperatorFee", defaultValue: "" })
+  .addOption({ name: "confirmExpiry", defaultValue: "" })
+  .setInlineAction(async (taskArgs, hre) => {
+    const connection = await hre.network.getOrCreate();
+    const networkName = connection.networkName === "default" ? "hardhat" : connection.networkName;
 
     // --- Resolve inputs from CLI or ENV (with sensible fallbacks to deployments) ---
     let yieldManager = getTaskCliOrEnvValue(taskArgs, "yieldManager", "YIELD_MANAGER_ADDRESS");
@@ -61,7 +65,10 @@ task("addLidoStVaultYieldProvider", "Generates parameters for adding and configu
 
     // --- Use address from artifacts ---
     if (yieldManager === undefined) {
-      yieldManager = (await get("YieldManager")).address;
+      yieldManager = await getDeployedContractOnNetwork(networkName, "YieldManager");
+      if (yieldManager === undefined) {
+        throw "yieldManager is undefined";
+      }
     }
 
     // --- Basic required fields check (adjust as needed) ---
@@ -109,4 +116,5 @@ task("addLidoStVaultYieldProvider", "Generates parameters for adding and configu
     console.log("  _yieldProvider:", yieldProvider);
     console.log("  _initializationData:", yieldProviderInitData);
     console.log("\n" + "=".repeat(80));
-  });
+  })
+  .build();

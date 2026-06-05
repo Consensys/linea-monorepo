@@ -1,18 +1,20 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 
-import { TestEfficientLeftRightKeccak } from "../../../typechain-types";
 import { deployFromFactory } from "../common/deployment";
 import { generateKeccak256, generateRandomBytes } from "../common/helpers";
+
+import type { TestEfficientLeftRightKeccak } from "../../../typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
 
 describe("EfficientLeftRightKeccak Library", () => {
   let contract: TestEfficientLeftRightKeccak;
 
-  async function deployTestEfficientLeftRightKeccakFixture() {
-    return deployFromFactory("TestEfficientLeftRightKeccak");
+  async function deployTestEfficientLeftRightKeccakFixture(): Promise<TestEfficientLeftRightKeccak> {
+    return deployFromFactory<TestEfficientLeftRightKeccak>("TestEfficientLeftRightKeccak");
   }
   beforeEach(async () => {
-    contract = (await loadFixture(deployTestEfficientLeftRightKeccakFixture)) as TestEfficientLeftRightKeccak;
+    contract = await loadFixture(deployTestEfficientLeftRightKeccakFixture);
   });
 
   describe("efficientKeccak", () => {

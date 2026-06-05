@@ -56,10 +56,32 @@ ignoredBuiltDependencies:
   - yarn
 
 minimumReleaseAge: 4320
+minimumReleaseAgeExclude:
+  # Required for the Hardhat 3 contracts migration; keep exact-version scoped.
+  - hardhat@3.8.0
+  - '@nomicfoundation/hardhat-ethers@4.0.13'
+  - '@nomicfoundation/hardhat-ethers-chai-matchers@3.0.10'
+  - '@nomicfoundation/hardhat-foundry@3.0.4'
+  - '@nomicfoundation/hardhat-mocha@3.0.21'
+  - '@nomicfoundation/hardhat-network-helpers@3.0.10'
+  - '@nomicfoundation/hardhat-typechain@3.1.1'
+  - '@nomicfoundation/hardhat-verify@3.0.19'
+  - '@nomicfoundation/hardhat-errors@3.0.15'
+  - '@nomicfoundation/edr@0.12.0'
+  - '@nomicfoundation/edr-darwin-arm64@0.12.0'
+  - '@nomicfoundation/edr-darwin-x64@0.12.0'
+  - '@nomicfoundation/edr-linux-arm64-gnu@0.12.0'
+  - '@nomicfoundation/edr-linux-arm64-musl@0.12.0'
+  - '@nomicfoundation/edr-linux-x64-gnu@0.12.0'
+  - '@nomicfoundation/edr-linux-x64-musl@0.12.0'
+  - '@nomicfoundation/edr-win32-x64-msvc@0.12.0'
+  - '@openzeppelin/hardhat-upgrades@4.0.1'
 
 onlyBuiltDependencies:
   # Required by contracts/ blob tests; additions to this allowlist need security review.
   - c-kzg
+  # Reviewed for Hardhat 3 migration: postinstall only checks hardhat version/config text and may write a local notice file.
+  - hardhat-deploy
 
 overrides:
   '@openzeppelin/contracts@<4.9.6': '4.9.6'
@@ -128,6 +150,12 @@ overrides:
   ws@>=7.0.0 <7.5.10: ">=7.5.10"
   ws@>=8.0.0 <8.17.1: ">=8.17.1"
   xml2js@<0.5.0: ">=0.5.0"
+  'hardhat>zod': '3.25.76'
+  '@nomicfoundation/hardhat-mocha>zod': '3.25.76'
+  '@nomicfoundation/hardhat-typechain>zod': '3.25.76'
+  '@nomicfoundation/hardhat-verify>zod': '3.25.76'
+  '@nomicfoundation/hardhat-zod-utils>zod': '3.25.76'
+  'hardhat-deploy>zod': '3.25.76'
   yaml@>=1.0.0 <1.10.3: '1.10.3'
   zod: "4.4.1"
 
@@ -151,3 +179,9 @@ trustPolicyExclude:
   - "chokidar@4.0.3"
   # Already present in the lockfile via WalletConnect logging; lacks provenance evidence.
   - "slow-redact@0.3.2"
+  # Pulled by @openzeppelin/hardhat-upgrades@4.0.1; pnpm flags this official OpenZeppelin SDK release as a trust downgrade.
+  - "@openzeppelin/defender-sdk-base-client@2.7.1"
+  # Pulled by @openzeppelin/hardhat-upgrades@4.0.1; pnpm flags this official OpenZeppelin SDK release as a trust downgrade.
+  - "@openzeppelin/defender-sdk-network-client@2.7.1"
+  # Pulled by @openzeppelin/hardhat-upgrades@4.0.1; pnpm flags this official OpenZeppelin SDK release as a trust downgrade.
+  - "@openzeppelin/defender-sdk-deploy-client@2.7.1"

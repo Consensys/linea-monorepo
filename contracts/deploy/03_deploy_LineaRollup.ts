@@ -1,5 +1,4 @@
-import { network } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
+import { network as hardhatNetwork } from "hardhat";
 
 import {
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
@@ -18,24 +17,28 @@ import {
   tryVerifyContract,
   LogContractDeployment,
 } from "../common/helpers";
+import { deployScript } from "../rocketh/deploy";
 import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 
-const func: DeployFunction = withSignerUiSession("03_deploy_LineaRollup.ts", async function () {
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const networkName = hardhatConnection.networkName === "default" ? "hardhat" : hardhatConnection.networkName;
+
+const func = withSignerUiSession("03_deploy_LineaRollup.ts", async function () {
   const contractName = "LineaRollup";
 
   // LineaRollup DEPLOYED AS UPGRADEABLE PROXY (OpenZeppelin transparent). Hardhat Upgrades may reuse an
   // implementation and/or ProxyAdmin from `.openzeppelin/` for this network, so you might sign fewer than three txs.
-  const verifierAddress = requireAddressFromRegistryOrEnv(network.name, "PlonkVerifier", "VERIFIER_ADDRESS");
+  const verifierAddress = requireAddressFromRegistryOrEnv(networkName, "PlonkVerifier", "VERIFIER_ADDRESS");
   const lineaRollupInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
   const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
   const lineaRollupSecurityCouncil = requireAddressFromRegistryOrEnv(
-    network.name,
+    networkName,
     "L1_SECURITY_COUNCIL",
     "L1_SECURITY_COUNCIL",
   );
   const lineaRollupOperators = requireAddressesFromRegistryOrEnv(
-    network.name,
+    networkName,
     "LINEA_ROLLUP_OPERATORS",
     "LINEA_ROLLUP_OPERATORS",
   );
@@ -50,9 +53,9 @@ const func: DeployFunction = withSignerUiSession("03_deploy_LineaRollup.ts", asy
     { role: OPERATOR_ROLE, addresses: lineaRollupOperators },
   ]);
   const roleAddresses = getEnvVarOrDefault("LINEA_ROLLUP_ROLE_ADDRESSES", defaultRoleAddresses);
-  const yieldManagerAddress = requireAddressFromRegistryOrEnv(network.name, "YieldManager", "YIELD_MANAGER_ADDRESS");
+  const yieldManagerAddress = requireAddressFromRegistryOrEnv(networkName, "YieldManager", "YIELD_MANAGER_ADDRESS");
 
-  const addressFilter = requireAddressFromRegistryOrEnv(network.name, "AddressFilter", "LINEA_ROLLUP_ADDRESS_FILTER");
+  const addressFilter = requireAddressFromRegistryOrEnv(networkName, "AddressFilter", "LINEA_ROLLUP_ADDRESS_FILTER");
 
   const contract = await deployUpgradableFromFactory(
     "LineaRollup",
@@ -86,5 +89,4 @@ const func: DeployFunction = withSignerUiSession("03_deploy_LineaRollup.ts", asy
   await tryVerifyContract(contractAddress);
 });
 
-export default func;
-func.tags = ["LineaRollup"];
+export default deployScript(func, { tags: ["LineaRollup"] });

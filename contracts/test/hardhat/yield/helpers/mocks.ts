@@ -1,11 +1,15 @@
-import { TestYieldManager } from "contracts/typechain-types";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { deployMockWithdrawTarget, deployMockYieldProvider } from "./deploy";
-import { YieldProviderRegistration } from "./types";
 import { EMPTY_CALLDATA } from "../../common/constants";
 import { YieldProviderVendor } from "../../common/constants";
 import { getAccountsFixture } from "../../common/helpers";
+
+import type { YieldProviderRegistration } from "./types";
+import type { TestYieldManager } from "contracts/typechain-types";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 export const buildMockYieldProviderRegistration = (
   overrides: Partial<{

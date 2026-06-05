@@ -1,13 +1,18 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { dataSlice } from "ethers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
-import { Poseidon2, SparseMerkleProof } from "../../../typechain-types";
 import accountKeyTestVectors from "../_testData/account-key-test-vectors.json";
 import merkleProofTestData from "../_testData/merkle-proof-data-poseidon2.json";
 import { deployFromFactory } from "../common/deployment";
 import { expectRevertWithCustomError } from "../common/helpers";
+
+import type { Poseidon2, SparseMerkleProof } from "../../../typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("SparseMerkleProof", () => {
   let sparseMerkleProof: SparseMerkleProof;

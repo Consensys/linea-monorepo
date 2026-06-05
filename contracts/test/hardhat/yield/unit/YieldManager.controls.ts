@@ -1,8 +1,5 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { TestYieldManager } from "contracts/typechain-types";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import {
   GENERAL_PAUSE_TYPE,
@@ -23,6 +20,14 @@ import {
 import { deployYieldManagerForUnitTest } from "../helpers/deploy";
 import { addMockYieldProvider } from "../helpers/mocks";
 import { setWithdrawalReserveBalance, setWithdrawalReserveToMinimum } from "../helpers/setup";
+
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { TestYieldManager } from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("YieldManager contract - control operations", () => {
   let yieldManager: TestYieldManager;
@@ -346,7 +351,7 @@ describe("YieldManager contract - control operations", () => {
       await yieldManager.setYieldProviderIsOssified(mockYieldProviderAddress, true);
 
       const tx = yieldManager.connect(nativeYieldOperator).unpauseStaking(mockYieldProviderAddress);
-      await expect(tx).to.not.be.reverted;
+      await expect(tx).to.not.revert(ethers);
     });
 
     it("Should revert if there is a current lst liability", async () => {

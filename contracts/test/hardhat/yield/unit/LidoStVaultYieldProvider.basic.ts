@@ -1,21 +1,6 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import {
-  MockVaultHub,
-  MockVaultFactory,
-  MockSTETH,
-  MockLineaRollup,
-  TestYieldManager,
-  MockDashboard,
-  MockStakingVault,
-  TestLidoStVaultYieldProvider,
-  ValidatorContainerProofVerifier,
-  SSZMerkleTree,
-  TestValidatorContainerProofVerifier,
-} from "contracts/typechain-types";
 import { ZeroAddress } from "ethers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { randomBytes32 } from "../../../../common/helpers/encoding";
 import {
@@ -48,6 +33,26 @@ import {
   setWithdrawalReserveToMinimum,
 } from "../helpers";
 import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
+
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type {
+  MockVaultHub,
+  MockVaultFactory,
+  MockSTETH,
+  MockLineaRollup,
+  TestYieldManager,
+  MockDashboard,
+  MockStakingVault,
+  TestLidoStVaultYieldProvider,
+  ValidatorContainerProofVerifier,
+  SSZMerkleTree,
+  TestValidatorContainerProofVerifier,
+} from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let yieldProvider: TestLidoStVaultYieldProvider;
@@ -396,11 +401,16 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     it("Should successfully sync LST liability", async () => {
       await yieldManager.connect(nativeYieldOperator).pauseStaking(yieldProviderAddress);
       await yieldManager.setYieldProviderLstLiabilityPrincipal(yieldProviderAddress, 1n);
-      await expect(yieldManager.connect(nativeYieldOperator).unpauseStaking(yieldProviderAddress)).to.be.reverted;
-      // Will sync to this if below current lstLiabilityPrincipal.
+      await setWithdrawalReserveToMinimum(yieldManager);
       await mockSTETH.setPooledEthBySharesRoundUpReturn(0n);
-      // If it didn't sync lstLiabilityPrincipal to 0, the below will revert.
-      yieldManager.connect(nativeYieldOperator).unpauseStaking(yieldProviderAddress);
+
+      await expectEvent(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).unpauseStaking(yieldProviderAddress),
+        "LSTLiabilityPrincipalSynced",
+        [YieldProviderVendor.LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR, 1n, 1n, 0n],
+      );
+      expect(await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress)).eq(0n);
     });
   });
 
@@ -498,7 +508,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
 
       // Assert
-      await expect(call).to.not.be.reverted;
+      await expect(call).to.not.revert(ethers);
       expect(isOssificationComplete).eq(ProgressOssificationResult.COMPLETE);
     });
     it("If vault is connected and pending disconnect, should succeed with no-op and return false", async () => {
@@ -513,7 +523,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
 
       // Assert
-      await expect(call).to.not.be.reverted;
+      await expect(call).to.not.revert(ethers);
       expect(isOssificationComplete).eq(ProgressOssificationResult.NOOP);
     });
     it("If vault is connected and not pending disconnect, should successfully redo initiate ossification and return false", async () => {
@@ -528,7 +538,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldManager.connect(securityCouncil).progressPendingOssification(yieldProviderAddress);
 
       // Assert
-      await expect(call).to.not.be.reverted;
+      await expect(call).to.not.revert(ethers);
       expect(isOssificationComplete).eq(ProgressOssificationResult.REINITIATED);
     });
   });
@@ -542,7 +552,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldManager
         .connect(securityCouncil)
         .initializeVendorContracts(yieldProviderAddress, EMPTY_CALLDATA);
-      await expect(call).to.be.reverted;
+      await expect(call).to.revert(ethers);
     });
     it("Should succeed with expected return values, and transfer 1 ether to Lido contracts", async () => {
       await yieldManager.setYieldProviderUserFunds(yieldProviderAddress, 0n);
@@ -561,7 +571,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldManager
         .connect(securityCouncil)
         .initializeVendorContracts(yieldProviderAddress, buildVendorInitializationData());
-      await expect(call).to.not.be.reverted;
+      await expect(call).to.not.revert(ethers);
       expect(registrationData[0]).eq(YieldProviderVendor.LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR);
       expect(registrationData[1]).eq(expectedDashboardAddress);
       expect(registrationData[2]).eq(expectedVaultAddress);
@@ -578,7 +588,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldManager
         .connect(securityCouncil)
         .initializeVendorContracts(yieldProviderAddress, buildVendorInitializationData());
-      await expect(call).to.be.reverted;
+      await expect(call).to.revert(ethers);
     });
   });
 
@@ -604,7 +614,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldManager
         .connect(securityCouncil)
         .removeYieldProvider(yieldProviderAddress, buildVendorExitData());
-      await expect(call).to.not.be.reverted;
+      await expect(call).to.not.revert(ethers);
       expect(await mockDashboard.transferVaultOwnershipCallCount()).eq(1);
       expect(await mockStakingVault.transferOwnershipCallCount()).eq(0);
     });
@@ -614,7 +624,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldManager
         .connect(securityCouncil)
         .removeYieldProvider(yieldProviderAddress, buildVendorExitData());
-      await expect(call).to.not.be.reverted;
+      await expect(call).to.not.revert(ethers);
       expect(await mockDashboard.transferVaultOwnershipCallCount()).eq(0);
       expect(await mockStakingVault.transferOwnershipCallCount()).eq(1);
     });
@@ -629,7 +639,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
     it("Should revert if incorrect withdrawal params type", async () => {
       const mockWithdrawalParams = ethers.hexlify(ethers.randomBytes(8));
       const call = yieldManager.connect(securityCouncil).unstake(yieldProviderAddress, mockWithdrawalParams);
-      await expect(call).to.be.reverted;
+      await expect(call).to.revert(ethers);
     });
     it("Should succeed with valid withdrawal params type", async () => {
       const pubkey = "0x" + "a".repeat(96); // 48 bytes
@@ -678,7 +688,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
           mockWithdrawalParams,
           mockWithdrawalParamsProof,
         );
-      await expect(call).to.be.reverted;
+      await expect(call).to.revert(ethers);
     });
     it("Should succeed", async () => {
       // Arrange - Set up withdrawal reserve in deficit
@@ -777,7 +787,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         .connect(securityCouncil)
         .validateUnstakePermissionlessRequestHarness(yieldProviderAddress, 1n, pubkeys, 0n, 0n, EMPTY_CALLDATA);
 
-      await expect(call).to.be.reverted;
+      await expect(call).to.revert(ethers);
     });
 
     it("Should revert if incorrect validator container proof", async () => {
@@ -805,7 +815,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
           withdrawalParamsProof,
         );
 
-      await expect(call).to.be.reverted;
+      await expect(call).to.revert(ethers);
     });
     it("Should revert if incorrect pending partial withdrawals proof", async () => {
       const { eip4788Witness, pubkey, validatorIndex, slot } = await generateLidoUnstakePermissionlessWitness(
@@ -832,7 +842,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
           withdrawalParamsProof,
         );
 
-      await expect(call).to.be.reverted;
+      await expect(call).to.revert(ethers);
     });
     it("Should return min of requiredUnstake and withdrawable validator balance", async () => {
       const unstakeAmountWei = ONE_ETHER * 100n;

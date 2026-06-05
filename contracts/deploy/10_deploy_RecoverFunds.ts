@@ -1,21 +1,24 @@
-import { network } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
+import { network as hardhatNetwork } from "hardhat";
 
 import { tryVerifyContract, requireAddressFromRegistryOrEnv, LogContractDeployment } from "../common/helpers";
+import { deployScript } from "../rocketh/deploy";
 import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 
-const func: DeployFunction = withSignerUiSession("10_deploy_RecoverFunds.ts", async function () {
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const networkName = hardhatConnection.networkName === "default" ? "hardhat" : hardhatConnection.networkName;
+
+const func = withSignerUiSession("10_deploy_RecoverFunds.ts", async function () {
   const contractName = "RecoverFunds";
 
   // RecoverFunds DEPLOYED AS UPGRADEABLE PROXY
   const RecoverFunds_securityCouncil = requireAddressFromRegistryOrEnv(
-    network.name,
+    networkName,
     "L1_SECURITY_COUNCIL",
     "L1_SECURITY_COUNCIL",
   );
   const RecoverFunds_executorAddress = requireAddressFromRegistryOrEnv(
-    network.name,
+    networkName,
     "RECOVERFUNDS_EXECUTOR_ADDRESS",
     "RECOVERFUNDS_EXECUTOR_ADDRESS",
   );
@@ -35,5 +38,4 @@ const func: DeployFunction = withSignerUiSession("10_deploy_RecoverFunds.ts", as
   await tryVerifyContract(contractAddress);
 });
 
-export default func;
-func.tags = ["RecoverFunds"];
+export default deployScript(func, { tags: ["RecoverFunds"] });

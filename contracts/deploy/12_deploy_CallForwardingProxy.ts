@@ -1,36 +1,35 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
+import { network as hardhatNetwork } from "hardhat";
 
 import {
   LogContractDeployment,
   requireAddressFromRegistryOrEnv,
   tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
+import { deployScript } from "../rocketh/deploy";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployFromFactory } from "../scripts/hardhat/utils";
 
-const func: DeployFunction = withSignerUiSession(
-  "12_deploy_CallForwardingProxy.ts",
-  async function (hre: HardhatRuntimeEnvironment) {
-    const contractName = "CallForwardingProxy";
-    const signer = await getUiSigner(hre);
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const networkName = hardhatConnection.networkName === "default" ? "hardhat" : hardhatConnection.networkName;
 
-    // This should be the LineaRollup
-    const targetAddress = requireAddressFromRegistryOrEnv(hre.network.name, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
+const func = withSignerUiSession("12_deploy_CallForwardingProxy.ts", async function () {
+  const contractName = "CallForwardingProxy";
+  const signer = await getUiSigner();
 
-    const contract = await deployFromFactory(contractName, signer, targetAddress);
+  // This should be the LineaRollup
+  const targetAddress = requireAddressFromRegistryOrEnv(networkName, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
 
-    await LogContractDeployment(contractName, contract);
-    const contractAddress = await contract.getAddress();
+  const contract = await deployFromFactory(contractName, signer, targetAddress);
 
-    const args = [targetAddress];
+  await LogContractDeployment(contractName, contract);
+  const contractAddress = await contract.getAddress();
 
-    await tryVerifyContractWithConstructorArgs(
-      contractAddress,
-      "contracts/lib/CallForwardingProxy.sol:CallForwardingProxy",
-      args,
-    );
-  },
-);
-export default func;
-func.tags = ["CallForwardingProxy"];
+  const args = [targetAddress];
+
+  await tryVerifyContractWithConstructorArgs(
+    contractAddress,
+    "contracts/lib/CallForwardingProxy.sol:CallForwardingProxy",
+    args,
+  );
+});
+export default deployScript(func, { tags: ["CallForwardingProxy"] });

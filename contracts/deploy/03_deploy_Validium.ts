@@ -1,5 +1,4 @@
-import { network } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
+import { network as hardhatNetwork } from "hardhat";
 
 import {
   VALIDIUM_INITIALIZE_SIGNATURE,
@@ -18,22 +17,26 @@ import {
   tryVerifyContract,
   LogContractDeployment,
 } from "../common/helpers";
+import { deployScript } from "../rocketh/deploy";
 import { withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 
-const func: DeployFunction = withSignerUiSession("03_deploy_Validium.ts", async function () {
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const networkName = hardhatConnection.networkName === "default" ? "hardhat" : hardhatConnection.networkName;
+
+const func = withSignerUiSession("03_deploy_Validium.ts", async function () {
   const contractName = "Validium";
 
   // Validium DEPLOYED AS UPGRADEABLE PROXY
-  const verifierAddress = requireAddressFromRegistryOrEnv(network.name, "PlonkVerifier", "VERIFIER_ADDRESS");
+  const verifierAddress = requireAddressFromRegistryOrEnv(networkName, "PlonkVerifier", "VERIFIER_ADDRESS");
   const validiumInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
   const validiumInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
   const validiumSecurityCouncil = requireAddressFromRegistryOrEnv(
-    network.name,
+    networkName,
     "L1_SECURITY_COUNCIL",
     "L1_SECURITY_COUNCIL",
   );
-  const validiumOperators = requireAddressesFromRegistryOrEnv(network.name, "VALIDIUM_OPERATORS", "VALIDIUM_OPERATORS");
+  const validiumOperators = requireAddressesFromRegistryOrEnv(networkName, "VALIDIUM_OPERATORS", "VALIDIUM_OPERATORS");
   const validiumRateLimitPeriodInSeconds = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_PERIOD");
   const validiumRateLimitAmountInWei = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_AMOUNT");
   const validiumGenesisTimestamp = getRequiredEnvVar("L2_GENESIS_TIMESTAMP");
@@ -44,7 +47,7 @@ const func: DeployFunction = withSignerUiSession("03_deploy_Validium.ts", async 
     { role: OPERATOR_ROLE, addresses: validiumOperators },
   ]);
   const roleAddresses = getEnvVarOrDefault("VALIDIUM_ROLE_ADDRESSES", defaultRoleAddresses);
-  const addressFilter = requireAddressFromRegistryOrEnv(network.name, "AddressFilter", "LINEA_ROLLUP_ADDRESS_FILTER");
+  const addressFilter = requireAddressFromRegistryOrEnv(networkName, "AddressFilter", "LINEA_ROLLUP_ADDRESS_FILTER");
 
   const contract = await deployUpgradableFromFactory(
     "Validium",
@@ -76,5 +79,4 @@ const func: DeployFunction = withSignerUiSession("03_deploy_Validium.ts", async 
   await tryVerifyContract(contractAddress);
 });
 
-export default func;
-func.tags = ["Validium"];
+export default deployScript(func, { tags: ["Validium"] });
