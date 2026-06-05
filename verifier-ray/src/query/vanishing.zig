@@ -259,17 +259,8 @@ fn cancellationAtPoint(
     inline for (positions) |position| {
         // Cancellation polynomial for openings already enforced elsewhere:
         // C(r) = product_{k in cancelled} (r - omega_n^norm(k)).
-        if (static_n != 0) {
-            const k = normalizePosition(position, static_n, 0);
-            comptime if (k >= static_n) @compileError("cancelled position out of range for static module");
-            const root = comptime staticRootPower(static_n, k);
-            result = result.mul(r.sub(ext.Ext.lift(root)));
-        } else {
-            const k = normalizePosition(position, 0, dynamic_n);
-            if (k >= dynamic_n) return error.InvalidModuleSize;
-            const root = omega.pow(@as(u64, @intCast(k)));
-            result = result.mul(r.sub(ext.Ext.lift(root)));
-        }
+        const root = if (static_n != 0) comptime staticRootPower(static_n, normalizePosition(position, static_n, 0)) else omega.pow(@as(u64, @intCast(normalizePosition(position, 0, dynamic_n))));
+        result = result.mul(r.sub(ext.Ext.lift(root)));
     }
     return result;
 }
