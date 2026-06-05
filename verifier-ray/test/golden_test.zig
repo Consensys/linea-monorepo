@@ -142,10 +142,10 @@ test "lagrange evaluation returns domain value at roots of unity" {
         field.Element.init(1),
     };
     const ext_values = [_]ext.Ext{
-        .{ .B0 = .{ .a0 = field.Element.init(3), .a1 = field.Element.init(1) }, .B1 = .{ .a0 = field.Element.init(4), .a1 = field.Element.init(1) }, .B2 = .{ .a0 = field.Element.init(5), .a1 = field.Element.init(9) } },
-        .{ .B0 = .{ .a0 = field.Element.init(5), .a1 = field.Element.init(9) }, .B1 = .{ .a0 = field.Element.init(2), .a1 = field.Element.init(6) }, .B2 = .{ .a0 = field.Element.init(5), .a1 = field.Element.init(3) } },
-        .{ .B0 = .{ .a0 = field.Element.init(5), .a1 = field.Element.init(3) }, .B1 = .{ .a0 = field.Element.init(5), .a1 = field.Element.init(8) }, .B2 = .{ .a0 = field.Element.init(9), .a1 = field.Element.init(7) } },
-        .{ .B0 = .{ .a0 = field.Element.init(9), .a1 = field.Element.init(7) }, .B1 = .{ .a0 = field.Element.init(9), .a1 = field.Element.init(3) }, .B2 = .{ .a0 = field.Element.init(2), .a1 = field.Element.init(3) } },
+        ext.Ext.fromUints(.{ 3, 1, 4, 1, 5, 9 }),
+        ext.Ext.fromUints(.{ 5, 9, 2, 6, 5, 3 }),
+        ext.Ext.fromUints(.{ 5, 3, 5, 8, 9, 7 }),
+        ext.Ext.fromUints(.{ 9, 7, 9, 3, 2, 3 }),
     };
 
     const omega = try field.rootOfUnityBy(base_values.len);
