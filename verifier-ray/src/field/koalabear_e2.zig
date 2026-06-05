@@ -32,6 +32,10 @@ pub const E2 = extern struct {
         return .{ .a0 = self.a0.sub(rhs.a0), .a1 = self.a1.sub(rhs.a1) };
     }
 
+    pub fn halve(self: E2) E2 {
+        return .{ .a0 = self.a0.halve(), .a1 = self.a1.halve() };
+    }
+
     pub fn mul(self: E2, rhs: E2) E2 {
         const c0 = self.a0.mul(rhs.a0).add(self.a1.mul(rhs.a1).mul(base.Element.init(3)));
         const c1 = self.a0.mul(rhs.a1).add(self.a1.mul(rhs.a0));

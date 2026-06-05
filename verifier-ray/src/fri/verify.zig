@@ -248,7 +248,7 @@ fn checkQueryBase(
         const base = position % (domain_size / 2);
         const layer = proof.queries[proof_query_index].layers[round_index];
         if (layer.rail != .base) return FriError.BadDimensions;
-        if (layer.path.leaf_idx != base) return FriError.BadDimensions;
+        try checkQueryLeafIndex(layer.path, base);
 
         const leaf = hashBasePair(layer.basePair());
         if (!merkle.merkleVerify(roundRoot(level_roots, proof, round), layer.path, leaf)) {
@@ -303,7 +303,7 @@ fn checkQueryExt(
         const base = position % (domain_size / 2);
         const layer = proof.queries[proof_query_index].layers[round_index];
         if (layer.rail != .ext) return FriError.BadDimensions;
-        if (layer.path.leaf_idx != base) return FriError.BadDimensions;
+        try checkQueryLeafIndex(layer.path, base);
 
         const leaf = hashExtPair(layer.extPair());
         if (!merkle.merkleVerify(roundRoot(level_roots, proof, round), layer.path, leaf)) {
@@ -355,7 +355,7 @@ fn verifyLevelQueryMerkleBase(
         const base = position % (domain_size / 2);
         const layer = queries[proof_query_index];
         if (layer.rail != .base) return FriError.BadDimensions;
-        if (layer.path.leaf_idx != base) return FriError.BadDimensions;
+        try checkQueryLeafIndex(layer.path, base);
 
         if (!merkle.merkleVerify(level_roots[level_index], layer.path, hashBasePair(layer.basePair()))) {
             return FriError.InvalidMerkleProof;
@@ -379,7 +379,7 @@ fn verifyLevelQueryMerkleExt(
         const base = position % (domain_size / 2);
         const layer = queries[proof_query_index];
         if (layer.rail != .ext) return FriError.BadDimensions;
-        if (layer.path.leaf_idx != base) return FriError.BadDimensions;
+        try checkQueryLeafIndex(layer.path, base);
 
         if (!merkle.merkleVerify(level_roots[level_index], layer.path, hashExtPair(layer.extPair()))) {
             return FriError.InvalidMerkleProof;
@@ -400,6 +400,11 @@ fn roundRoot(level_roots: []const types.Digest, proof: types.FriProof, round: u3
     return proof.fri_roots[@intCast(round - 1)];
 }
 
+fn checkQueryLeafIndex(path: types.MerklePath, expected: u32) FriError!void {
+    // The opened leaf position is fixed by the Fiat-Shamir query, not by the prover-supplied Merkle path.
+    if (path.leaf_idx != expected) return FriError.BadDimensions;
+}
+
 fn hashBasePair(pair: types.PairBase) types.Digest {
     const pairs = [_]types.PairBase{pair};
     return leaf_hash.hashLeaf(pairs[0..], &.{});
@@ -417,9 +422,8 @@ fn foldBasePair(p: field.Element, q: field.Element, alpha: field.Element, x_inv:
 }
 
 fn foldExtPair(p: ext.Ext, q: ext.Ext, alpha: ext.Ext, x_inv: field.Element) ext.Ext {
-    const inv_two = field.Element.init(2).inverse();
-    const sum = p.add(q).mulByBase(inv_two);
-    const diff = p.sub(q).mulByBase(inv_two).mulByBase(x_inv).mul(alpha);
+    const sum = p.add(q).halve();
+    const diff = p.sub(q).halve().mulByBase(x_inv).mul(alpha);
     return sum.add(diff);
 }
 
@@ -435,6 +439,7 @@ fn queryIndex(challenge: types.Digest, modulus: u32) u32 {
 
 fn introducedRound(root_d: u32, level_d: u32, num_rounds: u32) FriError!u32 {
     if (root_d == 0 or level_d == 0 or level_d > root_d) return FriError.BadDimensions;
+    if (!field.isPowerOfTwo(@intCast(level_d))) return FriError.BadDimensions;
     if (root_d % level_d != 0) return FriError.BadDimensions;
 
     const ratio = root_d / level_d;

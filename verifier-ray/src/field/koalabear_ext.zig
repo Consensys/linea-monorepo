@@ -54,6 +54,10 @@ pub const Ext = extern struct {
         return .{ .B0 = self.B0.neg(), .B1 = self.B1.neg(), .B2 = self.B2.neg() };
     }
 
+    pub fn halve(self: Ext) Ext {
+        return .{ .B0 = self.B0.halve(), .B1 = self.B1.halve(), .B2 = self.B2.halve() };
+    }
+
     pub fn mulByBase(self: Ext, rhs: base.Element) Ext {
         return .{ .B0 = self.B0.mulByBase(rhs), .B1 = self.B1.mulByBase(rhs), .B2 = self.B2.mulByBase(rhs) };
     }
