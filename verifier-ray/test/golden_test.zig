@@ -391,6 +391,10 @@ const TraceRoundBacking = struct {
                 .public_ext => |values| {
                     try std.testing.expect(values.len <= max_trace_values);
                     fillExts(&self.ext_values[i], values);
+                    if (tamper_first_absorb and !tampered and values.len != 0) {
+                        self.ext_values[i][0].B0.a0 = elem(self.ext_values[i][0].B0.a0.value ^ 1);
+                        tampered = true;
+                    }
                     self.columns[column_count] = .{ .public_column = .{ .ext = self.ext_values[i][0..values.len] } };
                     column_count += 1;
                 },
