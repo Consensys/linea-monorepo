@@ -222,7 +222,6 @@ test "runtime downstream coin diverges after tampered absorb" {
     try std.testing.expect(!got[0].eql(ext.Ext.fromUints(case.rounds[0].expected_coins[0])));
 }
 
-
 /// Convert a generated Poseidon digest fixture into field elements.
 fn digest(values: [8]u32) poseidon2.Digest {
     var out: poseidon2.Digest = undefined;

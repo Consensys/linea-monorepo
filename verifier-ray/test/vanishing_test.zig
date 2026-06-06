@@ -147,4 +147,3 @@ fn roundMessage(allocator: std.mem.Allocator, round: fixtures.RuntimeTraceRound)
 
     return .{ .columns = columns, .cells = cells };
 }
-
