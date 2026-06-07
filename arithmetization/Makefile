@@ -87,12 +87,12 @@ install-go-corset:
 		else \
 			echo "go-corset version mismatch: installed=$$installed expected=$(GO_CORSET_VERSION)"; \
 			echo "Installing go-corset@$(GO_CORSET_VERSION)..."; \
-			go install github.com/consensys/go-corset/cmd/go-corset@$(GO_CORSET_VERSION); \
+			go install github.com/LFDT-Lineth/zkc/cmd/go-corset@$(GO_CORSET_VERSION); \
 		fi; \
 	else \
 		echo "go-corset not found in PATH"; \
 		echo "Installing go-corset@$(GO_CORSET_VERSION)..."; \
-		go install github.com/consensys/go-corset/cmd/go-corset@$(GO_CORSET_VERSION); \
+		go install github.com/LFDT-Lineth/zkc/cmd/go-corset@$(GO_CORSET_VERSION); \
 	fi
 
 # Install Sail for ACT4 host builds. Other host tools are prerequisites.
