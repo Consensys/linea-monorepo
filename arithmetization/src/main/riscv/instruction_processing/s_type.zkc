@@ -42,9 +42,11 @@ fn process_S_type_instruction<ram, registers>(instruction_parameters:u25) {
     var uimm5:UImm5
     var uimm6:UImm6
 
+    #[cost:decoding_s_type_fields]
     imm_sign::uimm6::rs2::rs1::funct3::uimm5 = instruction_parameters
 
     // TODO: do we just want to use a mask instead?
+    #[cost:decoding_s_type_sign_extend_imm12]
     var signext_imm12_64:DoubleWord = sgn_extension_u12_u64(imm_sign::uimm6::uimm5)
 
     // var signext_imm12_64:DoubleWord
@@ -54,6 +56,7 @@ fn process_S_type_instruction<ram, registers>(instruction_parameters:u25) {
     //    signext_imm12_64 = (imm_sign::uimm6::uimm5) as u64
     //}
 
+    #[cost:decoding_s_type_mem_address]
     var mem_address:Address = signed_sum_of_double_word(registers[rs1], signext_imm12_64) as Address
 
     switch funct3 {

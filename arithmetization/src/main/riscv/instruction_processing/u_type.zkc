@@ -37,7 +37,9 @@ fn process_U_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
 
     var tmp:DoubleWord
 
+    #[cost:decoding_u_type_fields]
     imm20::rd = instruction_parameters
+    #[cost:decoding_u_type_imm]
     tmp = sgn_extension_u32_u64(((imm20 as u32) << 12) as u32)
 
     switch opcode {
