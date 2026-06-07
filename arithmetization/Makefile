@@ -11,7 +11,11 @@ REPO_ROOT := $(abspath $(MAKEFILE_DIR)/..)
 GO_CORSET ?= $(REPO_ROOT)/go-corset
 GO_CORSET_REPO ?= https://github.com/LFDT-Lineth/zkc.git
 # Optional: pin a commit or branch (e.g. 763f30878e5fc260f0d88863c9883c904f8fc056). Leave empty for default branch.
+<<<<<<< HEAD
 GO_CORSET_REF_FOR_ZKC ?=dd15898cfe0b57597de07613e799c2b221a11ab3
+=======
+GO_CORSET_REF_FOR_ZKC ?=ec578949f9dc63b8f467d1bd8f91c0db8211eb5a
+>>>>>>> 2c30ab3f3 (updated go-corset)
 
 # Used to install go-corset
 GO_CORSET_VERSION ?= v1.2.17
