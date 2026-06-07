@@ -156,7 +156,7 @@ zkc-exec: require-test install-zkc
 	zkc exec $(ZKC_EXEC_FLAGS) $(JSON) $(ZKC_MAIN)
 
 zkc-debug: require-test install-zkc
-	zkc debug $(JSON) $(ZKC_MAIN)
+	zkc debug -v $(JSON) $(ZKC_MAIN)
 
 clean: require-test
 	rm -f $(BIN) $(JSON) $(BIN).objdump $(VECTOR_SUBSET_FILE) $(LINKER_SCRIPT)
