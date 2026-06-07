@@ -37,7 +37,7 @@ jobs:
     runs-on: gha-lfdt-lineth-ss-ubuntu-24-amd64-large
     ## Override with a custom go-corset repo commit here in the event zkc on main is failing
     env:
-      GO_CORSET_REF_FOR_ZKC: ${{ inputs.go-corset-ref || 'main' }}
+      GO_CORSET_REF_FOR_ZKC: ${{ inputs.go-corset-ref || '9f911becf5b02cdd96db75d0fa482c9ececf04c9' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
