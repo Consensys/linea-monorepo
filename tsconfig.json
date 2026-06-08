@@ -1,24 +1,9 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "baseUrl": ".",
-    "moduleResolution": "nodenext",
-    "module": "nodenext",
-    "target": "es2022",
-    "sourceMap": true,
-    "strict": true,
-    "esModuleInterop": true,
-    "noImplicitReturns": true,
-    "noUnusedLocals": true,
-    "resolveJsonModule": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "removeComments": true,
-    "skipLibCheck": true,
-    "isolatedModules": true,
-    "noErrorTruncation": true,
-    "exactOptionalPropertyTypes": true,
-    "noEmit": false
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true
   },
-  "exclude": ["**/node_modules", "**/dist", "*.d.ts", "**/.*/"]
+  "include": ["*.config.mjs"]
 }

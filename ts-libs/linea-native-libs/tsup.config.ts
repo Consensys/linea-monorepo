@@ -8,6 +8,9 @@ export default defineConfig({
   dts: true,
   clean: true,
   sourcemap: true,
+  esbuildOptions(options) {
+    options.sourcesContent = false;
+  },
   minify: true,
   outDir: "dist",
 });

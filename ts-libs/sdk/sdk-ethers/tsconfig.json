@@ -1,9 +1,9 @@
 {
-  "extends": "../../../tsconfig.json",
+  "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "composite": true,
+    "noEmit": true,
     "removeComments": false,
     "isolatedModules": false,
     "strictPropertyInitialization": false,

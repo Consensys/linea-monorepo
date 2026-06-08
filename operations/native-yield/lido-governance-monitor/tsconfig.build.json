@@ -3,6 +3,10 @@
   "compilerOptions": {
     "declaration": true,
     "declarationMap": true,
+    "noEmit": false,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "inlineSources": false,
     "sourceMap": true
   },
   "exclude": ["**/*.test.ts", "**/__tests__/**", "**/__mocks__/**"]
