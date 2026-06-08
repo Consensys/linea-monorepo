@@ -76,8 +76,6 @@ jobs:
   bench:
     runs-on: gha-lfdt-lineth-ss-ubuntu-24-amd64-large
     timeout-minutes: 120
-    env:
-      ZKC_REF: ${{ inputs.zkc_ref }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -90,6 +88,8 @@ jobs:
 
       - name: Install zkc
         run: make -C arithmetization install-zkc
+        env:
+          ZKC_REF: ${{ inputs.zkc_ref }}
 
       - name: Add worktrees for base and optim branches
         run: |

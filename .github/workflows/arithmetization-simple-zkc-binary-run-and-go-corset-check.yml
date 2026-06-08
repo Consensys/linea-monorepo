@@ -30,8 +30,6 @@ permissions:
 jobs:
   binary-run-and-zkc-check:
     runs-on: gha-lfdt-lineth-ss-ubuntu-24-amd64-small
-    env:
-      ZKC_REF: ${{ inputs.zkc-ref || 'main' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -44,6 +42,7 @@ jobs:
       - name: Install zkc, compile risc binary for simple zkc test program and check it
         run: make -C arithmetization zkc-compile-and-check
         env:
+          ZKC_REF: ${{ inputs.zkc-ref || 'main' }}
           ZKC_MAIN: src/test/examples/zkc/simple_add.zkc
           ZKC_FILES: src/test/examples/zkc/simple_add.zkc
           ZKC_INPUT: src/test/examples/zkc/simple_add.json
