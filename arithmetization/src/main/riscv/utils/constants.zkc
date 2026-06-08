@@ -30,7 +30,7 @@ static instruction_type_from_opcode(opcode:Opcode) -> (instruction_type:Type) {
     UNDEFINED_TYPE, // 0b0001001
     UNDEFINED_TYPE, // 0b0001010
     UNDEFINED_TYPE, // 0b0001011
-    R_TYPE, // 0b0001100
+    R_TYPE, // 0b0001100 ≡ 0x0c ≡ custom-1 opcode
     UNDEFINED_TYPE, // 0b0001101
     UNDEFINED_TYPE, // 0b0001110
     MISC_MEM_TYPE, // 0b0001111  (FENCE, FENCE.I — no-op on this implementation)
