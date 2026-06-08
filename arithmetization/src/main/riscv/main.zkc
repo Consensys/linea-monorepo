@@ -14,6 +14,7 @@ include "memory.zkc"
 
 // TODO @Ghost
 fn main<ram, registers>() {
+    var opcode:Opcode
     var instruction:Instruction
     var clock_cycle:u32 = 0
     var entry_point:Address
@@ -45,3 +46,4 @@ fn main<ram, registers>() {
         pc = interpreter(instruction, pc)
     }
 }
+
