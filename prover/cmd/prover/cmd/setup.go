@@ -349,6 +349,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		zkEvm := zkevm.FullZkEvm(&limits, cfg)
 		return invalidity.NewBuilder(invalidity.Config{
 			ZkEvmComp: zkEvm.RecursionCompiledIOP,
+			MaxL2Logs: limits.BlockL2L1Logs(),
 		}, &invalidity.BadPrecompileCircuit{}), extraFlags, nil
 
 	case circuits.InvalidityPrecompileLogsLargeCircuitID:
@@ -358,6 +359,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		zkEvm := zkevm.FullZkEvmLarge(&limits, cfg)
 		return invalidity.NewBuilder(invalidity.Config{
 			ZkEvmComp: zkEvm.RecursionCompiledIOP,
+			MaxL2Logs: limits.BlockL2L1Logs(),
 		}, &invalidity.BadPrecompileCircuit{}), extraFlags, nil
 
 	case circuits.InvalidityPrecompileLogsLimitlessCircuitID:
@@ -377,7 +379,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 				return nil, nil, fmt.Errorf("failed to load VK merkle tree for invalidity limitless: %w", err)
 			}
 			vkMerkleRoot := vkTree.GetRoot()
-			return invalidity.NewBuilderLimitless(conglo.RecursionCompBLS, vkMerkleRoot), extraFlags, nil
+			return invalidity.NewBuilderLimitless(conglo.RecursionCompBLS, vkMerkleRoot, cfg.TracesLimits.BlockL2L1Logs()), extraFlags, nil
 		}
 
 		logrus.Info("execution-limitless assets not found; generating them now for invalidity limitless setup")
@@ -392,7 +394,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		asset = nil
 		runtime.GC()
 
-		return invalidity.NewBuilderLimitless(compCong.RecursionCompBLS, vkMerkleRoot), extraFlags, nil
+		return invalidity.NewBuilderLimitless(compCong.RecursionCompBLS, vkMerkleRoot, cfg.TracesLimits.BlockL2L1Logs()), extraFlags, nil
 	case circuits.InvalidityFilteredAddressCircuitID:
 		keccakComp := invalidity.MakeKeccakCompiledIOP(cfg.Invalidity.MaxRlpByteSize, keccak.WizardCompilationParameters()...)
 		return invalidity.NewBuilder(

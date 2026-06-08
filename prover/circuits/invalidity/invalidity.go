@@ -56,6 +56,7 @@ type AssigningInputs struct {
 	// inputs related to zkevm-wizard
 	ZkEvmComp        *wizard.CompiledIOP
 	ZkEvmWizardProof wizard.Proof
+	MaxL2Logs        int
 
 	// CachedProofPath, if set, enables proof caching: on first run the proof
 	// is written to this path; on subsequent runs with the same witness the
@@ -184,7 +185,7 @@ func (c *CircuitInvalidity) CheckOnly(assi AssigningInputs) error {
 		if assi.ZkEvmComp == nil {
 			return fmt.Errorf("ZkEvmComp is nil for %s", assi.InvalidityType)
 		}
-		err = CheckOnlyNativeBadPrecompile(assi.ZkEvmComp, assi.ZkEvmWizardProof, assi.FuncInputs, assi.InvalidityType)
+		err = CheckOnlyNativeBadPrecompile(assi.ZkEvmComp, assi.ZkEvmWizardProof, assi.FuncInputs, assi.InvalidityType, assi.MaxL2Logs)
 
 	case BadNonce, BadBalance:
 		err = CheckOnlyNativeNonceBalance(assi)
@@ -207,6 +208,9 @@ type Config struct {
 	KeccakCompiledIOP *wizardk.CompiledIOP
 	MaxRlpByteSize    int
 	ZkEvmComp         *wizard.CompiledIOP
+	// MaxL2Logs is the maximum number of L2->L1 logs allowed.
+	// Used by the BadPrecompile/TooManyLogs circuit.
+	MaxL2Logs int
 }
 
 type builder struct {
@@ -230,10 +234,11 @@ func (b *builder) Compile() (constraint.ConstraintSystem, error) {
 type limitlessBuilder struct {
 	congWIOP     *wizard.CompiledIOP
 	vkMerkleRoot field.Octuplet
+	maxL2Logs    int
 }
 
-func NewBuilderLimitless(congWIOP *wizard.CompiledIOP, vkMerkleRoot field.Octuplet) *limitlessBuilder {
-	return &limitlessBuilder{congWIOP: congWIOP, vkMerkleRoot: vkMerkleRoot}
+func NewBuilderLimitless(congWIOP *wizard.CompiledIOP, vkMerkleRoot field.Octuplet, maxL2Logs int) *limitlessBuilder {
+	return &limitlessBuilder{congWIOP: congWIOP, vkMerkleRoot: vkMerkleRoot, maxL2Logs: maxL2Logs}
 }
 
 func (b *limitlessBuilder) Compile() (constraint.ConstraintSystem, error) {
@@ -249,7 +254,7 @@ func (b *limitlessBuilder) Compile() (constraint.ConstraintSystem, error) {
 			},
 		},
 	}
-	circuit.Allocate(Config{ZkEvmComp: b.congWIOP})
+	circuit.Allocate(Config{ZkEvmComp: b.congWIOP, MaxL2Logs: b.maxL2Logs})
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit, frontend.WithCapacity(1<<24))
 	if err != nil {
