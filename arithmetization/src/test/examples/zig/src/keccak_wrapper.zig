@@ -1,8 +1,9 @@
 export fn main() noreturn {
-    const input_offset: usize = 0x1000;
-    const input_size: usize = 64;
-    const output_offset: usize = 0x2000;
-    in_line_assembly_keccak_call(input_offset, input_size, output_offset);
+    const data: [*]const u8 = @ptrFromInt(0x1000);
+    const len: usize = 64;
+    const output: *zkvm_keccak256_hash = @ptrFromInt(0x2000);
+
+    _ = zkvm_keccak256(data, len, output);
 
     // no OS to return to, signal halt via ecall
     asm volatile (
@@ -13,18 +14,27 @@ export fn main() noreturn {
     unreachable;
 }
 
-fn in_line_assembly_keccak_call(
-    input_offset: usize,
-    input_size: usize,
-    output_offset: usize,
-) void {
+// https://github.com/eth-act/zkvm-standards/blob/282cd356c3a0498416bb0619f9c8a347ce9933fb/standards/c-interface-accelerators/zkvm_accelerators.h#L42
+pub const zkvm_status = enum(c_int) {
+    ZKVM_EOK = 0, // Success
+    ZKVM_EFAIL = -1, // Failure
+};
+
+// https://github.com/eth-act/zkvm-standards/blob/282cd356c3a0498416bb0619f9c8a347ce9933fb/standards/c-interface-accelerators/zkvm_accelerators.h#L72
+pub const zkvm_keccak256_hash = struct {
+    data: [32]u8 align(8),
+};
+
+// https://github.com/eth-act/zkvm-standards/blob/282cd356c3a0498416bb0619f9c8a347ce9933fb/standards/c-interface-accelerators/zkvm_accelerators.h#L166
+export fn zkvm_keccak256(data: [*]const u8, len: usize, output: *zkvm_keccak256_hash) zkvm_status {
     // invoke custom opcode for keccak
     // opcode format: opcode(0x0c = custom-1) | funct3(0b000) | funct7(0b0000000) | rd(output_offset) | rs1(input_offset) | rs2(input_size)
     asm volatile (
         \\.insn r 0x0c, 0b000, 0b0000000, %[out], %[in], %[size]
         :
-        : [out] "r" (output_offset),
-          [in] "r" (input_offset),
-          [size] "r" (input_size),
+        : [out] "r" (@intFromPtr(output)),
+          [in] "r" (@intFromPtr(data)),
+          [size] "r" (len),
     );
+    return .ZKVM_EOK;
 }
