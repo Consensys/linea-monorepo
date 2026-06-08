@@ -4,7 +4,7 @@ const verifier_ray = @import("verifier_ray");
 const field = verifier_ray.field.koalabear;
 const ext = verifier_ray.field.koalabear_ext;
 const fiat_shamir = verifier_ray.crypto.fiat_shamir;
-const runtime = verifier_ray.runtime;
+const protocol = verifier_ray.protocol;
 
 test "transcript absorbs elements deterministically" {
     var transcript = fiat_shamir.Transcript.init();
@@ -17,48 +17,31 @@ test "transcript absorbs elements deterministically" {
     try std.testing.expect(!challenge.isZero());
 }
 
-test "runtime rejects skipped and replayed rounds" {
-    var rt = runtime.Runtime.initWithRoundCount(3);
-    var coins: [1]runtime.Coin = undefined;
+test "sampler rejects skipped and replayed rounds" {
+    // Three advances; coin counts don't matter for the ordering check.
+    var sampler = protocol.Sampler(&.{ 1, 1, 1 }).init();
 
     try std.testing.expectError(
         error.UnexpectedRound,
-        rt.advanceRoundWithMessage(1, .{}, &coins),
+        sampler.advanceRoundWithMessage(1, .{}),
     );
 
-    _ = try rt.advanceRoundWithMessage(0, .{}, &coins);
+    _ = try sampler.advanceRoundWithMessage(0, .{});
 
     try std.testing.expectError(
         error.UnexpectedRound,
-        rt.advanceRoundWithMessage(0, .{}, &coins),
+        sampler.advanceRoundWithMessage(0, .{}),
     );
     try std.testing.expectError(
         error.UnexpectedRound,
-        rt.advanceRoundWithMessage(2, .{}, &coins),
+        sampler.advanceRoundWithMessage(2, .{}),
     );
 }
 
-test "runtime rejects advancing without a next round" {
-    var no_rounds = runtime.Runtime.initWithRoundCount(0);
-    var coins: [1]runtime.Coin = undefined;
+test "sampler absorbs commitments, public columns, and squeezes matching coin count" {
+    var sampler = protocol.Sampler(&.{2}).init();
 
-    try std.testing.expectError(
-        error.NoRounds,
-        no_rounds.advanceRoundWithMessage(0, .{}, &coins),
-    );
-
-    var last_round = runtime.Runtime.initWithRoundCount(1);
-    try std.testing.expectError(
-        error.LastRound,
-        last_round.advanceRoundWithMessage(0, .{}, &coins),
-    );
-}
-
-test "runtime absorbs commitments, public columns, and squeezes requested extension coins" {
-    var rt = runtime.Runtime.initWithRoundCount(2);
-    var coins: [2]runtime.Coin = undefined;
-
-    const columns = [_]runtime.ColumnMessage{
+    const entries = [_]protocol.ColumnMessage{
         .{ .oracle_commitment = .{
             field.Element.init(1),
             field.Element.init(2),
@@ -71,25 +54,19 @@ test "runtime absorbs commitments, public columns, and squeezes requested extens
         } },
         .{ .public_column = .{ .base = &.{field.Element.init(9)} } },
     };
-    const cells = [_]runtime.Scalar{
+    const cells = [_]protocol.Scalar{
         .{ .base = field.Element.init(10) },
     };
-    const got = try rt.advanceRoundWithMessage(0, .{
-        .columns = &columns,
+    const got = try sampler.advanceRoundWithMessage(0, .{
+        .columns = &entries,
         .cells = &cells,
-        .next_round_coin_count = coins.len,
-    }, &coins);
+    });
 
+    // The return type is [2]Coin; .len is comptime-known.
     try std.testing.expectEqual(@as(usize, 2), got.len);
-    try std.testing.expectEqual(@as(usize, 1), rt.current_round);
-}
-
-test "runtime rejects undersized coin output buffer" {
-    var rt = runtime.Runtime.initWithRoundCount(2);
-    var coins: [0]runtime.Coin = .{};
-
-    try std.testing.expectError(
-        error.OutputTooSmall,
-        rt.advanceRoundWithMessage(0, .{ .next_round_coin_count = 1 }, &coins),
-    );
+    try std.testing.expectEqual(@as(usize, 1), sampler.current_round);
+    // Consecutive coins must be distinct: randomDigest() absorbs a zero
+    // separator between squeezes, so identical back-to-back outputs indicate
+    // a broken separator mechanism.
+    try std.testing.expect(!got[0].eql(got[1]));
 }
