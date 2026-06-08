@@ -84,7 +84,9 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 		return nil, fmt.Errorf("could not decode the RlpEncodedTx: %w", err)
 	}
 
-	SanityCheckInvalidityChainConfig(cfg, tx)
+	if cfg.Invalidity.ProverMode != config.ProverModeDev {
+		SanityCheckInvalidityChainConfig(cfg, tx)
+	}
 
 	funcInput := FuncInput(req, cfg)
 
