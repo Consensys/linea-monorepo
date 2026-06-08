@@ -10,12 +10,12 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/commitment"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/hash"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/merkle"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/parallel"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poly"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/reedsolomon"
+	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 )
 
 // foldParallelThreshold is the smallest half-layer size at which fan-out
@@ -130,9 +130,9 @@ type domainLight struct {
 // LeafP = layer[base], LeafQ = layer[base + Nⱼ/2] where base = s % (Nⱼ/2).
 type QueryLayer struct {
 	Field     field.Kind
-	LeafPBase koalabear.Element // populated when Field == field.Base
+	LeafPBase koalabear.Element // populated when Field == field.KindBase
 	LeafQBase koalabear.Element
-	LeafPExt  ext.E6 // populated when Field == field.Ext
+	LeafPExt  ext.E6 // populated when Field == field.KindExt
 	LeafQExt  ext.E6
 	Path      merkle.Proof // authenticates the pair; depth = log₂(Nⱼ/2)
 }
@@ -155,12 +155,12 @@ type LevelEvals struct {
 }
 
 // Field returns the populated rail. Invalid mixed/empty values are rejected by
-// Prove's validation; the zero value reports field.Base.
+// Prove's validation; the zero value reports field.KindBase.
 func (e LevelEvals) Field() field.Kind {
 	if len(e.Ext) > 0 {
-		return field.Ext
+		return field.KindExt
 	}
-	return field.Base
+	return field.KindBase
 }
 
 func (e LevelEvals) checkedField() (field.Kind, error) {
@@ -168,18 +168,18 @@ func (e LevelEvals) checkedField() (field.Kind, error) {
 	hasExt := len(e.Ext) > 0
 	switch {
 	case hasBase && hasExt:
-		return field.Base, fmt.Errorf("both base and ext rails are populated")
+		return field.KindBase, fmt.Errorf("both base and ext rails are populated")
 	case !hasBase && !hasExt:
-		return field.Base, fmt.Errorf("no rail is populated")
+		return field.KindBase, fmt.Errorf("no rail is populated")
 	case hasExt:
-		return field.Ext, nil
+		return field.KindExt, nil
 	default:
-		return field.Base, nil
+		return field.KindBase, nil
 	}
 }
 
 func (e LevelEvals) Len() int {
-	if e.Field() == field.Ext {
+	if e.Field() == field.KindExt {
 		return len(e.Ext)
 	}
 	return len(e.Base)
@@ -205,8 +205,8 @@ type Proof struct {
 	// Running-polynomial FRI path
 	FRIRoots      []hash.Digest // Merkle roots for running poly T_1..T_{r-1}
 	FinalField    field.Kind
-	FinalPolyBase []koalabear.Element               // populated when FinalField == field.Base
-	FinalPolyExt  []ext.E6                          // populated when FinalField == field.Ext
+	FinalPolyBase []koalabear.Element               // populated when FinalField == field.KindBase
+	FinalPolyExt  []ext.E6                          // populated when FinalField == field.KindExt
 	FRIQueries    []Query                           // len = NumQueries
 	PoW           map[string]fiatshamir.ProofOfWork // proof of work in case grinding has nbBits > 0
 }
@@ -268,7 +268,7 @@ func Prove(p Params, levels []Level, ts *fiatshamir.Transcript) (Proof, []int, e
 	}
 	registerChallenges(p, plan.numLevels-1, ts)
 
-	if plan.rail == field.Ext {
+	if plan.rail == field.KindExt {
 		return proveExt(p, levels, plan, ts)
 	}
 	return proveBase(p, levels, plan, ts)
@@ -433,7 +433,7 @@ func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcri
 		running = foldLayerBase(running, alphas[j], p.domains[j], p.invTwo)
 	}
 	layers[p.numRounds] = running
-	prf.FinalField = field.Base
+	prf.FinalField = field.KindBase
 	prf.FinalPolyBase = running
 	if err := recordFoldProofsOfWork(p, &prf, ts); err != nil {
 		return Proof{}, nil, fmt.Errorf("fri: Prove: record proof of work: %w", err)
@@ -484,7 +484,7 @@ func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcri
 				return Proof{}, nil, fmt.Errorf("fri: Prove: open level query l=%d k=%d: %w", l, k, err)
 			}
 			prf.LevelQueries[l-1][k] = QueryLayer{
-				Field:     field.Base,
+				Field:     field.KindBase,
 				LeafPBase: levels[l].Evals.Base[base],
 				LeafQBase: levels[l].Evals.Base[base+Nl/2],
 				Path:      path,
@@ -572,7 +572,7 @@ func proveExt(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcrip
 		running = foldLayerExt(running, alphas[j], p.domains[j], p.invTwo)
 	}
 	layers[p.numRounds] = running
-	prf.FinalField = field.Ext
+	prf.FinalField = field.KindExt
 	prf.FinalPolyExt = running
 	if err := recordFoldProofsOfWork(p, &prf, ts); err != nil {
 		return Proof{}, nil, fmt.Errorf("fri: Prove: record proof of work: %w", err)
@@ -621,7 +621,7 @@ func proveExt(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcrip
 				return Proof{}, nil, fmt.Errorf("fri: Prove: open level query l=%d k=%d: %w", l, k, err)
 			}
 			prf.LevelQueries[l-1][k] = QueryLayer{
-				Field:    field.Ext,
+				Field:    field.KindExt,
 				LeafPExt: levels[l].Evals.Ext[base],
 				LeafQExt: levels[l].Evals.Ext[base+Nl/2],
 				Path:     path,
@@ -679,13 +679,13 @@ func Verify(p Params, levelRoots []hash.Digest, levelDs []int, prf Proof, ts *fi
 			return fmt.Errorf("fri: Verify: proof has %d queries for extra level %d, want %d", len(qs), l+1, p.NumQueries)
 		}
 	}
-	if prf.FinalField != field.Base && prf.FinalField != field.Ext {
+	if prf.FinalField != field.KindBase && prf.FinalField != field.KindExt {
 		return fmt.Errorf("fri: Verify: invalid final field %s", prf.FinalField)
 	}
-	if prf.FinalField == field.Base && len(prf.FinalPolyBase) == 0 {
+	if prf.FinalField == field.KindBase && len(prf.FinalPolyBase) == 0 {
 		return fmt.Errorf("fri: Verify: base final field with empty FinalPolyBase")
 	}
-	if prf.FinalField == field.Ext && len(prf.FinalPolyExt) == 0 {
+	if prf.FinalField == field.KindExt && len(prf.FinalPolyExt) == 0 {
 		return fmt.Errorf("fri: Verify: ext final field with empty FinalPolyExt")
 	}
 
@@ -724,7 +724,7 @@ func Verify(p Params, levelRoots []hash.Digest, levelDs []int, prf Proof, ts *fi
 		levelRootsExtra = levelRoots[1:]
 	}
 
-	if prf.FinalField == field.Ext {
+	if prf.FinalField == field.KindExt {
 		return verifyExt(p, levelRoots, levelRootsExtra, levelAtRound, roots, prf, ts)
 	}
 	return verifyBase(p, levelRoots, levelRootsExtra, levelAtRound, roots, prf, ts)
@@ -1052,7 +1052,7 @@ func openQueryBase(s int, layers [][]koalabear.Element, trees []*merkle.Tree, nu
 		}
 
 		q.Layers[j] = QueryLayer{
-			Field:     field.Base,
+			Field:     field.KindBase,
 			LeafPBase: layers[j][base],
 			LeafQBase: layers[j][base+Nj/2],
 			Path:      path,
@@ -1075,7 +1075,7 @@ func openQueryExt(s int, layers [][]ext.E6, trees []*merkle.Tree, numRounds int)
 		}
 
 		q.Layers[j] = QueryLayer{
-			Field:    field.Ext,
+			Field:    field.KindExt,
 			LeafPExt: layers[j][base],
 			LeafQExt: layers[j][base+Nj/2],
 			Path:     path,
@@ -1104,7 +1104,7 @@ func checkQuery(s int, fq Query,
 
 	// Verify Merkle proofs for all level polynomial openings.
 	for lIdx, ld := range levelQueriesForQuery {
-		if ld.Field != field.Base {
+		if ld.Field != field.KindBase {
 			return fmt.Errorf("level %d: expected base query layer, got %s", lIdx+1, ld.Field)
 		}
 		pair := []commitment.PairBase{{ld.LeafPBase, ld.LeafQBase}}
@@ -1119,7 +1119,7 @@ func checkQuery(s int, fq Query,
 		Nj := int(p.domainsLight[j].cardinality)
 		base := s % (Nj / 2)
 		layer := fq.Layers[j]
-		if layer.Field != field.Base {
+		if layer.Field != field.KindBase {
 			return fmt.Errorf("round %d: expected base query layer, got %s", j, layer.Field)
 		}
 
@@ -1194,7 +1194,7 @@ func checkQueryExt(s int, fq Query,
 	p Params) error {
 
 	for lIdx, ld := range levelQueriesForQuery {
-		if ld.Field != field.Ext {
+		if ld.Field != field.KindExt {
 			return fmt.Errorf("level %d: expected ext query layer, got %s", lIdx+1, ld.Field)
 		}
 		pair := []commitment.PairExt{{ld.LeafPExt, ld.LeafQExt}}
@@ -1208,7 +1208,7 @@ func checkQueryExt(s int, fq Query,
 		Nj := int(p.domainsLight[j].cardinality)
 		base := s % (Nj / 2)
 		layer := fq.Layers[j]
-		if layer.Field != field.Ext {
+		if layer.Field != field.KindExt {
 			return fmt.Errorf("round %d: expected ext query layer, got %s", j, layer.Field)
 		}
 
