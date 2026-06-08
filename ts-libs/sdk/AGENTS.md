@@ -46,7 +46,7 @@ postman -> sdk-viem -> sdk-core
 
 ### Testing
 
-- Framework: Jest 30.3.0 with ts-jest preset
+- Framework: Jest 30.4.2 with ts-jest preset
 - `sdk-ethers` uses `--forceExit` and `jest-mock-extended`
 - Coverage: HTML, LCOV, and text reporters
 - Test files: `*.test.ts` pattern

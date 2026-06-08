@@ -223,7 +223,7 @@ After writing or editing code, check LSP diagnostics and fix any type errors or 
 |------|----------|-------|
 | Contracts (Hardhat) | Hardhat + ethers.js | `pnpm -F contracts run test` |
 | Contracts (Foundry) | Forge | `test/foundry/*` |
-| TypeScript packages | Jest 30.3.0 + ts-jest | `pnpm -F <pkg> run test` |
+| TypeScript packages | Jest 30.4.2 + ts-jest | `pnpm -F <pkg> run test` |
 | Coordinator | JUnit 5 + Mockito + WireMock | `./gradlew :coordinator:app:test` |
 | Prover | Go test | `go test ./... -tags nocorset,fuzzlight` |
 | E2E (protocol) | Jest | `pnpm -F e2e run test:local` |
