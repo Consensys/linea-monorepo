@@ -92,7 +92,7 @@ fn absorbing_phase<state_row0, state_row1, state_row2, state_row3, state_row4, b
     // we build the blocks that DO NOT require padding and call keccak_f on them
     // NOTE: n_blocks ≥ 1
     for block:u32 = 0; block<(n_blocks - 1); block = block + 1 {
-        for limb:u5 = 0; limb < 17; limb = limb + 1 {
+        for limb:u5 = 0; limb<17; limb = limb + 1 {
             padded_input_block[limb] = read_64(curr_address + (8 * limb) as Address)
         }
 
@@ -119,8 +119,8 @@ fn absorbing_phase<state_row0, state_row1, state_row2, state_row3, state_row4, b
         final_word_in_block = 0
     }
 
-    for limb :u8 = 0; limb < n_full_words; limb = limb + 1 {
-            padded_input_block[limb] = read_64(curr_address + (8 * limb) as Address)
+    for limb:u8 = 0; limb<n_full_words; limb = limb + 1 {
+        padded_input_block[limb] = read_64(curr_address + (8 * limb) as Address)
     }
     curr_address = curr_address + (8 * n_full_words)
     padded_input_block[n_full_words] = read_and_pad_64(curr_address, n_bytes, final_word_in_block)
@@ -129,8 +129,8 @@ fn absorbing_phase<state_row0, state_row1, state_row2, state_row3, state_row4, b
     // the above "read_and_pad_64" call didn't fill the final word, so
     // more padding happens: zero words followed by a terminating 1
     if final_word_in_block != 1 {
-        for limb :u8 = (n_full_words + 1); limb < 16; limb = limb + 1 {
-                padded_input_block[limb] = 0
+        for limb:u8 = (n_full_words + 1); limb<16; limb = limb + 1 {
+            padded_input_block[limb] = 0
         }
         padded_input_block[16] = FINAL_RIGHT_PADDING
     }
@@ -141,23 +141,23 @@ fn absorbing_phase<state_row0, state_row1, state_row2, state_row3, state_row4, b
 
 // TODO: Claude believes the order should be reversed
 fn xor_padded_input_block_into_state<state_row0, padded_input_block>() {
-        state_row0[0] = state_row0[0] ^ padded_input_block[16]
-        state_row1[0] = state_row1[0] ^ padded_input_block[15]
-        state_row2[0] = state_row2[0] ^ padded_input_block[14]
-        state_row3[0] = state_row3[0] ^ padded_input_block[13]
-        state_row4[0] = state_row4[0] ^ padded_input_block[12]
-        state_row0[1] = state_row0[1] ^ padded_input_block[11]
-        state_row1[1] = state_row1[1] ^ padded_input_block[10]
-        state_row2[1] = state_row2[1] ^ padded_input_block[9]
-        state_row3[1] = state_row3[1] ^ padded_input_block[8]
-        state_row4[1] = state_row4[1] ^ padded_input_block[7]
-        state_row0[2] = state_row0[2] ^ padded_input_block[6]
-        state_row1[2] = state_row1[2] ^ padded_input_block[5]
-        state_row2[2] = state_row2[2] ^ padded_input_block[4]
-        state_row3[2] = state_row3[2] ^ padded_input_block[3]
-        state_row4[2] = state_row4[2] ^ padded_input_block[2]
-        state_row0[3] = state_row0[3] ^ padded_input_block[1]
-        state_row1[3] = state_row1[3] ^ padded_input_block[0]
+    state_row0[0] = state_row0[0] ^ padded_input_block[16]
+    state_row1[0] = state_row1[0] ^ padded_input_block[15]
+    state_row2[0] = state_row2[0] ^ padded_input_block[14]
+    state_row3[0] = state_row3[0] ^ padded_input_block[13]
+    state_row4[0] = state_row4[0] ^ padded_input_block[12]
+    state_row0[1] = state_row0[1] ^ padded_input_block[11]
+    state_row1[1] = state_row1[1] ^ padded_input_block[10]
+    state_row2[1] = state_row2[1] ^ padded_input_block[9]
+    state_row3[1] = state_row3[1] ^ padded_input_block[8]
+    state_row4[1] = state_row4[1] ^ padded_input_block[7]
+    state_row0[2] = state_row0[2] ^ padded_input_block[6]
+    state_row1[2] = state_row1[2] ^ padded_input_block[5]
+    state_row2[2] = state_row2[2] ^ padded_input_block[4]
+    state_row3[2] = state_row3[2] ^ padded_input_block[3]
+    state_row4[2] = state_row4[2] ^ padded_input_block[2]
+    state_row0[3] = state_row0[3] ^ padded_input_block[1]
+    state_row1[3] = state_row1[3] ^ padded_input_block[0]
 }
 
 fn squeezing_phase<ram, state_row0, state_row1, state_row2, state_row3>(output_address:Address) {
@@ -230,33 +230,32 @@ fn rho<state_row0, state_row1, state_row2, state_row3, state_row4>() {
 // A[x,y] → B[y, (2x+3y) mod 5]
 fn pi<state_row0, state_row1, state_row2, state_row3, state_row4, b0, b1, b2, b3, b4>() {
 
-    // bY[Z] = state_rowX[Y] with Z = (2*X + 3*Y) mod 5
-
-    b0[0] = state_row0[0] // Z = (2*0 + 3*0) mod 5
-    b1[3] = state_row0[1] // Z = (2*0 + 3*1) mod 5
-    b2[1] = state_row0[2] // Z = (2*0 + 3*2) mod 5
-    b3[4] = state_row0[3] // Z = (2*0 + 3*3) mod 5
-    b4[2] = state_row0[4] // Z = (2*0 + 3*4) mod 5
-    b0[2] = state_row1[0] // Z = (2*1 + 3*0) mod 5
-    b1[0] = state_row1[1] // Z = (2*1 + 3*1) mod 5
-    b2[3] = state_row1[2] // Z = (2*1 + 3*2) mod 5
-    b3[1] = state_row1[3] // Z = (2*1 + 3*3) mod 5
-    b4[4] = state_row1[4] // Z = (2*1 + 3*4) mod 5
-    b0[4] = state_row2[0] // Z = (2*2 + 3*0) mod 5
-    b1[2] = state_row2[1] // Z = (2*2 + 3*1) mod 5
-    b2[0] = state_row2[2] // Z = (2*2 + 3*2) mod 5
-    b3[3] = state_row2[3] // Z = (2*2 + 3*3) mod 5
-    b4[1] = state_row2[4] // Z = (2*2 + 3*4) mod 5
-    b0[1] = state_row3[0] // Z = (2*3 + 3*0) mod 5
-    b1[4] = state_row3[1] // Z = (2*3 + 3*1) mod 5
-    b2[2] = state_row3[2] // Z = (2*3 + 3*2) mod 5
-    b3[0] = state_row3[3] // Z = (2*3 + 3*3) mod 5
-    b4[3] = state_row3[4] // Z = (2*3 + 3*4) mod 5
-    b0[3] = state_row4[0] // Z = (2*4 + 3*0) mod 5
-    b1[1] = state_row4[1] // Z = (2*4 + 3*1) mod 5
-    b2[4] = state_row4[2] // Z = (2*4 + 3*2) mod 5
-    b3[2] = state_row4[3] // Z = (2*4 + 3*3) mod 5
-    b4[0] = state_row4[4] // Z = (2*4 + 3*4) mod 5
+    // we apply bY[Z] = state_rowX[Y] with Z = (2*X + 3*Y) mod 5
+    b0[0] = state_row0[0]
+    b1[3] = state_row0[1]
+    b2[1] = state_row0[2]
+    b3[4] = state_row0[3]
+    b4[2] = state_row0[4]
+    b0[2] = state_row1[0]
+    b1[0] = state_row1[1]
+    b2[3] = state_row1[2]
+    b3[1] = state_row1[3]
+    b4[4] = state_row1[4]
+    b0[4] = state_row2[0]
+    b1[2] = state_row2[1]
+    b2[0] = state_row2[2]
+    b3[3] = state_row2[3]
+    b4[1] = state_row2[4]
+    b0[1] = state_row3[0]
+    b1[4] = state_row3[1]
+    b2[2] = state_row3[2]
+    b3[0] = state_row3[3]
+    b4[3] = state_row3[4]
+    b0[3] = state_row4[0]
+    b1[1] = state_row4[1]
+    b2[4] = state_row4[2]
+    b3[2] = state_row4[3]
+    b4[0] = state_row4[4]
 }
 
 // CHI: non-linear step
