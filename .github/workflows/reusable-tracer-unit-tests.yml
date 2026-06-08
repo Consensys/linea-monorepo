@@ -1,4 +1,4 @@
-name: "Reusable unit tests workflow"
+name: "Reusable: Tracer Unit Tests"
 
 permissions:
   contents: read
@@ -18,7 +18,7 @@ jobs:
   # Unit Tests
   # ==================================================================
   unit-tests:
-    runs-on: gha-runner-scale-set-ubuntu-24-amd64-xxl
+    runs-on: gha-lfdt-lineth-ss-ubuntu-24-amd64-xxl
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:

@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       linea_besu_package_image_tag:
-        description: 'Target linea-besu-package image tag (i.e. [prefix]-[YYYYMMDDHHMMSS]-[commit]), if not given, would build the linea-besu-package image from source'
+        description: 'Target linea-besu-package image tag, if not given, would build the linea-besu-package image from source'
         required: false
         type: string
       prover_image_tag:
@@ -23,7 +23,7 @@ on:
 
 jobs:
   build-and-upload-images:
-    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
+    runs-on: gha-lfdt-lineth-ss-ubuntu-24-amd64-med
     concurrency:
       group: build-images-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
