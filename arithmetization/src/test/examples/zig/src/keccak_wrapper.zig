@@ -1,7 +1,7 @@
 export fn main() noreturn {
-    const data: [*]const u8 = @ptrFromInt(0x1000);
+    const data: [*c]const u8 = @ptrFromInt(0x1000);
     const len: usize = 64;
-    const output: *zkvm_keccak256_hash = @ptrFromInt(0x2000);
+    const output: [*c]zkvm_keccak256_hash = @ptrFromInt(0x2000);
 
     _ = zkvm_keccak256(data, len, output);
 
@@ -21,12 +21,16 @@ pub const zkvm_status = enum(c_int) {
 };
 
 // https://github.com/eth-act/zkvm-standards/blob/282cd356c3a0498416bb0619f9c8a347ce9933fb/standards/c-interface-accelerators/zkvm_accelerators.h#L72
-pub const zkvm_keccak256_hash = struct {
+pub const zkvm_keccak256_hash = extern struct {
     data: [32]u8 align(8),
 };
 
 // https://github.com/eth-act/zkvm-standards/blob/282cd356c3a0498416bb0619f9c8a347ce9933fb/standards/c-interface-accelerators/zkvm_accelerators.h#L166
-export fn zkvm_keccak256(data: [*]const u8, len: usize, output: *zkvm_keccak256_hash) zkvm_status {
+export fn zkvm_keccak256(data: [*c]const u8, len: usize, output: [*c]zkvm_keccak256_hash) zkvm_status {
+    if (data == null or output == null) {
+        panicNullPointer();
+    }
+
     // invoke custom opcode for keccak
     // opcode format: opcode(0x0c = custom-1) | funct3(0b000) | funct7(0b0000000) | rd(output_offset) | rs1(input_offset) | rs2(input_size)
     asm volatile (
@@ -37,4 +41,13 @@ export fn zkvm_keccak256(data: [*]const u8, len: usize, output: *zkvm_keccak256_
           [size] "r" (len),
     );
     return .ZKVM_EOK;
+}
+
+fn panicNullPointer() noreturn {
+    asm volatile (
+        \\li a0, 1   # exit code 1
+        \\li a7, 93  # syscall number for exit
+        \\ecall
+    );
+    unreachable;
 }
