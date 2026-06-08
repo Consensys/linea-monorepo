@@ -1,6 +1,6 @@
 # Verifier Design
 
-## Architecture
+## verifier.verify Architecture
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -65,23 +65,47 @@ The static Zig data file is produced by a Go pipeline that walks the compiled
 ```
 prover-ray (Go)
     │
-    ├── wiop.System          compiled IOP: rounds, coins, verifier actions
-    │
-    ▼
-BuildVanishingSystem()       extract coin counts + expression DAGs
-    │                        → VanishingSystem{Modules, RoundCoinCounts, ...}
-    ▼
-generator.Generate()         emit Zig source
-    │   ├── emitVanishingSystem()  → module/expression/bucket constants
-    │   └── spec + systems literals
-    ▼
-src/generated/stub.zig       static Zig data, committed or generated at build time
-    │
-    ▼  (comptime parameters)
-verifier.verify()            runtime proof checker
-    ├── protocol.replay()    absorb round messages, squeeze all coins
-    └── vanishing.verify()   evaluate expression DAGs, check quotient identity
+    └── wiop.System          compiled IOP: rounds, coins, verifier actions
+            │
+            ├──────────────────────────────────────┐
+            ▼                                      ▼
+    BuildVanishingSystem()               BuildLogDerivSystem()   (future)
+    → VanishingSystem{                   → LogDerivSystem{ ... }
+        Modules,
+        RoundCoinCounts, ...}
+            │                                      │
+            └──────────────┬───────────────────────┘
+                           ▼
+                  generator.System{
+                      Rounds:    [...],
+                      Vanishing: &vanishingSystem,
+                      LogDeriv:  &logDerivSystem,  // future
+                  }
+                           │
+                           ▼
+                  generator.Generate()    emit Zig source
+                      ├── emitVanishingSystem()  → module/expression/bucket constants
+                      ├── emitLogDerivSystem()   → (future)
+                      └── spec + systems literals (shared across all sub-verifiers)
+                           │
+                           ▼
+                  src/generated/stub.zig   static Zig data, committed or generated at build time
+                           │
+                           ▼  (comptime parameters)
+                  verifier.verify()        runtime proof checker
+                      ├── protocol.replay()    absorb round messages, squeeze all coins
+                      ├── vanishing.verify()   evaluate expression DAGs, check quotient identity
+                      └── logderiv.verify()    (future)
 ```
+
+To add a sub-verifier:
+
+1. **Go side** — add `Build*System()` + a field to `generator.System` + `emit*System()` in `emitters.go`.
+2. **Zig side** — follow the four-step how-to comment at the top of `verifier.zig`
+   (`Systems` field → `ProofData` field → dispatch call; import is step 0).
+
+`protocol.Spec` and `protocol.replay` are **shared and unchanged** — the new
+sub-verifier reads its coins from the same pre-derived `ctx.all_coins`.
 
 The generated file exports exactly two public constants:
 
