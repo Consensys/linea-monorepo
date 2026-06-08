@@ -38,9 +38,11 @@ fn process_J_type_instruction<registers>(instruction_parameters:u25, pc:Address)
     var imm19_12:u8
 
     // destructure the input
+    #[cost:decoding_j_type_fields]
     imm20::imm10_1::imm11::imm19_12::rd = instruction_parameters
 
     // restructure and 1 left shift the immediate to get imm21
+    #[cost:decoding_j_type_imm]
     var imm21:u21 = ((imm20::imm19_12::imm11::imm10_1) as u21) << 1
 
     printf "JAL "

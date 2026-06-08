@@ -67,15 +67,22 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
     var word_wip:Word
     var sign_bit:SignBit
 
+    #[cost:decoding_r_type_fields]
     funct7::rs2::rs1::funct3::rd = instruction_parameters
 
+    #[cost:decoding_r_type_read_rs1]
     v1 = registers[rs1]
+    #[cost:decoding_r_type_read_rs2]
     v2 = registers[rs2]
 
+    #[cost:decoding_r_type_sign_rs1]
     v1_sign = sign_bit_of_double_word(v1)
+    #[cost:decoding_r_type_sign_rs2]
     v2_sign = sign_bit_of_double_word(v2)
 
+    #[cost:decoding_r_type_abs_rs1]
     v1_abs = absolute_value_double_word(v1)
+    #[cost:decoding_r_type_abs_rs2]
     v2_abs = absolute_value_double_word(v2)
 
     // Note. If x = 0b... and y = 0b... are two bit strings of length N
@@ -115,6 +122,7 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
             } else if (funct3 == FUNCT3_SLL) && (funct7 == FUNCT7_SLL) {
                 printf "SLL "
                 print_r_operands(rd, rs1, rs2)
+                #[cost:decoding_r_type_sll_shift_amount_6]
                 shift_discard_6::shift_amount_6 = v2
                 registers[rd] = v1 << shift_amount_6
             } else if (funct3 == FUNCT3_SLT) && (funct7 == FUNCT7_SLT) {
@@ -136,11 +144,13 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
             } else if (funct3 == FUNCT3_SRL) && (funct7 == FUNCT7_SRL) {
                 printf "SRL "
                 print_r_operands(rd, rs1, rs2)
+                #[cost:decoding_r_type_srl_shift_amount_6]
                 shift_discard_6::shift_amount_6 = v2
                 registers[rd] = v1 >> shift_amount_6
             } else if (funct3 == FUNCT3_SRA) && (funct7 == FUNCT7_SRA) {
                 printf "SRA "
                 print_r_operands(rd, rs1, rs2)
+                #[cost:decoding_r_type_sra_shift_amount_6]
                 shift_discard_6::shift_amount_6 = v2
                 if (v1_sign == 1) {
                     double_word_working_copy = bit_flip_double_word(v1)
@@ -250,9 +260,13 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
             // RISCV-64-I base instruction set instructions
             // =============================================
 
+            #[cost:decoding_r_type_split_rs1_word]
             v1_upper::v1_lower = v1
+            #[cost:decoding_r_type_split_rs2_word]
             v2_upper::v2_lower = v2
+            #[cost:decoding_r_type_word_abs_rs1]
             v1_lower_abs = absolute_value_word(v1_lower)
+            #[cost:decoding_r_type_word_abs_rs2]
             v2_lower_abs = absolute_value_word(v2_lower)
 
             if (funct3 == FUNCT3_ADDW) && (funct7 == FUNCT7_ADDW) {
@@ -269,16 +283,19 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
             } else if (funct3 == FUNCT3_SLLW) && (funct7 == FUNCT7_SLLW) {
                 printf "SLLW "
                 print_r_operands(rd, rs1, rs2)
+                #[cost:decoding_r_type_sllw_shift_amount_5]
                 shift_discard_5::shift_amount_5 = v2_lower
                 registers[rd] = sgn_extension_u32_u64(v1_lower << shift_amount_5)
             } else if (funct3 == FUNCT3_SRLW) && (funct7 == FUNCT7_SRLW) {
                 printf "SRLW "
                 print_r_operands(rd, rs1, rs2)
+                #[cost:decoding_r_type_srlw_shift_amount_5]
                 shift_discard_5::shift_amount_5 = v2_lower
                 registers[rd] = sgn_extension_u32_u64(v1_lower >> shift_amount_5)
             } else if (funct3 == FUNCT3_SRAW) && (funct7 == FUNCT7_SRAW) {
                 printf "SRAW "
                 print_r_operands(rd, rs1, rs2)
+                #[cost:decoding_r_type_sraw_shift_amount_5]
                 shift_discard_5::shift_amount_5 = v2_lower
                 if (sign_bit_of_word(v1_lower) == 1) {
                     word_working_copy = bit_flip_word(v1_lower)

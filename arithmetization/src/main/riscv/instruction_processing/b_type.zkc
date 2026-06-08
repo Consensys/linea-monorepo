@@ -52,11 +52,14 @@ fn process_B_type_instruction<registers>(instruction_parameters:u25, pc:Address)
     var rem_1:u63
     var rem_2:u63
 
+    #[cost:decoding_b_type_fields]
     imm_sign::imm_10_5::rs2::rs1::funct3::imm_4_1::imm_11 = instruction_parameters
 
     if imm_sign == 1 {
+        #[cost:decoding_b_type_negative_imm]
         imm = DWORD_SIGN_EXT_PREFIX_52_ONES::imm_11::imm_10_5::imm_4_1::(0 as u1)
     } else {
+        #[cost:decoding_b_type_positive_imm]
         imm = (imm_11::imm_10_5::imm_4_1::(0 as u1)) as DoubleWord
     }
 

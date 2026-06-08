@@ -13,7 +13,9 @@ fn interpreter<ram, registers>(instruction:u32, pc:Address) -> (new_pc:Address) 
     var instruction_parameters:u25
     var instruction_type:Type
     var opcode:Opcode
+    #[cost:decoding_common_instruction_fields]
     instruction_parameters::opcode = instruction
+    #[cost:decoding_common_instruction_type]
     instruction_type = instruction_type_from_opcode(opcode)
 
     // TODO: handle the case where rd = 0: we will handle this in RAM itself, likely by adding an extra read-write pair
@@ -52,5 +54,6 @@ fn interpreter<ram, registers>(instruction:u32, pc:Address) -> (new_pc:Address) 
     }
 
     // Forcefully set registers[0] = zero back to 0
+    #[cost:decoding_common_reset_x0]
     registers[0] = 0
 }
