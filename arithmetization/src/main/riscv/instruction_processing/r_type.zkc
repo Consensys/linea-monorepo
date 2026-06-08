@@ -366,6 +366,7 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
         case CUSTOM_1: {
             if (funct3 == FUNCT3_KECCAK) && (funct7 == FUNCT7_KECCAK) {
                 printf "KECCAK \n"
+                // TODO: call keccak
             } else {
                 printf "[ERROR] Unsupported R-type custom-1 instruction with\n"
                 printf "\tfunct3 ≡ %x ≡ %b\n", funct3, funct3
