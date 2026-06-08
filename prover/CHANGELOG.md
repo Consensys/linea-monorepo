@@ -7,6 +7,8 @@
 - *(prover)* Update rlp_blocks.bin path in shnarf_calculator tests (#3129)
 - *(prover)* Stronger soundness binding for euclidean division and crumb decomposition (#2910)
 - *(prover)* Valid-nonce-ftx (#3179)
+- *(prover)* L2 Messages (#3195)
+- *(prover)* Incorporate `isAllowedCircuitID` into aggregation FPI (#3194)
 
 ### ⚙️ Miscellaneous Tasks
 
