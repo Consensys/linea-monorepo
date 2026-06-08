@@ -1,16 +1,3 @@
-// Copyright 2020-2025 Consensys Software Inc.
-// Licensed under the Apache License, Version 2.0. See the LICENSE file for details.
-
-// Package fiatshamir implements a Fiat-Shamir transcript for non-interactive
-// proof systems.
-//
-// A [Transcript] derives verifier challenges deterministically from prover
-// messages using a hash function, turning an interactive protocol into a
-// non-interactive one.
-//
-// Challenges are registered by name (at construction or via [Transcript.NewChallenge]),
-// bound to values with [Transcript.Bind], and computed sequentially with
-// [Transcript.ComputeChallenge].
 package fiatshamir
 
 import (

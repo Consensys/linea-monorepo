@@ -1,16 +1,3 @@
-// Copyright Consensys Software Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
-// the License. You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
-// an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
-// specific language governing permissions and limitations under the License.
-//
-// SPDX-License-Identifier: Apache-2.0
-
 package fri
 
 import (
@@ -890,9 +877,9 @@ func verifyExt(p Params, levelRoots, levelRootsExtra []hash.Digest, levelAtRound
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-func gammaName() string           { return "fri_gamma" }
-func foldName(j int) string       { return fmt.Sprintf("fri_fold_%d", j) }
-func queryName(k int) string      { return fmt.Sprintf("fri_query_%d", k) }
+func gammaName() string      { return "fri_gamma" }
+func foldName(j int) string  { return fmt.Sprintf("fri_fold_%d", j) }
+func queryName(k int) string { return fmt.Sprintf("fri_query_%d", k) }
 
 func computeProverFoldChallenge(ts *fiatshamir.Transcript, name string, grinding int) ([8]koalabear.Element, error) {
 	if grinding == 0 {
