@@ -101,6 +101,7 @@ func Prove(cfg *config.Config, req *backendInvalidity.Request) (*backendInvalidi
 			proof,
 			*funcInput,
 			req.InvalidityType,
+			cfg.TracesLimits.BlockL2L1Logs(),
 			config.ProverModeLimitless,
 		); err != nil {
 			utils.Panic("outer proof constraint check failed (DEBUG MODE): %v", err)
