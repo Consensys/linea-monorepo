@@ -1,8 +1,8 @@
 include "constants.zkc"
 include "utils.zkc"
-include "../../risc5/memory.zkc"
-include "../../risc5/ram/write.zkc"
-include "../../risc5/utils/type.zkc"
+include "../../riscv/memory.zkc"
+include "../../riscv/ram/write.zkc"
+include "../../riscv/utils/type.zkc"
 
 // Implementation of the keccak hash function
 // - state size = 1600 bits
@@ -139,6 +139,7 @@ fn absorbing_phase<state_row0, state_row1, state_row2, state_row3, state_row4, b
     keccakf()
 }
 
+// TODO: Claude believes the order should be reversed
 fn xor_padded_input_block_into_state<state_row0, padded_input_block>() {
         state_row0[0] = state_row0[0] ^ padded_input_block[16]
         state_row1[0] = state_row1[0] ^ padded_input_block[15]
