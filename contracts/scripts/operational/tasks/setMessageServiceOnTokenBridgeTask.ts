@@ -1,10 +1,10 @@
-// import { ethers, network, upgrades } from "hardhat";
 import { task } from "hardhat/config";
 
 import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper";
-import { getDeployedContractOnNetwork } from "../../../common/helpers/readAddress";
+import { getAddressFromRegistry } from "../../../common/helpers/readAddress";
 import { getUiSigner, runWithSignerUiSession } from "../../../scripts/hardhat/signer-ui-bridge";
-import { TokenBridge } from "../../../typechain-types";
+
+import type { TokenBridge } from "../../../typechain-types";
 
 /*
     *******************************************************************************************
@@ -20,12 +20,14 @@ import { TokenBridge } from "../../../typechain-types";
     *******************************************************************************************
 */
 
-task("setMessageServiceOnTokenBridge", "Sets The Message Service On A TokenBridge")
-  .addOptionalParam("messageServiceAddress")
-  .addOptionalParam("tokenBridgeAddress")
-  .setAction(async (taskArgs, hre) => {
+export default task("setMessageServiceOnTokenBridge", "Sets The Message Service On A TokenBridge")
+  .addOption({ name: "messageServiceAddress", defaultValue: "" })
+  .addOption({ name: "tokenBridgeAddress", defaultValue: "" })
+  .setInlineAction(async (taskArgs, hre) => {
+    const connection = await hre.network.getOrCreate();
     return runWithSignerUiSession(hre, "task:setMessageServiceOnTokenBridge", async () => {
-      const ethers = hre.ethers;
+      const { ethers } = connection;
+      const networkName = connection.networkName === "default" ? "hardhat" : connection.networkName;
 
       const messageServiceAddress = getTaskCliOrEnvValue(taskArgs, "messageServiceAddress", "MESSAGE_SERVICE_ADDRESS");
       if (!messageServiceAddress) {
@@ -34,7 +36,7 @@ task("setMessageServiceOnTokenBridge", "Sets The Message Service On A TokenBridg
 
       let tokenBridgeAddress = getTaskCliOrEnvValue(taskArgs, "tokenBridgeAddress", "TOKEN_BRIDGE_ADDRESS");
       if (!tokenBridgeAddress) {
-        tokenBridgeAddress = await getDeployedContractOnNetwork(hre.network.name, "TokenBridge");
+        tokenBridgeAddress = await getAddressFromRegistry(networkName, "TokenBridge");
         if (!tokenBridgeAddress) {
           throw "tokenBridgeAddress is undefined";
         }
@@ -44,11 +46,16 @@ task("setMessageServiceOnTokenBridge", "Sets The Message Service On A TokenBridg
       console.log(`Current network's chainId is ${chainId}`);
 
       const signer = await getUiSigner(hre);
-      const tokenBridge = (await ethers.getContractAt("TokenBridge", tokenBridgeAddress, signer)) as TokenBridge;
+      const tokenBridge = (await ethers.getContractAt(
+        "TokenBridge",
+        tokenBridgeAddress,
+        signer,
+      )) as unknown as TokenBridge;
       const tx = await tokenBridge.setMessageService(messageServiceAddress!);
 
       await tx.wait();
 
-      console.log(`MessageService set for the TokenBridge on: ${hre.network.name}`);
+      console.log(`MessageService set for the TokenBridge on: ${networkName}`);
     });
-  });
+  })
+  .build();

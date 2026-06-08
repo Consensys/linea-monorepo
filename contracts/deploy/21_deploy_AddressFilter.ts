@@ -1,9 +1,8 @@
 import { PRECOMPILES_ADDRESSES } from "contracts/common/constants";
-import { ethers } from "hardhat";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
+import { network as hardhatNetwork } from "hardhat";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   LogContractDeployment,
@@ -12,9 +11,15 @@ import {
   tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
 import { formatEnvVarForLog } from "../common/helpers/envVarLogging";
+import { deployScript } from "../rocketh/deploy";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
-const DEFAULT_FILTERED_ADDRESS_PATH = join(__dirname, "..", "addresses-filter.txt");
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const networkName = hardhatConnection.networkName === "default" ? "hardhat" : hardhatConnection.networkName;
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const DEFAULT_FILTERED_ADDRESS_PATH = join(currentDir, "..", "addresses-filter.txt");
 
 /** Keeps each `setFilteredStatus` tx under Osaka-era gas limits (cold mapping writes per address). */
 const SET_FILTERED_STATUS_BATCH_SIZE = 300;
@@ -55,59 +60,51 @@ export function loadAddressFilterFilteredAddressesFromFile(): string[] {
   return out;
 }
 
-const func: DeployFunction = withSignerUiSession(
-  "21_deploy_AddressFilter.ts",
-  async function (hre: HardhatRuntimeEnvironment) {
-    const contractName = "AddressFilter";
-    const signer = await getUiSigner(hre);
+const func = withSignerUiSession("21_deploy_AddressFilter.ts", async function () {
+  const contractName = "AddressFilter";
+  const signer = await getUiSigner();
 
-    const councilAddress = requireAddressFromRegistryOrEnv(
-      hre.network.name,
-      "L1_SECURITY_COUNCIL",
-      "L1_SECURITY_COUNCIL",
-    );
-    const deployerAddress = ethers.getAddress(await signer.getAddress());
-    const filteredAddresses = loadAddressFilterFilteredAddressesFromFile();
+  const councilAddress = requireAddressFromRegistryOrEnv(networkName, "L1_SECURITY_COUNCIL", "L1_SECURITY_COUNCIL");
+  const deployerAddress = ethers.getAddress(await signer.getAddress());
+  const filteredAddresses = loadAddressFilterFilteredAddressesFromFile();
 
-    // Constructor initcode must stay under EIP-3860 (49152 bytes). Deployer is temporary DEFAULT_ADMIN.
-    const constructorInitialList = [...PRECOMPILES_ADDRESSES];
+  // Constructor initcode must stay under EIP-3860 (49152 bytes). Deployer is temporary DEFAULT_ADMIN.
+  const constructorInitialList = [...PRECOMPILES_ADDRESSES];
 
-    const factory = await ethers.getContractFactory(contractName, signer);
-    const contract = await factory.deploy(deployerAddress, constructorInitialList);
+  const factory = await ethers.getContractFactory(contractName, signer);
+  const contract = await factory.deploy(deployerAddress, constructorInitialList);
 
-    await LogContractDeployment(contractName, contract);
-    const contractAddress = await contract.getAddress();
+  await LogContractDeployment(contractName, contract);
+  const contractAddress = await contract.getAddress();
 
-    if (filteredAddresses.length > 0) {
-      const batchTotal = Math.ceil(filteredAddresses.length / SET_FILTERED_STATUS_BATCH_SIZE);
-      for (let i = 0; i < filteredAddresses.length; i += SET_FILTERED_STATUS_BATCH_SIZE) {
-        const chunk = filteredAddresses.slice(i, i + SET_FILTERED_STATUS_BATCH_SIZE);
-        const batchIndex = Math.floor(i / SET_FILTERED_STATUS_BATCH_SIZE) + 1;
-        console.log(`AddressFilter: setFilteredStatus batch ${batchIndex}/${batchTotal} (${chunk.length} addresses)…`);
-        const tx = await contract.setFilteredStatus(chunk, true);
-        await tx.wait();
-      }
+  if (filteredAddresses.length > 0) {
+    const batchTotal = Math.ceil(filteredAddresses.length / SET_FILTERED_STATUS_BATCH_SIZE);
+    for (let i = 0; i < filteredAddresses.length; i += SET_FILTERED_STATUS_BATCH_SIZE) {
+      const chunk = filteredAddresses.slice(i, i + SET_FILTERED_STATUS_BATCH_SIZE);
+      const batchIndex = Math.floor(i / SET_FILTERED_STATUS_BATCH_SIZE) + 1;
+      console.log(`AddressFilter: setFilteredStatus batch ${batchIndex}/${batchTotal} (${chunk.length} addresses)…`);
+      const tx = await contract.setFilteredStatus(chunk, true);
+      await tx.wait();
     }
+  }
 
-    const defaultAdminRole = await contract.DEFAULT_ADMIN_ROLE();
+  const defaultAdminRole = await contract.DEFAULT_ADMIN_ROLE();
 
-    if (deployerAddress !== councilAddress) {
-      console.log(`AddressFilter: granting DEFAULT_ADMIN_ROLE to L1_SECURITY_COUNCIL ${councilAddress}…`);
-      await (await contract.grantRole(defaultAdminRole, councilAddress)).wait();
-      console.log("AddressFilter: deployer renouncing DEFAULT_ADMIN_ROLE…");
-      await (await contract.renounceRole(defaultAdminRole, deployerAddress)).wait();
-    } else {
-      console.log("AddressFilter: deployer equals L1_SECURITY_COUNCIL — skipping grant/renounce (admin unchanged).");
-    }
+  if (deployerAddress !== councilAddress) {
+    console.log(`AddressFilter: granting DEFAULT_ADMIN_ROLE to L1_SECURITY_COUNCIL ${councilAddress}…`);
+    await (await contract.grantRole(defaultAdminRole, councilAddress)).wait();
+    console.log("AddressFilter: deployer renouncing DEFAULT_ADMIN_ROLE…");
+    await (await contract.renounceRole(defaultAdminRole, deployerAddress)).wait();
+  } else {
+    console.log("AddressFilter: deployer equals L1_SECURITY_COUNCIL — skipping grant/renounce (admin unchanged).");
+  }
 
-    const args = [deployerAddress, constructorInitialList];
-    await tryVerifyContractWithConstructorArgs(
-      contractAddress,
-      "src/rollup/forcedTransactions/AddressFilter.sol:AddressFilter",
-      args,
-    );
-  },
-);
+  const args = [deployerAddress, constructorInitialList];
+  await tryVerifyContractWithConstructorArgs(
+    contractAddress,
+    "src/rollup/forcedTransactions/AddressFilter.sol:AddressFilter",
+    args,
+  );
+});
 
-export default func;
-func.tags = ["AddressFilter"];
+export default deployScript(func, { tags: ["AddressFilter"] });

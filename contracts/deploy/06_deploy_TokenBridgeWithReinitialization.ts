@@ -1,52 +1,55 @@
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
 import { TokenBridge__factory } from "contracts/typechain-types";
-import { ethers, upgrades } from "hardhat";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
+import hre, { network as hardhatNetwork } from "hardhat";
 
 import { tryVerifyContract, requireAddressFromRegistryOrEnv } from "../common/helpers";
+import { deployScript } from "../rocketh/deploy";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
-const func: DeployFunction = withSignerUiSession(
-  "06_deploy_TokenBridgeWithReinitialization.ts",
-  async function (hre: HardhatRuntimeEnvironment) {
-    const signer = await getUiSigner(hre);
-    const contractName = "TokenBridge";
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const networkName = hardhatConnection.networkName === "default" ? "hardhat" : hardhatConnection.networkName;
+const upgrades = await createUpgrades(hre, hardhatConnection);
 
-    const tokenBridgeKey = process.env.DEPLOY_TOKEN_BRIDGE_ON_L1 === "true" ? "TokenBridge_L1" : "TokenBridge_L2";
-    const proxyAddress = requireAddressFromRegistryOrEnv(hre.network.name, tokenBridgeKey, "TOKEN_BRIDGE_ADDRESS");
+const func = withSignerUiSession("06_deploy_TokenBridgeWithReinitialization.ts", async function () {
+  const signer = await getUiSigner();
+  const contractName = "TokenBridge";
 
-    const factory = await ethers.getContractFactory(contractName, signer);
+  const tokenBridgeKey = process.env.DEPLOY_TOKEN_BRIDGE_ON_L1 === "true" ? "TokenBridge_L1" : "TokenBridge_L2";
+  const proxyAddress = requireAddressFromRegistryOrEnv(networkName, tokenBridgeKey, "TOKEN_BRIDGE_ADDRESS");
 
-    console.log("Deploying Contract...");
-    const newContract = await upgrades.deployImplementation(factory, {
-      kind: "transparent",
-    });
+  const factory = await ethers.getContractFactory(contractName, signer);
 
-    const contract = newContract.toString();
+  console.log("Deploying Contract...");
+  const newContract = await upgrades.deployImplementation(factory, {
+    kind: "transparent",
+  });
 
-    console.log(`Contract deployed at ${contract}`);
+  const contract = newContract.toString();
 
-    // The encoding should be used through the safe.
-    // THIS IS JUST A SAMPLE AND WILL BE ADJUSTED WHEN NEEDED FOR GENERATING THE CALLDATA FOR THE UPGRADE CALL
-    // https://www.4byte.directory/signatures/?bytes4_signature=0x9623609d
-    const upgradeCallWithReinitializationUsingSecurityCouncil = ethers.concat([
-      "0x9623609d",
-      ethers.AbiCoder.defaultAbiCoder().encode(
-        ["address", "address", "bytes"],
-        [proxyAddress, newContract, TokenBridge__factory.createInterface().encodeFunctionData("reinitializeV3")],
-      ),
-    ]);
+  console.log(`Contract deployed at ${contract}`);
 
-    console.log(
-      "Encoded Tx Upgrade with Reinitialization from Security Council:",
-      "\n",
-      upgradeCallWithReinitializationUsingSecurityCouncil,
-    );
-    console.log("\n");
+  // The encoding should be used through the safe.
+  // THIS IS JUST A SAMPLE AND WILL BE ADJUSTED WHEN NEEDED FOR GENERATING THE CALLDATA FOR THE UPGRADE CALL
+  // https://www.4byte.directory/signatures/?bytes4_signature=0x9623609d
+  const upgradeCallWithReinitializationUsingSecurityCouncil = ethers.concat([
+    "0x9623609d",
+    ethers.AbiCoder.defaultAbiCoder().encode(
+      ["address", "address", "bytes"],
+      [proxyAddress, newContract, TokenBridge__factory.createInterface().encodeFunctionData("reinitializeV3")],
+    ),
+  ]);
 
-    await tryVerifyContract(contract);
-  },
-);
+  console.log(
+    "Encoded Tx Upgrade with Reinitialization from Security Council:",
+    "\n",
+    upgradeCallWithReinitializationUsingSecurityCouncil,
+  );
+  console.log("\n");
 
-export default func;
-func.tags = ["TokenBridgeWithReinitialization"];
+  await tryVerifyContract(contract);
+});
+
+export default deployScript(func, {
+  tags: ["TokenBridgeWithReinitialization"],
+});

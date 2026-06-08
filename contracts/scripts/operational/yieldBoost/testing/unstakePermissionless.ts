@@ -46,15 +46,16 @@ const gIndexPendingPartialWithdrawals = 99n;
   The pendingPartialWithdrawalsWitness proof needs to be provided manually in the code.
   *******************************************************************************************
 */
-task("unstakePermissionless", "Performs YieldManager::unstakePermissionless (current contract version)")
-  .addOptionalParam("yieldManager")
-  .addOptionalParam("yieldProvider")
-  .addOptionalParam("validatorIndex")
-  .addOptionalParam("slot")
-  .addOptionalParam("beaconRpcUrl")
-  .setAction(async (taskArgs, hre) => {
+export default task("unstakePermissionless", "Performs YieldManager::unstakePermissionless (current contract version)")
+  .addOption({ name: "yieldManager", defaultValue: "" })
+  .addOption({ name: "yieldProvider", defaultValue: "" })
+  .addOption({ name: "validatorIndex", defaultValue: "" })
+  .addOption({ name: "slot", defaultValue: "" })
+  .addOption({ name: "beaconRpcUrl", defaultValue: "" })
+  .setInlineAction(async (taskArgs, hre) => {
+    const connection = await hre.network.getOrCreate();
     return runWithSignerUiSession(hre, "task:unstakePermissionless", async () => {
-      const { ethers } = hre;
+      const { ethers } = connection;
       const signer = await getUiSigner(hre);
       const signerAddress = await signer.getAddress();
 
@@ -261,4 +262,5 @@ task("unstakePermissionless", "Performs YieldManager::unstakePermissionless (cur
         throw error;
       }
     });
-  });
+  })
+  .build();

@@ -1,9 +1,14 @@
-import { ethers, upgrades } from "hardhat";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
+import hre, { network as hardhatNetwork } from "hardhat";
 
 import { getRequiredEnvVar, requireAddressFromRegistryOrEnv, tryVerifyContract } from "../common/helpers";
+import { deployScript } from "../rocketh/deploy";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const networkName = hardhatConnection.networkName === "default" ? "hardhat" : hardhatConnection.networkName;
+const upgrades = await createUpgrades(hre, hardhatConnection);
 
 /**
  * Maps every CONTRACT_NAME supported by this script to the registry key and env var used to
@@ -36,46 +41,42 @@ const CONTRACT_PROXY_MAP: Record<string, { registryKey: string; envVar: string }
   RollupRevenueVault: { registryKey: "RollupRevenueVault", envVar: "ROLLUP_REVENUE_VAULT_ADDRESS" },
 };
 
-const func: DeployFunction = withSignerUiSession(
-  "03_deploy_ImplementationForProxy.ts",
-  async function (hre: HardhatRuntimeEnvironment) {
-    const signer = await getUiSigner(hre);
-    const contractName = getRequiredEnvVar("CONTRACT_NAME");
+const func = withSignerUiSession("03_deploy_ImplementationForProxy.ts", async function () {
+  const signer = await getUiSigner();
+  const contractName = getRequiredEnvVar("CONTRACT_NAME");
 
-    const proxyMapEntry = CONTRACT_PROXY_MAP[contractName];
-    if (!proxyMapEntry) {
-      throw new Error(
-        `CONTRACT_NAME "${contractName}" is not supported by this script. ` +
-          `Add an entry to CONTRACT_PROXY_MAP in 03_deploy_ImplementationForProxy.ts ` +
-          `and update contracts/deployments/addresses/README.md.`,
-      );
-    }
-    const { registryKey, envVar: proxyEnvVar } = proxyMapEntry;
-    const proxyAddress = requireAddressFromRegistryOrEnv(hre.network.name, registryKey, proxyEnvVar);
+  const proxyMapEntry = CONTRACT_PROXY_MAP[contractName];
+  if (!proxyMapEntry) {
+    throw new Error(
+      `CONTRACT_NAME "${contractName}" is not supported by this script. ` +
+        `Add an entry to CONTRACT_PROXY_MAP in 03_deploy_ImplementationForProxy.ts ` +
+        `and update contracts/deployments/addresses/README.md.`,
+    );
+  }
+  const { registryKey, envVar: proxyEnvVar } = proxyMapEntry;
+  const proxyAddress = requireAddressFromRegistryOrEnv(networkName, registryKey, proxyEnvVar);
 
-    const factory = await ethers.getContractFactory(contractName, signer);
+  const factory = await ethers.getContractFactory(contractName, signer);
 
-    console.log("Deploying Contract...");
-    const newContract = await upgrades.deployImplementation(factory, {
-      kind: "transparent",
-    });
+  console.log("Deploying Contract...");
+  const newContract = await upgrades.deployImplementation(factory, {
+    kind: "transparent",
+  });
 
-    const contract = newContract.toString();
+  const contract = newContract.toString();
 
-    console.log(`Contract deployed at ${contract}`);
+  console.log(`Contract deployed at ${contract}`);
 
-    const upgradeCallUsingSecurityCouncil = ethers.concat([
-      "0x99a88ec4",
-      ethers.AbiCoder.defaultAbiCoder().encode(["address", "address"], [proxyAddress, newContract]),
-    ]);
+  const upgradeCallUsingSecurityCouncil = ethers.concat([
+    "0x99a88ec4",
+    ethers.AbiCoder.defaultAbiCoder().encode(["address", "address"], [proxyAddress, newContract]),
+  ]);
 
-    console.log("Encoded Tx Upgrade from Security Council:", "\n", upgradeCallUsingSecurityCouncil);
+  console.log("Encoded Tx Upgrade from Security Council:", "\n", upgradeCallUsingSecurityCouncil);
 
-    console.log("\n");
+  console.log("\n");
 
-    await tryVerifyContract(contract);
-  },
-);
+  await tryVerifyContract(contract);
+});
 
-export default func;
-func.tags = ["ImplementationForProxy"];
+export default deployScript(func, { tags: ["ImplementationForProxy"] });

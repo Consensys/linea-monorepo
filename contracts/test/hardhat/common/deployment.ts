@@ -1,15 +1,32 @@
-import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/src/utils";
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
 import { getInitializerData } from "contracts/common/helpers";
-import { ProxyAdmin } from "contracts/typechain-types";
-import { BaseContract, ContractTransactionResponse, InterfaceAbi } from "ethers";
-import { ethers, upgrades } from "hardhat";
-import { FactoryOptions } from "hardhat/types";
+import hre, { network as hardhatNetwork } from "hardhat";
 
-async function deployFromFactory(contractName: string, ...args: unknown[]) {
+import type { FactoryOptions } from "@nomicfoundation/hardhat-ethers/types";
+import type { UpgradeOptions } from "@openzeppelin/hardhat-upgrades";
+import type { ProxyAdmin } from "contracts/typechain-types";
+import type { BaseContract, ContractFactory, ContractTransactionResponse, InterfaceAbi, Overrides } from "ethers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const upgrades = await createUpgrades(hre, hardhatConnection);
+
+type DeployProxyOptions = UpgradeOptions & {
+  initializer?: string | false;
+  initialOwner?: string;
+  unsafeSkipProxyAdminCheck?: boolean;
+  txOverrides?: Overrides;
+  proxyFactory?: ContractFactory;
+};
+
+async function deployFromFactory<TContract extends BaseContract = BaseContract>(
+  contractName: string,
+  ...args: unknown[]
+): Promise<TContract> {
   const factory = await ethers.getContractFactory(contractName);
   const contract = await factory.deploy(...args);
   await contract.waitForDeployment();
-  return contract;
+  return contract as unknown as TContract;
 }
 
 async function deployUpgradableFromFactory(
@@ -57,8 +74,9 @@ async function reinitializeUpgradeableProxy(
   initializerFunctionName: string,
   initializerArgs: unknown[],
 ): Promise<ContractTransactionResponse> {
-  const proxyAdmin = (await upgrades.admin.getInstance()) as unknown as ProxyAdmin;
   const proxyAddress = await proxyContract.getAddress();
+  const proxyAdminAddress = await upgrades.erc1967.getAdminAddress(proxyAddress);
+  const proxyAdmin = (await ethers.getContractAt("ProxyAdmin", proxyAdminAddress)) as unknown as ProxyAdmin;
   const implementationAddress = await upgrades.erc1967.getImplementationAddress(proxyAddress);
 
   const encodedCall = getInitializerData(contractAbi, initializerFunctionName, initializerArgs);

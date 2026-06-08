@@ -1,16 +1,7 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, setNonce } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { encodeSendMessage } from "../../../../common/helpers/encoding";
-import {
-  TestClaimingCaller,
-  TestL1MessageService,
-  TestL1MessageServiceMerkleProof,
-  TestL1RevertContract,
-  TestReceivingContract,
-} from "../../../../typechain-types";
 import {
   ADDRESS_ZERO,
   DEFAULT_ADMIN_ROLE,
@@ -20,13 +11,9 @@ import {
   INBOX_STATUS_UNKNOWN,
   INITIALIZED_ERROR_MESSAGE,
   INITIAL_WITHDRAW_LIMIT,
-  INVALID_MERKLE_PROOF,
-  INVALID_MERKLE_PROOF_REVERT,
   L1_L2_PAUSE_TYPE,
   L2_L1_PAUSE_TYPE,
   LOW_NO_REFUND_MESSAGE_FEE,
-  MERKLE_PROOF_FALLBACK,
-  MERKLE_PROOF_REENTRY,
   MESSAGE_FEE,
   MESSAGE_VALUE_1ETH,
   ONE_DAY_IN_SECONDS,
@@ -34,7 +21,6 @@ import {
   UNPAUSE_ALL_ROLE,
   RATE_LIMIT_SETTER_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
-  VALID_MERKLE_PROOF,
   PAUSE_L2_L1_ROLE,
   PAUSE_L1_L2_ROLE,
   pauseTypeRoles,
@@ -57,6 +43,31 @@ import {
   expectRollingHashUpdatedEvent,
   INITIAL_ROLLING_HASH,
 } from "../../common/helpers";
+
+import type {
+  TestClaimingCaller,
+  TestL1MessageService,
+  TestL1MessageServiceMerkleProof,
+  TestL1RevertContract,
+  TestReceivingContract,
+} from "../../../../typechain-types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+
+import { clearSnapshots, loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+
+const SHORT_DYNAMIC_MERKLE_PROOF_DEPTH = 8;
+
+type ClaimProofParams = {
+  data: string;
+  fee: bigint;
+  from: string;
+  messageNumber: bigint;
+  to: string;
+  value: bigint;
+};
 
 describe("L1MessageService", () => {
   let l1MessageService: TestL1MessageService;
@@ -89,11 +100,55 @@ describe("L1MessageService", () => {
     return deployUpgradableFromFactory("TestL1RevertContract", []) as unknown as Promise<TestL1RevertContract>;
   }
 
+  function efficientKeccak(left: string, right: string): string {
+    return ethers.keccak256(ethers.concat([left, right]));
+  }
+
+  function buildSingleLeafProof(params: ClaimProofParams, depth: number) {
+    const proof: string[] = [];
+    let emptyNodeHash = ethers.ZeroHash;
+
+    for (let height = 0; height < depth; height++) {
+      proof.push(emptyNodeHash);
+      emptyNodeHash = efficientKeccak(emptyNodeHash, emptyNodeHash);
+    }
+
+    const messageLeafHash = ethers.keccak256(
+      encodeSendMessage(params.from, params.to, params.fee, params.value, params.messageNumber, params.data),
+    );
+
+    return {
+      proof,
+      merkleRoot: proof.reduce((node, sibling) => efficientKeccak(node, sibling), messageLeafHash),
+      index: 0,
+    };
+  }
+
+  function buildDefaultClaimProof() {
+    return buildSingleLeafProof(
+      {
+        data: EMPTY_CALLDATA,
+        fee: MESSAGE_FEE,
+        from: admin.address,
+        messageNumber: 1n,
+        to: admin.address,
+        value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+      },
+      32,
+    );
+  }
+
+  function buildInvalidClaimProof() {
+    const claimParams = buildDefaultClaimProof();
+    const proof = [...claimParams.proof];
+    proof[1] = ethers.ZeroHash;
+
+    return { ...claimParams, proof };
+  }
+
   before(async () => {
-    await network.provider.send("hardhat_reset");
+    await clearSnapshots();
     [admin, pauser, limitSetter, notAuthorizedAccount, postmanAddress, l2Sender] = await ethers.getSigners();
-    // TODO adjust the tests to dynamically use whatever nonce is set for the merkle proof
-    await setNonce(admin.address, 1);
   });
 
   beforeEach(async () => {
@@ -439,7 +494,7 @@ describe("L1MessageService", () => {
           EMPTY_CALLDATA,
           1,
         ),
-      ).to.not.be.reverted;
+      ).to.not.revert(ethers);
     });
 
     it("Should claim message and send the fees when L1 to L2 communication is paused", async () => {
@@ -467,7 +522,7 @@ describe("L1MessageService", () => {
           EMPTY_CALLDATA,
           1,
         ),
-      ).to.not.be.reverted;
+      ).to.not.revert(ethers);
     });
 
     it("Should execute the claim message and emit the MessageClaimed event", async () => {
@@ -849,7 +904,7 @@ describe("L1MessageService", () => {
             EMPTY_CALLDATA,
             1,
           ),
-      ).to.not.be.reverted;
+      ).to.not.revert(ethers);
     });
 
     it("Should allow sending post claiming a message", async () => {
@@ -878,7 +933,7 @@ describe("L1MessageService", () => {
             sendCalldata,
             1,
           ),
-      ).to.not.be.reverted;
+      ).to.not.revert(ethers);
     });
 
     it("Should fail on reentry when sending to recipient", async () => {
@@ -1035,32 +1090,30 @@ describe("L1MessageService", () => {
 
   describe("Claim Message with Proof", () => {
     it("Should be able to claim a message that was sent", async () => {
-      await l1MessageServiceMerkleProof.addL2MerkleRoots(
-        [VALID_MERKLE_PROOF.merkleRoot],
-        VALID_MERKLE_PROOF.proof.length,
-      );
+      const claimParams = buildDefaultClaimProof();
+
+      await l1MessageServiceMerkleProof.addL2MerkleRoots([claimParams.merkleRoot], claimParams.proof.length);
 
       await expect(
         l1MessageServiceMerkleProof.claimMessageWithProof({
-          proof: VALID_MERKLE_PROOF.proof,
+          proof: claimParams.proof,
           messageNumber: 1,
-          leafIndex: VALID_MERKLE_PROOF.index,
+          leafIndex: claimParams.index,
           from: admin.address,
           to: admin.address,
           fee: MESSAGE_FEE,
           value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
           feeRecipient: ADDRESS_ZERO,
-          merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+          merkleRoot: claimParams.merkleRoot,
           data: EMPTY_CALLDATA,
         }),
-      ).to.not.be.reverted;
+      ).to.not.revert(ethers);
     });
 
     it("Should be able to claim a message and emit a MessageClaimed event", async () => {
-      await l1MessageServiceMerkleProof.addL2MerkleRoots(
-        [VALID_MERKLE_PROOF.merkleRoot],
-        VALID_MERKLE_PROOF.proof.length,
-      );
+      const claimParams = buildDefaultClaimProof();
+
+      await l1MessageServiceMerkleProof.addL2MerkleRoots([claimParams.merkleRoot], claimParams.proof.length);
 
       const messageLeafHash = ethers.keccak256(
         ethers.AbiCoder.defaultAbiCoder().encode(
@@ -1070,15 +1123,15 @@ describe("L1MessageService", () => {
       );
 
       const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF.proof,
+        proof: claimParams.proof,
         messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
+        leafIndex: claimParams.index,
         from: admin.address,
         to: admin.address,
         fee: MESSAGE_FEE,
         value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
         feeRecipient: ADDRESS_ZERO,
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        merkleRoot: claimParams.merkleRoot,
         data: EMPTY_CALLDATA,
       });
 
@@ -1086,20 +1139,22 @@ describe("L1MessageService", () => {
     });
 
     it("Should fail to claim when the contract is generally paused", async () => {
+      const claimParams = buildDefaultClaimProof();
+
       await l1MessageServiceMerkleProof.connect(pauser).pauseByType(GENERAL_PAUSE_TYPE);
 
       await expectRevertWhenPaused(
         l1MessageService,
         l1MessageServiceMerkleProof.claimMessageWithProof({
-          proof: VALID_MERKLE_PROOF.proof,
+          proof: claimParams.proof,
           messageNumber: 1,
-          leafIndex: VALID_MERKLE_PROOF.index,
+          leafIndex: claimParams.index,
           from: admin.address,
           to: admin.address,
           fee: MESSAGE_FEE,
           value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
           feeRecipient: ADDRESS_ZERO,
-          merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+          merkleRoot: claimParams.merkleRoot,
           data: EMPTY_CALLDATA,
         }),
         GENERAL_PAUSE_TYPE,
@@ -1107,34 +1162,33 @@ describe("L1MessageService", () => {
     });
 
     it("Should fail when the message has already been claimed", async () => {
-      await l1MessageServiceMerkleProof.addL2MerkleRoots(
-        [VALID_MERKLE_PROOF.merkleRoot],
-        VALID_MERKLE_PROOF.proof.length,
-      );
+      const claimParams = buildDefaultClaimProof();
+
+      await l1MessageServiceMerkleProof.addL2MerkleRoots([claimParams.merkleRoot], claimParams.proof.length);
 
       await l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF.proof,
+        proof: claimParams.proof,
         messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
+        leafIndex: claimParams.index,
         from: admin.address,
         to: admin.address,
         fee: MESSAGE_FEE,
         value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
         feeRecipient: ADDRESS_ZERO,
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        merkleRoot: claimParams.merkleRoot,
         data: EMPTY_CALLDATA,
       });
 
       const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF.proof,
+        proof: claimParams.proof,
         messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
+        leafIndex: claimParams.index,
         from: admin.address,
         to: admin.address,
         fee: MESSAGE_FEE,
         value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
         feeRecipient: ADDRESS_ZERO,
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        merkleRoot: claimParams.merkleRoot,
         data: EMPTY_CALLDATA,
       });
 
@@ -1142,16 +1196,18 @@ describe("L1MessageService", () => {
     });
 
     it("Should fail when l2 Merkle root does not exist on L1", async () => {
+      const claimParams = buildDefaultClaimProof();
+
       const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF.proof,
+        proof: claimParams.proof,
         messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
+        leafIndex: claimParams.index,
         from: admin.address,
         to: admin.address,
         fee: MESSAGE_FEE,
         value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
         feeRecipient: ADDRESS_ZERO,
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        merkleRoot: claimParams.merkleRoot,
         data: EMPTY_CALLDATA,
       });
 
@@ -1159,21 +1215,21 @@ describe("L1MessageService", () => {
     });
 
     it("Should fail when l2 merkle proof is invalid", async () => {
-      await l1MessageServiceMerkleProof.addL2MerkleRoots(
-        [VALID_MERKLE_PROOF.merkleRoot],
-        VALID_MERKLE_PROOF.proof.length,
-      );
+      const claimParams = buildDefaultClaimProof();
+      const invalidClaimParams = buildInvalidClaimProof();
+
+      await l1MessageServiceMerkleProof.addL2MerkleRoots([claimParams.merkleRoot], claimParams.proof.length);
 
       const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: INVALID_MERKLE_PROOF.proof,
+        proof: invalidClaimParams.proof,
         messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
+        leafIndex: claimParams.index,
         from: admin.address,
         to: admin.address,
         fee: MESSAGE_FEE,
         value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
         feeRecipient: ADDRESS_ZERO,
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        merkleRoot: claimParams.merkleRoot,
         data: EMPTY_CALLDATA,
       });
 
@@ -1181,44 +1237,61 @@ describe("L1MessageService", () => {
     });
 
     it("Should fail claiming when the call transaction fails with receive()", async () => {
-      await l1MessageServiceMerkleProof.addL2MerkleRoots(
-        [INVALID_MERKLE_PROOF_REVERT.merkleRoot],
-        INVALID_MERKLE_PROOF_REVERT.proof.length,
+      const claimParams = buildSingleLeafProof(
+        {
+          data: "0xcd4aed30",
+          fee: MESSAGE_FEE,
+          from: admin.address,
+          messageNumber: 1n,
+          to: await l1TestRevert.getAddress(),
+          value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        },
+        32,
       );
+
+      await l1MessageServiceMerkleProof.addL2MerkleRoots([claimParams.merkleRoot], claimParams.proof.length);
 
       await expect(
         l1MessageServiceMerkleProof.claimMessageWithProof({
-          proof: INVALID_MERKLE_PROOF_REVERT.proof,
+          proof: claimParams.proof,
           messageNumber: 1,
-          leafIndex: INVALID_MERKLE_PROOF_REVERT.index,
+          leafIndex: claimParams.index,
           from: admin.address,
           to: await l1TestRevert.getAddress(),
           fee: MESSAGE_FEE,
           value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
           feeRecipient: ADDRESS_ZERO,
-          merkleRoot: INVALID_MERKLE_PROOF_REVERT.merkleRoot,
+          merkleRoot: claimParams.merkleRoot,
           data: "0xcd4aed30",
         }),
-      ).to.be.reverted;
+      ).to.revert(ethers);
     });
 
-    // TODO MAKE THIS DYNAMIC BECAUSE THE setNonce makes the testing brittle
     it("Should fail claiming when the call transaction fails with empty fallback", async () => {
-      await l1MessageServiceMerkleProof.addL2MerkleRoots(
-        [MERKLE_PROOF_FALLBACK.merkleRoot],
-        MERKLE_PROOF_FALLBACK.proof.length,
+      const claimParams = buildSingleLeafProof(
+        {
+          data: "0xce398a64",
+          fee: MESSAGE_FEE,
+          from: admin.address,
+          messageNumber: 1n,
+          to: await l1TestRevert.getAddress(),
+          value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        },
+        SHORT_DYNAMIC_MERKLE_PROOF_DEPTH,
       );
 
+      await l1MessageServiceMerkleProof.addL2MerkleRoots([claimParams.merkleRoot], claimParams.proof.length);
+
       const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: MERKLE_PROOF_FALLBACK.proof,
+        proof: claimParams.proof,
         messageNumber: 1,
-        leafIndex: MERKLE_PROOF_FALLBACK.index,
+        leafIndex: claimParams.index,
         from: admin.address,
         to: await l1TestRevert.getAddress(),
         fee: MESSAGE_FEE,
         value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
         feeRecipient: ADDRESS_ZERO,
-        merkleRoot: MERKLE_PROOF_FALLBACK.merkleRoot,
+        merkleRoot: claimParams.merkleRoot,
         data: "0xce398a64",
       });
 
@@ -1227,45 +1300,67 @@ describe("L1MessageService", () => {
       ]);
     });
 
-    // TODO MAKE THIS DYNAMIC BECAUSE THE setNonce makes the testing brittle
     it("Should fail on reentry", async () => {
-      await l1MessageServiceMerkleProof.addL2MerkleRoots(
-        [MERKLE_PROOF_REENTRY.merkleRoot],
-        MERKLE_PROOF_REENTRY.proof.length,
+      const nestedClaimMessageData = l1MessageServiceMerkleProof.interface.encodeFunctionData("doReentryWithParams", [
+        {
+          proof: [],
+          messageNumber: 1,
+          leafIndex: 0,
+          from: admin.address,
+          to: admin.address,
+          fee: MESSAGE_FEE,
+          value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+          feeRecipient: ADDRESS_ZERO,
+          merkleRoot: ethers.ZeroHash,
+          data: EMPTY_CALLDATA,
+        },
+      ]);
+
+      const claimParams = buildSingleLeafProof(
+        {
+          data: nestedClaimMessageData,
+          fee: MESSAGE_FEE,
+          from: admin.address,
+          messageNumber: 1n,
+          to: await l1MessageServiceMerkleProof.getAddress(),
+          value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        },
+        SHORT_DYNAMIC_MERKLE_PROOF_DEPTH,
       );
 
+      await l1MessageServiceMerkleProof.addL2MerkleRoots([claimParams.merkleRoot], claimParams.proof.length);
+
       const claimMessageWithProof = l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: MERKLE_PROOF_REENTRY.proof,
+        proof: claimParams.proof,
         messageNumber: 1,
-        leafIndex: MERKLE_PROOF_REENTRY.index,
+        leafIndex: claimParams.index,
         from: admin.address,
         to: await l1MessageServiceMerkleProof.getAddress(),
         fee: MESSAGE_FEE,
         value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
         feeRecipient: ADDRESS_ZERO,
-        merkleRoot: MERKLE_PROOF_REENTRY.merkleRoot,
-        data: "0xaf5696840000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266000000000000000000000000dc64a140aa3e981100a9beca4e685f962f0cf6c900000000000000000000000000000000000000000000000000b1a2bc2ec500000000000000000000000000000000000000000000000000000e92596fd62900000000000000000000000000000000000000000000000000000000000000000000c817003bf40005bdd4b6e06fd0ed2d01c27a89a4cf6ee67ea585489af54e4a8c000000000000000000000000000000000000000000000000000000000000016000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        merkleRoot: claimParams.merkleRoot,
+        data: nestedClaimMessageData,
       });
 
       await expectRevertWithCustomError(l1MessageServiceMerkleProof, claimMessageWithProof, "ReentrantCall");
     });
 
     it("Should fail when the fee recipient fails errors", async () => {
-      await l1MessageServiceMerkleProof.addL2MerkleRoots(
-        [VALID_MERKLE_PROOF.merkleRoot],
-        VALID_MERKLE_PROOF.proof.length,
-      );
+      const claimParams = buildDefaultClaimProof();
+
+      await l1MessageServiceMerkleProof.addL2MerkleRoots([claimParams.merkleRoot], claimParams.proof.length);
 
       const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF.proof,
+        proof: claimParams.proof,
         messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
+        leafIndex: claimParams.index,
         from: admin.address,
         to: admin.address,
         fee: MESSAGE_FEE,
         value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
         feeRecipient: await l1MessageService.getAddress(),
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        merkleRoot: claimParams.merkleRoot,
         data: EMPTY_CALLDATA,
       });
 
@@ -1275,23 +1370,22 @@ describe("L1MessageService", () => {
     });
 
     it("Should fail when the merkle depth is different than the proof length", async () => {
-      await l1MessageServiceMerkleProof.addL2MerkleRoots(
-        [VALID_MERKLE_PROOF.merkleRoot],
-        VALID_MERKLE_PROOF.proof.length,
-      );
+      const claimParams = buildDefaultClaimProof();
 
-      const merkleDepth = await l1MessageServiceMerkleProof.l2MerkleRootsDepths(VALID_MERKLE_PROOF.merkleRoot);
+      await l1MessageServiceMerkleProof.addL2MerkleRoots([claimParams.merkleRoot], claimParams.proof.length);
+
+      const merkleDepth = await l1MessageServiceMerkleProof.l2MerkleRootsDepths(claimParams.merkleRoot);
 
       const claimMessageCall = l1MessageServiceMerkleProof.claimMessageWithProof({
-        proof: VALID_MERKLE_PROOF.proof.slice(0, -1),
+        proof: claimParams.proof.slice(0, -1),
         messageNumber: 1,
-        leafIndex: VALID_MERKLE_PROOF.index,
+        leafIndex: claimParams.index,
         from: admin.address,
         to: admin.address,
         fee: MESSAGE_FEE,
         value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
         feeRecipient: await l1MessageService.getAddress(),
-        merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
+        merkleRoot: claimParams.merkleRoot,
         data: EMPTY_CALLDATA,
       });
 
@@ -1299,7 +1393,7 @@ describe("L1MessageService", () => {
         l1MessageServiceMerkleProof,
         claimMessageCall,
         "ProofLengthDifferentThanMerkleDepth",
-        [merkleDepth, VALID_MERKLE_PROOF.proof.slice(0, -1).length],
+        [merkleDepth, claimParams.proof.slice(0, -1).length],
       );
     });
   });
@@ -1452,6 +1546,6 @@ describe("L1MessageService", () => {
         EMPTY_CALLDATA,
         1,
       ),
-    ).to.not.be.reverted;
+    ).to.not.revert(ethers);
   }
 });

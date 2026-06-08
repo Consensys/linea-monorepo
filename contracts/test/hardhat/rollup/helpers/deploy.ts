@@ -1,4 +1,3 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { PRECOMPILES_ADDRESSES } from "contracts/common/constants";
 import {
   LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
@@ -6,16 +5,8 @@ import {
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
 } from "contracts/common/constants/pauseTypes";
-import {
-  AddressFilter,
-  CallForwardingProxy,
-  ForcedTransactionGateway,
-  Mimc,
-  TestLineaRollup,
-  TestValidium,
-} from "contracts/typechain-types";
 import { toBeHex } from "ethers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { getAccountsFixture, getRoleAddressesFixture, getValidiumRoleAddressesFixture } from "./before";
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
@@ -35,7 +26,21 @@ import {
   VALIDIUM_INITIALIZE_SIGNATURE,
 } from "../../common/constants";
 import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
-import { LineaRollupInitializationData, PauseTypeRole } from "../../common/types";
+
+import type { LineaRollupInitializationData, PauseTypeRole } from "../../common/types";
+import type {
+  AddressFilter,
+  CallForwardingProxy,
+  ForcedTransactionGateway,
+  Mimc,
+  TestLineaRollup,
+  TestValidium,
+} from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 export async function deployRevertingVerifier(scenario: bigint): Promise<string> {
   const revertingVerifierFactory = await ethers.getContractFactory("RevertingVerifier");
@@ -51,8 +56,8 @@ export async function deployCallForwardingProxy(target: string): Promise<CallFor
   return callForwardingProxy;
 }
 export async function deployValidiumFixture() {
-  const { securityCouncil, nonAuthorizedAccount } = await loadFixture(getAccountsFixture);
-  const roleAddresses = await loadFixture(getValidiumRoleAddressesFixture);
+  const { securityCouncil, nonAuthorizedAccount } = await getAccountsFixture();
+  const roleAddresses = await getValidiumRoleAddressesFixture();
 
   const { addressFilter } = await deployAddressFilter(securityCouncil.address, [nonAuthorizedAccount.address]);
 
@@ -90,8 +95,8 @@ export async function deployMockYieldManager(): Promise<string> {
 }
 
 export async function deployLineaRollupFixture() {
-  const { securityCouncil, nonAuthorizedAccount } = await loadFixture(getAccountsFixture);
-  const roleAddresses = await loadFixture(getRoleAddressesFixture);
+  const { securityCouncil, nonAuthorizedAccount } = await getAccountsFixture();
+  const roleAddresses = await getRoleAddressesFixture();
 
   const { addressFilter } = await deployAddressFilter(securityCouncil.address, [nonAuthorizedAccount.address]);
 
@@ -147,7 +152,7 @@ export async function deployMimcFixture() {
 }
 
 export async function deployForcedTransactionGatewayFixture() {
-  const { securityCouncil } = await loadFixture(getAccountsFixture);
+  const { securityCouncil } = await getAccountsFixture();
   const { lineaRollup, addressFilter, verifier, yieldManager, lineaRollupInitializationData } =
     await loadFixture(deployLineaRollupFixture);
   const { mimc } = await loadFixture(deployMimcFixture);
@@ -182,7 +187,7 @@ export async function deployForcedTransactionGatewayFixture() {
 }
 
 export async function deployAddressFilterFixture() {
-  const { securityCouncil, nonAuthorizedAccount } = await loadFixture(getAccountsFixture);
+  const { securityCouncil, nonAuthorizedAccount } = await getAccountsFixture();
   const { addressFilter } = await deployAddressFilter(securityCouncil.address, [nonAuthorizedAccount.address]);
   return { addressFilter };
 }

@@ -1,10 +1,14 @@
 import { expect } from "chai";
 import { toBeHex } from "ethers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
-import { IPlonkVerifier, Mimc, PlonkVerifierForDataAggregation__factory } from "../../../typechain-types";
 import { deployFromFactory } from "../common/deployment";
 import { expectEventDirectFromReceiptData, expectRevertWithCustomError } from "../common/helpers";
+
+import type { IPlonkVerifier, Mimc } from "../../../typechain-types";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("PlonkVerifierForDataAggregation", () => {
   let mimc: Mimc;
@@ -24,11 +28,11 @@ describe("PlonkVerifierForDataAggregation", () => {
 
   describe("Deployment", () => {
     it("Should revert when no chain configuration has been provided", async () => {
-      await expectRevertWithCustomError(
-        new PlonkVerifierForDataAggregation__factory({ ["src/libraries/Mimc.sol:Mimc"]: await mimc.getAddress() }),
-        deployContract([]),
-        "ChainConfigurationNotProvided",
-      );
+      const factory = await ethers.getContractFactory("PlonkVerifierForDataAggregation", {
+        libraries: { Mimc: await mimc.getAddress() },
+      });
+
+      await expectRevertWithCustomError(factory, factory.deploy([]), "ChainConfigurationNotProvided");
     });
 
     it("Should deploy with one configuration value that has a first 0 bit", async () => {

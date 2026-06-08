@@ -1,9 +1,7 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import hre, { network as hardhatNetwork } from "hardhat";
 
-import { TestRateLimiter } from "../../../typechain-types";
 import {
   DEFAULT_ADMIN_ROLE,
   INITIALIZED_ERROR_MESSAGE,
@@ -19,6 +17,15 @@ import {
   expectRevertWithCustomError,
   expectRevertWithReason,
 } from "../common/helpers";
+
+import type { TestRateLimiter } from "../../../typechain-types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+
+import { loadFixture, time } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const upgrades = await createUpgrades(hre, hardhatConnection);
 
 describe("Rate limiter", () => {
   let testRateLimiter: TestRateLimiter;

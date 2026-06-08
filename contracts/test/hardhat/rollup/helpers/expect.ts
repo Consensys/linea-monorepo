@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { BaseContract, Transaction } from "ethers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { getWalletForIndex } from "./";
 import { FailedFinalizeParams, SucceedFinalizeParams, SucceedFinalizeParamsCallForwardingProxy } from "./type";
@@ -14,6 +14,9 @@ import {
   generateKeccak256,
   proofDataToFinalizationParams,
 } from "../../common/helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 export async function expectSuccessfulFinalize(params: SucceedFinalizeParams) {
   const { context, proofConfig, overrides = {} } = params;
@@ -155,7 +158,7 @@ export async function expectSuccessfulFinalizeViaCallForwarder(params: SucceedFi
   ]);
 
   const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
-  const operatorHDSigner = getWalletForIndex(2);
+  const operatorHDSigner = await getWalletForIndex(2);
   const nonce = await operatorHDSigner.getNonce();
 
   const transaction = Transaction.from({

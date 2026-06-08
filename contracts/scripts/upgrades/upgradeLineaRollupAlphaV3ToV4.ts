@@ -1,9 +1,17 @@
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
 import fs from "fs";
-import { ethers, upgrades } from "hardhat";
+import hre, { network as hardhatNetwork } from "hardhat";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import { requireEnv } from "../hardhat/utils";
 
-const OPENZEPPELIN_DIRECTORY = `${__dirname}/../../.openzeppelin`;
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const upgrades = await createUpgrades(hre, hardhatConnection);
+
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const OPENZEPPELIN_DIRECTORY = path.join(currentDir, "..", "..", ".openzeppelin");
 
 async function main() {
   const newContractName = requireEnv("NEW_CONTRACT_NAME");

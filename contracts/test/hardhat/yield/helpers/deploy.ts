@@ -1,26 +1,8 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import {
-  TestYieldManager,
-  MockLineaRollup,
-  MockYieldProvider,
-  MockWithdrawTarget,
-  MockVaultHub,
-  MockVaultFactory,
-  MockSTETH,
-  MockDashboard,
-  MockStakingVault,
-  TestLidoStVaultYieldProvider,
-  TestValidatorContainerProofVerifier,
-  ValidatorContainerProofVerifier,
-  SSZMerkleTree,
-  TestLidoStVaultYieldProviderFactory,
-} from "contracts/typechain-types";
-import { ethers, upgrades } from "hardhat";
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
+import hre, { network as hardhatNetwork } from "hardhat";
 
 import { buildVendorInitializationData } from "./mocks";
 import { incrementBalance } from "./setup";
-import { YieldManagerInitializationData } from "./types";
 import {
   YIELD_MANAGER_PAUSE_TYPES_ROLES,
   YIELD_MANAGER_UNPAUSE_TYPES_ROLES,
@@ -42,6 +24,31 @@ import {
 import { deployUpgradableWithConstructorArgs } from "../../common/deployment";
 import { getAccountsFixture } from "../../common/helpers";
 import { deployLineaRollupFixture } from "../../rollup/helpers/deploy";
+
+import type { YieldManagerInitializationData } from "./types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type {
+  TestYieldManager,
+  MockLineaRollup,
+  MockYieldProvider,
+  MockWithdrawTarget,
+  MockVaultHub,
+  MockVaultFactory,
+  MockSTETH,
+  MockDashboard,
+  MockStakingVault,
+  TestLidoStVaultYieldProvider,
+  TestValidatorContainerProofVerifier,
+  ValidatorContainerProofVerifier,
+  SSZMerkleTree,
+  TestLidoStVaultYieldProviderFactory,
+} from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const upgrades = await createUpgrades(hre, hardhatConnection);
 
 async function getYieldManagerRoleAddressesFixture(): Promise<
   {

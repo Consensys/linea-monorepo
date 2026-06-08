@@ -1,10 +1,11 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
-import { TestPauseManager } from "contracts/typechain-types";
 import { BaseContract } from "ethers";
 
 import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "./expectations";
 import { buildAccessErrorMessage } from "./general";
+
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { TestPauseManager } from "contracts/typechain-types";
 
 /**
  * Interface for contracts that implement PauseManager

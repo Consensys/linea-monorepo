@@ -1,12 +1,11 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import {
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
-import { AddressFilter, TestValidium } from "contracts/typechain-types";
+import { network as hardhatNetwork } from "hardhat";
+import { rejects } from "node:assert/strict";
 
 import { deployValidiumFixture, getAccountsFixture, getValidiumRoleAddressesFixture } from "./helpers";
 import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";
@@ -40,6 +39,14 @@ import {
   generateKeccak256,
 } from "../common/helpers";
 
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { AddressFilter, TestValidium } from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+
 describe("Validium contract", () => {
   let validium: TestValidium;
   let addressFilter: AddressFilter;
@@ -58,8 +65,8 @@ describe("Validium contract", () => {
 
   before(async () => {
     ({ admin, securityCouncil, operator, nonAuthorizedAccount, alternateShnarfProviderAddress } =
-      await loadFixture(getAccountsFixture));
-    roleAddresses = await loadFixture(getValidiumRoleAddressesFixture);
+      await getAccountsFixture());
+    roleAddresses = await getValidiumRoleAddressesFixture();
   });
 
   beforeEach(async () => {
@@ -73,11 +80,11 @@ describe("Validium contract", () => {
     };
 
     it("Should fail to send eth to the validium contract through the fallback", async () => {
-      await expect(sendEthToContract(EMPTY_CALLDATA)).to.be.reverted;
+      await rejects(sendEthToContract(EMPTY_CALLDATA), /fallback (?:nor receive )?function/);
     });
 
     it("Should fail to send eth to the validium contract through the receive function", async () => {
-      await expect(sendEthToContract("0x1234")).to.be.reverted;
+      await rejects(sendEthToContract("0x1234"), /fallback (?:nor receive )?function/);
     });
   });
 
@@ -376,7 +383,7 @@ describe("Validium contract", () => {
         validium
           .connect(operator)
           .acceptShnarfData(prevShnarf, expectedShnarf, submissionData.finalStateRootHash, { gasLimit: MAX_GAS_LIMIT }),
-      ).to.not.be.reverted;
+      ).to.not.revert(ethers);
 
       const blobShnarfExists = await validium.blobShnarfExists(expectedShnarf);
       expect(blobShnarfExists).to.equal(1n);
@@ -391,7 +398,7 @@ describe("Validium contract", () => {
           .acceptShnarfData(prevShnarf, expectedShnarf, firstSubmissionData.finalStateRootHash, {
             gasLimit: MAX_GAS_LIMIT,
           }),
-      ).to.not.be.reverted;
+      ).to.not.revert(ethers);
 
       await expect(
         validium
@@ -399,7 +406,7 @@ describe("Validium contract", () => {
           .acceptShnarfData(expectedShnarf, secondExpectedShnarf, secondSubmissionData.finalStateRootHash, {
             gasLimit: MAX_GAS_LIMIT,
           }),
-      ).to.not.be.reverted;
+      ).to.not.revert(ethers);
 
       let blobShnarfExists = await validium.blobShnarfExists(expectedShnarf);
       expect(blobShnarfExists).to.equal(1n);
@@ -438,7 +445,7 @@ describe("Validium contract", () => {
           .acceptShnarfData(prevShnarf, expectedShnarf, firstSubmissionData.finalStateRootHash, {
             gasLimit: MAX_GAS_LIMIT,
           }),
-      ).to.not.be.reverted;
+      ).to.not.revert(ethers);
 
       const submitDataCall = validium
         .connect(operator)
@@ -542,7 +549,7 @@ describe("Validium contract", () => {
     it("Should succeed if l1 message number == 0 and l1 rolling hash is empty", async () => {
       const l1MessageNumber = 0;
       const l1RollingHash = HASH_ZERO;
-      await expect(validium.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.be.reverted;
+      await expect(validium.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.revert(ethers);
     });
 
     it("Should succeed if l1 message number != 0, l1 rolling hash is not empty and exists on L1", async () => {
@@ -553,7 +560,7 @@ describe("Validium contract", () => {
 
       const l1RollingHash = calculateRollingHash(HASH_ZERO, messageHash);
 
-      await expect(validium.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.be.reverted;
+      await expect(validium.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.revert(ethers);
     });
   });
 });

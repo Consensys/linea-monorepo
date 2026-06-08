@@ -1,6 +1,7 @@
 import { task } from "hardhat/config";
 
 import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper";
+import { getAddressFromRegistry } from "../../../common/helpers/readAddress";
 import { getUiSigner, runWithSignerUiSession } from "../../../scripts/hardhat/signer-ui-bridge";
 
 /*
@@ -21,16 +22,15 @@ import { getUiSigner, runWithSignerUiSession } from "../../../scripts/hardhat/si
     *******************************************************************************************
 */
 
-task("setRateLimit", "Sets the rate limit on a Message Service contract")
-  .addOptionalParam("messageServiceAddress")
-  .addOptionalParam("messageServiceType")
-  .addOptionalParam("withdrawLimit")
-  .setAction(async (taskArgs, hre) => {
+export default task("setRateLimit", "Sets the rate limit on a Message Service contract")
+  .addOption({ name: "messageServiceAddress", defaultValue: "" })
+  .addOption({ name: "messageServiceType", defaultValue: "" })
+  .addOption({ name: "withdrawLimit", defaultValue: "" })
+  .setInlineAction(async (taskArgs, hre) => {
+    const connection = await hre.network.getOrCreate();
     return runWithSignerUiSession(hre, "task:setRateLimit", async () => {
-      const ethers = hre.ethers;
-
-      const { deployments } = hre;
-      const { get } = deployments;
+      const { ethers } = connection;
+      const networkName = connection.networkName === "default" ? "hardhat" : connection.networkName;
 
       const messageServiceContractType = getTaskCliOrEnvValue(taskArgs, "messageServiceType", "MESSAGE_SERVICE_TYPE");
       let messageServiceAddress = getTaskCliOrEnvValue(taskArgs, "messageServiceAddress", "MESSAGE_SERVICE_ADDRESS");
@@ -40,7 +40,10 @@ task("setRateLimit", "Sets the rate limit on a Message Service contract")
       }
 
       if (messageServiceAddress === undefined) {
-        messageServiceAddress = (await get(messageServiceContractType)).address;
+        messageServiceAddress = getAddressFromRegistry(networkName, messageServiceContractType);
+        if (messageServiceAddress === undefined) {
+          throw "messageServiceAddress is undefined";
+        }
       }
 
       const withdrawLimitRaw = getTaskCliOrEnvValue(taskArgs, "withdrawLimit", "WITHDRAW_LIMIT_IN_WEI");
@@ -71,4 +74,5 @@ task("setRateLimit", "Sets the rate limit on a Message Service contract")
       const newLimitInWei = await messageService.limitInWei();
       console.log(`Validated rate limit in wei of ${newLimitInWei} at ${messageServiceAddress}`);
     });
-  });
+  })
+  .build();

@@ -1,12 +1,17 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
-import { TestSparseMerkleTreeVerifier } from "../../../../typechain-types";
 import { MAX_UINT32, MAX_UINT33, MESSAGE_FEE, MESSAGE_VALUE_1ETH } from "../../common/constants";
 import { deployFromFactory } from "../../common/deployment";
 import { expectRevertWithCustomError, generateRandomBytes, range } from "../../common/helpers";
+
+import type { TestSparseMerkleTreeVerifier } from "../../../../typechain-types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("SparseMerkleTreeVerifier", () => {
   let sparseMerkleTreeVerifier: TestSparseMerkleTreeVerifier;

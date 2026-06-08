@@ -1,9 +1,10 @@
 import { Contract } from "ethers";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 import { encodeSendMessage, randomBytes32 } from "../../../../common/helpers/encoding";
 import { getTaskCliOrEnvValue } from "../../../../common/helpers/environmentHelper";
 import { getUiSigner } from "../../../../scripts/hardhat/signer-ui-bridge";
+
+import type { HardhatRuntimeEnvironment } from "../../../../scripts/hardhat/signer-ui-bridge";
 
 export interface ClaimParams {
   proof: string[];
@@ -39,7 +40,7 @@ export async function prepareAndAddMessageMerkleRoot(
   hre: HardhatRuntimeEnvironment,
   requireYieldProvider: boolean = false,
 ): Promise<PrepareMessageResult> {
-  const { ethers } = hre;
+  const { ethers } = await hre.network.getOrCreate();
   const signer = await getUiSigner(hre);
   const signerAddress = await signer.getAddress();
 

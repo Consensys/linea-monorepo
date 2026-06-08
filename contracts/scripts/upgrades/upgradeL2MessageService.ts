@@ -1,6 +1,11 @@
-import { ethers, upgrades } from "hardhat";
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
+import hre, { network as hardhatNetwork } from "hardhat";
 
 import { requireEnv } from "../hardhat/utils";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const upgrades = await createUpgrades(hre, hardhatConnection);
 
 // NB: REMEMBER TO RENAME THE EXISTING CONTRACT TO SOMETHING ELSE TO RETAIN
 // THE SAME NAME FOR THE CONTRACT GOING FORWARD

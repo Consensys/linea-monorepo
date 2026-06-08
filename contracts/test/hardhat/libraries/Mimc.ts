@@ -1,11 +1,16 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
-import { Mimc } from "../../../typechain-types";
 import mimcTestData from "../_testData/mimc-test-data.json";
 import { deployFromFactory } from "../common/deployment";
 import { expectRevertWithCustomError } from "../common/helpers";
+
+import type { Mimc } from "../../../typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("Mimc", () => {
   let mimc: Mimc;

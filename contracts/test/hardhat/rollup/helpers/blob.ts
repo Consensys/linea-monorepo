@@ -1,9 +1,9 @@
-import * as kzg from "c-kzg";
-import { TestLineaRollup } from "contracts/typechain-types";
+import kzg from "c-kzg";
 import { BaseContract, Contract, HDNodeWallet, Transaction, TransactionReceipt } from "ethers";
 import * as fs from "fs";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 import path from "path";
+import { fileURLToPath } from "url";
 
 import { getWalletForIndex } from "./";
 import {
@@ -11,7 +11,12 @@ import {
   generateBlobDataSubmission,
   generateBlobDataSubmissionFromFile,
 } from "../../common/helpers";
-import { BlobSubmission } from "../../common/types";
+
+import type { BlobSubmission } from "../../common/types";
+import type { TestLineaRollup } from "contracts/typechain-types";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 /**
  * Context for building and sending blob transactions
@@ -38,7 +43,7 @@ export async function buildBlobTransaction(context: BlobTransactionContext): Pro
     targetAddress,
   } = context;
 
-  const signer = operatorHDSigner ?? getWalletForIndex(2);
+  const signer = operatorHDSigner ?? (await getWalletForIndex(2));
   const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
   const nonce = await signer.getNonce();
 
@@ -65,7 +70,7 @@ export async function signAndBroadcastBlobTransaction(
   transaction: Transaction,
   operatorHDSigner?: HDNodeWallet,
 ): Promise<TransactionReceipt | null> {
-  const signer = operatorHDSigner ?? getWalletForIndex(2);
+  const signer = operatorHDSigner ?? (await getWalletForIndex(2));
   const signedTx = await signer.signTransaction(transaction);
   const txResponse = await ethers.provider.broadcastTransaction(signedTx);
   return await ethers.provider.getTransactionReceipt(txResponse.hash);
@@ -120,10 +125,11 @@ export async function submitBlobsAndGetReceipt(context: SubmitBlobsContext): Pro
 }
 
 let kzgLoaded = false;
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 export function ensureKzgIsLoaded() {
   if (!kzgLoaded) {
-    kzg.loadTrustedSetup(0, path.resolve(__dirname, "../../_testData/trusted_setup.txt"));
+    kzg.loadTrustedSetup(0, path.resolve(currentDir, "../../_testData/trusted_setup.txt"));
     kzgLoaded = true;
   }
 }
@@ -166,7 +172,7 @@ export async function sendVersionedBlobTransactionFromFile(
     compressedBlobs,
     parentShnarf,
     finalShnarf,
-  } = generateBlobDataSubmissionFromFile(path.resolve(__dirname, `../../_testData/${versionFolderName}`, filePath));
+  } = generateBlobDataSubmissionFromFile(path.resolve(currentDir, `../../_testData/${versionFolderName}`, filePath));
 
   const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
     blobSubmission,
@@ -221,7 +227,7 @@ export async function sendBlobTransactionViaCallForwarder(
 // "betaV1" getBetaV1BlobFiles
 export function getVersionedBlobFiles(versionFolderName: string): string[] {
   // Read all files in the folder
-  const files = fs.readdirSync(path.resolve(__dirname, `../../_testData/${versionFolderName}`));
+  const files = fs.readdirSync(path.resolve(currentDir, `../../_testData/${versionFolderName}`));
 
   // Map files to their ranges and filter invalid ones
   const filesWithRanges = files

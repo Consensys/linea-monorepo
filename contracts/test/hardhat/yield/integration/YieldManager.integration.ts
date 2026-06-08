@@ -1,21 +1,5 @@
-// Test scenarios with LineaRollup + YieldManager + LidoStVaultYieldProvider
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, setBalance } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import {
-  TestYieldManager,
-  TestLineaRollup,
-  TestLidoStVaultYieldProvider,
-  MockDashboard,
-  MockStakingVault,
-  TestLidoStVaultYieldProviderFactory,
-  SSZMerkleTree,
-  TestValidatorContainerProofVerifier,
-  MockSTETH,
-  MockVaultHub,
-  MockVaultFactory,
-} from "contracts/typechain-types";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { encodeSendMessage } from "../../../../common/helpers/encoding";
 import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE, CONNECT_DEPOSIT } from "../../common/constants";
@@ -39,8 +23,30 @@ import {
   setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability,
   buildVendorExitData,
   buildSetWithdrawalReserveParams,
-  YieldManagerInitializationData,
 } from "../helpers";
+
+import type { YieldManagerInitializationData } from "../helpers/types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type {
+  TestYieldManager,
+  TestLineaRollup,
+  TestLidoStVaultYieldProvider,
+  MockDashboard,
+  MockStakingVault,
+  TestLidoStVaultYieldProviderFactory,
+  SSZMerkleTree,
+  TestValidatorContainerProofVerifier,
+  MockSTETH,
+  MockVaultHub,
+  MockVaultFactory,
+} from "contracts/typechain-types";
+
+import { loadFixture, setBalance } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+
+// Test scenarios with LineaRollup + YieldManager + LidoStVaultYieldProvider
 
 describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldProvider", () => {
   let nativeYieldOperator: SignerWithAddress;
@@ -152,7 +158,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
 
       // Act
       const claimCall = lineaRollup.connect(nonAuthorizedAccount).claimMessageWithProof(claimParams);
-      await expect(claimCall).to.not.be.reverted;
+      await expect(claimCall).to.not.revert(ethers);
       expect(await getBalance(lineaRollup)).eq(reserveBalanceBefore - transferAmount);
       expect(await getBalance(yieldManager)).eq(yieldManagerBalanceBefore + transferAmount);
     });
@@ -185,7 +191,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
 
       // Assert
-      await expect(claimCall).to.not.be.reverted;
+      await expect(claimCall).to.not.revert(ethers);
       const lstPrincipalAfter = await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress);
       expect(lstPrincipalAfter).eq(lstPrincipalBefore + withdrawAmount);
     });

@@ -1,60 +1,59 @@
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
 import { LineaRollup__factory } from "contracts/typechain-types";
-import { ethers, upgrades } from "hardhat";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
+import hre, { network as hardhatNetwork } from "hardhat";
 
 import { tryVerifyContract, getRequiredEnvVar, requireAddressFromRegistryOrEnv } from "../common/helpers";
+import { deployScript } from "../rocketh/deploy";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 
-const func: DeployFunction = withSignerUiSession(
-  "03_deploy_LineaRollupV8WithReinitialization.ts",
-  async function (hre: HardhatRuntimeEnvironment) {
-    const signer = await getUiSigner(hre);
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const networkName = hardhatConnection.networkName === "default" ? "hardhat" : hardhatConnection.networkName;
+const upgrades = await createUpgrades(hre, hardhatConnection);
 
-    const proxyAddress = requireAddressFromRegistryOrEnv(hre.network.name, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
-    const forcedTransactionFeeInWei = getRequiredEnvVar("LINEA_ROLLUP_FORCED_TRANSACTION_FEE_IN_WEI");
-    const addressFilter = requireAddressFromRegistryOrEnv(
-      hre.network.name,
-      "AddressFilter",
-      "LINEA_ROLLUP_ADDRESS_FILTER",
-    );
+const func = withSignerUiSession("03_deploy_LineaRollupV8WithReinitialization.ts", async function () {
+  const signer = await getUiSigner();
 
-    const contractName = "LineaRollup";
+  const proxyAddress = requireAddressFromRegistryOrEnv(networkName, "LineaRollup", "LINEA_ROLLUP_ADDRESS");
+  const forcedTransactionFeeInWei = getRequiredEnvVar("LINEA_ROLLUP_FORCED_TRANSACTION_FEE_IN_WEI");
+  const addressFilter = requireAddressFromRegistryOrEnv(networkName, "AddressFilter", "LINEA_ROLLUP_ADDRESS_FILTER");
 
-    const factory = await ethers.getContractFactory(contractName, signer);
+  const contractName = "LineaRollup";
 
-    console.log("Deploying new LineaRollup implementation...");
-    const newImplementation = await upgrades.deployImplementation(factory, {
-      kind: "transparent",
-    });
+  const factory = await ethers.getContractFactory(contractName, signer);
 
-    const implementationAddress = newImplementation.toString();
-    console.log(`Implementation deployed at ${implementationAddress}`);
+  console.log("Deploying new LineaRollup implementation...");
+  const newImplementation = await upgrades.deployImplementation(factory, {
+    kind: "transparent",
+  });
 
-    // Encoded calldata for upgradeAndCall via ProxyAdmin (selector 0x9623609d).
-    // Submit this through the Security Council Safe using upgradeAndCall on the ProxyAdmin.
-    // See: https://www.4byte.directory/signatures/?bytes4_signature=0x9623609d
-    const upgradeCallWithReinitialization = ethers.concat([
-      "0x9623609d",
-      ethers.AbiCoder.defaultAbiCoder().encode(
-        ["address", "address", "bytes"],
-        [
-          proxyAddress,
-          newImplementation,
-          LineaRollup__factory.createInterface().encodeFunctionData("reinitializeLineaRollupV9", [
-            forcedTransactionFeeInWei,
-            addressFilter,
-          ]),
-        ],
-      ),
-    ]);
+  const implementationAddress = newImplementation.toString();
+  console.log(`Implementation deployed at ${implementationAddress}`);
 
-    console.log("Encoded upgradeAndCall calldata for reinitializeLineaRollupV9:");
-    console.log("\n", upgradeCallWithReinitialization, "\n");
+  // Encoded calldata for upgradeAndCall via ProxyAdmin (selector 0x9623609d).
+  // Submit this through the Security Council Safe using upgradeAndCall on the ProxyAdmin.
+  // See: https://www.4byte.directory/signatures/?bytes4_signature=0x9623609d
+  const upgradeCallWithReinitialization = ethers.concat([
+    "0x9623609d",
+    ethers.AbiCoder.defaultAbiCoder().encode(
+      ["address", "address", "bytes"],
+      [
+        proxyAddress,
+        newImplementation,
+        LineaRollup__factory.createInterface().encodeFunctionData("reinitializeLineaRollupV9", [
+          forcedTransactionFeeInWei,
+          addressFilter,
+        ]),
+      ],
+    ),
+  ]);
 
-    await tryVerifyContract(implementationAddress);
-  },
-);
+  console.log("Encoded upgradeAndCall calldata for reinitializeLineaRollupV9:");
+  console.log("\n", upgradeCallWithReinitialization, "\n");
 
-export default func;
-func.tags = ["LineaRollupV8WithReinitialization"];
+  await tryVerifyContract(implementationAddress);
+});
+
+export default deployScript(func, {
+  tags: ["LineaRollupV8WithReinitialization"],
+});

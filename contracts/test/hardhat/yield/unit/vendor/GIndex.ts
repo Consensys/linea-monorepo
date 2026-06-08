@@ -1,10 +1,12 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { TestGIndex } from "contracts/typechain-types";
 import { hexlify, MaxUint256, randomBytes, toBeHex, ZeroHash, zeroPadValue } from "ethers";
 
 import { deployFromFactory } from "../../../common/deployment";
 import { expectRevertWithCustomError } from "../../../common/helpers";
+
+import type { TestGIndex } from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
 
 describe("GIndex", () => {
   let gIndex: TestGIndex;
@@ -120,8 +122,8 @@ describe("GIndex", () => {
 
   it("testFuzz_unpack", async () => {
     for (let i = 0; i < 20; i++) {
-      const index = BigInt(ethers.hexlify(randomBytes(30))) % BigInt(2) ** BigInt(240);
-      const pow = BigInt(ethers.hexlify(randomBytes(1))) % 256n;
+      const index = BigInt(hexlify(randomBytes(30))) % BigInt(2) ** BigInt(240);
+      const pow = BigInt(hexlify(randomBytes(1))) % 256n;
 
       const packed = await gIndex.pack(index, pow);
 

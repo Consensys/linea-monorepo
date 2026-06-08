@@ -1,6 +1,7 @@
 import { task } from "hardhat/config";
 
 import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper";
+import { getAddressFromRegistry } from "../../../common/helpers/readAddress";
 import { getUiSigner, runWithSignerUiSession } from "../../../scripts/hardhat/signer-ui-bridge";
 
 /*
@@ -21,24 +22,26 @@ import { getUiSigner, runWithSignerUiSession } from "../../../scripts/hardhat/si
     *******************************************************************************************
 */
 
-task("setVerifierAddress", "Sets the verifier address on a Message Service contract")
-  .addOptionalParam("verifierProofType")
-  .addOptionalParam("proxyAddress")
-  .addOptionalParam("verifierAddress")
-  .addOptionalParam("verifierName")
-  .setAction(async (taskArgs, hre) => {
+export default task("setVerifierAddress", "Sets the verifier address on a Message Service contract")
+  .addOption({ name: "verifierProofType", defaultValue: "" })
+  .addOption({ name: "proxyAddress", defaultValue: "" })
+  .addOption({ name: "verifierAddress", defaultValue: "" })
+  .addOption({ name: "verifierName", defaultValue: "" })
+  .setInlineAction(async (taskArgs, hre) => {
+    const connection = await hre.network.getOrCreate();
     return runWithSignerUiSession(hre, "task:setVerifierAddress", async () => {
-      const ethers = hre.ethers;
-
-      const { deployments } = hre;
-      const { get } = deployments;
+      const { ethers } = connection;
+      const networkName = connection.networkName === "default" ? "hardhat" : connection.networkName;
 
       const proofType = getTaskCliOrEnvValue(taskArgs, "verifierProofType", "VERIFIER_PROOF_TYPE");
       let LineaRollupAddress = getTaskCliOrEnvValue(taskArgs, "proxyAddress", "LINEA_ROLLUP_ADDRESS");
       const verifierName = getTaskCliOrEnvValue(taskArgs, "verifierContractName", "VERIFIER_CONTRACT_NAME");
 
       if (LineaRollupAddress === undefined) {
-        LineaRollupAddress = (await get("LineaRollup")).address;
+        LineaRollupAddress = getAddressFromRegistry(networkName, "LineaRollup");
+        if (LineaRollupAddress === undefined) {
+          throw "LineaRollupAddress is undefined";
+        }
       }
 
       let verifierAddress = getTaskCliOrEnvValue(taskArgs, "verifierAddress", "VERIFIER_ADDRESS");
@@ -46,7 +49,10 @@ task("setVerifierAddress", "Sets the verifier address on a Message Service contr
         if (verifierName === undefined) {
           throw "Please specify a verifier name e.g. --verifier-contract-name PlonkVerifierDev";
         }
-        verifierAddress = (await get(verifierName)).address;
+        verifierAddress = getAddressFromRegistry(networkName, verifierName);
+        if (verifierAddress === undefined) {
+          throw "verifierAddress is undefined";
+        }
       }
 
       if (!proofType) {
@@ -65,4 +71,5 @@ task("setVerifierAddress", "Sets the verifier address on a Message Service contr
       const checkVerifierIsSet = await LineaRollup.verifiers(proofType);
       console.log(`Linea Rollup implementation added ${checkVerifierIsSet} as new verifier`);
     });
-  });
+  })
+  .build();

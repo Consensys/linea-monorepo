@@ -1,13 +1,10 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import {
   DEFAULT_ADMIN_ROLE,
   FORCED_TRANSACTION_FEE_SETTER_ROLE,
   PRECOMPILES_ADDRESSES,
 } from "contracts/common/constants";
-import { ForcedTransactionGateway, AddressFilter, Mimc, TestLineaRollup } from "contracts/typechain-types";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import {
   getAccountsFixture,
@@ -45,7 +42,15 @@ import {
   expectRevertWithReason,
   generateRandomBytes,
 } from "../../common/helpers";
-import { LastFinalizedState } from "../../common/types";
+
+import type { LastFinalizedState } from "../../common/types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { ForcedTransactionGateway, AddressFilter, Mimc, TestLineaRollup } from "contracts/typechain-types";
+
+import { loadFixture, time as networkTime } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
@@ -551,8 +556,12 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
       try {
         // Queue both forced transactions in the mempool
-        const tx1 = await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
-        const tx2 = await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
+        const tx1 = await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState, {
+          gasLimit: 5_000_000,
+        });
+        const tx2 = await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState, {
+          gasLimit: 5_000_000,
+        });
 
         // Mine a single block containing both queued transactions
         await ethers.provider.send("evm_mine");

@@ -1,5 +1,9 @@
-import { ethers, getChainId } from "hardhat";
-import { DeployFunction } from "hardhat-deploy/types";
+import { network as hardhatNetwork } from "hardhat";
+
+import { deployScript } from "../rocketh/deploy";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 // Deploy EIP-2935 Historical Block Hashes system contract - https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2935.md
 // Prerequisite - Fund the predetermined sender address with enough ETH to cover the deployment cost
@@ -10,7 +14,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 // Run deploy script against local stack `make start-env-with-tracing-v2-ci CLEAN_PREVIOUS_ENV=true`
 // DEPLOYER_PRIVATE_KEY=1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae CUSTOM_RPC_URL=http://127.0.0.1:9045 pnpm exec hardhat deploy --network custom --tags EIP2935SystemContract
 
-const func: DeployFunction = async function () {
+const func = async function () {
   const contractName = "EIP2935SystemContract";
   const expectedAddress = "0x0000F90827F1C53a10cb7A02335B175320002935";
 
@@ -77,7 +81,7 @@ const func: DeployFunction = async function () {
     const receipt = await tx.wait();
 
     console.log(
-      `contract=${contractName} deployed: address=${receipt?.contractAddress} blockNumber=${receipt?.blockNumber} chainId=${await getChainId()}`,
+      `contract=${contractName} deployed: address=${receipt?.contractAddress} blockNumber=${receipt?.blockNumber} chainId=${(await ethers.provider.getNetwork()).chainId.toString()}`,
     );
 
     if (receipt?.contractAddress !== expectedAddress) {
@@ -87,5 +91,4 @@ const func: DeployFunction = async function () {
     console.error(`Error during contract=${contractName} deployment: ${(error as Error).message}`);
   }
 };
-export default func;
-func.tags = ["EIP2935SystemContract"];
+export default deployScript(func, { tags: ["EIP2935SystemContract"] });

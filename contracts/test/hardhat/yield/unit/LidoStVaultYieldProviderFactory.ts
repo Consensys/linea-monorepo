@@ -1,7 +1,12 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import {
+import { ZeroAddress } from "ethers";
+import { network as hardhatNetwork } from "hardhat";
+
+import { getAccountsFixture, expectZeroAddressRevert, expectEvent } from "../../common/helpers";
+import { deployLidoStVaultYieldProviderFactory } from "../helpers";
+
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type {
   LidoStVaultYieldProviderFactory,
   MockLineaRollup,
   MockSTETH,
@@ -10,11 +15,11 @@ import {
   TestYieldManager,
   ValidatorContainerProofVerifier,
 } from "contracts/typechain-types";
-import { ZeroAddress } from "ethers";
-import { ethers } from "hardhat";
 
-import { getAccountsFixture, expectZeroAddressRevert, expectEvent } from "../../common/helpers";
-import { deployLidoStVaultYieldProviderFactory } from "../helpers";
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("LidoStVaultYieldProviderFactory", () => {
   let lidoStVaultYieldProviderFactory: LidoStVaultYieldProviderFactory;

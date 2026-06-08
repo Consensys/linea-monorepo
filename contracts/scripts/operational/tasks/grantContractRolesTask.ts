@@ -1,6 +1,7 @@
 import { task } from "hardhat/config";
 
 import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper";
+import { getAddressFromRegistry } from "../../../common/helpers/readAddress";
 import { getUiSigner, runWithSignerUiSession } from "../../../scripts/hardhat/signer-ui-bridge";
 
 /*
@@ -23,17 +24,16 @@ import { getUiSigner, runWithSignerUiSession } from "../../../scripts/hardhat/si
     *******************************************************************************************
 */
 
-task("grantContractRoles", "Grants roles to specific accounts")
-  .addOptionalParam("adminAddress")
-  .addOptionalParam("proxyAddress")
-  .addOptionalParam("contractType")
-  .addOptionalParam("contractRoles")
-  .setAction(async (taskArgs, hre) => {
+export default task("grantContractRoles", "Grants roles to specific accounts")
+  .addOption({ name: "adminAddress", defaultValue: "" })
+  .addOption({ name: "proxyAddress", defaultValue: "" })
+  .addOption({ name: "contractType", defaultValue: "" })
+  .addOption({ name: "contractRoles", defaultValue: "" })
+  .setInlineAction(async (taskArgs, hre) => {
+    const connection = await hre.network.getOrCreate();
     return runWithSignerUiSession(hre, "task:grantContractRoles", async () => {
-      const ethers = hre.ethers;
-
-      const { deployments } = hre;
-      const { get } = deployments;
+      const { ethers } = connection;
+      const networkName = connection.networkName === "default" ? "hardhat" : connection.networkName;
 
       const adminAddress = getTaskCliOrEnvValue(taskArgs, "adminAddress", "ADMIN_ADDRESS");
       let proxyAddress = getTaskCliOrEnvValue(taskArgs, "proxyAddress", "PROXY_ADDRESS");
@@ -45,7 +45,7 @@ task("grantContractRoles", "Grants roles to specific accounts")
       }
 
       if (proxyAddress === undefined) {
-        proxyAddress = (await get(contractType)).address;
+        proxyAddress = getAddressFromRegistry(networkName, contractType);
         if (proxyAddress === undefined) {
           throw "proxyAddress is undefined";
         }
@@ -72,4 +72,5 @@ task("grantContractRoles", "Grants roles to specific accounts")
 
       console.log("Done");
     });
-  });
+  })
+  .build();

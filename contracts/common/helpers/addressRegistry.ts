@@ -1,10 +1,13 @@
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
 import { envVarNameFromContext, formatEnvVarValueForMessage, isEnvVarContext } from "./envVarLogging";
 
-export const REGISTRY_DIR = path.join(__dirname, "..", "..", "deployments", "addresses");
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+
+export const REGISTRY_DIR = path.join(currentDir, "..", "..", "deployments", "addresses");
 
 export const REGISTRY_NETWORKS = new Set(["mainnet", "sepolia", "hoodi", "linea_mainnet", "linea_sepolia"]);
 

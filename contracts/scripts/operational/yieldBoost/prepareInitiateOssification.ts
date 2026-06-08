@@ -32,12 +32,15 @@ import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper"
     DASHBOARD
   *******************************************************************************************
 */
-task("prepareInitiateOssification", "Generates calldata for prerequisites before initiating ossification")
-  .addOptionalParam("yieldManager")
-  .addOptionalParam("yieldProvider")
-  .addOptionalParam("dashboard")
-  .setAction(async (taskArgs, hre) => {
-    const { ethers } = hre;
+export default task(
+  "prepareInitiateOssification",
+  "Generates calldata for prerequisites before initiating ossification",
+)
+  .addOption({ name: "yieldManager", defaultValue: "" })
+  .addOption({ name: "yieldProvider", defaultValue: "" })
+  .addOption({ name: "dashboard", defaultValue: "" })
+  .setInlineAction(async (taskArgs, hre) => {
+    const { ethers } = await hre.network.getOrCreate();
 
     // --- Resolve inputs from CLI or ENV ---
     const yieldManager = getTaskCliOrEnvValue(taskArgs, "yieldManager", "YIELD_MANAGER_ADDRESS");
@@ -114,4 +117,5 @@ task("prepareInitiateOssification", "Generates calldata for prerequisites before
     console.log("   Function: grantRole(bytes32,address)");
     console.log("   Calldata:", grantRoleCalldata);
     console.log("\n" + "=".repeat(80));
-  });
+  })
+  .build();

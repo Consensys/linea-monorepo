@@ -1,8 +1,6 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { STATE_DATA_SUBMISSION_PAUSE_TYPE } from "contracts/common/constants";
-import { TestLineaRollup } from "contracts/typechain-types";
+import { network as hardhatNetwork } from "hardhat";
 
 import { getAccountsFixture, deployLineaRollupFixture } from "./../helpers";
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
@@ -18,7 +16,15 @@ import {
   expectRevertWhenPaused,
   generateKeccak256,
 } from "../../common/helpers";
-import { CalldataSubmissionData } from "../../common/types";
+
+import type { CalldataSubmissionData } from "../../common/types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { TestLineaRollup } from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("Linea Rollup contract: Calldata Submission", () => {
   let lineaRollup: TestLineaRollup;
@@ -76,7 +82,7 @@ describe("Linea Rollup contract: Calldata Submission", () => {
       lineaRollup
         .connect(operator)
         .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT }),
-    ).to.not.be.reverted;
+    ).to.not.revert(ethers);
 
     const blobShnarfExists = await lineaRollup.blobShnarfExists(expectedShnarf);
     expect(blobShnarfExists).to.equal(1n);
@@ -89,13 +95,13 @@ describe("Linea Rollup contract: Calldata Submission", () => {
       lineaRollup
         .connect(operator)
         .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT }),
-    ).to.not.be.reverted;
+    ).to.not.revert(ethers);
 
     await expect(
       lineaRollup.connect(operator).submitDataAsCalldata(secondSubmissionData, expectedShnarf, secondExpectedShnarf, {
         gasLimit: MAX_GAS_LIMIT,
       }),
-    ).to.not.be.reverted;
+    ).to.not.revert(ethers);
 
     const blobShnarfExists = await lineaRollup.blobShnarfExists(expectedShnarf);
     expect(blobShnarfExists).to.equal(1n);
@@ -135,7 +141,7 @@ describe("Linea Rollup contract: Calldata Submission", () => {
       lineaRollup
         .connect(operator)
         .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT }),
-    ).to.not.be.reverted;
+    ).to.not.revert(ethers);
 
     const wrongComputedShnarf = generateRandomBytes(32);
 

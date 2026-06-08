@@ -1,6 +1,4 @@
-import { ethers } from "hardhat";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
+import { network as hardhatNetwork } from "hardhat";
 
 import {
   LogContractDeployment,
@@ -8,48 +6,45 @@ import {
   requireAddressFromRegistryOrEnv,
   tryVerifyContractWithConstructorArgs,
 } from "../common/helpers";
+import { deployScript } from "../rocketh/deploy";
 import { getUiSigner, withSignerUiSession } from "../scripts/hardhat/signer-ui-bridge";
 import { deployFromFactory } from "../scripts/hardhat/utils";
 import { get1559Fees } from "../scripts/utils";
 
-const func: DeployFunction = withSignerUiSession(
-  "02_deploy_Timelock.ts",
-  async function (hre: HardhatRuntimeEnvironment) {
-    const contractName = "TimeLock";
-    const signer = await getUiSigner(hre);
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const networkName = hardhatConnection.networkName === "default" ? "hardhat" : hardhatConnection.networkName;
 
-    // This should be the safe
-    const timeLockProposers = getRequiredEnvVar("TIMELOCK_PROPOSERS");
+const func = withSignerUiSession("02_deploy_Timelock.ts", async function () {
+  const contractName = "TimeLock";
+  const signer = await getUiSigner();
 
-    // This should be the safe
-    const timelockExecutors = getRequiredEnvVar("TIMELOCK_EXECUTORS");
+  // This should be the safe
+  const timeLockProposers = getRequiredEnvVar("TIMELOCK_PROPOSERS");
 
-    // This should be the safe
-    const adminAddress = requireAddressFromRegistryOrEnv(
-      hre.network.name,
-      "TIMELOCK_ADMIN_ADDRESS",
-      "TIMELOCK_ADMIN_ADDRESS",
-    );
+  // This should be the safe
+  const timelockExecutors = getRequiredEnvVar("TIMELOCK_EXECUTORS");
 
-    const minDelay = process.env.MIN_DELAY || 0;
+  // This should be the safe
+  const adminAddress = requireAddressFromRegistryOrEnv(networkName, "TIMELOCK_ADMIN_ADDRESS", "TIMELOCK_ADMIN_ADDRESS");
 
-    const contract = await deployFromFactory(
-      contractName,
-      signer,
-      minDelay,
-      timeLockProposers?.split(","),
-      timelockExecutors?.split(","),
-      adminAddress,
-      await get1559Fees(ethers.provider),
-    );
+  const minDelay = process.env.MIN_DELAY || 0;
 
-    await LogContractDeployment(contractName, contract);
-    const contractAddress = await contract.getAddress();
+  const contract = await deployFromFactory(
+    contractName,
+    signer,
+    minDelay,
+    timeLockProposers?.split(","),
+    timelockExecutors?.split(","),
+    adminAddress,
+    await get1559Fees(ethers.provider),
+  );
 
-    const args = [minDelay, timeLockProposers?.split(","), timelockExecutors?.split(","), adminAddress];
+  await LogContractDeployment(contractName, contract);
+  const contractAddress = await contract.getAddress();
 
-    await tryVerifyContractWithConstructorArgs(contractAddress, "src/governance/TimeLock.sol:TimeLock", args);
-  },
-);
-export default func;
-func.tags = ["Timelock"];
+  const args = [minDelay, timeLockProposers?.split(","), timelockExecutors?.split(","), adminAddress];
+
+  await tryVerifyContractWithConstructorArgs(contractAddress, "src/governance/TimeLock.sol:TimeLock", args);
+});
+export default deployScript(func, { tags: ["Timelock"] });

@@ -1,6 +1,20 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
+import { BaseContract } from "ethers";
+import { network as hardhatNetwork } from "hardhat";
+
+import { generateLidoUnstakePermissionlessWitness } from "./proof";
+import { encodeSendMessage, randomBytes32 } from "../../../../common/helpers/encoding";
 import {
+  ADDRESS_ZERO,
+  BEACON_PROOF_WITNESS_TYPE,
+  EMPTY_CALLDATA,
+  MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
+  ONE_ETHER,
+} from "../../common/constants";
+
+import type { ClaimMessageWithProofParams, YieldManagerInitializationData } from "./types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type {
   MockDashboard,
   MockLineaRollup,
   MockYieldProvider,
@@ -13,19 +27,9 @@ import {
   MockSTETH,
   MockVaultHub,
 } from "contracts/typechain-types";
-import { BaseContract } from "ethers";
-import { ethers } from "hardhat";
 
-import { generateLidoUnstakePermissionlessWitness } from "./proof";
-import { ClaimMessageWithProofParams, YieldManagerInitializationData } from "./types";
-import { encodeSendMessage, randomBytes32 } from "../../../../common/helpers/encoding";
-import {
-  ADDRESS_ZERO,
-  BEACON_PROOF_WITNESS_TYPE,
-  EMPTY_CALLDATA,
-  MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
-  ONE_ETHER,
-} from "../../common/constants";
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 // TODO - Existence of this setup function means that YieldManager has invariants that withdraw cannot underflow for userFunds and userFundsInYieldProvidersTotal
 // Caution - assumes it will only be used once, will not work for consecutive uses in its current form

@@ -1,4 +1,7 @@
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 export const MAX_UINT32 = BigInt(2 ** 32 - 1);
 export const MAX_UINT33 = BigInt(2 ** 33 - 1);

@@ -1,9 +1,6 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
-import { L1LineaTokenBurner, MockL1LineaToken, TestL1MessageServiceMerkleProof } from "../../../typechain-types";
 import {
   ADDRESS_ZERO,
   EMPTY_CALLDATA,
@@ -16,6 +13,14 @@ import {
 } from "../common/constants";
 import { deployFromFactory, deployUpgradableFromFactory } from "../common/deployment";
 import { expectEvent, expectRevertWithCustomError } from "../common/helpers";
+
+import type { L1LineaTokenBurner, MockL1LineaToken, TestL1MessageServiceMerkleProof } from "../../../typechain-types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+
+import { clearSnapshots, loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 // TODO: Dynamically generate a valid merkle proof for testing instead of using a hardcoded one.
 // Should trigger a call to the token bridge to mint tokens on L1 to the burner address as part of the test setup.
@@ -56,7 +61,7 @@ describe("L1LineaTokenBurner", () => {
   }
 
   before(async () => {
-    await network.provider.send("hardhat_reset");
+    await clearSnapshots();
     [admin] = await ethers.getSigners();
   });
 

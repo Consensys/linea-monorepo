@@ -1,11 +1,8 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { L2_MESSAGE_SERVICE_ROLES } from "contracts/common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
-import { TestL2MessageService, TestMessageServiceBase } from "../../../typechain-types";
 import {
   INITIALIZED_ERROR_MESSAGE,
   INITIAL_WITHDRAW_LIMIT,
@@ -16,6 +13,14 @@ import {
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";
+
+import type { TestL2MessageService, TestMessageServiceBase } from "../../../typechain-types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("MessageServiceBase", () => {
   let messageServiceBase: TestMessageServiceBase;
@@ -108,7 +113,7 @@ describe("MessageServiceBase", () => {
     });
 
     it("Should succeed if msg.sender is the message service address", async () => {
-      expect(await messageService.callMessageServiceBase(await messageServiceBase.getAddress())).to.not.be.reverted;
+      await expect(messageService.callMessageServiceBase(await messageServiceBase.getAddress())).to.not.revert(ethers);
     });
   });
 
@@ -130,7 +135,7 @@ describe("MessageServiceBase", () => {
         0,
         "0xfcd38105", // keccak256("withOnlyAuthorizedRemoteSender()")
       );
-      await expect(call).to.not.be.reverted;
+      await expect(call).to.not.revert(ethers);
     });
   });
 });

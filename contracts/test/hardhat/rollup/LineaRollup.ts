@@ -1,9 +1,8 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
+import { upgrades as createUpgrades } from "@openzeppelin/hardhat-upgrades";
 import { expect } from "chai";
 import { LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES, LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
-import { AddressFilter, CallForwardingProxy, LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
-import { ethers, upgrades } from "hardhat";
+import { LineaRollup__factory } from "contracts/typechain-types";
+import hre, { network as hardhatNetwork } from "hardhat";
 
 import { ensureKzgSetup } from "./helpers";
 import {
@@ -54,7 +53,16 @@ import {
   expectEventDirectFromReceiptData,
   computeGenesisShnarf,
 } from "../common/helpers";
-import { LineaRollupInitializationData, PauseTypeRole } from "../common/types";
+
+import type { LineaRollupInitializationData, PauseTypeRole } from "../common/types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { AddressFilter, CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
+
+import { loadFixture, time as networkTime } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
+const upgrades = await createUpgrades(hre, hardhatConnection);
 
 ensureKzgSetup();
 
@@ -77,8 +85,8 @@ describe("Linea Rollup contract", () => {
 
   before(async () => {
     ({ admin, securityCouncil, operator, nonAuthorizedAccount, alternateShnarfProviderAddress } =
-      await loadFixture(getAccountsFixture));
-    roleAddresses = await loadFixture(getRoleAddressesFixture);
+      await getAccountsFixture());
+    roleAddresses = await getRoleAddressesFixture();
   });
 
   beforeEach(async () => {
@@ -92,11 +100,11 @@ describe("Linea Rollup contract", () => {
     };
 
     it("Should fail to send eth to the lineaRollup contract through the fallback", async () => {
-      await expect(sendEthToContract(EMPTY_CALLDATA)).to.be.reverted;
+      await expect(sendEthToContract(EMPTY_CALLDATA)).to.revert(ethers);
     });
 
     it("Should fail to send eth to the lineaRollup contract through the receive function", async () => {
-      await expect(sendEthToContract("0x1234")).to.be.reverted;
+      await expect(sendEthToContract("0x1234")).to.revert(ethers);
     });
   });
 
@@ -574,7 +582,7 @@ describe("Linea Rollup contract", () => {
     it("Should succeed if l1 message number == 0 and l1 rolling hash is empty", async () => {
       const l1MessageNumber = 0;
       const l1RollingHash = HASH_ZERO;
-      await expect(lineaRollup.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.be.reverted;
+      await expect(lineaRollup.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.revert(ethers);
     });
 
     it("Should succeed if l1 message number != 0, l1 rolling hash is not empty and exists on L1", async () => {
@@ -585,7 +593,7 @@ describe("Linea Rollup contract", () => {
 
       const l1RollingHash = calculateRollingHash(HASH_ZERO, messageHash);
 
-      await expect(lineaRollup.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.be.reverted;
+      await expect(lineaRollup.validateL2ComputedRollingHash(l1MessageNumber, l1RollingHash)).to.not.revert(ethers);
     });
   });
 

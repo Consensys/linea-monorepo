@@ -1,7 +1,4 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ForcedTransactionGateway, TestLineaRollup } from "contracts/typechain-types";
-import { ethers, network } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import forcedTx0 from "../../_testData/eip1559RlpEncoderTransactions/forced-transaction-0.json";
 import {
@@ -12,6 +9,14 @@ import {
 } from "../../common/constants";
 import { buildEip1559Transaction } from "../../common/helpers";
 import { getAccountsFixture, deployLineaRollupFixture, deployMimcFixture, deployAddressFilter } from "../helpers";
+
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { ForcedTransactionGateway, TestLineaRollup } from "contracts/typechain-types";
+
+import { clearSnapshots, loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe.skip("Linea Rollup contract: Forced Transactions", () => {
   const MAX_GAS_LIMIT = 10_000_000n;
@@ -30,7 +35,7 @@ describe.skip("Linea Rollup contract: Forced Transactions", () => {
   };
 
   before(async () => {
-    await network.provider.send("hardhat_reset");
+    await clearSnapshots();
     ({ securityCouncil } = await loadFixture(getAccountsFixture));
   });
 

@@ -1,10 +1,8 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { deployTokenBridgeWithMockMessaging } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
 import { deployTokens } from "../../../../scripts/tokenBridge/test/deployTokens";
-import { BridgedToken, ERC20Fees, MockERC20MintBurn } from "../../../../typechain-types";
 import {
   COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
   INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
@@ -22,6 +20,13 @@ import {
   expectRevertWithReason,
   expectRevertWhenPaused,
 } from "../../common/helpers";
+
+import type { BridgedToken, ERC20Fees, MockERC20MintBurn } from "../../../../typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 const initialUserBalance = BigInt(10 ** 9);
 // Use shared constants from common/constants/general.ts
@@ -391,8 +396,9 @@ describe("Mocked E2E tests", function () {
         await l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address);
 
         await L1DAI.connect(user).approve(await l2TokenBridge.getAddress(), bridgeAmount);
-        await expect(l2TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address)).to
-          .not.be.reverted;
+        await expect(
+          l2TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address),
+        ).to.not.revert(ethers);
       });
     });
   });
@@ -588,8 +594,9 @@ describe("Mocked E2E tests", function () {
       );
 
       // Should not revert
-      await expect(l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address)).to.be
-        .not.reverted;
+      await expect(
+        l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address),
+      ).to.be.not.revert(ethers);
 
       // @TODO: check metadata are not sent for new L1DAI tx
     });

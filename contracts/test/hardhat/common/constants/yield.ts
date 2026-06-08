@@ -1,5 +1,8 @@
 import { parseUnits } from "ethers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 export const MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS = 2000;
 export const TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS = 2500;

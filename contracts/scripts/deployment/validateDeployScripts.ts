@@ -8,6 +8,7 @@
 import { Interface, InterfaceAbi } from "ethers";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
 import {
   EMPTY_INITIALIZE_SIGNATURE,
@@ -25,9 +26,10 @@ import {
   REGISTRY_NETWORKS,
 } from "../../common/helpers/addressRegistry";
 
-const BUILD_DIR = path.join(__dirname, "..", "..", "build");
-const DEPLOY_DIR = path.join(__dirname, "..", "..", "deploy");
-const LOCAL_DEPLOYMENT_ARTIFACTS_DIR = path.join(__dirname, "..", "..", "local-deployments-artifacts");
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const BUILD_DIR = path.join(currentDir, "..", "..", "build");
+const DEPLOY_DIR = path.join(currentDir, "..", "..", "deploy");
+const LOCAL_DEPLOYMENT_ARTIFACTS_DIR = path.join(currentDir, "..", "..", "local-deployments-artifacts");
 
 type ValidationIssue = {
   category: "signature" | "registry" | "artifact";

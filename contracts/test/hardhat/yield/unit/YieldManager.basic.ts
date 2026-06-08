@@ -1,9 +1,6 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { MockLineaRollup, TestYieldManager } from "contracts/typechain-types";
 import { ZeroAddress } from "ethers";
-import { ethers } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } from "../../common/constants";
 import {
@@ -21,7 +18,15 @@ import {
   deployYieldManagerForUnitTestWithMutatedInitData,
 } from "../helpers/deploy";
 import { addMockYieldProvider, buildMockYieldProviderRegistration } from "../helpers/mocks";
-import { YieldManagerInitializationData } from "../helpers/types";
+
+import type { YieldManagerInitializationData } from "../helpers/types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type { MockLineaRollup, TestYieldManager } from "contracts/typechain-types";
+
+import { loadFixture } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("YieldManager contract - basic operations", () => {
   let yieldManager: TestYieldManager;
@@ -50,16 +55,16 @@ describe("YieldManager contract - basic operations", () => {
     };
 
     it("Should fail to send eth to the yieldManager contract through the fallback function", async () => {
-      await expect(sendEthToContract("0x1234")).to.be.reverted;
+      await expect(sendEthToContract("0x1234")).to.revert(ethers);
     });
 
     it("Should successfully accept ETH via receive() fn", async () => {
-      await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.be.reverted;
+      await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.revert(ethers);
     });
 
     it("Should decrement pendingPermissionlessUnstake when ETH is received", async () => {
       await yieldManager.setPendingPermissionlessUnstake(MINIMUM_FEE);
-      await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.be.reverted;
+      await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.revert(ethers);
       expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(ZERO_VALUE);
     });
   });
@@ -69,9 +74,9 @@ describe("YieldManager contract - basic operations", () => {
       const l1MessageServiceAddress = await mockLineaRollup.getAddress();
       const yieldManagerFactory = await ethers.getContractFactory("TestYieldManager");
       const deployedYieldManager = await yieldManagerFactory.deploy(l1MessageServiceAddress);
-      expect(deployedYieldManager.deploymentTransaction)
-        .to.emit(yieldManager, "YieldManagerDeployed")
-        .withArgs(l1MessageServiceAddress);
+      const deployTx = deployedYieldManager.deploymentTransaction();
+      expect(deployTx).to.not.equal(null);
+      await expect(deployTx!).to.emit(deployedYieldManager, "YieldManagerDeployed").withArgs(l1MessageServiceAddress);
       await deployedYieldManager.waitForDeployment();
       expect(await deployedYieldManager.L1_MESSAGE_SERVICE()).to.equal(l1MessageServiceAddress);
     });

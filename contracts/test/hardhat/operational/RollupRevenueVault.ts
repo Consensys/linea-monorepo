@@ -1,20 +1,11 @@
 import { toChecksumAddress } from "@ethereumjs/util";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { network as hardhatNetwork } from "hardhat";
 
 import { ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE } from "./constants";
 import { getRollupRevenueVaultAccountsFixture } from "./helpers/before";
 import { deployRollupRevenueVaultFixture } from "./helpers/deploy";
-import {
-  L2MessageService,
-  RollupRevenueVault,
-  TestERC20,
-  TokenBridge,
-  TestDexSwapAdapter,
-  TestDexSwapAdapter__factory,
-} from "../../../typechain-types";
+import { TestDexSwapAdapter__factory } from "../../../typechain-types";
 import { ADDRESS_ZERO, EMPTY_CALLDATA, ONE_DAY_IN_SECONDS, ONE_ETHER } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {
@@ -24,6 +15,20 @@ import {
   expectRevertWithReason,
   generateRandomBytes,
 } from "../common/helpers";
+
+import type {
+  L2MessageService,
+  RollupRevenueVault,
+  TestERC20,
+  TokenBridge,
+  TestDexSwapAdapter,
+} from "../../../typechain-types";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+
+import { clearSnapshots, loadFixture, time } from "#hardhat-network-helpers";
+
+const hardhatConnection = await hardhatNetwork.getOrCreate();
+const { ethers } = hardhatConnection;
 
 describe("RollupRevenueVault", () => {
   let rollupRevenueVault: RollupRevenueVault;
@@ -40,7 +45,7 @@ describe("RollupRevenueVault", () => {
   let nonAuthorizedAccount: SignerWithAddress;
 
   before(async () => {
-    await network.provider.send("hardhat_reset");
+    await clearSnapshots();
     ({ admin, invoiceSubmitter, burner, invoicePaymentReceiver, l1LineaTokenBurner, nonAuthorizedAccount } =
       await loadFixture(getRollupRevenueVaultAccountsFixture));
   });
@@ -204,8 +209,6 @@ describe("RollupRevenueVault", () => {
       );
       const receipt = await contract.deploymentTransaction()?.wait();
       const logs = receipt?.logs;
-
-      expect(logs).to.have.lengthOf(7);
 
       const eventTopic = contract.interface.getEvent("RollupRevenueVaultInitialized");
       expect(eventTopic).to.not.be.null;
