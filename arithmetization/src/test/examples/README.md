@@ -324,17 +324,17 @@ zkc exec -q act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
 ## Default memory layout
 
 ```
-0x00000000  ──  program starts
-    ↓  program grows up (up to 128 MiB)
-0x07FFFFFF  ──  program ends at most
-0x08000000  ──  heap starts
-    ↓  heap grows upward (up to 8 MiB by default)
-0x08800000  ──  heap ends / stack bottom
-    ↑  stack grows downward
-0x09000000  ──  sp starts here (up to 8 MiB by default)
-0x09000000  ──  input starts
-    ↓  input grows up (up to 1 GiB)
-0x49000000  ──  input ends at most
+0x00000000  ────────────────────────────────────────── 
+    ↓        ↓ PROGRAM grows upward (up to 128 MiB)
+0x07FFFFFF  ──────────────────────────────────────────  
+0x08000000  ──────────────────────────────────────────  _heap_start
+    ↓        ↓ HEAP grows upward    (up to 8 MiB)
+0x08800000  ──────────────────────────────────────────  _heap_end / _stack_end
+    ↑        ↑ STACK grows downward (up to 8 MiB)
+0x09000000  ──────────────────────────────────────────  _stack_start
+0x09000000  ──────────────────────────────────────────  _input_start
+    ↓        ↓ IN grows upward      (up to 1 GiB)
+0x49000000  ──────────────────────────────────────────  
 ```
 
 The generated linker script exposes `_heap_start`, `_heap_end`, `_stack_end`, `_stack_start`, and `_input_start`.

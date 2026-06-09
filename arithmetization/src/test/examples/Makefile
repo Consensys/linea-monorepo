@@ -56,7 +56,7 @@ JSON := $(BIN).json
 # Inputs and offsets for the program
 IN_BYTES        ?= ""
 
-EVAL = $(shell printf "0x%08x" $$(( $(1) )))
+
 
 # Values to generate the linker script
 # 128 MiB (0x00000000 -> 0x07FFFFFF)
@@ -72,7 +72,10 @@ STACK_SIZE      := 0x00800000
 # Since program starts from _start, the entry point is the same as the program offset
 ENTRY_POINT     := $(PROGRAM_OFFSET)
 
-# Top of the stack region. By default, this keeps PROGRAM, HEAP, STACK, and IN contiguous.
+# Support function to evaluate expressions and format them as hex
+EVAL = $(shell printf "0x%08x" $$(( $(1) )))
+
+# Top of the stack region. By default, this keeps PROGRAM, HEAP, STACK, and IN contiguous
 SP              ?= $(call EVAL,$(PROGRAM_OFFSET) + $(PROGRAM_SIZE) + $(HEAP_SIZE) + $(STACK_SIZE))
 
 HEAP_START      = $(call EVAL,$(SP) - $(STACK_SIZE) - $(HEAP_SIZE))
