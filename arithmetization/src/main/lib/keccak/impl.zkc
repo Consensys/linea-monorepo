@@ -15,19 +15,8 @@ include "../../riscv/utils/type.zkc"
 // 5x5xW state with W = 64 (5x5x64 = 1600 bits)
 type lane = u64
 
-// output = 32 byte ≡ 256 bits
-// capacity = 2 * 256 = 512 bits
-// rate = State size - Capacity = 1600 - 512 = 1088 bits
-type bitrate_type = u1088
-
-// n = number of rounds
-// n = 12 + 2 * l with 2^l = W
-const n:u5 = 24
-
-// In this implementation, we use blocks as input
-// Multi-rate padding has already been applied to the input
-
-const byte_length:u64 = 8
+// KECCAK_ROUNDS = number of rounds = 12 + 2 * l with 2^l = W
+const KECCAK_ROUNDS:u5 = 24
 
 // ===================================================================
 // Main function
@@ -39,9 +28,9 @@ fn keccak<ram, state_row0, state_row1, state_row2, state_row3, state_row4, b0, b
     wipe_state()
 
     printf "\n"
-    printf "msg_address    = %x\n", msg_address
-    printf "msg_length     = %x\n", msg_length
-    printf "output_address = %x\n", output_address
+    printf "msg_address: %x\n", msg_address
+    printf "msg_length: %x\n", msg_length
+    printf "output_address: %x\n", output_address
 
     absorbing_phase(msg_address, msg_length)
 
@@ -50,13 +39,9 @@ fn keccak<ram, state_row0, state_row1, state_row2, state_row3, state_row4, b0, b
     print_hash()
 }
 
-// print_hash prints the hash in big-endian convention;
-// we provide some standard values for testing
-// keccak( <empty> )         = c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470
-// keccak( "00".repeat(32) ) = 290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563
-// keccak( "00".repeat(64) ) = ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5
+// print_hash prints the hash in BIG-ENDIAN convention
 fn print_hash<state_row0,state_row1,state_row2,state_row3>() {
-    printf "\nkeccak\n\t"
+    printf "\nkeccak hash:\t"
     print_big_endian(state_row0[0])
     print_big_endian(state_row1[0])
     print_big_endian(state_row2[0])
@@ -64,6 +49,7 @@ fn print_hash<state_row0,state_row1,state_row2,state_row3>() {
     printf "\n"
 
 }
+// print_big_endian prints a u64 in BIG-ENDIAN convention
 fn print_big_endian(val :u64) {
     var b7:u8, b6:u8, b5:u8, b4:u8, b3:u8, b2:u8, b1:u8, b0:u8
     b7 :: b6 :: b5 :: b4 :: b3 :: b2 :: b1 :: b0 = val
@@ -105,7 +91,7 @@ fn absorbing_phase<ram, state_row0, state_row1, state_row2, state_row3, state_ro
         }
 
         xor_padded_input_block_into_state()
-        keccakf()
+        keccak_f()
 
         curr_address = curr_address + (BLOCK_BYTE_LENGTH as Address)
     }
@@ -144,10 +130,10 @@ fn absorbing_phase<ram, state_row0, state_row1, state_row2, state_row3, state_ro
     }
 
     xor_padded_input_block_into_state()
-    keccakf()
+    keccak_f()
 }
 
-// TODO: Claude believes the order should be reversed
+// xor_padded_input_block_into_state does exactly what its name suggests
 fn xor_padded_input_block_into_state<state_row0, state_row1, state_row2, state_row3, state_row4, padded_input_block>() {
     state_row0[0] = state_row0[0] ^ padded_input_block[0]
     state_row1[0] = state_row1[0] ^ padded_input_block[1]
@@ -179,14 +165,14 @@ fn squeezing_phase<ram, state_row0, state_row1, state_row2, state_row3>(output_a
 // The Keccak-f permutation
 // ===================================================================
 
-fn keccakf<state_row0, state_row1, state_row2, state_row3, state_row4, b0, b1, b2, b3, b4, c, d>() {
-    for j:u5 = 0; j<n; j = j + 1 {
+fn keccak_f<state_row0, state_row1, state_row2, state_row3, state_row4, b0, b1, b2, b3, b4, c, d>() {
+    for j:u5 = 0; j<KECCAK_ROUNDS; j = j + 1 {
         var round_constant:u64 = RC[j]
-        keccakf_round(round_constant)
+        keccak_f_round(round_constant)
     }
 }
 
-fn keccakf_round<state_row0, state_row1, state_row2, state_row3, state_row4, b0, b1, b2, b3, b4, c, d>(round_constant:u64) {
+fn keccak_f_round<state_row0, state_row1, state_row2, state_row3, state_row4, b0, b1, b2, b3, b4, c, d>(round_constant:u64) {
     theta()
     rho()
     pi()
