@@ -5,9 +5,10 @@ include "../utils/negative.zkc"
 include "../utils/sign_bit.zkc"
 include "../utils/sign_extend.zkc"
 include "../utils/signed_comparisons.zkc"
-include "../../precompiles/poseidon/impl/poseidon.zkc"
-include "../../precompiles/poseidon/impl/state.zkc"
-include "../../lib/keccak/impl.zkc"
+include "../../lib/poseidon/memory.zkc"
+include "../../lib/poseidon/poseidon.zkc"
+include "../../lib/keccak/memory.zkc"
+include "../../lib/keccak/keccak.zkc"
 
 // Process a RISC-V R-type instruction, writing the result into the register file.
 //
@@ -368,18 +369,15 @@ fn process_R_type_instruction<registers, ram, poseidon_state, state_row0, state_
         // custom instructions (precompiles etc ...)
         // ==========================================
         case CUSTOM_0: {
-
-            printf "custom-0 instruction\n"
-
             if (funct3 == FUNCT3_POSEIDON_1) && (funct7 == FUNCT7_POSEIDON_1) {
-                // address:Address, size_in_bytes:u32, destination:Address, apply_mds_initially:u1
-                // Note: registers[rd] isn't changed by this instruction, it's merely read
+                printf "KECCAK precompile "
                 v2_upper::v2_lower = v2
                 if v2_upper != 0 {
-                    fail "Poseidon input size too large: %d", v2
+                    fail "Poseidon input size too large: size_in_bytes = %x_%x\n", v2_upper, v2_lower
                 }
+                // Note: registers[rd] isn't changed by this instruction, it's merely read
+                // poseidon(input_addr, input_size, output_addr, apply_mds_initially)
                 poseidon(v1, v2_lower, registers[rd] as Address, 0)
-                printf "Poseidon done!\n"
             } else {
                 printf "[ERROR] Unsupported R-type custom-0 instruction with\n"
                 printf "\tfunct3 ≡ %x ≡ %b\n", funct3, funct3
@@ -390,6 +388,8 @@ fn process_R_type_instruction<registers, ram, poseidon_state, state_row0, state_
         case CUSTOM_1: {
             if (funct3 == FUNCT3_KECCAK) && (funct7 == FUNCT7_KECCAK) {
                 printf "KECCAK precompile "
+                // Note: registers[rd] isn't changed by this instruction, it's merely read
+                // keccak(input_addr, input_size, output_addr)
                 keccak(v1 as Address, v2 as u32, registers[rd] as Address)
             } else {
                 printf "[ERROR] Unsupported R-type custom-1 instruction with\n"
