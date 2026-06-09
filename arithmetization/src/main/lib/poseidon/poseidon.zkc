@@ -1,7 +1,5 @@
-include "_round_constants.zkc"
-include "_mds_matrix.zkc"
-include "_constants.zkc"
-include "state.zkc"
+include "constants.zkc"
+include "memory.zkc"
 
 // ===================================================================================
 // zkc implementation of Poseidon_1 permutation using zkc's native field element type

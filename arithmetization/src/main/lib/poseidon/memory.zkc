@@ -1,3 +1,14 @@
+// Poseidon state: where computations take place
+// The Poseidon state is defined as an array of KOALABEAR field elements (felts)
+// of length STATE_WIDTH × 2, which looks like so:
+//
+//    [ σ₁, σ₂, ..., σₙ │ τ₁, τ₂, ..., τₙ]
+//
+// where n ≡ STATE_WIDTH, the σ-part of the state holds the actual Poseidon state,
+// and the τ-part of the state is meant as temporary storage for operations
+// updating the full Poseidon state.
+memory poseidon_state(address:u8) -> (felt:𝔽)
+
 fn write_to_state<poseidon_state>(address:u8, value:𝔽) -> () {
     poseidon_state[address] = value
 }
