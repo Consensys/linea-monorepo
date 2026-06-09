@@ -1,14 +1,17 @@
 const custom_std = @import("custom_std.zig");
 
 export fn main() noreturn {
+    // buf_* variables represent all-zeros inputs
     const buf_0 = [_]u8{0} ** 0;
     const buf_32 = [_]u8{0} ** 32;
     const buf_64 = [_]u8{0} ** 64;
 
+    // extract pointers to the inputs
     const data_0: [*c]const u8 = &buf_0;
     const data_32: [*c]const u8 = &buf_32;
     const data_64: [*c]const u8 = &buf_64;
 
+    // pointer for writing output
     const output: [*c]zkvm_keccak256_hash = @ptrFromInt(0x08000000);
 
     _ = zkvm_keccak256(data_0, 0, output); // empty keccak
