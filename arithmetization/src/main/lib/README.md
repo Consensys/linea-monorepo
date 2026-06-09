@@ -29,8 +29,8 @@ Note. We use '.' to represent '0'.
 |-------------------|--------|----------|--------|-----------|
 | Other precompiles | status | opc      | funct3 | funct7    |
 |-------------------|:------:|----------|--------|-----------|
-| poseidon1         |   🟢   | custom-1 | 0b111  | 0b1111111 |
-| keccak            |   🟡   | custom-1 |        |           |
+| keccak            |   🟢   | custom-1 | 0b000  | 0b0000000 |
+| poseidon1         |   🟡   | custom-1 | 0b111  | 0b1111111 |
 | ecrecover         |   🔴   | custom-1 |        |           |
 | poly_eval         |   🔴   | custom-1 |        |           |
 | ...               |   🔴   | custom-1 |        |           |
