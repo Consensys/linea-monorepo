@@ -1,5 +1,7 @@
-const keccak = @import("../../../../wrappers/keccak.zig");
-const custom_std = @import("../../../../custom_std.zig");
+const wrappers = @import("wrappers");
+
+const custom_std = wrappers.custom_std;
+const keccak = wrappers.keccak;
 
 export fn main() noreturn {
     // buf_* variables represent all-zeros inputs
