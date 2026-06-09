@@ -597,7 +597,11 @@ func buildVanishingFixtureCases() ([]vanishingFixtureCase, []codegen.NamedVanish
 
 	add := func(source, name string, sys *wiop.System, honest vanishingAssign, invalid vanishingAssign) error {
 		compileFullPipeline(sys)
-		vanishingSystem, err := codegen.BuildVanishingSystem(sys)
+		routing, err := codegen.BuildCoinRouting(sys)
+		if err != nil {
+			return fmt.Errorf("build coin routing %s/%s: %w", source, name, err)
+		}
+		vanishingSystem, err := codegen.BuildVanishingSystem(sys, routing)
 		if err != nil {
 			return fmt.Errorf("build vanishing system %s/%s: %w", source, name, err)
 		}

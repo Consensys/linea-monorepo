@@ -115,16 +115,16 @@ type viewKey struct {
 
 // BuildVanishingSystem extracts only compiled global.Verifier actions from sys
 // and converts them to the compact data representation consumed by Zig.
-func BuildVanishingSystem(sys *wiop.System) (VanishingSystem, error) {
-	out := VanishingSystem{SourceName: sys.Context.Path()}
-	out.RoundCoinCounts = make([]int, len(sys.Rounds))
-	out.RoundCoinOffsets = make([]int, len(sys.Rounds))
-	for i, round := range sys.Rounds {
-		out.RoundCoinOffsets[i] = out.TotalRoundCoins
-		out.RoundCoinCounts[i] = len(round.Coins)
-		out.TotalRoundCoins += len(round.Coins)
-		if len(round.Coins) > out.MaxRoundCoins {
-			out.MaxRoundCoins = len(round.Coins)
+func BuildVanishingSystem(sys *wiop.System, routing CoinRouting) (VanishingSystem, error) {
+	out := VanishingSystem{
+		SourceName:       sys.Context.Path(),
+		RoundCoinCounts:  routing.RoundCoinCounts,
+		RoundCoinOffsets: routing.RoundCoinOffsets,
+		TotalRoundCoins:  routing.TotalRoundCoins,
+	}
+	for _, count := range routing.RoundCoinCounts {
+		if count > out.MaxRoundCoins {
+			out.MaxRoundCoins = count
 		}
 	}
 	dynamicIndices := map[*wiop.Module]int{}
