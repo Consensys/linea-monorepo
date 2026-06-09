@@ -58,7 +58,6 @@ func TestBuildCoinRoutingRejectsRoundZeroCoins(t *testing.T) {
 	}
 }
 
-
 func TestWriteSpecZig(t *testing.T) {
 	routing := CoinRouting{
 		RoundCoinCounts:  []int{0, 1, 1},
