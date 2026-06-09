@@ -1,52 +1,81 @@
 include "../memory.zkc"
+include "../utils/constants.zkc"
 
-// Everything in RISC5 is little endian
-fn write_64<ram>(address:Address, value:u64) -> () {
-    var v0:u8
-    var v1:u8
-    var v2:u8
-    var v3:u8
-    var v4:u8
-    var v5:u8
-    var v6:u8
-    var v7:u8
-
-    v7::v6::v5::v4::v3::v2::v1::v0 = value
-
-    ram[address + 0] = v0
-    ram[address + 1] = v1
-    ram[address + 2] = v2
-    ram[address + 3] = v3
-    ram[address + 4] = v4
-    ram[address + 5] = v5
-    ram[address + 6] = v6
-    ram[address + 7] = v7
-}
-
-fn write_32<ram>(address:Address, value:u32) -> () {
-    var v0:u8
-    var v1:u8
-    var v2:u8
-    var v3:u8
-
-    v3::v2::v1::v0 = value
-
-    ram[address + 0] = v0
-    ram[address + 1] = v1
-    ram[address + 2] = v2
-    ram[address + 3] = v3
+fn write_8<ram>(address:Address, value:u8) -> () {
+    var word_idx:Address = (address & MASK_ADDR_ALIGN_4) >> 2
+    var offset:Address = address & 3
+    var old_word:u32 = ram[word_idx]
+    var inserted:u32 = value as u32
+    if offset == 0 {
+        ram[word_idx] = (old_word & 0xFFFFFF00) | inserted
+        return
+    }
+    if offset == 1 {
+        ram[word_idx] = (old_word & 0xFFFF00FF) | (inserted << 8)
+        return
+    }
+    if offset == 2 {
+        ram[word_idx] = (old_word & 0xFF00FFFF) | (inserted << 16)
+        return
+    } else {
+        ram[word_idx] = (old_word & 0x00FFFFFF) | (inserted << 24)
+        return
+    }
 }
 
 fn write_16<ram>(address:Address, value:u16) -> () {
-    var v0:u8
-    var v1:u8
-
-    v1::v0 = value
-
-    ram[address + 0] = v0
-    ram[address + 1] = v1
+    var word_idx:Address = (address & MASK_ADDR_ALIGN_4) >> 2
+    var offset:Address = address & 3
+    if offset == 0 {
+        var word:u32 = ram[word_idx]
+        ram[word_idx] = (word & 0xFFFF0000) | (value as u32)
+        return
+    }
+    if offset == 2 {
+        var word:u32 = ram[word_idx]
+        ram[word_idx] = (word & 0xFFFF) | ((value as u32) << 16)
+        return
+    } else {
+        var b0:u8
+        var b1:u8
+        b1::b0 = value
+        write_8(address, b0)
+        write_8(address + 1, b1)
+    }
 }
 
-fn write_8<ram>(address:Address, value:u8) -> () {
-    ram[address] = value
+fn write_32<ram>(address:Address, value:u32) -> () {
+    var word_idx:Address = (address & MASK_ADDR_ALIGN_4) >> 2
+    var offset:Address = address & 3
+    if offset == 0 {
+        ram[word_idx] = value
+    } else {
+        var b0:u8
+        var b1:u8
+        var b2:u8
+        var b3:u8
+        b3::b2::b1::b0 = value
+        write_8(address, b0)
+        write_8(address + 1, b1)
+        write_8(address + 2, b2)
+        write_8(address + 3, b3)
+    }
+}
+
+fn write_64<ram>(address:Address, value:u64) -> () {
+    var word_idx:Address = (address & MASK_ADDR_ALIGN_4) >> 2
+    var offset:Address = address & 3
+    if offset == 0 {
+        var lo:u32
+        var hi:u32
+        hi::lo = value
+        ram[word_idx] = lo
+        ram[word_idx + 1] = hi
+    } else {
+        var lo:u32
+        var hi:u32
+        hi::lo = value
+        write_32(address, lo)
+        write_32(address + 4, hi)
+    }
 }
