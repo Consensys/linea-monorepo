@@ -30,6 +30,10 @@ type System struct {
 	// LogDerivativeSums holds all [LogDerivativeSum] queries registered with
 	// this system via [System.NewLogDerivativeSum], in declaration order.
 	LogDerivativeSums []*LogDerivativeSum
+	// MessageBuses holds all [MessageBus] queries registered with this system
+	// via [System.NewMessageBusSend] and [System.NewMessageBusReceive], in
+	// declaration order.
+	MessageBuses []*MessageBus
 	// scratchArena backs the [PlanningContext] used by [Materialize]. It is
 	// nil until Materialize is called.
 	scratchArena *arena.VectorArena
