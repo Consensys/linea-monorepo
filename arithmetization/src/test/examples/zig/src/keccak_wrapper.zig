@@ -54,6 +54,3 @@ export fn zkvm_keccak256(data: [*c]const u8, len: usize, output: [*c]zkvm_keccak
     );
     return .ZKVM_EOK;
 }
-
-// 64: 0000000000000000000000000000000000000000000000000000000000000000
-// 32: 00000000000000000000000000000000
