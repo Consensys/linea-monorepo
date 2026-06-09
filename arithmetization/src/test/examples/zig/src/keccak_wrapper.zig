@@ -1,11 +1,25 @@
 const custom_std = @import("custom_std.zig");
 
 export fn main() noreturn {
-    const data: [*c]const u8 = @ptrFromInt(0x1000);
-    const len: usize = 64;
-    const output: [*c]zkvm_keccak256_hash = @ptrFromInt(0x2000);
 
-    _ = zkvm_keccak256(data, len, output);
+    const buf_0 = [_]u8{0} ** 0;
+    const buf_32 = [_]u8{0} ** 32;
+    const buf_64 = [_]u8{0} ** 64;
+
+    const data_0: [*c]const u8 = &buf_0;
+    const data_32: [*c]const u8 = &buf_32;
+    const data_64: [*c]const u8 = &buf_64;
+
+    const output: [*c]zkvm_keccak256_hash = @ptrFromInt(0x08000000);
+
+    _ = zkvm_keccak256(data_0, 0, output); // empty keccak
+    _ = zkvm_keccak256(data_32, 32, output); // keccak of "00".repeat(32)
+    _ = zkvm_keccak256(data_64, 64, output); // keccak of "00".repeat(64)
+
+    // hashes are discarded; for reference:
+    // keccak( <empty> )         = c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470
+    // keccak( "00".repeat(32) ) = 290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563
+    // keccak( "00".repeat(64) ) = ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5
 
     custom_std.exit(0);
 }
@@ -38,3 +52,6 @@ export fn zkvm_keccak256(data: [*c]const u8, len: usize, output: [*c]zkvm_keccak
     );
     return .ZKVM_EOK;
 }
+
+// 64: 0000000000000000000000000000000000000000000000000000000000000000
+// 32: 00000000000000000000000000000000
