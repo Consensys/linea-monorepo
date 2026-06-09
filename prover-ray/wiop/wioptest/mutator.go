@@ -164,6 +164,21 @@ func (m Mutator) resolveRow(n int) int {
 	return row
 }
 
+// String describes the targeted position for diagnostics, e.g.
+// "column mod/col [row 3]", "column mod/col [padding]", or "cell le/claim".
+func (m Mutator) String() string {
+	switch {
+	case m.Cell != nil:
+		return fmt.Sprintf("cell %s", m.Cell.Context.Path())
+	case m.Column != nil && m.Padding:
+		return fmt.Sprintf("column %s [padding]", m.Column.Context.Path())
+	case m.Column != nil:
+		return fmt.Sprintf("column %s [row %d]", m.Column.Context.Path(), m.Row)
+	default:
+		return "<empty mutator>"
+	}
+}
+
 // mutationAction runs a Mutator's tweak as a prover action.
 type mutationAction struct{ m Mutator }
 
