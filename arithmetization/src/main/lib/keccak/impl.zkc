@@ -101,7 +101,7 @@ fn absorbing_phase<ram, state_row0, state_row1, state_row2, state_row3, state_ro
     // NOTE: n_blocks ≥ 1
     for block:u32 = 0; block<(n_blocks - 1); block = block + 1 {
         for limb:u5 = 0; limb<17; limb = limb + 1 {
-            padded_input_block[limb] = read_64(curr_address + (8 * limb) as Address)
+            padded_input_block[limb] = read_64(curr_address + (8 * (limb as Address)))
         }
 
         xor_padded_input_block_into_state()
