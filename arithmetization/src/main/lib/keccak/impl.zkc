@@ -48,6 +48,7 @@ const byte_length:u64 = 8
 
 fn keccak<ram, state_row0, state_row1, state_row2, state_row3, state_row4, b0, b1, b2, b3, b4, c, d, padded_input_block>(msg_address:Address, msg_length:u32, output_address:Address) {
 
+    // remove any leftovers from previous keccak computations
     wipe_state()
 
     absorbing_phase(msg_address, msg_length)
@@ -74,13 +75,6 @@ fn absorbing_phase<state_row0, state_row1, state_row2, state_row3, state_row4, b
 
     var n_blocks:u32 = (msg_length / BLOCK_BYTE_LENGTH) + 1
     var remainder:u8 = msg_length % BLOCK_BYTE_LENGTH
-
-    var final_block_is_pure_padding:u1
-    if remainder == 0 {
-        final_block_is_pure_padding = 1
-    } else {
-        final_block_is_pure_padding = 0
-    }
 
     var curr_address:Address = msg_address
 
@@ -110,7 +104,7 @@ fn absorbing_phase<state_row0, state_row1, state_row2, state_row3, state_row4, b
     // final block, DOES require padding --- always
     // n_full_words ∈ {0, 1, ..., 16}
     var n_full_words:u8 = remainder / 8
-    var n_bytes:u8 = remainder % 8
+    var n_bytes:u3 = remainder % 8
 
     var final_word_in_block:u1
     if n_full_words == 16 {
@@ -119,10 +113,10 @@ fn absorbing_phase<state_row0, state_row1, state_row2, state_row3, state_row4, b
         final_word_in_block = 0
     }
 
-    for limb:u8 = 0; limb<n_full_words; limb = limb + 1 {
-        padded_input_block[limb] = read_64(curr_address + (8 * limb) as Address)
+    for limb:u5 = 0; limb<n_full_words; limb = limb + 1 {
+        padded_input_block[limb] = read_64(curr_address + (8 * (limb as Address)))
     }
-    curr_address = curr_address + (8 * n_full_words)
+    curr_address = (curr_address + (8 * n_full_words)) as Address
     padded_input_block[n_full_words] = read_and_pad_64(curr_address, n_bytes, final_word_in_block)
 
     // the code below should only trigger if n_full_words < 16 = 17 - 1
