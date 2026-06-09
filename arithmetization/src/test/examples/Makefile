@@ -56,27 +56,43 @@ JSON := $(BIN).json
 # Inputs and offsets for the program
 IN_BYTES        ?= ""
 
+HEX_ADDR = $(shell printf "0x%08x" $$(( $(1) )))
+
 # Values to generate the linker script
 # 128 MiB (0x00000000 -> 0x07FFFFFF)
 PROGRAM_OFFSET  ?= 0x00000000
+PROGRAM_SIZE    := 0x08000000
 
-# 1 GiB   (0x08800000 -> 0x48FFFFFF)
-IN_BYTES_OFFSET ?= 0x08800000
+# 8 MiB heap, immediately below the stack
+HEAP_SIZE       := 0x00800000
+
+# 8 MiB stack, immediately below the input region
+STACK_SIZE      := 0x00800000
 
 # Since program starts from _start, the entry point is the same as the program offset
 ENTRY_POINT     := $(PROGRAM_OFFSET)
 
-# 8 MiB   (0x08000000 <- 0x08800000)
-SP              ?= 0x08800000
+# Top of the stack region. By default, this keeps PROGRAM, HEAP, STACK, and IN contiguous.
+SP              ?= $(call HEX_ADDR,$(PROGRAM_OFFSET) + $(PROGRAM_SIZE) + $(HEAP_SIZE) + $(STACK_SIZE))
+
+HEAP_START      = $(call HEX_ADDR,$(SP) - $(STACK_SIZE) - $(HEAP_SIZE))
+HEAP_END        = $(call HEX_ADDR,$(SP) - $(STACK_SIZE))
+STACK_END       = $(HEAP_END)
+
+# 1 GiB   (0x09000000 -> 0x48FFFFFF with the default layout)
+IN_BYTES_OFFSET ?= $(SP)
 
 # If true, generates an objdump of the generated ELF for debugging purposes
 OBJDUMP ?= false
 
 # Parsed values are just to verify that the generated ELF is correct (lazy evaluation allows to parse the ELF only after it is generated)
 PROGRAM_OFFSET_FROM_ELF  = $(shell LANG=C riscv64-unknown-elf-readelf -S $(BIN) | grep '\.text' | awk '{print "0x"$$5}')
-IN_BYTES_OFFSET_FROM_ELF = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _input_start | awk '{print "0x"$$1}') 
+IN_BYTES_OFFSET_FROM_ELF = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_input_start" {print "0x"$$1}')
 ENTRY_POINT_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) | grep 'Entry point' | awk '{print $$4}')
-SP_FROM_ELF              = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _stack_start | awk '{print "0x"$$1}')
+SP_FROM_ELF              = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_stack_start" {print "0x"$$1}')
+HEAP_START_FROM_ELF      = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_heap_start" {print "0x"$$1}')
+HEAP_END_FROM_ELF        = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_heap_end" {print "0x"$$1}')
+STACK_END_FROM_ELF       = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_stack_end" {print "0x"$$1}')
 VERIFY_ELF               ?= false             
 
 # Support function to generate JSON from an ELF
@@ -132,7 +148,7 @@ compile: require-src linker-script
 		echo "\nDisassembling $(BIN)"; \
 		LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN).objdump; \
 	fi
-# Verify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values
+# Verify that the configured memory layout matches the ELF values
 	@if [ "$(VERIFY_ELF)" = "true" ]; then \
 		$(MAKE) -f $(MAKEFILE_DIR)Makefile verify-elf TEST=$(TEST); \
 	fi
@@ -181,8 +197,9 @@ linker-script:
 		'ENTRY(_start)' \
 		'' \
 		'MEMORY {' \
-		'    PROGRAM (rx) : ORIGIN = $(PROGRAM_OFFSET), LENGTH = 0x8000000' \
-		'    STACK   (rw) : ORIGIN = $(shell printf "0x%08x" $$(($(SP) - 0x800000))), LENGTH = 0x800000' \
+		'    PROGRAM (rx) : ORIGIN = $(PROGRAM_OFFSET), LENGTH = $(PROGRAM_SIZE)' \
+		'    HEAP    (rw) : ORIGIN = $(HEAP_START), LENGTH = $(HEAP_SIZE)' \
+		'    STACK   (rw) : ORIGIN = $(STACK_END), LENGTH = $(STACK_SIZE)' \
 		'    IN  (r)  : ORIGIN = $(IN_BYTES_OFFSET), LENGTH = 0x40000000' \
 		'}' \
 		'' \
@@ -205,7 +222,12 @@ linker-script:
 		'        *(.bss .bss.*)' \
 		'    } > PROGRAM' \
 		'' \
+		'    /* heap grows upward from _heap_start to _heap_end */' \
+		'    _heap_start = ORIGIN(HEAP);' \
+		'    _heap_end = ORIGIN(HEAP) + LENGTH(HEAP);' \
+		'' \
 		'    /* stack grows downward from the top of the stack region */' \
+		'    _stack_end = ORIGIN(STACK);' \
 		'    _stack_start = ORIGIN(STACK) + LENGTH(STACK);' \
 		'' \
 		'    /* symbol marking the start of the input region */' \
@@ -213,9 +235,9 @@ linker-script:
 		'}' \
 		> $(LINKER_SCRIPT)
 
-# Verify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values
+# Verify that the generated ELF matches the configured memory layout
 verify-elf: require-test
-	@echo "\nVerify that PROGRAM_OFFSET, IN_BYTES_OFFSET, ENTRY_POINT, SP match the ELF values"
+	@echo "\nVerify that the generated ELF matches the configured memory layout"
 	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(PROGRAM_OFFSET))))" ] || \
 		(echo "ERROR: PROGRAM_OFFSET mismatch: expected $(PROGRAM_OFFSET), got $(PROGRAM_OFFSET_FROM_ELF)" && exit 1)
 	@echo "  PROGRAM_OFFSET:  $(PROGRAM_OFFSET) (expected) = $(PROGRAM_OFFSET_FROM_ELF) (from ELF)"
@@ -228,6 +250,15 @@ verify-elf: require-test
 	@[ "$(shell printf '0x%016x' $$(($(SP_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(SP))))" ] || \
 		(echo "ERROR: SP mismatch: expected $(SP), got $(SP_FROM_ELF)" && exit 1)
 	@echo "  SP:              $(SP) (expected) = $(SP_FROM_ELF) (from ELF)"
+	@[ "$(shell printf '0x%016x' $$(($(HEAP_START_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(HEAP_START))))" ] || \
+		(echo "ERROR: HEAP_START mismatch: expected $(HEAP_START), got $(HEAP_START_FROM_ELF)" && exit 1)
+	@echo "  HEAP_START:      $(HEAP_START) (expected) = $(HEAP_START_FROM_ELF) (from ELF)"
+	@[ "$(shell printf '0x%016x' $$(($(HEAP_END_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(HEAP_END))))" ] || \
+		(echo "ERROR: HEAP_END mismatch: expected $(HEAP_END), got $(HEAP_END_FROM_ELF)" && exit 1)
+	@echo "  HEAP_END:        $(HEAP_END) (expected) = $(HEAP_END_FROM_ELF) (from ELF)"
+	@[ "$(shell printf '0x%016x' $$(($(STACK_END_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(STACK_END))))" ] || \
+		(echo "ERROR: STACK_END mismatch: expected $(STACK_END), got $(STACK_END_FROM_ELF)" && exit 1)
+	@echo "  STACK_END:       $(STACK_END) (expected) = $(STACK_END_FROM_ELF) (from ELF)"
 	@echo "All values match\n"
 
 #####################################################################
