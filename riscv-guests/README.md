@@ -59,22 +59,21 @@ make test ZIG=/path/to/zig
 The guest input offset can be overridden when compiling:
 
 ```bash
-make compile ZIG=/path/to/zig IN_BYTES_OFFSET=0x08800000
+make compile ZIG=/path/to/zig INPUT_OFFSET=0x08800000
 ```
 
 ## ZKC Interpreter Integration
 
-The shared Makefile keeps the example-program integration path for the ZKC interpreter:
+Running a guest inside the Lineth proving system (memory layout, ELF→JSON conversion and the `zkc` interpreter) is proving-system-specific and is owned by [`arithmetization/src/test/examples/Makefile`](../arithmetization/src/test/examples/Makefile). The targets below build the guest and **delegate** the run to it (via its `elf-exec` / `elf-debug` external-ELF path), so the ELF→JSON and `zkc` recipes have a single source of truth:
 
 ```bash
-make json ZIG=/path/to/zig GUEST=l2-execution IN_BYTES=0x...
 make exec ZIG=/path/to/zig GUEST=l2-execution IN_BYTES=0x...
 make debug ZIG=/path/to/zig GUEST=l2-execution IN_BYTES=0x...
 make fixture-exec ZIG=/path/to/zig GUEST=l2-execution
 make fixture-debug ZIG=/path/to/zig GUEST=l2-execution
 ```
 
-`make json` compiles the ELF and runs `tools/elf2json/main.go` to produce the JSON consumed by `arithmetization/src/main/riscv/main.zkc`. The Makefile runs that standalone Go helper with `GO_ENV=GO111MODULE=off`; override `GO_ENV` only if the helper is moved into a Go module.
+These require `zkc` and `go` on `PATH`. `make compile` emits a relocatable object (`zkvm_*` unresolved, no entry point), but the ELF→JSON step needs a fully linked ELF with `PT_LOAD` segments. They are wired ahead of the prover-link toolchain so the path is ready once the guest can be linked into an ELF.
 
 ## Guest Packages
 
