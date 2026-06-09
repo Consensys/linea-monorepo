@@ -5,16 +5,16 @@ const vanishing = verifier_ray.query.vanishing;
 const verifier_mod = verifier_ray.verifier;
 
 pub const spec = protocol.Spec{
-    .round_coin_counts = &[_]usize{ 0 },
-    .round_coin_offsets = &[_]usize{ 0 },
+    .round_coin_counts = &[_]usize{0},
+    .round_coin_offsets = &[_]usize{0},
     .total_round_coins = 0,
 };
 
 pub const systems = verifier_mod.Systems{
     .vanishing = vanishing.System{
         .modules = &.{},
-        .round_coin_counts = &[_]usize{ 0 },
-        .round_coin_offsets = &[_]usize{ 0 },
+        .round_coin_counts = &[_]usize{0},
+        .round_coin_offsets = &[_]usize{0},
         .total_round_coins = 0,
     },
 };

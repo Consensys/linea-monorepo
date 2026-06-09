@@ -263,7 +263,6 @@ fn expectExt(actual: ext.Ext, expected: ext.Ext) !void {
     try std.testing.expect(actual.eql(expected));
 }
 
-
 /// Compare a Poseidon digest to its generated integer representation.
 fn expectDigest(actual: poseidon2.Digest, expected: [8]u32) !void {
     for (actual, expected) |actual_limb, expected_limb| {
