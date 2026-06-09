@@ -42,12 +42,12 @@ fn process_U_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
 
     switch opcode {
         case AUIPC: {
-            printf "AUIPC "
+            // printf "AUIPC "
             // print_u_operands(rd, imm20)
             tmp = signed_sum_of_double_word(tmp, pc) as DoubleWord
         }
         case LUI: {
-            printf "LUI "
+            // printf "LUI "
             // print_u_operands(rd, imm20)
         }
         default: {
