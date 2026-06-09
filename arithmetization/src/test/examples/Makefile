@@ -56,11 +56,14 @@ JSON := $(BIN).json
 # Inputs and offsets for the program
 IN_BYTES        ?= ""
 
-
-
 # Values to generate the linker script
 # 128 MiB (0x00000000 -> 0x07FFFFFF)
 PROGRAM_OFFSET  ?= 0x00000000
+
+# Since program starts from _start, the entry point is the same as the program offset
+ENTRY_POINT     := $(PROGRAM_OFFSET)
+
+# Fixed memory regions sizes
 PROGRAM_SIZE    := 0x08000000
 
 # 8 MiB heap, immediately below the stack
@@ -69,20 +72,18 @@ HEAP_SIZE       := 0x00800000
 # 8 MiB stack, immediately below the input region
 STACK_SIZE      := 0x00800000
 
-# Since program starts from _start, the entry point is the same as the program offset
-ENTRY_POINT     := $(PROGRAM_OFFSET)
-
 # Support function to evaluate expressions and format them as hex
 EVAL = $(shell printf "0x%08x" $$(( $(1) )))
 
-# Top of the stack region. By default, this keeps PROGRAM, HEAP, STACK, and IN contiguous
+# Top of the stack (0x09000000 with default values)
 SP              ?= $(call EVAL,$(PROGRAM_OFFSET) + $(PROGRAM_SIZE) + $(HEAP_SIZE) + $(STACK_SIZE))
 
+# Derive  heap and stack boundaries from the top of the stack and the sizes
 HEAP_START      = $(call EVAL,$(SP) - $(STACK_SIZE) - $(HEAP_SIZE))
 HEAP_END        = $(call EVAL,$(SP) - $(STACK_SIZE))
-STACK_END       = $(HEAP_END)
+STACK_END       = $(call EVAL,$(SP) - $(STACK_SIZE))
 
-# 1 GiB   (0x09000000 -> 0x48FFFFFF with the default layout)
+# 1 GiB   (0x09000000 -> 0x48FFFFFF with default values)
 IN_BYTES_OFFSET ?= $(SP)
 
 # If true, generates an objdump of the generated ELF for debugging purposes
