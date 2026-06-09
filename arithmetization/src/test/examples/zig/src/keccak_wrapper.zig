@@ -1,7 +1,6 @@
 const custom_std = @import("custom_std.zig");
 
 export fn main() noreturn {
-
     const buf_0 = [_]u8{0} ** 0;
     const buf_32 = [_]u8{0} ** 32;
     const buf_64 = [_]u8{0} ** 64;
