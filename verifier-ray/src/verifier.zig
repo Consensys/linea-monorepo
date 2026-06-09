@@ -1,8 +1,7 @@
-const std = @import("std");
 const protocol = @import("protocol/root.zig");
 const vanishing = @import("query/vanishing.zig");
 const ext = @import("field/koalabear_ext.zig");
-// TODO(new-sub-verifier): add import here — step 1 above.
+// TODO(new-sub-verifier): add import here — step 1 below.
 
 // ── Adding a new sub-verifier (e.g. logderiv, rangecheck) ────────────────────
 //
@@ -72,7 +71,6 @@ pub const ProofData = struct {
 /// This is the only place in the codebase that knows the full list of
 /// sub-verifiers.
 pub fn verify(
-    allocator: std.mem.Allocator,
     comptime spec: protocol.Spec,
     comptime systems: Systems,
     proof: ProofData,
@@ -81,18 +79,16 @@ pub fn verify(
     // round_coin_counts[0] must be 0: no coins are derived before round 0 is absorbed.
     comptime if (spec.round_coin_counts.len > 0 and spec.round_coin_counts[0] != 0)
         @compileError("round_coin_counts[0] must be 0: coins cannot be derived before the first round is absorbed");
-    const all_coins = try protocol.replay(
-        allocator,
+    var all_coins = try protocol.replay(
         spec.round_coin_counts[1..],
         spec.round_coin_offsets,
         spec.total_round_coins,
         proof.rounds,
     );
-    defer allocator.free(all_coins);
 
     // Step 2 — assemble the shared context routed to every sub-verifier.
     const ctx = protocol.Context{
-        .all_coins = all_coins,
+        .all_coins = &all_coins,
         .rounds = proof.rounds,
     };
 

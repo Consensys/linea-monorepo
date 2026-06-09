@@ -41,15 +41,6 @@ pub fn build(b: *std.Build) void {
             .{ .name = "verifier_ray", .module = verifier_mod },
         },
     });
-    const generated_stub_mod = b.addModule("generated_stub", .{
-        .root_source_file = b.path("src/generated/stub.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "verifier_ray", .module = verifier_mod },
-        },
-    });
-
     const exe = b.addExecutable(.{
         .name = "verifier-ray",
         .root_module = b.createModule(.{
@@ -94,7 +85,6 @@ pub fn build(b: *std.Build) void {
                     .{ .name = "verifier_ray", .module = verifier_mod },
                     .{ .name = "test_vectors", .module = test_vectors_mod },
                     .{ .name = "test_vanishing", .module = test_vanishing_mod },
-                    .{ .name = "generated_stub", .module = generated_stub_mod },
                 },
             }),
         });

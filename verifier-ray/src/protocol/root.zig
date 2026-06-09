@@ -1,8 +1,8 @@
 const types = @import("types.zig");
 const sampler_mod = @import("sampler.zig");
-const std = @import("std");
+const fiat_shamir = @import("../crypto/fiat_shamir.zig");
 
-pub const Error = std.mem.Allocator.Error || sampler_mod.Error || error{InvalidRoundCount};
+pub const Error = error{InvalidRoundCount};
 
 pub const Visibility = types.Visibility;
 pub const Vector = types.Vector;
@@ -55,17 +55,12 @@ pub const Context = struct {
 ///                       have length `advance_counts.len + 1`.
 ///   `total_coins`     — `system.total_round_coins`; length of the returned slice.
 pub fn replay(
-    allocator: std.mem.Allocator,
     comptime advance_counts: []const usize,
     comptime coin_offsets: []const usize,
     comptime total_coins: usize,
     rounds: []const RoundMessage,
-) Error![]const Coin {
-    var sampler = Sampler(advance_counts).init();
-
-    if (rounds.len != advance_counts.len) {
-        return error.InvalidRoundCount;
-    }
+) Error![total_coins]Coin {
+    if (rounds.len != advance_counts.len) return error.InvalidRoundCount;
 
     comptime if (coin_offsets.len != advance_counts.len + 1)
         @compileError("coin_offsets must have length advance_counts.len + 1");
@@ -74,13 +69,13 @@ pub fn replay(
             @compileError("coin_offsets/advance_counts inconsistent with total_coins");
     };
 
-    const all_coins = try allocator.alloc(Coin, total_coins);
-    errdefer allocator.free(all_coins);
+    var transcript = fiat_shamir.Transcript.init();
+    var all_coins: [total_coins]Coin = undefined;
 
     inline for (0..advance_counts.len) |advance_index| {
-        const round_coins = try sampler.advanceRoundWithMessage(advance_index, rounds[advance_index]);
         const offset = coin_offsets[advance_index + 1];
-        for (round_coins, 0..) |coin, ci| all_coins[offset + ci] = coin;
+        const count = advance_counts[advance_index];
+        Sampler(advance_counts).advanceRoundWithMessage(advance_index, &transcript, rounds[advance_index], all_coins[offset..][0..count]);
     }
 
     return all_coins;

@@ -17,29 +17,8 @@ test "transcript absorbs elements deterministically" {
     try std.testing.expect(!challenge.isZero());
 }
 
-test "sampler rejects skipped and replayed rounds" {
-    // Three advances; coin counts don't matter for the ordering check.
-    var sampler = protocol.Sampler(&.{ 1, 1, 1 }).init();
-
-    try std.testing.expectError(
-        error.UnexpectedRound,
-        sampler.advanceRoundWithMessage(1, .{}),
-    );
-
-    _ = try sampler.advanceRoundWithMessage(0, .{});
-
-    try std.testing.expectError(
-        error.UnexpectedRound,
-        sampler.advanceRoundWithMessage(0, .{}),
-    );
-    try std.testing.expectError(
-        error.UnexpectedRound,
-        sampler.advanceRoundWithMessage(2, .{}),
-    );
-}
-
 test "sampler absorbs commitments, public columns, and squeezes matching coin count" {
-    var sampler = protocol.Sampler(&.{2}).init();
+    var transcript = fiat_shamir.Transcript.init();
 
     const entries = [_]protocol.ColumnMessage{
         .{ .oracle_commitment = .{
@@ -57,16 +36,15 @@ test "sampler absorbs commitments, public columns, and squeezes matching coin co
     const cells = [_]protocol.Scalar{
         .{ .base = field.Element.init(10) },
     };
-    const got = try sampler.advanceRoundWithMessage(0, .{
+
+    var coins: [2]protocol.Coin = undefined;
+    protocol.Sampler(&.{2}).advanceRoundWithMessage(0, &transcript, .{
         .columns = &entries,
         .cells = &cells,
-    });
+    }, &coins);
 
-    // The return type is [2]Coin; .len is comptime-known.
-    try std.testing.expectEqual(@as(usize, 2), got.len);
-    try std.testing.expectEqual(@as(usize, 1), sampler.current_round);
     // Consecutive coins must be distinct: randomDigest() absorbs a zero
     // separator between squeezes, so identical back-to-back outputs indicate
     // a broken separator mechanism.
-    try std.testing.expect(!got[0].eql(got[1]));
+    try std.testing.expect(!coins[0].eql(coins[1]));
 }

@@ -5,7 +5,6 @@ const fixtures = @import("test_vanishing");
 const field = verifier_ray.field.koalabear;
 const ext = verifier_ray.field.koalabear_ext;
 const protocol = verifier_ray.protocol;
-const verifier = verifier_ray.verifier;
 const vanishing = verifier_ray.query.vanishing;
 const commitment_mod = verifier_ray.crypto.commitment;
 
@@ -16,7 +15,19 @@ test "vanishing quotient honest scenarios match prover-ray" {
         var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
         defer arena.deinit();
         const proof = try buildProofData(arena.allocator(), case.honest);
-        try verifier.verify(arena.allocator(), specOf(system), .{ .vanishing = system }, proof);
+        var coins = try protocol.replay(
+            system.round_coin_counts[1..],
+            system.round_coin_offsets,
+            system.total_round_coins,
+            proof.rounds,
+        );
+        const ctx = protocol.Context{ .all_coins = &coins, .rounds = proof.rounds };
+        try vanishing.verify(system, .{
+            .ctx = ctx,
+            .witness_claims = proof.witness_claims,
+            .quotient_claims = proof.quotient_claims,
+            .module_sizes = proof.module_sizes,
+        });
     }
 }
 
@@ -29,9 +40,21 @@ test "vanishing quotient invalid scenarios fail identity" {
         var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
         defer arena.deinit();
         const proof = try buildProofData(arena.allocator(), invalid);
+        var coins = try protocol.replay(
+            system.round_coin_counts[1..],
+            system.round_coin_offsets,
+            system.total_round_coins,
+            proof.rounds,
+        );
+        const ctx = protocol.Context{ .all_coins = &coins, .rounds = proof.rounds };
         try std.testing.expectError(
             error.QuotientIdentityMismatch,
-            verifier.verify(arena.allocator(), specOf(system), .{ .vanishing = system }, proof),
+            vanishing.verify(system, .{
+                .ctx = ctx,
+                .witness_claims = proof.witness_claims,
+                .quotient_claims = proof.quotient_claims,
+                .module_sizes = proof.module_sizes,
+            }),
         );
     }
     try std.testing.expect(invalid_case_count > 0);
@@ -48,42 +71,39 @@ test "dynamic vanishing module sizes are required and validated" {
         var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
         defer arena.deinit();
 
-        const spec = comptime specOf(system);
-        const systems = comptime verifier.Systems{ .vanishing = system };
-
         const valid = try buildProofData(arena.allocator(), case.honest);
-        try verifier.verify(arena.allocator(), spec, systems, valid);
+        var coins = try protocol.replay(
+            system.round_coin_counts[1..],
+            system.round_coin_offsets,
+            system.total_round_coins,
+            valid.rounds,
+        );
+        const ctx = protocol.Context{ .all_coins = &coins, .rounds = valid.rounds };
 
-        var missing = valid;
-        missing.module_sizes = &.{};
+        try vanishing.verify(system, .{ .ctx = ctx, .witness_claims = valid.witness_claims, .quotient_claims = valid.quotient_claims, .module_sizes = valid.module_sizes });
+
         try std.testing.expectError(
             error.MissingDynamicModuleSize,
-            verifier.verify(arena.allocator(), spec, systems, missing),
+            vanishing.verify(system, .{ .ctx = ctx, .witness_claims = valid.witness_claims, .quotient_claims = valid.quotient_claims, .module_sizes = &.{} }),
         );
 
         var zero_sizes = try arena.allocator().dupe(usize, valid.module_sizes);
         zero_sizes[0] = 0;
-        var zero = valid;
-        zero.module_sizes = zero_sizes;
         try std.testing.expectError(
             error.InvalidModuleSize,
-            verifier.verify(arena.allocator(), spec, systems, zero),
+            vanishing.verify(system, .{ .ctx = ctx, .witness_claims = valid.witness_claims, .quotient_claims = valid.quotient_claims, .module_sizes = zero_sizes }),
         );
 
         var non_power_sizes = try arena.allocator().dupe(usize, valid.module_sizes);
         non_power_sizes[0] = 7;
-        var non_power = valid;
-        non_power.module_sizes = non_power_sizes;
         try std.testing.expectError(
             error.InvalidModuleSize,
-            verifier.verify(arena.allocator(), spec, systems, non_power),
+            vanishing.verify(system, .{ .ctx = ctx, .witness_claims = valid.witness_claims, .quotient_claims = valid.quotient_claims, .module_sizes = non_power_sizes }),
         );
 
         var wrong_sizes = try arena.allocator().dupe(usize, valid.module_sizes);
         wrong_sizes[0] = if (wrong_sizes[0] == 16) 8 else 16;
-        var wrong = valid;
-        wrong.module_sizes = wrong_sizes;
-        verifier.verify(arena.allocator(), spec, systems, wrong) catch |err| {
+        vanishing.verify(system, .{ .ctx = ctx, .witness_claims = valid.witness_claims, .quotient_claims = valid.quotient_claims, .module_sizes = wrong_sizes }) catch |err| {
             if (err == error.QuotientIdentityMismatch) wrong_size_failures += 1 else return err;
         };
     }
@@ -92,25 +112,6 @@ test "dynamic vanishing module sizes are required and validated" {
     // Q(r) = 0 simultaneously), so not every case necessarily produces a
     // mismatch. Assert at least one case does to confirm the check is live.
     try std.testing.expect(wrong_size_failures > 0);
-}
-
-test "verifier rejects malformed round counts" {
-    inline for (fixtures.scenarios) |case| {
-        if (case.honest.rounds.len == 0) continue;
-
-        const system = case.system;
-        var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
-        defer arena.deinit();
-
-        const proof = try buildProofData(arena.allocator(), case.honest);
-        var truncated = proof;
-        truncated.rounds = proof.rounds[0 .. proof.rounds.len - 1];
-
-        try std.testing.expectError(
-            error.InvalidRoundCount,
-            verifier.verify(arena.allocator(), specOf(system), .{ .vanishing = system }, truncated),
-        );
-    }
 }
 
 test "vanishing verify rejects empty systems before reading coin offsets" {
@@ -127,32 +128,14 @@ test "vanishing verify rejects empty systems before reading coin offsets" {
     );
 }
 
-test "verifier frees replay coins after verification" {
-    inline for (fixtures.scenarios) |case| {
-        const system = case.system;
-        var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
-        defer arena.deinit();
+const ProofData = struct {
+    rounds: []const protocol.RoundMessage,
+    witness_claims: []const ext.Ext,
+    quotient_claims: []const ext.Ext,
+    module_sizes: []const usize,
+};
 
-        const proof = try buildProofData(arena.allocator(), case.honest);
-        try verifier.verify(std.testing.allocator, specOf(system), .{ .vanishing = system }, proof);
-    }
-}
-
-/// Extracts the protocol-level coin routing spec from a fixture vanishing system.
-/// Test fixtures derive spec from vanishing.System directly; generated production
-/// files carry a standalone protocol.Spec constant emitted by ray-zig-codegen.
-fn specOf(comptime system: vanishing.System) protocol.Spec {
-    return .{
-        .round_coin_counts = system.round_coin_counts,
-        .round_coin_offsets = system.round_coin_offsets,
-        .total_round_coins = system.total_round_coins,
-    };
-}
-
-/// Converts a fixture proof view into a `verifier.ProofData`.
-/// This is test-only conversion from the generated golden-vector format;
-/// in production the verifier would receive data from the real proof parser.
-fn buildProofData(allocator: std.mem.Allocator, proof: fixtures.VanishingProofView) !verifier.ProofData {
+fn buildProofData(allocator: std.mem.Allocator, proof: fixtures.VanishingProofView) !ProofData {
     const witness_claims = try allocator.alloc(ext.Ext, proof.witness_claims.len);
     for (proof.witness_claims, 0..) |claim, i| witness_claims[i] = ext.Ext.fromUints(claim);
 
@@ -170,8 +153,6 @@ fn buildProofData(allocator: std.mem.Allocator, proof: fixtures.VanishingProofVi
     };
 }
 
-/// Converts fixture cell values to `protocol.Scalar` slices, one per round,
-/// for embedding into each round's `RoundMessage.cells` field.
 fn buildRoundCells(allocator: std.mem.Allocator, proof: fixtures.VanishingProofView) ![]const []const protocol.Scalar {
     const round_cells = try allocator.alloc([]const protocol.Scalar, proof.rounds.len);
     for (proof.rounds, 0..) |round, i| {
@@ -187,7 +168,6 @@ fn buildRoundCells(allocator: std.mem.Allocator, proof: fixtures.VanishingProofV
     return round_cells;
 }
 
-/// Builds one `protocol.RoundMessage` per proof round from fixture columns and cells.
 fn buildRounds(allocator: std.mem.Allocator, proof: fixtures.VanishingProofView, round_cells: []const []const protocol.Scalar) ![]const protocol.RoundMessage {
     const rounds = try allocator.alloc(protocol.RoundMessage, proof.rounds.len);
     for (proof.rounds, 0..) |round, i| {

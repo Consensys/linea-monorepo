@@ -16,7 +16,7 @@
         ┌────────────────┬──────────────────┐
         ▼                ▼                  ▼
   vanishing.verify  logderiv.verify   ...future...
-  (math only)       (math only)
+  (constraint identity)       (constraint identity)
 ```
 
 ## Package Structure
@@ -31,7 +31,7 @@ src/
 `protocol/` is internally split into three files:
 
 - `types.zig` — wire types: `RoundMessage`, `ColumnMessage`, `Coin`, `Scalar`, `Visibility`
-- `sampler.zig` — `Sampler`: compile-time parametric Fiat-Shamir driver; only called by `replay`
+- `sampler.zig` — `Sampler`: comptime-only namespace parametrized by per-round squeeze counts; the runtime transcript is owned by `replay` and passed by pointer, so ordering is enforced by `inline for` with no runtime check
 - `root.zig` — `Spec`, `Context`, `replay()`; re-exports the public surface
 
 ## Coin Generation
@@ -43,9 +43,7 @@ produce verifier challenges.
 
 ### Compile-time: counts come from the protocol spec
 
-Each compiler in prover-ray registers coins by calling `round.NewCoinField`
-during system construction. The Go codegen reads those registrations and emits
-them as compile-time constants:
+Coin counts are fixed at compile time in the protocol spec:
 
 ```
 round_coin_counts  = [0, 2, 0, M, M]   // coins squeezed after each round
@@ -56,61 +54,6 @@ total_round_coins  = 2 + 2*M
 `round_coin_counts[0]` is always 0 — no coins are derived before the first
 round message is absorbed. `protocol.Sampler` is parametric on `advance_counts`
 at compile time, so coin counts are never a runtime decision.
-
-### Codegen pipeline
-
-The static Zig data file is produced by a Go pipeline that walks the compiled
-`wiop.System` from prover-ray:
-
-```
-prover-ray (Go)
-    │
-    └── wiop.System          compiled IOP: rounds, coins, verifier actions
-            │
-            ├──────────────────────────────────────┐
-            ▼                                      ▼
-    BuildVanishingSystem()               BuildLogDerivSystem()   (future)
-    → VanishingSystem{                   → LogDerivSystem{ ... }
-        Modules,
-        RoundCoinCounts, ...}
-            │                                      │
-            └──────────────┬───────────────────────┘
-                           ▼
-                  generator.System{
-                      Rounds:    [...],
-                      Vanishing: &vanishingSystem,
-                      LogDeriv:  &logDerivSystem,  // future
-                  }
-                           │
-                           ▼
-                  generator.Generate()    emit Zig source
-                      ├── emitVanishingSystem()  → module/expression/bucket constants
-                      ├── emitLogDerivSystem()   → (future)
-                      └── spec + systems literals (shared across all sub-verifiers)
-                           │
-                           ▼
-                  src/generated/stub.zig   static Zig data, committed or generated at build time
-                           │
-                           ▼  (comptime parameters)
-                  verifier.verify()        runtime proof checker
-                      ├── protocol.replay()    absorb round messages, squeeze all coins
-                      ├── vanishing.verify()   evaluate expression DAGs, check quotient identity
-                      └── logderiv.verify()    (future)
-```
-
-To add a sub-verifier:
-
-1. **Go side** — add `Build*System()` + a field to `generator.System` + `emit*System()` in `emitters.go`.
-2. **Zig side** — follow the four-step how-to comment at the top of `verifier.zig`
-   (`Systems` field → `ProofData` field → dispatch call; import is step 0).
-
-`protocol.Spec` and `protocol.replay` are **shared and unchanged** — the new
-sub-verifier reads its coins from the same pre-derived `ctx.all_coins`.
-
-The generated file exports exactly two public constants:
-
-`spec` and `systems` are passed as `comptime` parameters to `verifier.verify`;
-they carry no runtime cost beyond what the Zig compiler inlines.
 
 ### Runtime: protocol.replay absorbs and squeezes
 
@@ -147,6 +90,8 @@ For each module it:
 | Transcript ownership | inside `vanishing.verify` | `protocol.replay`, called once by `verifier.verify` |
 | Coin count per round | `next_round_coin_count` field in `RoundMessage` | compile-time constant in `protocol.Spec` |
 | Sub-verifier input | `rounds + claims` (transcript data mixed with math) | `ctx + claims` (coins pre-derived, math only) |
+| Sampler state | `Sampler` owned transcript + `current_round` (runtime ordering check) | comptime-only namespace; transcript owned by `replay`, ordering enforced by `inline for` |
+| Coin array allocation | heap-allocated via allocator, freed after verify | stack-allocated `[total_coins]Coin` in `replay`; no allocator needed |
 
 The sub-verifier contract is now: **given pre-derived coins and cell openings,
 check the mathematical identity. Nothing else.**
