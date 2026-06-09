@@ -29,8 +29,8 @@ static instruction_type_from_opcode(opcode:Opcode) -> (instruction_type:Type) {
     UNDEFINED_TYPE, // 0b0001000
     UNDEFINED_TYPE, // 0b0001001
     UNDEFINED_TYPE, // 0b0001010
-    R_TYPE, // 0b0001011 NOTE: this is the custom-0 instruction opcode (0x0b)
-    UNDEFINED_TYPE, // 0b0001100
+    R_TYPE, // 0b0001011 ≡ 0x0b ≡ custom-0 opcode
+    R_TYPE, // 0b0001100 ≡ 0x0c ≡ custom-1 opcode
     UNDEFINED_TYPE, // 0b0001101
     UNDEFINED_TYPE, // 0b0001110
     MISC_MEM_TYPE, // 0b0001111  (FENCE, FENCE.I — no-op on this implementation)
@@ -148,10 +148,15 @@ static instruction_type_from_opcode(opcode:Opcode) -> (instruction_type:Type) {
     UNDEFINED_TYPE, // 0b1111111
 }
 
+// =============================
+// opcodes
+// =============================
+
 // R_type
 const OP:Opcode = 0b0110011 // ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND
 const OP_32:Opcode = 0b0111011 // ADDW, SUBW, SLLW, SRLW, SRAW (RV64 only)
 const CUSTOM_0:Opcode = 0b0001011 // for precompiles
+const CUSTOM_1:Opcode = 0b0000_1100 // custom-1
 
 // I_type
 const LOAD:Opcode = 0b0000011 // LB, LH, LW, LBU, LHU, LWU, LD
@@ -221,7 +226,10 @@ const FUNCT3_REMW:Funct3 = 0b110, FUNCT7_REMW:Funct7 = 0b0000001
 const FUNCT3_REMUW:Funct3 = 0b111, FUNCT7_REMUW:Funct7 = 0b0000001
 
 // CUSTOM_0 (0001011) — R-type precompiles
-const FUNCT3_POSEIDON_1:Funct3 = 0b111, FUNCT7_POSEIDON_1:Funct7 = 0b1111111
+const FUNCT3_POSEIDON_1:Funct3 = 0b111
+const FUNCT7_POSEIDON_1:Funct7 = 0b1111111
+const FUNCT3_KECCAK:Funct3 = 0b000
+const FUNCT7_KECCAK:Funct7 = 0b0000000
 
 // ======================
 // I-type funct3 values
