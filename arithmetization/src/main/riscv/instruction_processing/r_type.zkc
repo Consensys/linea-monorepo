@@ -153,7 +153,7 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
              else if (funct3 == FUNCT3_MUL) && (funct7 == FUNCT7_MUL) {
                 printf "MUL "
                 // print_r_operands(rd, rs1, rs2)
-                registers[rd] = ((v1 as u128) * (v2 as u128)) as u64
+                registers[rd] = (((v1 as u128) * (v2 as u128)) & MAX_UINT_64_AS_U128) as u64
             } else if (funct3 == FUNCT3_MULH) && (funct7 == FUNCT7_MULH) {
                 printf "MULH "
                 // print_r_operands(rd, rs1, rs2)
