@@ -2,7 +2,7 @@ include "../memory.zkc"
 include "../utils/constants.zkc"
 
 fn read_8<ram>(address:Address) -> (value:u8) {
-    var word_idx:Address = (address & MASK_ADDR_ALIGN_4) >> 2
+    var word_idx:Address = address >> 2
     var offset:Address = address & 3
     if offset == 0 {
         value = (ram[word_idx] & 0xFF) as u8
@@ -22,7 +22,7 @@ fn read_8<ram>(address:Address) -> (value:u8) {
 }
 
 fn read_16<ram>(address:Address) -> (value:u16) {
-    var word_idx:Address = (address & MASK_ADDR_ALIGN_4) >> 2
+    var word_idx:Address = address >> 2
     var offset:Address = address & 3
     if offset == 0 {
         value = (ram[word_idx] & 0xFFFF) as u16
@@ -44,7 +44,7 @@ fn read_16<ram>(address:Address) -> (value:u16) {
 }
 
 fn read_32<ram>(address:Address) -> (value:u32) {
-    var word_idx:Address = (address & MASK_ADDR_ALIGN_4) >> 2
+    var word_idx:Address = address >> 2
     var offset:Address = address & 3
     if offset == 0 {
         value = ram[word_idx]
@@ -64,7 +64,7 @@ fn read_32<ram>(address:Address) -> (value:u32) {
 }
 
 fn read_64<ram>(address:Address) -> (value:u64) {
-    var word_idx:Address = (address & MASK_ADDR_ALIGN_4) >> 2
+    var word_idx:Address = address >> 2
     var offset:Address = address & 3
     if offset == 0 {
         value = ram[word_idx + 1]::ram[word_idx]
