@@ -41,5 +41,5 @@ static mod5(address:u5) -> (result:u3) {
     0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4
 }
 
-const BLOCK_BYTE_LENGTH:u8 = 136
-const BLOCK_BYTE_LENGTH_MINUS_ONE:u8 = 135
+const BLOCK_BYTE_LENGTH:u32 = 136
+const BLOCK_BYTE_LENGTH_MINUS_ONE:u32 = 135
