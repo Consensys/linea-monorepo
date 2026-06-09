@@ -56,7 +56,7 @@ JSON := $(BIN).json
 # Inputs and offsets for the program
 IN_BYTES        ?= ""
 
-HEX_ADDR = $(shell printf "0x%08x" $$(( $(1) )))
+EVAL = $(shell printf "0x%08x" $$(( $(1) )))
 
 # Values to generate the linker script
 # 128 MiB (0x00000000 -> 0x07FFFFFF)
@@ -73,10 +73,10 @@ STACK_SIZE      := 0x00800000
 ENTRY_POINT     := $(PROGRAM_OFFSET)
 
 # Top of the stack region. By default, this keeps PROGRAM, HEAP, STACK, and IN contiguous.
-SP              ?= $(call HEX_ADDR,$(PROGRAM_OFFSET) + $(PROGRAM_SIZE) + $(HEAP_SIZE) + $(STACK_SIZE))
+SP              ?= $(call EVAL,$(PROGRAM_OFFSET) + $(PROGRAM_SIZE) + $(HEAP_SIZE) + $(STACK_SIZE))
 
-HEAP_START      = $(call HEX_ADDR,$(SP) - $(STACK_SIZE) - $(HEAP_SIZE))
-HEAP_END        = $(call HEX_ADDR,$(SP) - $(STACK_SIZE))
+HEAP_START      = $(call EVAL,$(SP) - $(STACK_SIZE) - $(HEAP_SIZE))
+HEAP_END        = $(call EVAL,$(SP) - $(STACK_SIZE))
 STACK_END       = $(HEAP_END)
 
 # 1 GiB   (0x09000000 -> 0x48FFFFFF with the default layout)

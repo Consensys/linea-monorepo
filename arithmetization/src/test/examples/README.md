@@ -160,7 +160,7 @@ riscv-test linker-script IN_BYTES_OFFSET=0x09000008
 # Verify ELF offsets, entry point, stack and heap symbols match the default ones
 riscv-test verify-elf <name>.<ext>
 # Verify ELF offsets, entry point, stack and heap symbols match the custom ones
-riscv-test verify-elf <name>.<ext> PROGRAM_OFFSET=0x10000000 SP=0x19000000 IN_BYTES_OFFSET=0x19000000
+riscv-test verify-elf <name>.<ext> PROGRAM_OFFSET=0x10000000
 # Compile and verify generated ELF offsets, entry point, stack and heap symbols match the default ones
 riscv-test compile <name>.<ext> VERIFY_ELF=true
 ```
@@ -211,7 +211,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `VECTOR_SUBSET_FILE`         | `$(BIN).all`                                                   | Intermediate `.all` file selected from `VECTOR_FILE`; one line per vector, or one blob including all vectors                                  |
 | `IN_BYTES`                   | `""`                                                           | Hex big-endian input written in RAM at `IN_BYTES_OFFSET` as little-endian bytes before execution (either string or `@path/to/in_bytes`)       |
 | `PROGRAM_OFFSET`             | `0x00000000`                                                   | Program address used by this Makefile's generated linker script (up to 128 MiB)                                                               |
-| `IN_BYTES_OFFSET`            | `$(SP)`                                                        | Memory address where input bytes are written (up to 1 GiB)                                                                                    |
+| `IN_BYTES_OFFSET`            | `0x09000000`                                                   | Memory address where input bytes are written (up to 1 GiB), derived from `PROGRAM_OFFSET` and fixed region sizes unless set explicitly       |
 | `SP`                         | `0x09000000`                                                   | Top of the stack region, derived from `PROGRAM_OFFSET` and fixed region sizes unless set explicitly                                           |
 | `OBJDUMP`                    | `false`                                                        | Set to `true` to generate an objdump file for each compiled ELF                                                                               |
 | `VERIFY_ELF`                 | `false`                                                        | Set to `true` to verify offsets, entry point, stack and heap symbols match the ELF ones                                                       |
