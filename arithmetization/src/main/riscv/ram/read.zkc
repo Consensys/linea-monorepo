@@ -1,6 +1,16 @@
 include "../memory.zkc"
 include "../utils/constants.zkc"
 
+// We use ram with word size of 32 bits.
+// To read a single byte from RAM at a byte address (address), we need to:
+// 1. Calculate the word index
+// word_idx = byte_address / word_size_in_bytes, here 4
+// 2. Calculate the offset
+// offset = address % word_size_in_bytes, here 4
+// 3. Load the word from RAM at the calculated word index word_idx
+// 4. Shift the word right by the offset * 8 bits to get the byte as the least significant byte
+// 5. Return the byte(s) value(s) via a mask operation
+
 fn read_8<ram>(address:Address) -> (value:u8) {
     var word_idx:Address = address >> 2
     var offset:Address = address & 3
@@ -16,7 +26,7 @@ fn read_8<ram>(address:Address) -> (value:u8) {
         value = ((ram[word_idx] >> 16) & 0xFF) as u8
         return
     } else {
-        value = ((ram[word_idx] >> 24) & 0xFF) as u8
+        value = (ram[word_idx] >> 24) as u8
         return
     }
 }
@@ -33,12 +43,10 @@ fn read_16<ram>(address:Address) -> (value:u16) {
         return
     }
     if offset == 2 {
-        value = ((ram[word_idx] >> 16) & 0xFFFF) as u16
+        value = (ram[word_idx] >> 16) as u16
         return
     } else {
-        var word_lo:u32 = ram[word_idx]
-        var word_hi:u32 = ram[word_idx + 1]
-        value = ((word_lo >> 24) | ((word_hi & 0xFF) << 8)) as u16
+        value = ((ram[word_idx] >> 24) | ((ram[word_idx + 1] & 0xFF) << 8)) as u16
         return
     }
 }

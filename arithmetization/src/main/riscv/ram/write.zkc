@@ -1,6 +1,18 @@
 include "../memory.zkc"
 include "../utils/constants.zkc"
 
+// We use ram with word size of 32 bits.
+// To write a single byte to RAM at a byte address (address), we need to:
+// 1. Calculate the word index
+// word_idx = byte_address / word_size_in_bytes, here 4
+// 2. Calculate the offset
+// offset = address % word_size_in_bytes, here 4
+// 3. Load the word from RAM at the calculated word index word_idx
+// 4. Mask the byte(s) value(s) we want to write over
+// 5. Insert the byte(s) value(s) we want to write into the masked word
+// 6. Write the word back to RAM at the calculated word index word_idx
+
+
 fn write_8<ram>(address:Address, value:u8) -> () {
     var word_idx:Address = address >> 2
     var offset:Address = address & 3
@@ -48,15 +60,11 @@ fn write_32<ram>(address:Address, value:u32) -> () {
     if offset == 0 {
         ram[word_idx] = value
     } else {
-        var b0:u8
-        var b1:u8
-        var b2:u8
-        var b3:u8
-        b3::b2::b1::b0 = value
-        write_8(address, b0)
-        write_8(address + 1, b1)
-        write_8(address + 2, b2)
-        write_8(address + 3, b3)
+        var lo:u16
+        var hi:u16
+        hi::lo = value
+        write_16(address, lo)
+        write_16(address + 2, hi)
     }
 }
 
