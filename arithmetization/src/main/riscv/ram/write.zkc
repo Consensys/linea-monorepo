@@ -12,7 +12,6 @@ include "../utils/constants.zkc"
 // 5. Insert the byte(s) value(s) we want to write into the masked word
 // 6. Write the word back to RAM at the calculated word index word_idx
 
-
 fn write_8<ram>(address:Address, value:u8) -> () {
     var word_idx:Address = address >> 2
     var offset:Address = address & 3
