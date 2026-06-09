@@ -179,7 +179,7 @@ fn process_R_type_instruction<registers>(opcode:Opcode, instruction_parameters:u
                 if v1_sign == 1 && v1_times_v2_as_u128 != 0 {
                     v1_times_v2_as_u128 = (~v1_times_v2_as_u128) + 1
                 }
-                registers[rd] = (v1_times_v2_as_u128 >> 64)  as u64
+                registers[rd] = (v1_times_v2_as_u128 >> 64) as u64
             } else if (funct3 == FUNCT3_MULHU) && (funct7 == FUNCT7_MULHU) {
                 printf "MULHU "
                 // print_r_operands(rd, rs1, rs2)
