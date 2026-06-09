@@ -338,5 +338,6 @@ zkc exec -q act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
 ```
 
 The generated linker script exposes `_heap_start`, `_heap_end`, `_stack_end`, `_stack_start`, and `_input_start`.
-Heap bounds are only symbols; Rust, Zig, C, and assembly programs must still provide allocator logic explicitly if they want dynamic allocation.
-Stack overflow is not checked automatically.
+Freestanding programs do not get automatic stack or heap overflow checks from the linker script.
+Programs that need those guarantees must implement them explicitly: stack checks should compare `sp`
+against `_stack_end`, and heap allocators should check allocations against `_heap_end`.
