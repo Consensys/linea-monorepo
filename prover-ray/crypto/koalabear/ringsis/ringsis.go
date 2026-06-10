@@ -2,13 +2,13 @@
 package ringsis
 
 import (
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/field/koalabear/sis"
-	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 
-	"github.com/consensys/linea-monorepo/prover-ray/utils"
-	"github.com/consensys/linea-monorepo/prover-ray/utils/arena"
-	"github.com/consensys/linea-monorepo/prover-ray/utils/parallel"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/utils"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/utils/arena"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/utils/parallel"
 )
 
 const (

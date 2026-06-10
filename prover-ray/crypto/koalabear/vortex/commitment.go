@@ -1,12 +1,12 @@
 package vortex
 
 import (
+	poseidon2 "github.com/LFDT-Lineth/lineth-monorepo/prover-ray/crypto/koalabear/poseidon2"
+	smt "github.com/LFDT-Lineth/lineth-monorepo/prover-ray/crypto/koalabear/smt"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/utils"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/utils/parallel"
 	vgnark "github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	poseidon2 "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poseidon2"
-	smt "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/smt"
-	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover-ray/utils"
-	"github.com/consensys/linea-monorepo/prover-ray/utils/parallel"
 )
 
 // When SIS: hash_columns = poseidon2(SIS(col))

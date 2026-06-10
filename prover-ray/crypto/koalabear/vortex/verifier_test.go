@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"testing"
 
-	smt "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/smt"
-	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/polynomials"
+	smt "github.com/LFDT-Lineth/lineth-monorepo/prover-ray/crypto/koalabear/smt"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/polynomials"
 )
 
 func getProofVortexNCommitmentsWithMerkle(_ *testing.T, nCommitments, nbPolys, polySize, rate int, WithSis []bool) (
