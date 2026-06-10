@@ -74,10 +74,10 @@ OBJDUMP ?= false
 
 # Parsed values are just to verify that the generated ELF is correct (lazy evaluation allows to parse the ELF only after it is generated)
 PROGRAM_OFFSET_FROM_ELF  = $(shell LANG=C riscv64-unknown-elf-readelf -S $(BIN) | grep '\.text' | awk '{print "0x"$$5}')
-IN_BYTES_OFFSET_FROM_ELF = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _input_start | awk '{print "0x"$$1}') 
+IN_BYTES_OFFSET_FROM_ELF = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _input_start | awk '{print "0x"$$1}')
 ENTRY_POINT_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) | grep 'Entry point' | awk '{print $$4}')
 SP_FROM_ELF              = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | grep _stack_start | awk '{print "0x"$$1}')
-VERIFY_ELF               ?= false             
+VERIFY_ELF               ?= false
 
 # Support function to generate JSON from an ELF
 define ELF_TO_JSON
@@ -155,7 +155,7 @@ elf-to-json: require-bin-ext
 	$(call ELF_TO_JSON,$(BIN_EXT),$(JSON_EXT))
 
 install-zkc:
-	$(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc
+	# $(MAKE) -C $(ARITHMETIZATION_DIR) install-zkc
 
 zkc-exec: require-test install-zkc
 	zkc exec $(ZKC_EXEC_FLAGS) $(JSON) $(ZKC_MAIN)
