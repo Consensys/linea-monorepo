@@ -16,12 +16,7 @@ test "vanishing quotient honest scenarios match prover-ray" {
         var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
         defer arena.deinit();
         const proof = try buildProofData(arena.allocator(), case.honest);
-        var coins = try protocol.replay(
-            spec.round_coin_counts[1..],
-            spec.round_coin_offsets[1..],
-            spec.total_round_coins,
-            proof.rounds,
-        );
+        const coins = try protocol.replay(spec, proof.rounds);
         const ctx = protocol.Context{ .all_coins = &coins, .rounds = proof.rounds };
         try vanishing.verify(system, .{
             .ctx = ctx,
@@ -42,12 +37,7 @@ test "vanishing quotient invalid scenarios fail identity" {
         var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
         defer arena.deinit();
         const proof = try buildProofData(arena.allocator(), invalid);
-        var coins = try protocol.replay(
-            spec.round_coin_counts[1..],
-            spec.round_coin_offsets[1..],
-            spec.total_round_coins,
-            proof.rounds,
-        );
+        const coins = try protocol.replay(spec, proof.rounds);
         const ctx = protocol.Context{ .all_coins = &coins, .rounds = proof.rounds };
         try std.testing.expectError(
             error.QuotientIdentityMismatch,
@@ -75,12 +65,7 @@ test "dynamic vanishing module sizes are required and validated" {
         defer arena.deinit();
 
         const valid = try buildProofData(arena.allocator(), case.honest);
-        var coins = try protocol.replay(
-            spec.round_coin_counts[1..],
-            spec.round_coin_offsets[1..],
-            spec.total_round_coins,
-            valid.rounds,
-        );
+        const coins = try protocol.replay(spec, valid.rounds);
         const ctx = protocol.Context{ .all_coins = &coins, .rounds = valid.rounds };
 
         try vanishing.verify(system, .{ .ctx = ctx, .witness_claims = valid.witness_claims, .quotient_claims = valid.quotient_claims, .module_sizes = valid.module_sizes });

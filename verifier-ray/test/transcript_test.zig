@@ -17,9 +17,7 @@ test "transcript absorbs elements deterministically" {
     try std.testing.expect(!challenge.isZero());
 }
 
-test "sampler absorbs commitments, public columns, and squeezes matching coin count" {
-    var transcript = fiat_shamir.Transcript.init();
-
+test "replay absorbs commitments, public columns, and cells, then squeezes coins" {
     const entries = [_]protocol.ColumnMessage{
         .{ .oracle_commitment = .{
             field.Element.init(1),
@@ -36,12 +34,18 @@ test "sampler absorbs commitments, public columns, and squeezes matching coin co
     const cells = [_]protocol.Scalar{
         .{ .base = field.Element.init(10) },
     };
+    const rounds = [_]protocol.RoundMessage{
+        .{ .columns = &entries, .cells = &cells },
+    };
 
-    var coins: [2]protocol.Coin = undefined;
-    protocol.Sampler(&.{2}).advanceRoundWithMessage(0, &transcript, .{
-        .columns = &entries,
-        .cells = &cells,
-    }, &coins);
+    // One message round that squeezes two coins (round 0 is the pre-round-1
+    // phase with zero coins).
+    const spec = protocol.Spec{
+        .round_coin_counts = &[_]usize{ 0, 2 },
+        .round_coin_offsets = &[_]usize{ 0, 0 },
+        .total_round_coins = 2,
+    };
+    const coins = try protocol.replay(spec, &rounds);
 
     // Consecutive coins must be distinct: randomDigest() absorbs a zero
     // separator between squeezes, so identical back-to-back outputs indicate

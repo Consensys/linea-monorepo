@@ -23,16 +23,15 @@
 
 ```
 src/
-├── protocol/       RoundMessage, ColumnMessage, Coin, Scalar, Sampler, Spec, Context, replay()
+├── protocol/       RoundMessage, ColumnMessage, Coin, Scalar, Spec, Context, replay()
 ├── query/          sub-verifiers: vanishing, (logderiv, rangecheck, ...)
 └── verifier.zig    entry point: Systems, ProofData, verify()
 ```
 
-`protocol/` is internally split into three files:
+`protocol/` is internally split into two files:
 
 - `types.zig` — wire types: `RoundMessage`, `ColumnMessage`, `Coin`, `Scalar`, `Visibility`
-- `sampler.zig` — `Sampler`: comptime-only namespace parametrized by per-round squeeze counts; the runtime transcript is owned by `replay` and passed by pointer, so ordering is enforced by `inline for` with no runtime check
-- `root.zig` — `Spec`, `Context`, `replay()`; re-exports the public surface
+- `root.zig` — `Spec`, `Context`, `replay()`; re-exports the public surface. `replay` takes a comptime `Spec`, absorbs each round into the transcript, and squeezes its coins inline — round ordering is fixed by the `inline for` over the spec, so no runtime ordering check is needed.
 
 ## Coin Generation
 
@@ -52,8 +51,8 @@ total_round_coins  = 2 + 2*M
 ```
 
 `round_coin_counts[0]` is always 0 — no coins are derived before the first
-round message is absorbed. `protocol.Sampler` is parametric on `advance_counts`
-at compile time, so coin counts are never a runtime decision.
+round message is absorbed. `protocol.replay` takes the `Spec` as a comptime
+parameter, so coin counts are never a runtime decision.
 
 ### Runtime: protocol.replay absorbs and squeezes
 
@@ -85,13 +84,17 @@ For each module it:
 
 ## What Changed from the Previous Design
 
-| Concern | Before | After |
+Before this design there was no `protocol/` layer and no `verifier.zig`
+entry point: `vanishing.verify` was the entry point and did everything itself.
+
+| Concern | Before (`vanishing.verify` owned everything) | After |
 |---|---|---|
-| Transcript ownership | inside `vanishing.verify` | `protocol.replay`, called once by `verifier.verify` |
-| Coin count per round | `next_round_coin_count` field in `RoundMessage` | compile-time constant in `protocol.Spec` |
+| Entry point | single `vanishing.verify` drove transcript replay, coin derivation, and the constraint check | `verifier.verify` orchestrates replay → route → dispatch; sub-verifiers do math only |
+| Transcript & coin derivation | inside `vanishing.verify`, via a `runtime.Runtime` | `protocol.replay`, called once before any sub-verifier |
+| Coin count per round | `next_round_coin_count` runtime field on `RoundMessage` | compile-time constant in `protocol.Spec` |
+| Coin routing | `round_coin_counts` / `round_coin_offsets` / `max_round_coins` / `total_round_coins` fields on `vanishing.System` | extracted into the shared `protocol.Spec`; `vanishing.System` holds only modules and claim counts |
+| Merge/eval coin location | positional — assumed the last two advance rounds (`len-3`, `len-2`) | explicit per-module `merge_coin_index` / `eval_coin_index` |
 | Sub-verifier input | `rounds + claims` (transcript data mixed with math) | `ctx + claims` (coins pre-derived, math only) |
-| Sampler state | `Sampler` owned transcript + `current_round` (runtime ordering check) | comptime-only namespace; transcript owned by `replay`, ordering enforced by `inline for` |
-| Coin array allocation | heap-allocated via allocator, freed after verify | stack-allocated `[total_coins]Coin` in `replay`; no allocator needed |
 
 The sub-verifier contract is now: **given pre-derived coins and cell openings,
 check the mathematical identity. Nothing else.**
@@ -112,7 +115,7 @@ Each layer validates only what it has the information and authority to check:
 | Layer | Where | What it validates |
 |---|---|---|
 | Code generation | `BuildVanishingSystem` / `BuildCoinRouting` (Go) | Each module's `merge_coin_index` / `eval_coin_index` resolves to an in-range position in the flat coin array (`flatCoinIndex`); `round_coin_counts[0] == 0`. Fails at generation time — no bad Zig is ever emitted. |
-| Protocol spec | `verifier.verify` comptime block (Zig) | `protocol.Spec` internal consistency: `round_coin_counts[0] == 0`, offsets are prefix sums, `total_round_coins` equals the sum. Fires at Zig compile time — zero runtime cost. |
+| Protocol spec | `protocol.replay` comptime block (Zig) | `protocol.Spec` internal consistency: `round_coin_counts[0] == 0`, offsets are prefix sums, `total_round_coins` equals the sum. Fires at Zig compile time — zero runtime cost, and covers direct `replay` callers as well as `verifier.verify`. |
 | Proof data | `replay` + `vanishing.verify` (Zig) | The runtime checks, because proof data is the only thing not known until runtime: round count matches the spec (`InvalidRoundCount`), claim slice lengths match (`InvalidClaimCount`), dynamic module sizes are present and valid (`MissingDynamicModuleSize`, `InvalidModuleSize`), and the quotient identity holds (`QuotientIdentityMismatch`). |
 
 Coin index bounds are **not** re-checked in Zig: the codegen guarantees them, and re-validating generated data adds noise without adding safety.

@@ -192,9 +192,9 @@ test "fiat-shamir transcript matches prover-ray golden cases" {
 
 test "transcript derives round coins matching prover-ray golden vectors" {
     for (vectors.runtime_trace_cases) |case| {
-        // protocol.Sampler is parametric on comptime advance counts; the golden
-        // vectors carry runtime coin counts, so drive fiat_shamir.Transcript
-        // directly and compare against the prover-ray expected values.
+        // protocol.replay is parametric on a comptime Spec; the golden vectors
+        // carry runtime coin counts, so drive fiat_shamir.Transcript directly
+        // and compare against the prover-ray expected values.
         var transcript = fiat_shamir.Transcript.init();
         for (case.rounds) |round_case| {
             var backing = TraceRoundBacking{};
