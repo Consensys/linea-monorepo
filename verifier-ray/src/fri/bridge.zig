@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const fiat_shamir = @import("../crypto/fiat_shamir.zig");
 const field = @import("../field/koalabear.zig");
 const ext = @import("../field/koalabear_ext.zig");
 const dq_layout_mod = @import("../dq_layout.zig");
@@ -8,6 +9,8 @@ const merkle = @import("merkle.zig");
 const types = @import("types.zig");
 
 const code_rate = 4; // loom constants.RATE
+pub const final_evaluation_challenge = "__zeta";
+pub const deep_alpha_challenge = "alpha_DEEP";
 
 pub const PointSamplingError = error{
     BadDimensions,
@@ -22,6 +25,11 @@ pub const BridgeError = error{
     BadShifts,
 };
 
+pub const DeepChallengeError = fiat_shamir.Error || error{
+    BadDimensions,
+    MissingValueAtZeta,
+};
+
 pub fn checkPointSamplings(
     roots: []const types.Digest,
     samplings: []const []const types.MerkleProof,
@@ -32,6 +40,36 @@ pub fn checkPointSamplings(
             if (!merkle.proofVerify(root, sampling)) return PointSamplingError.InvalidMerkleProof;
         }
     }
+}
+
+/// Binds every DEEP-quotient evaluation claim to `alpha_DEEP` in loom's
+/// canonical order: per level, all shifted column keys, then AIR chunks.
+pub fn bindDeepEvaluationClaims(
+    dq_layout: dq_layout_mod.DQLayout,
+    values_at_zeta: *const std.StringHashMap(ext.Ext),
+    ts: *fiat_shamir.Transcript,
+) DeepChallengeError!void {
+    try checkDeepChallengeDimensions(dq_layout);
+
+    for (dq_layout.sizes, 0..) |_, level_index| {
+        for (dq_layout.column_keys[level_index]) |keys_at_point| {
+            for (keys_at_point) |key| {
+                try bindValueAtZeta(values_at_zeta, ts, key);
+            }
+        }
+        for (dq_layout.air_chunks[level_index]) |chunk_name| {
+            try bindValueAtZeta(values_at_zeta, ts, chunk_name);
+        }
+    }
+}
+
+pub fn deriveDeepAlpha(
+    dq_layout: dq_layout_mod.DQLayout,
+    values_at_zeta: *const std.StringHashMap(ext.Ext),
+    ts: *fiat_shamir.Transcript,
+) DeepChallengeError!ext.Ext {
+    try bindDeepEvaluationClaims(dq_layout, values_at_zeta, ts);
+    return try ts.computeChallengeExt(deep_alpha_challenge);
 }
 
 /// Verifies the DEEP quotient bridge after `friVerify` has bound the FRI query
@@ -109,6 +147,30 @@ pub fn checkFRIBridge(
             if (!dq_p.eql(actual.p) or !dq_q.eql(actual.q)) return BridgeError.BridgeMismatch;
         }
     }
+}
+
+fn checkDeepChallengeDimensions(dq_layout: dq_layout_mod.DQLayout) DeepChallengeError!void {
+    const levels = dq_layout.sizes.len;
+    if (levels == 0) return DeepChallengeError.BadDimensions;
+    if (dq_layout.column_keys.len != levels) return DeepChallengeError.BadDimensions;
+    if (dq_layout.air_chunks.len != levels) return DeepChallengeError.BadDimensions;
+}
+
+fn bindValueAtZeta(
+    values_at_zeta: *const std.StringHashMap(ext.Ext),
+    ts: *fiat_shamir.Transcript,
+    key: []const u8,
+) DeepChallengeError!void {
+    const value = values_at_zeta.get(key) orelse return DeepChallengeError.MissingValueAtZeta;
+    const limbs = [_]field.Element{
+        value.B0.a0,
+        value.B0.a1,
+        value.B1.a0,
+        value.B1.a1,
+        value.B2.a0,
+        value.B2.a1,
+    };
+    try ts.bindElements(deep_alpha_challenge, limbs[0..]);
 }
 
 fn checkBridgeDimensions(

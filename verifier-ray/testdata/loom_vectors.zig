@@ -7,6 +7,7 @@ pub const LoomNodeHashCase = struct { left: [8]u32, right: [8]u32, expected: [8]
 pub const LoomMerkleCase = struct { leaf_idx: u32, leaf: [8]u32, siblings: []const [8]u32, root: [8]u32 };
 pub const LoomNamedTranscriptCase = struct { first_name: []const u8, first_bindings: []const u32, first_expected: [8]u32, second_name: []const u8, second_bindings: []const u32, second_expected: [8]u32, second_ext_expected: [6]u32 };
 pub const LoomPowTranscriptCase = struct { name: []const u8, bindings: []const u32, nb_bits: u32, salt: u32, expected: [8]u32 };
+pub const LoomDeepAlphaCase = struct { zeta_bindings: []const u32, zeta_digest: [8]u32, alpha_digest: [8]u32, alpha_ext: [6]u32 };
 pub const LoomFriBasePath = struct { leaf_idx: u32, siblings: []const [8]u32 };
 pub const LoomFriBaseLayer = struct { leaf_p_base: u32, leaf_q_base: u32, path: LoomFriBasePath };
 pub const LoomFriBaseQuery = struct { layers: []const LoomFriBaseLayer };
@@ -89,6 +90,15 @@ pub const loom_named_transcript_cases = [_]LoomNamedTranscriptCase{
 
 pub const loom_pow_transcript_cases = [_]LoomPowTranscriptCase{
     .{ .name = "fri_fold_0", .bindings = &.{ 13, 21, 34 }, .nb_bits = 4, .salt = 2, .expected = .{ 1036995264, 1561072429, 614459829, 1073122740, 598664813, 1873880090, 1102096053, 1822996418 } },
+};
+
+pub const loom_deep_alpha_cases = [_]LoomDeepAlphaCase{
+    .{
+        .zeta_bindings = &.{ 3, 1, 4, 1 },
+        .zeta_digest = .{ 1917250265, 622384269, 2073146317, 1819043742, 640412108, 317252013, 1545741056, 225608101 },
+        .alpha_digest = .{ 191465002, 725753667, 911742404, 395965214, 1392090261, 2116157538, 1642781672, 411925872 },
+        .alpha_ext = .{ 191465002, 725753667, 911742404, 395965214, 1392090261, 2116157538 },
+    },
 };
 
 pub const loom_bridge_cases = [_]LoomBridgeCase{

@@ -102,6 +102,72 @@ test "loom proof-of-work transcript challenges match static vectors" {
     }
 }
 
+test "loom DEEP alpha binding order matches static vector" {
+    const bridge_case = loom_vectors.loom_bridge_cases[0];
+    const dq_layout = dq_layout_types.DQLayout{
+        .sizes = bridge_case.sizes,
+        .column_keys = bridge_case.column_keys,
+        .air_chunks = bridge_case.air_chunks,
+    };
+
+    for (loom_vectors.loom_deep_alpha_cases) |case| {
+        var values_at_zeta = std.StringHashMap(ext.Ext).init(std.testing.allocator);
+        defer values_at_zeta.deinit();
+        for (bridge_case.values_at_zeta) |value| {
+            try values_at_zeta.put(value.name, uintsToExt(value.value));
+        }
+
+        var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+        try ts.newChallenge(fri.bridge.final_evaluation_challenge);
+        try ts.newChallenge(fri.bridge.deep_alpha_challenge);
+
+        var zeta_bindings: [8]field.Element = undefined;
+        try std.testing.expect(case.zeta_bindings.len <= zeta_bindings.len);
+        fillElems(zeta_bindings[0..case.zeta_bindings.len], case.zeta_bindings);
+        try ts.bindElements(fri.bridge.final_evaluation_challenge, zeta_bindings[0..case.zeta_bindings.len]);
+        try expectDigest(try ts.computeChallenge(fri.bridge.final_evaluation_challenge), case.zeta_digest);
+
+        const alpha = try fri.bridge.deriveDeepAlpha(dq_layout, &values_at_zeta, &ts);
+        try expectExt(alpha, uintsToExt(case.alpha_ext));
+        try expectDigest(try ts.computeChallenge(fri.bridge.deep_alpha_challenge), case.alpha_digest);
+
+        _ = values_at_zeta.remove("base_col");
+        var missing_ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+        try missing_ts.newChallenge(fri.bridge.deep_alpha_challenge);
+        try std.testing.expectError(
+            error.MissingValueAtZeta,
+            fri.bridge.deriveDeepAlpha(dq_layout, &values_at_zeta, &missing_ts),
+        );
+    }
+}
+
+test "DEEP alpha rejects malformed DQ layout dimensions" {
+    var values_at_zeta = std.StringHashMap(ext.Ext).init(std.testing.allocator);
+    defer values_at_zeta.deinit();
+
+    const sizes = [_]u32{4};
+    const empty_key_levels = [_][]const []const []const u8{&.{}};
+    const empty_air_levels = [_][]const []const u8{&.{}};
+
+    try expectDeepAlphaBadDimensions(.{
+        .sizes = &.{},
+        .column_keys = &.{},
+        .air_chunks = &.{},
+    }, &values_at_zeta);
+
+    try expectDeepAlphaBadDimensions(.{
+        .sizes = sizes[0..],
+        .column_keys = &.{},
+        .air_chunks = empty_air_levels[0..],
+    }, &values_at_zeta);
+
+    try expectDeepAlphaBadDimensions(.{
+        .sizes = sizes[0..],
+        .column_keys = empty_key_levels[0..],
+        .air_chunks = &.{},
+    }, &values_at_zeta);
+}
+
 test "loom FRI base proof vector verifies" {
     for (loom_vectors.loom_fri_base_proof_cases) |case| {
         const round_count: usize = @intCast(case.num_rounds);
@@ -1067,6 +1133,18 @@ fn bridgeLayer(layer: loom_vectors.LoomBridgeLayer) fri.QueryLayer {
         .leaf_q_ext = uintsToExt(layer.leaf_q_ext),
         .path = .{ .leaf_idx = layer.leaf_idx, .siblings = &.{} },
     };
+}
+
+fn expectDeepAlphaBadDimensions(
+    dq_layout: dq_layout_types.DQLayout,
+    values_at_zeta: *const std.StringHashMap(ext.Ext),
+) !void {
+    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    try ts.newChallenge(fri.bridge.deep_alpha_challenge);
+    try std.testing.expectError(
+        error.BadDimensions,
+        fri.bridge.deriveDeepAlpha(dq_layout, values_at_zeta, &ts),
+    );
 }
 
 fn expectBridgeError(
