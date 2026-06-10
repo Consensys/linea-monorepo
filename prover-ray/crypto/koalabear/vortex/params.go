@@ -1,9 +1,9 @@
 package vortex
 
 import (
-	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/reedsolomon"
-	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/ringsis"
-	"github.com/consensys/linea-monorepo/prover-ray/utils"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/crypto/koalabear/reedsolomon"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/crypto/koalabear/ringsis"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/utils"
 )
 
 // Params collects the public parameters of the commitment scheme. The object

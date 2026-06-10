@@ -1,9 +1,9 @@
 package vortex
 
 import (
-	smt "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/smt"
-	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
-	"github.com/consensys/linea-monorepo/prover-ray/utils"
+	smt "github.com/LFDT-Lineth/lineth-monorepo/prover-ray/crypto/koalabear/smt"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/utils"
 )
 
 // Prove constructs an opening proof for the given encoded matrices at the positions in entryList.

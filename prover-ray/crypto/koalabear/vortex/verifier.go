@@ -3,10 +3,10 @@ package vortex
 import (
 	"fmt"
 
-	poseidon2 "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poseidon2"
-	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/ringsis"
-	smt "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/smt"
-	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
+	poseidon2 "github.com/LFDT-Lineth/lineth-monorepo/prover-ray/crypto/koalabear/poseidon2"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/crypto/koalabear/ringsis"
+	smt "github.com/LFDT-Lineth/lineth-monorepo/prover-ray/crypto/koalabear/smt"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
 )
 
 // CheckColumnInclusion checks the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
