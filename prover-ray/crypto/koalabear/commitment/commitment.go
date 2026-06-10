@@ -110,7 +110,13 @@ func NewRSCommit(N uint64, rate uint64, leafHasher LeafHasher, nodehasher NodeHa
 
 // NewRSCommitWithDomainCache constructs an RSCommit using cache for the
 // Reed-Solomon encoder domain.
-func NewRSCommitWithDomainCache(N uint64, rate uint64, leafHasher LeafHasher, nodehasher NodeHasher, cache *poly.DomainCache) RSCommit {
+func NewRSCommitWithDomainCache(
+	N uint64,
+	rate uint64,
+	leafHasher LeafHasher,
+	nodehasher NodeHasher,
+	cache *poly.DomainCache,
+) RSCommit {
 	rsEncoder := reedsolomon.NewEncoderWithDomainCache(rate*N, cache)
 	return RSCommit{
 		Encoder:    rsEncoder,
@@ -191,7 +197,11 @@ func (Poseidon2NodeHasher) HashNodes(dst, left, right []hash.Digest) {
 // Commit commits to base and extension polynomials in one Merkle tree. Inputs
 // are assumed to be in Lagrange form and may have different sizes. Each leaf
 // hash absorbs all base pairs followed by all extension pairs.
-func (rs *RSCommit) Commit(basePolys []poly.Polynomial, extPolys []poly.ExtPolynomial, opts ...CommitOption) (WMerkleTree, error) {
+func (rs *RSCommit) Commit(
+	basePolys []poly.Polynomial,
+	extPolys []poly.ExtPolynomial,
+	opts ...CommitOption,
+) (WMerkleTree, error) {
 	var config CommitConfig
 	for _, opt := range opts {
 		if err := opt(&config); err != nil {

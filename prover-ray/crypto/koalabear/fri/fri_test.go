@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	ext "github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/commitment"
-	fiatshamir "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamir_refactor"
+	fiatshamir "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamirrefactor"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fri"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/hash"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/merkle"
@@ -21,7 +21,7 @@ func freshTS() *fiatshamir.Transcript {
 func randomPoly(n int) []koalabear.Element {
 	elems := make([]koalabear.Element, n)
 	for i := range elems {
-		elems[i].SetRandom()
+		_, _ = elems[i].SetRandom()
 	}
 	return elems
 }
@@ -187,7 +187,7 @@ func TestVerifyRejectsWrongRoot(t *testing.T) {
 
 	var badRoot hash.Digest
 	for i := range badRoot {
-		badRoot[i].SetRandom()
+		_, _ = badRoot[i].SetRandom()
 	}
 
 	tsV := freshTS()
@@ -213,7 +213,7 @@ func TestVerifyRejectsFlippedLeaf(t *testing.T) {
 	}
 
 	// Flip the first leaf of the first query, first layer.
-	prf.FRIQueries[0].Layers[0].LeafPBase.SetRandom()
+	_, _ = prf.FRIQueries[0].Layers[0].LeafPBase.SetRandom()
 
 	tsV := freshTS()
 	if err := fri.Verify(p, []hash.Digest{tree.Root()}, []int{p.D}, prf, tsV); err == nil {

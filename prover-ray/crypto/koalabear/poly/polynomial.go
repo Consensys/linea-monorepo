@@ -41,7 +41,7 @@ func getBuf(n int) []koalabear.Element {
 }
 
 func putBuf(b []koalabear.Element) {
-	evalBufPool.Put(b[:cap(b)])
+	evalBufPool.Put(b[:cap(b)]) // nolint
 }
 
 // Evaluate evaluates a polynomial p in Lagrange form at zeta

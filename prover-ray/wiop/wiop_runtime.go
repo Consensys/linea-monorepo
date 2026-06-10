@@ -131,7 +131,7 @@ func (run *Runtime) AdvanceRound() {
 	// Feed all cell values into the Fiat-Shamir state. Lazily-assigned cells
 	// are resolved here if they have not been read yet.
 	for _, cell := range run.currentRound.Cells {
-		v, ok := run.cells[cell.Context.ID]
+		v, ok := run.resolveLazyCell(cell)
 		if !ok {
 			panic(fmt.Sprintf(
 				"wiop: AdvanceRound: cell %q not assigned before advancing round",

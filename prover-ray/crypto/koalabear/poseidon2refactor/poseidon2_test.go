@@ -1,4 +1,4 @@
-package poseidon2_refactor
+package poseidon2refactor
 
 import (
 	"testing"

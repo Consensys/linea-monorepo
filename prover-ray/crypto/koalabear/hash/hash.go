@@ -6,17 +6,17 @@ import (
 )
 
 const (
-	WIDTH              = 16
-	SPONGE_WIDTH       = 24
-	SPONGE_RATE        = 16
-	NB_FULL_ROUND      = 6
-	NB_PARTIAL_ROUNDS  = 21
-	DIGEST_NB_ELEMENTS = 8
-	ExtDegree          = 6
+	WIDTH            = 16
+	SpongeWidth      = 24
+	SpongeRate       = 16
+	NbFullRound      = 6
+	NbPartialRounds  = 21
+	DigestNbElements = 8
+	ExtDegree        = 6
 )
 
 // 8 to land in a space big enough to be collision resistant
-type Digest [DIGEST_NB_ELEMENTS]koalabear.Element
+type Digest [DigestNbElements]koalabear.Element
 
 const StringChunkSize = 3
 

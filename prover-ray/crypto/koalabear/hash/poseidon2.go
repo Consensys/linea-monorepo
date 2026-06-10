@@ -24,8 +24,8 @@ type Poseidon2MDHasher struct {
 type Poseidon2SpongeHasher struct {
 	Perm *poseidon2.Permutation
 
-	state     [SPONGE_WIDTH]koalabear.Element
-	block     [SPONGE_RATE]koalabear.Element
+	state     [SpongeWidth]koalabear.Element
+	block     [SpongeRate]koalabear.Element
 	blockLen  int
 	wrote     bool
 	finalized bool
@@ -38,8 +38,8 @@ const Poseidon2SpongeBatchSize = 16
 type Poseidon2SpongeBatch16 struct {
 	Perm *poseidon2.Permutation
 
-	state     [SPONGE_WIDTH][Poseidon2SpongeBatchSize]koalabear.Element
-	block     [SPONGE_RATE][Poseidon2SpongeBatchSize]koalabear.Element
+	state     [SpongeWidth][Poseidon2SpongeBatchSize]koalabear.Element
+	block     [SpongeRate][Poseidon2SpongeBatchSize]koalabear.Element
 	blockLen  int
 	wrote     bool
 	finalized bool
@@ -49,8 +49,8 @@ type Poseidon2SpongeBatch16 struct {
 // permutation call mutates the input state slice, so hashers can share these
 // values while keeping independent state buffers.
 var (
-	defaultPoseidon2Perm       = poseidon2.NewPermutation(WIDTH, NB_FULL_ROUND, NB_PARTIAL_ROUNDS)
-	defaultPoseidon2SpongePerm = poseidon2.NewPermutation(SPONGE_WIDTH, NB_FULL_ROUND, NB_PARTIAL_ROUNDS)
+	defaultPoseidon2Perm       = poseidon2.NewPermutation(WIDTH, NbFullRound, NbPartialRounds)
+	defaultPoseidon2SpongePerm = poseidon2.NewPermutation(SpongeWidth, NbFullRound, NbPartialRounds)
 )
 
 func NewPoseidon2MDHasher() Poseidon2MDHasher {
@@ -206,13 +206,13 @@ func (ph *Poseidon2SpongeHasher) writeElement(elmt koalabear.Element) {
 	ph.block[ph.blockLen].Set(&elmt)
 	ph.blockLen++
 	ph.finalized = false
-	if ph.blockLen == SPONGE_RATE {
+	if ph.blockLen == SpongeRate {
 		ph.absorbFullBlock()
 	}
 }
 
 func (ph *Poseidon2SpongeHasher) absorbFullBlock() {
-	copy(ph.state[:SPONGE_RATE], ph.block[:])
+	copy(ph.state[:SpongeRate], ph.block[:])
 	ph.permute()
 	ph.clearBlock()
 	ph.blockLen = 0
@@ -246,7 +246,7 @@ func (ph *Poseidon2SpongeHasher) clearBlock() {
 
 func (ph *Poseidon2SpongeHasher) digest() Digest {
 	var res Digest
-	copy(res[:], ph.state[:DIGEST_NB_ELEMENTS])
+	copy(res[:], ph.state[:DigestNbElements])
 	return res
 }
 
@@ -278,7 +278,7 @@ func (ph *Poseidon2SpongeBatch16) WriteElementBatch(elmts [Poseidon2SpongeBatchS
 	ph.block[ph.blockLen] = elmts
 	ph.blockLen++
 	ph.finalized = false
-	if ph.blockLen == SPONGE_RATE {
+	if ph.blockLen == SpongeRate {
 		ph.absorbFullBlock()
 	}
 }
@@ -327,7 +327,7 @@ func (ph *Poseidon2SpongeBatch16) Sum() [Poseidon2SpongeBatchSize]Digest {
 }
 
 func (ph *Poseidon2SpongeBatch16) absorbFullBlock() {
-	copy(ph.state[:SPONGE_RATE], ph.block[:])
+	copy(ph.state[:SpongeRate], ph.block[:])
 	ph.permute()
 	ph.clearBlock()
 	ph.blockLen = 0
@@ -377,14 +377,14 @@ func (ph *Poseidon2SpongeBatch16) digest() [Poseidon2SpongeBatchSize]Digest {
 //	state[8..15]  = left[0..7]    (rate, low half)
 //	state[16..23] = right[0..7]   (rate, high half)
 //
-// One Permutation, then the digest is the first DIGEST_NB_ELEMENTS (=8)
+// One Permutation, then the digest is the first DigestNbElements (=8)
 // state slots.
 //
 // This replaces the previous MD-style width-16 hasher (two permutations per
 // node, no SIMD path). One permutation per node is enough for collision
 // resistance because the input fits in a single rate-16 block.
 func Poseidon2NodeCompress(nodeDomainTag uint64, left, right Digest) Digest {
-	var state [SPONGE_WIDTH]koalabear.Element
+	var state [SpongeWidth]koalabear.Element
 	state[0].SetUint64(nodeDomainTag)
 	for i := range left {
 		state[8+i].Set(&left[i])
@@ -394,22 +394,25 @@ func Poseidon2NodeCompress(nodeDomainTag uint64, left, right Digest) Digest {
 		panic(err)
 	}
 	var res Digest
-	copy(res[:], state[:DIGEST_NB_ELEMENTS])
+	copy(res[:], state[:DigestNbElements])
 	return res
 }
 
 // Poseidon2NodeCompressBatch16 compresses 16 (left, right) pairs in parallel
 // via the 16-lane batched sponge permutation (permutation16x24). Lanes are
 // independent. Same layout as Poseidon2NodeCompress in each lane.
-func Poseidon2NodeCompressBatch16(nodeDomainTag uint64, left, right *[Poseidon2SpongeBatchSize]Digest) [Poseidon2SpongeBatchSize]Digest {
-	var state [SPONGE_WIDTH][Poseidon2SpongeBatchSize]koalabear.Element
+func Poseidon2NodeCompressBatch16(
+	nodeDomainTag uint64,
+	left, right *[Poseidon2SpongeBatchSize]Digest,
+) [Poseidon2SpongeBatchSize]Digest {
+	var state [SpongeWidth][Poseidon2SpongeBatchSize]koalabear.Element
 	var tag koalabear.Element
 	tag.SetUint64(nodeDomainTag)
 	for lane := 0; lane < Poseidon2SpongeBatchSize; lane++ {
 		state[0][lane].Set(&tag)
 	}
 	for lane := 0; lane < Poseidon2SpongeBatchSize; lane++ {
-		for i := 0; i < DIGEST_NB_ELEMENTS; i++ {
+		for i := 0; i < DigestNbElements; i++ {
 			state[8+i][lane].Set(&left[lane][i])
 			state[16+i][lane].Set(&right[lane][i])
 		}

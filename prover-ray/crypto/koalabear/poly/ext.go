@@ -39,7 +39,7 @@ func getExtBuf(n int) []ext.E6 {
 }
 
 func putExtBuf(b []ext.E6) {
-	extEvalBufPool.Put(b[:cap(b)])
+	extEvalBufPool.Put(b[:cap(b)]) // nolint
 }
 
 // AddExt returns the pointwise sum P1 + P2.
@@ -97,7 +97,6 @@ func EvaluateAtExt(p Polynomial, d *fft.Domain, zeta ext.E6) ext.E6 {
 		iRev := bits.Reverse64(uint64(i)) >> nn
 		coeff := liftBaseToExt(_p[iRev])
 		res.Mul(&res, &zeta)
-		// TODO(perf) use only the B0.A0 coord
 		res.Add(&res, &coeff)
 	}
 	putBuf(_p)

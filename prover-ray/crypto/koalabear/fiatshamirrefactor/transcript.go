@@ -1,4 +1,4 @@
-package fiatshamir_refactor
+package fiatshamirrefactor
 
 import (
 	"errors"
@@ -56,7 +56,8 @@ type Transcript struct {
 
 	challenges         []challenge // the order matters
 	nameToChallengePos map[string]int
-	proofOfWork        map[string]ProofOfWork // proofOfWork[<name>] -> pow for challenge <name> (if there has been grinding)
+	// proofOfWork[<name>] -> pow for challenge <name> (if there has been grinding)
+	proofOfWork map[string]ProofOfWork
 }
 
 type challenge struct {
@@ -169,7 +170,10 @@ func (t *Transcript) ProofsOfWork() map[string]ProofOfWork {
 // If the challenge has already been computed, the cached value is returned.
 // It returns an error if the challenge does not exist or if the previous
 // challenge has not been computed yet.
-func (t *Transcript) ComputeChallenge(challengeID string, opts ...ComputeChallengeOption) ([8]koalabear.Element, error) {
+func (t *Transcript) ComputeChallenge(
+	challengeID string,
+	opts ...ComputeChallengeOption,
+) ([8]koalabear.Element, error) {
 
 	var config ComputeChallengeConfig
 	for _, opt := range opts {
@@ -233,7 +237,12 @@ func (t *Transcript) ComputeChallenge(challengeID string, opts ...ComputeChallen
 
 }
 
-func (t *Transcript) computeChallengeDigest(challengeID string, pos int, challenge challenge, pow *ProofOfWork) (hash.Digest, error) {
+func (t *Transcript) computeChallengeDigest(
+	challengeID string,
+	pos int,
+	challenge challenge,
+	pow *ProofOfWork,
+) (hash.Digest, error) {
 	t.h.Reset()
 
 	t.h.WriteElements(hash.StringToElements(challengeIDDomainTag, challengeID)...)
@@ -265,7 +274,12 @@ func (t *Transcript) computeChallengeDigest(challengeID string, pos int, challen
 	return value, nil
 }
 
-func (t *Transcript) grindChallenge(challengeID string, pos int, challenge challenge, nbBits int) (ProofOfWork, hash.Digest, error) {
+func (t *Transcript) grindChallenge(
+	challengeID string,
+	pos int,
+	challenge challenge,
+	nbBits int,
+) (ProofOfWork, hash.Digest, error) {
 	modulus := koalabear.Modulus().Uint64()
 	for saltValue := uint64(0); saltValue < modulus; saltValue++ {
 		pow := ProofOfWork{NbBits: nbBits}

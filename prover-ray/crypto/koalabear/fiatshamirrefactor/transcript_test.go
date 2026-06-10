@@ -1,4 +1,4 @@
-package fiatshamir_refactor
+package fiatshamirrefactor
 
 import (
 	"errors"

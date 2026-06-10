@@ -24,7 +24,7 @@ func DeepQuotient(p Polynomial, v, z koalabear.Element, d *fft.Domain) Polynomia
 	var omegaJ koalabear.Element
 	omegaJ.SetOne()
 	omega := d.Generator
-	// TODO use batch invert here
+
 	for j := 0; j < N; j++ {
 		var num, den koalabear.Element
 		num.Sub(&v, &p[j])

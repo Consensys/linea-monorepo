@@ -95,7 +95,7 @@ func TestPoseidon2MDHasherSumIsIdempotentAndResettable(t *testing.T) {
 }
 
 func TestPoseidon2SpongeHasherMatchesReference(t *testing.T) {
-	for _, n := range []int{0, 1, 7, SPONGE_RATE, SPONGE_RATE + 1, SPONGE_WIDTH, 2*SPONGE_RATE + 3, 4 * SPONGE_RATE} {
+	for _, n := range []int{0, 1, 7, SpongeRate, SpongeRate + 1, SpongeWidth, 2*SpongeRate + 3, 4 * SpongeRate} {
 		input := testElements(n)
 		hasher := NewPoseidon2SpongeHasher()
 		hasher.WriteElements(input...)
@@ -109,7 +109,7 @@ func TestPoseidon2SpongeHasherMatchesReference(t *testing.T) {
 }
 
 func TestPoseidon2SpongeHasherChunkingInvariant(t *testing.T) {
-	for _, n := range []int{0, 1, SPONGE_RATE - 1, SPONGE_RATE, SPONGE_RATE + 1, 3*SPONGE_RATE + 5} {
+	for _, n := range []int{0, 1, SpongeRate - 1, SpongeRate, SpongeRate + 1, 3*SpongeRate + 5} {
 		input := testElements(n)
 		want := referenceSpongeDigest(input)
 
@@ -162,7 +162,7 @@ func TestPoseidon2SpongeHasherWriteExtMatchesCoordinates(t *testing.T) {
 }
 
 func TestPoseidon2SpongeHasherSumIsIdempotentAndResettable(t *testing.T) {
-	input := testElements(SPONGE_RATE + 3)
+	input := testElements(SpongeRate + 3)
 	hasher := NewPoseidon2SpongeHasher()
 	hasher.WriteElements(input...)
 
@@ -180,7 +180,7 @@ func TestPoseidon2SpongeHasherSumIsIdempotentAndResettable(t *testing.T) {
 }
 
 func TestPoseidon2SpongeBatch16MatchesScalar(t *testing.T) {
-	for _, n := range []int{0, 1, SPONGE_RATE - 1, SPONGE_RATE, SPONGE_RATE + 1, SPONGE_WIDTH, 2*SPONGE_RATE + 3} {
+	for _, n := range []int{0, 1, SpongeRate - 1, SpongeRate, SpongeRate + 1, SpongeWidth, 2*SpongeRate + 3} {
 		var inputs [Poseidon2SpongeBatchSize][]koalabear.Element
 		batchHasher := NewPoseidon2SpongeBatch16()
 		for i := 0; i < n; i++ {
@@ -296,7 +296,7 @@ func referenceStreamingDigest(input []koalabear.Element) Digest {
 	if len(input) == 0 {
 		return Digest{}
 	}
-	perm := poseidon2.NewPermutation(WIDTH, NB_FULL_ROUND, NB_PARTIAL_ROUNDS)
+	perm := poseidon2.NewPermutation(WIDTH, NbFullRound, NbPartialRounds)
 	var state [WIDTH]koalabear.Element
 	pos := 0
 	compressed := false
@@ -336,7 +336,7 @@ func referenceStreamingDigest(input []koalabear.Element) Digest {
 }
 
 func compressReferenceBlock(state *[WIDTH]koalabear.Element) Digest {
-	perm := poseidon2.NewPermutation(WIDTH, NB_FULL_ROUND, NB_PARTIAL_ROUNDS)
+	perm := poseidon2.NewPermutation(WIDTH, NbFullRound, NbPartialRounds)
 	var upper [WIDTH / 2]koalabear.Element
 	copy(upper[:], state[WIDTH/2:])
 	if err := perm.Permutation(state[:]); err != nil {
@@ -353,10 +353,10 @@ func referenceSpongeDigest(input []koalabear.Element) Digest {
 	if len(input) == 0 {
 		return Digest{}
 	}
-	perm := poseidon2.NewPermutation(SPONGE_WIDTH, NB_FULL_ROUND, NB_PARTIAL_ROUNDS)
-	var state [SPONGE_WIDTH]koalabear.Element
-	for i := 0; i < len(input); i += SPONGE_RATE {
-		end := i + SPONGE_RATE
+	perm := poseidon2.NewPermutation(SpongeWidth, NbFullRound, NbPartialRounds)
+	var state [SpongeWidth]koalabear.Element
+	for i := 0; i < len(input); i += SpongeRate {
+		end := i + SpongeRate
 		if end > len(input) {
 			end = len(input)
 		}
@@ -367,7 +367,7 @@ func referenceSpongeDigest(input []koalabear.Element) Digest {
 	}
 
 	var res Digest
-	copy(res[:], state[:DIGEST_NB_ELEMENTS])
+	copy(res[:], state[:DigestNbElements])
 	return res
 }
 

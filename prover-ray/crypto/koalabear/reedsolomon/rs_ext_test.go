@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	ext "github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poly"
 )
 
@@ -54,7 +55,7 @@ func TestEncodeExt(t *testing.T) {
 	p := make(poly.ExtPolynomial, len(coeffs))
 	copy(p, coeffs)
 	domainD.FFTExt6(p, fft.DIF)
-	fft.BitReverse(p)
+	utils.BitReverse(p)
 
 	encoder := NewEncoder(8)
 	encoded := encoder.EncodeExt(p, domainD)
