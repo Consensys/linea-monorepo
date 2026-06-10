@@ -8,7 +8,7 @@ pub const zkvm_poseidon_hash = extern struct {
 
 // Poseidon (1) in-line assembly call
 // Poseidon IS NOT part of the standardized zkvm interface
-pub fn zkvm_poseidon(data: [*c]const u8, len: usize, output: [*c]zkvm_poseidon_hash) zkvm_status {
+pub fn zkvmPoseidon(data: [*c]const u8, len: usize, output: [*c]zkvm_poseidon_hash) custom_std.zkvm_status {
     if (data == null or output == null or len == 0) {
         custom_std.panic();
     }
