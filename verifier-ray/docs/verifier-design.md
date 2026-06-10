@@ -75,7 +75,7 @@ openings via `ctx.rounds[i].cells`. It never touches the transcript.
 For each module it:
 
 1. Reads `merge_coin` (α) and `eval_coin` (r) from `ctx.all_coins` at the
-   offsets fixed by the compiled system.
+   per-module `merge_coin_index` / `eval_coin_index` fixed by the compiled system.
 2. Computes the domain annihilator `Z_H(r) = r^n − 1`.
 3. Evaluates the expression DAG, resolving `coin_value`, `cell_value`,
    `column_claim`, and `constant` leaves.
@@ -96,5 +96,23 @@ For each module it:
 The sub-verifier contract is now: **given pre-derived coins and cell openings,
 check the mathematical identity. Nothing else.**
 
+`vanishing.verify` is a narrow, testable unit: give it a system and proof data,
+it checks constraint identity. Adding a future sub-verifier (logderiv, rangecheck) follows the
+same pattern — each verifier stays focused on its own identity check, while
+protocol-level and codegen-level invariants are validated once, at the right
+layer.
+
 To add a new sub-verifier, only `verifier.zig` changes — see the how-to
 comment at the top of that file.
+
+## Validation Layers
+
+Each layer validates only what it has the information and authority to check:
+
+| Layer | Where | What it validates |
+|---|---|---|
+| Code generation | `BuildVanishingSystem` / `BuildCoinRouting` (Go) | Each module's `merge_coin_index` / `eval_coin_index` resolves to an in-range position in the flat coin array (`flatCoinIndex`); `round_coin_counts[0] == 0`. Fails at generation time — no bad Zig is ever emitted. |
+| Protocol spec | `verifier.verify` comptime block (Zig) | `protocol.Spec` internal consistency: `round_coin_counts[0] == 0`, offsets are prefix sums, `total_round_coins` equals the sum. Fires at Zig compile time — zero runtime cost. |
+| Proof data | `replay` + `vanishing.verify` (Zig) | The runtime checks, because proof data is the only thing not known until runtime: round count matches the spec (`InvalidRoundCount`), claim slice lengths match (`InvalidClaimCount`), dynamic module sizes are present and valid (`MissingDynamicModuleSize`, `InvalidModuleSize`), and the quotient identity holds (`QuotientIdentityMismatch`). |
+
+Coin index bounds are **not** re-checked in Zig: the codegen guarantees them, and re-validating generated data adds noise without adding safety.

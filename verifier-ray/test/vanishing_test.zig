@@ -11,14 +11,15 @@ const commitment_mod = verifier_ray.crypto.commitment;
 test "vanishing quotient honest scenarios match prover-ray" {
     try std.testing.expect(fixtures.scenarios.len > 0);
     inline for (fixtures.scenarios) |case| {
+        const spec = case.spec;
         const system = case.system;
         var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
         defer arena.deinit();
         const proof = try buildProofData(arena.allocator(), case.honest);
         var coins = try protocol.replay(
-            system.round_coin_counts[1..],
-            system.round_coin_offsets,
-            system.total_round_coins,
+            spec.round_coin_counts[1..],
+            spec.round_coin_offsets[1..],
+            spec.total_round_coins,
             proof.rounds,
         );
         const ctx = protocol.Context{ .all_coins = &coins, .rounds = proof.rounds };
@@ -36,14 +37,15 @@ test "vanishing quotient invalid scenarios fail identity" {
     inline for (fixtures.scenarios) |case| {
         const invalid = case.invalid orelse continue;
         invalid_case_count += 1;
+        const spec = case.spec;
         const system = case.system;
         var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
         defer arena.deinit();
         const proof = try buildProofData(arena.allocator(), invalid);
         var coins = try protocol.replay(
-            system.round_coin_counts[1..],
-            system.round_coin_offsets,
-            system.total_round_coins,
+            spec.round_coin_counts[1..],
+            spec.round_coin_offsets[1..],
+            spec.total_round_coins,
             proof.rounds,
         );
         const ctx = protocol.Context{ .all_coins = &coins, .rounds = proof.rounds };
@@ -64,6 +66,7 @@ test "dynamic vanishing module sizes are required and validated" {
     comptime var dynamic_case_count: usize = 0;
     var wrong_size_failures: usize = 0;
     inline for (fixtures.scenarios) |case| {
+        const spec = case.spec;
         const system = case.system;
         if (system.dynamic_module_count == 0) continue;
         dynamic_case_count += 1;
@@ -73,9 +76,9 @@ test "dynamic vanishing module sizes are required and validated" {
 
         const valid = try buildProofData(arena.allocator(), case.honest);
         var coins = try protocol.replay(
-            system.round_coin_counts[1..],
-            system.round_coin_offsets,
-            system.total_round_coins,
+            spec.round_coin_counts[1..],
+            spec.round_coin_offsets[1..],
+            spec.total_round_coins,
             valid.rounds,
         );
         const ctx = protocol.Context{ .all_coins = &coins, .rounds = valid.rounds };
@@ -112,20 +115,6 @@ test "dynamic vanishing module sizes are required and validated" {
     // Q(r) = 0 simultaneously), so not every case necessarily produces a
     // mismatch. Assert at least one case does to confirm the check is live.
     try std.testing.expect(wrong_size_failures > 0);
-}
-
-test "vanishing verify rejects empty systems before reading coin offsets" {
-    try std.testing.expectError(
-        error.InvalidRoundCount,
-        vanishing.verify(.{ .modules = &.{} }, .{
-            .ctx = .{
-                .all_coins = &[_]protocol.Coin{},
-                .rounds = &[_]protocol.RoundMessage{},
-            },
-            .witness_claims = &[_]ext.Ext{},
-            .quotient_claims = &[_]ext.Ext{},
-        }),
-    );
 }
 
 const ProofData = struct {

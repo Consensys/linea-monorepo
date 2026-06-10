@@ -25,17 +25,14 @@ func IsUnsupportedExpression(err error) bool {
 }
 
 type NamedVanishingSystem struct {
-	Name   string
-	System VanishingSystem
+	Name    string
+	System  VanishingSystem
+	Routing CoinRouting
 }
 
 type VanishingSystem struct {
 	SourceName          string
 	Modules             []VanishingModule
-	RoundCoinCounts     []int
-	RoundCoinOffsets    []int
-	MaxRoundCoins       int
-	TotalRoundCoins     int
 	DynamicModuleCount  int
 	TotalWitnessClaims  int
 	TotalQuotientClaims int
@@ -53,6 +50,8 @@ type VanishingModule struct {
 	Expressions        []ExprNode
 	Buckets            []VanishingBucket
 	WitnessClaimOffset int
+	MergeCoinIndex     int
+	EvalCoinIndex      int
 }
 
 type VanishingBucket struct {
@@ -117,15 +116,7 @@ type viewKey struct {
 // and converts them to the compact data representation consumed by Zig.
 func BuildVanishingSystem(sys *wiop.System, routing CoinRouting) (VanishingSystem, error) {
 	out := VanishingSystem{
-		SourceName:       sys.Context.Path(),
-		RoundCoinCounts:  routing.RoundCoinCounts,
-		RoundCoinOffsets: routing.RoundCoinOffsets,
-		TotalRoundCoins:  routing.TotalRoundCoins,
-	}
-	for _, count := range routing.RoundCoinCounts {
-		if count > out.MaxRoundCoins {
-			out.MaxRoundCoins = count
-		}
+		SourceName: sys.Context.Path(),
 	}
 	dynamicIndices := map[*wiop.Module]int{}
 
@@ -162,7 +153,7 @@ func BuildVanishingSystem(sys *wiop.System, routing CoinRouting) (VanishingSyste
 				out.TotalQuotientClaims += len(bucket.QuotientClaims)
 
 				for _, v := range bucket.Vanishings {
-					exprIdx, err := appendExpr(&module, views, out.RoundCoinOffsets, v.Expression)
+					exprIdx, err := appendExpr(&module, views, routing.RoundCoinOffsets, v.Expression)
 					if err != nil {
 						return VanishingSystem{}, err
 					}
@@ -175,12 +166,43 @@ func BuildVanishingSystem(sys *wiop.System, routing CoinRouting) (VanishingSyste
 				module.Buckets = append(module.Buckets, b)
 			}
 
+			mergeIdx, err := flatCoinIndex(routing, verifier.MergeCoin)
+			if err != nil {
+				return VanishingSystem{}, fmt.Errorf("module %q merge coin: %w", module.SourceName, err)
+			}
+			evalIdx, err := flatCoinIndex(routing, verifier.EvalCoin)
+			if err != nil {
+				return VanishingSystem{}, fmt.Errorf("module %q eval coin: %w", module.SourceName, err)
+			}
+			module.MergeCoinIndex = mergeIdx
+			module.EvalCoinIndex = evalIdx
+
 			out.Modules = append(out.Modules, module)
 		}
 	}
 
 	out.DynamicModuleCount = len(dynamicIndices)
 	return out, nil
+}
+
+// flatCoinIndex returns the absolute index of coin in the flat all_coins slice
+// described by routing. It reads the round index and within-round position
+// directly from coin.Context.ID, so it is correct regardless of which rounds
+// the vanishing compiler chose for merge and eval coins.
+func flatCoinIndex(routing CoinRouting, coin *wiop.CoinField) (int, error) {
+	roundIdx := coin.Context.ID.Slot()
+	posInRound := coin.Context.ID.Position()
+	if roundIdx >= len(routing.RoundCoinOffsets) {
+		return 0, fmt.Errorf("round index %d out of range (routing has %d rounds)", roundIdx, len(routing.RoundCoinOffsets))
+	}
+	if posInRound >= routing.RoundCoinCounts[roundIdx] {
+		return 0, fmt.Errorf("position %d >= round %d coin count %d", posInRound, roundIdx, routing.RoundCoinCounts[roundIdx])
+	}
+	idx := routing.RoundCoinOffsets[roundIdx] + posInRound
+	if idx >= routing.TotalRoundCoins {
+		return 0, fmt.Errorf("flat index %d >= total_round_coins %d", idx, routing.TotalRoundCoins)
+	}
+	return idx, nil
 }
 
 func appendExpr(module *VanishingModule, views map[viewKey]int, roundCoinOffsets []int, expr wiop.Expression) (int, error) {

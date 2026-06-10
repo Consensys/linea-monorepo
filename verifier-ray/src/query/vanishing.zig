@@ -6,8 +6,6 @@ pub const Error = error{
     MissingDynamicModuleSize,
     InvalidModuleSize,
     InvalidClaimCount,
-    InvalidRoundCount,
-    InvalidCoinCount,
     QuotientIdentityMismatch,
 };
 
@@ -61,16 +59,12 @@ pub const Module = struct {
     expressions: []const ExprNode,
     buckets: []const Bucket,
     witness_claim_offset: usize,
+    merge_coin_index: usize,
+    eval_coin_index: usize,
 };
 
 pub const System = struct {
     modules: []const Module,
-    round_coin_counts: []const usize = &.{},
-    round_coin_offsets: []const usize = &.{},
-    /// Maximum coins squeezed in any single round. Must be at least `modules.len`
-    /// so that each module receives one merge coin and one eval coin per round.
-    max_round_coins: usize = 0,
-    total_round_coins: usize = 0,
     dynamic_module_count: usize = 0,
     total_witness_claims: usize = 0,
     total_quotient_claims: usize = 0,
@@ -89,30 +83,9 @@ pub const CheckInput = struct {
 pub fn verify(comptime system: System, input: CheckInput) Error!void {
     if (input.witness_claims.len != system.total_witness_claims) return error.InvalidClaimCount;
     if (input.quotient_claims.len != system.total_quotient_claims) return error.InvalidClaimCount;
-    if (input.module_sizes.len < system.dynamic_module_count) return error.MissingDynamicModuleSize;
-    if (system.round_coin_counts.len == 0) return error.InvalidRoundCount;
-    if (system.round_coin_offsets.len != system.round_coin_counts.len) return error.InvalidRoundCount;
-    if (input.ctx.rounds.len != system.round_coin_counts.len - 1) return error.InvalidRoundCount;
-    if (system.round_coin_counts[0] != 0) return error.InvalidCoinCount;
-    if (system.max_round_coins < system.modules.len) return error.InvalidCoinCount;
-    if (input.ctx.all_coins.len != system.total_round_coins) return error.InvalidCoinCount;
-    if (system.modules.len == 0) {
-        if (system.total_round_coins != 0) return error.InvalidCoinCount;
-        return;
-    }
-    if (system.round_coin_counts.len < 2) return error.InvalidRoundCount;
-
-    const merge_coin_offset = system.round_coin_offsets[system.round_coin_offsets.len - 2];
-    const eval_coin_offset = system.round_coin_offsets[system.round_coin_offsets.len - 1];
-    const merge_coin_count = system.round_coin_counts[system.round_coin_counts.len - 2];
-    const eval_coin_count = system.round_coin_counts[system.round_coin_counts.len - 1];
-    if (merge_coin_count < system.modules.len or eval_coin_count < system.modules.len) return error.InvalidCoinCount;
-    if (merge_coin_offset + merge_coin_count > input.ctx.all_coins.len) return error.InvalidCoinCount;
-    if (eval_coin_offset + eval_coin_count > input.ctx.all_coins.len) return error.InvalidCoinCount;
-
-    inline for (system.modules, 0..) |module, module_index| {
-        const merge_coin = input.ctx.all_coins[merge_coin_offset + module_index];
-        const eval_coin = input.ctx.all_coins[eval_coin_offset + module_index];
+    inline for (system.modules) |module| {
+        const merge_coin = input.ctx.all_coins[module.merge_coin_index];
+        const eval_coin = input.ctx.all_coins[module.eval_coin_index];
         switch (module.size) {
             .static => |n| try verifyModule(module, n, 0, input, merge_coin, eval_coin),
             .dynamic => |size_index| {

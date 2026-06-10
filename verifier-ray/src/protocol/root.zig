@@ -50,10 +50,10 @@ pub const Context = struct {
 /// Parameters expected by callers:
 ///   `advance_counts`  — `round_coin_counts[1..]`: squeeze counts starting from
 ///                       round 1 (round 0 always produces 0 coins).
-///   `coin_offsets`    — full `round_coin_offsets` (unsliced); the loop uses
-///                       `coin_offsets[advance_index + 1]`, so the slice must
-///                       have length `advance_counts.len + 1`.
-///   `total_coins`     — `system.total_round_coins`; length of the returned slice.
+///   `coin_offsets`    — `round_coin_offsets[1..]`: start positions for each
+///                       round's coins; same length as `advance_counts`.
+///   `total_coins`     — `round_coin_offsets[0].total_round_coins`; length of the
+///                       returned array.
 pub fn replay(
     comptime advance_counts: []const usize,
     comptime coin_offsets: []const usize,
@@ -62,10 +62,10 @@ pub fn replay(
 ) Error![total_coins]Coin {
     if (rounds.len != advance_counts.len) return error.InvalidRoundCount;
 
-    comptime if (coin_offsets.len != advance_counts.len + 1)
-        @compileError("coin_offsets must have length advance_counts.len + 1");
+    comptime if (coin_offsets.len != advance_counts.len)
+        @compileError("coin_offsets must have the same length as advance_counts");
     comptime for (0..advance_counts.len) |i| {
-        if (coin_offsets[i + 1] + advance_counts[i] > total_coins)
+        if (coin_offsets[i] + advance_counts[i] > total_coins)
             @compileError("coin_offsets/advance_counts inconsistent with total_coins");
     };
 
@@ -73,7 +73,7 @@ pub fn replay(
     var all_coins: [total_coins]Coin = undefined;
 
     inline for (0..advance_counts.len) |advance_index| {
-        const offset = coin_offsets[advance_index + 1];
+        const offset = coin_offsets[advance_index];
         const count = advance_counts[advance_index];
         Sampler(advance_counts).advanceRoundWithMessage(advance_index, &transcript, rounds[advance_index], all_coins[offset..][0..count]);
     }

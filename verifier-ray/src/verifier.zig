@@ -76,12 +76,27 @@ pub fn verify(
     proof: ProofData,
 ) !void {
     // Step 1 — replay transcript, derive all coins.
-    // round_coin_counts[0] must be 0: no coins are derived before round 0 is absorbed.
-    comptime if (spec.round_coin_counts.len > 0 and spec.round_coin_counts[0] != 0)
-        @compileError("round_coin_counts[0] must be 0: coins cannot be derived before the first round is absorbed");
+    // Validate spec internal consistency at comptime: both spec and systems are
+    // comptime parameters, so all structural checks can fire at compile time.
+    comptime {
+        if (spec.round_coin_counts.len == 0)
+            @compileError("spec: round_coin_counts must have at least one entry (the pre-round-1 phase)");
+        if (spec.round_coin_counts[0] != 0)
+            @compileError("spec: round_coin_counts[0] must be 0 — no coins are derived before the first round is absorbed");
+        if (spec.round_coin_offsets.len != spec.round_coin_counts.len)
+            @compileError("spec: round_coin_offsets and round_coin_counts must have equal length");
+        var expected_offset: usize = 0;
+        for (spec.round_coin_counts, spec.round_coin_offsets) |count, offset| {
+            if (offset != expected_offset)
+                @compileError("spec: round_coin_offsets must be prefix sums of round_coin_counts");
+            expected_offset += count;
+        }
+        if (spec.total_round_coins != expected_offset)
+            @compileError("spec: total_round_coins must equal sum of round_coin_counts");
+    }
     var all_coins = try protocol.replay(
         spec.round_coin_counts[1..],
-        spec.round_coin_offsets,
+        spec.round_coin_offsets[1..],
         spec.total_round_coins,
         proof.rounds,
     );
