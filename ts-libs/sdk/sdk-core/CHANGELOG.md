@@ -1,5 +1,14 @@
 # @lfdt-lineth/sdk-core
 
+## 2.0.0 (2026-06-10)
+
+- chore(packages): rename npm package scope (#3324) (eed25b490)
+- chore(misc): rename Consensys/linea-monorepo references to LFDT-Lineth/lineth-monorepo (#3297) (df3de7345)
+- chore(deps): update Jest to 30.4 (#3077) (ba16ce60d)
+- docs: auto-fix markdown audit findings (weekly audit 2026-05-11) (#3046) (a3e1772a3)
+- chore(2954): move sdk under ts-libs (#3014) (ee9e4e03d)
+
+
 ## 1.0.0 (2026-04-10)
 
 Initial release of `@lfdt-lineth/sdk-core`, the framework-agnostic foundation for Linea bridge SDKs.
