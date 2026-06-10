@@ -324,38 +324,18 @@ zkc exec -q act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
 ## Default memory layout
 
 ```
-0x00000000  ────────────────────────────────────────── 
-    ↓        ↓ PROGRAM grows upward (up to 128 MiB)
-0x07FFFFFF  ──────────────────────────────────────────  
-0x08000000  ──────────────────────────────────────────  _heap_start
-    ↓        ↓ HEAP grows upward    (up to 8 MiB)
-0x08800000  ──────────────────────────────────────────  _heap_end / _stack_end
-    ↑        ↑ STACK grows downward (up to 8 MiB)
-0x09000000  ──────────────────────────────────────────  _stack_start
-0x09000000  ──────────────────────────────────────────  _input_start
-    ↓        ↓ IN grows upward      (up to 1 GiB)
-0x49000000  ──────────────────────────────────────────  
-```
-
-The generated linker script exposes `_heap_start`, `_heap_end`, `_stack_end`, `_stack_start`, and `_input_start`.
-Freestanding programs do not get automatic stack or heap overflow checks from the linker script.
-Programs that need those guarantees must implement them explicitly: stack checks should compare `sp`
-against `_stack_end`, and heap allocators should check allocations against `_heap_end`.
-
-## Proposal for new memory layout and naming
-
-```
-_____________________________________ _stack_end = 0
+_____________________________________ 0x00000000 ≡ STACK_ORIGIN * = _stack_end
  STACK:   ↑ 8 MiB STACK_LENGTH   
-_____________________________________ STACK_ORIGIN * = _stack_start = PROGRAM_ORIGIN * = _program_start
+_____________________________________ 0x00800000 ≡ _stack_start = PROGRAM_ORIGIN * = _program_start
  PROGRAM: ↓ 128 MiB PROGRAM_LENGTH 
-_____________________________________ _program_end = IN_ORIGIN *
+_____________________________________ 0x08800000 ≡ _program_end = IN_ORIGIN *
  IN:      ↓ 1 GiB: IN_LENGTH
-_____________________________________ _in_end = HEAP_ORIGIN * = _heap_start
+_____________________________________ 0x48800000 ≡ _in_end = HEAP_ORIGIN * = _heap_start
  HEAP:    ↓ ∞ : HEAP_LENGTH
-_____________________________________ _heap_end = ∞ (physical memory limitation)
+_____________________________________ ∞          ≡ _heap_end  (physical memory limitation)
 
 * = Paramaters that can be set, all others are derived.
+≡ = Default values.
 STACK_ORIGIN needs to be equal to PROGRAM_ORIGIN.
 The order of memory regions is fixed.
 ```
