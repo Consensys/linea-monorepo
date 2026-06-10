@@ -43,24 +43,58 @@ pub fn build(b: *std.Build) void {
     // zkvm_provide.zig's `.native` arms). It is std-only, so it builds for freestanding rv64im.
     const zesu_zkvm = b.dependency("zesu_zkvm", .{});
     const zesu_accel_src = zesu_zkvm.path("linea/src/runtime/stdlibs_accel.zig");
-    obj.root_module.addImport("zesu_zkvm_accel", b.createModule(.{
+    const zesu_accel_mod = b.createModule(.{
         .root_source_file = zesu_accel_src,
         .target = target,
         .optimize = optimize,
-    }));
+    });
+    obj.root_module.addImport("zesu_zkvm_accel", zesu_accel_mod);
     // Linea zkVM wrappers (custom-opcode accelerators, sibling path in the monorepo). zkvm_provide.zig
     // @exports the zkvm_* symbols these define (currently keccak); the set of wrappers is what's
     // intercepted via opcode. riscv only — the wrappers emit RISC-V custom instructions, so they're
     // imported on the guest object.
     const linea_accel_src = b.path("../../arithmetization/src/wrappers/root.zig");
-    obj.root_module.addImport("linea_zkvm_accel", b.createModule(.{
+    const linea_accel_mod = b.createModule(.{
         .root_source_file = linea_accel_src,
         .target = target,
         .optimize = optimize,
-    }));
+    });
+    obj.root_module.addImport("linea_zkvm_accel", linea_accel_mod);
     common.clearFreestandingNativeLinkage(b, obj.root_module);
     const install_obj = b.addInstallFile(obj.getEmittedBin(), b.fmt("lib/{s}.o", .{guest_name}));
     b.getInstallStep().dependOn(&install_obj.step);
+
+    // ── Runnable ZkC ELF (opt-in: `zig build elf`) ────────────────────────────
+    // The object above is relocatable: the prover supplies _start and does the final link. For a
+    // standalone run in the ZkC interpreter we instead need a fully-linked ELF. Same root module and
+    // imports as the object, plus the three things a final link needs:
+    //   • start.s          — entry _start: set sp from the linker script, call main.
+    //   • linker_script.ld — the shared rv64im memory layout (program @0, stack, input @0x08800000).
+    //   • Zig compiler_rt  — Zig links its own soft-float __udivti3 / mem* (the GNU libgcc multilib is
+    //                        double-float and won't link against this soft-float object).
+    // Build with `zig build elf` (→ zig-out/bin/), then convert+run via arithmetization/src/test/
+    // examples (`make elf-exec BIN_EXT=… IN_BYTES=…`).
+    // NOTE: linker_script.ld's IN origin assumes the default -Dinput-offset (0x08800000); a custom
+    // offset would need a matching linker script.
+    const elf_step = b.step("elf", "Link the guest into a runnable ZkC ELF (entry _start + linker script)");
+    const exe = b.addExecutable(.{
+        .name = guest_name,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(source),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    exe.root_module.code_model = .medium;
+    addExecutionImports(exe.root_module, zesuImports(zesu_guest));
+    exe.root_module.addImport("guest_options", guest_options_mod);
+    exe.root_module.addImport("zesu_zkvm_accel", zesu_accel_mod);
+    exe.root_module.addImport("linea_zkvm_accel", linea_accel_mod);
+    common.clearFreestandingNativeLinkage(b, exe.root_module);
+    exe.root_module.addAssemblyFile(b.path("src/start.s"));
+    exe.setLinkerScript(b.path("linker_script.ld"));
+    exe.link_gc_sections = true;
+    elf_step.dependOn(&b.addInstallArtifact(exe, .{}).step);
 
     // ── Native test ───────────────────────────────────────────────────────────
     // Runs the thin wrapper (vanilla zesu stateless execution) on the host against a real
