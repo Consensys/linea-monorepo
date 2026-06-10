@@ -14,7 +14,7 @@ include "../utils/constants.zkc"
 fn read_8<ram>(address:Address) -> (value:u8) {
     var word_idx:Address = address >> 2
     var offset:Address = address & 3
-    value = ((ram[word_idx] >> (offset*8)) & 0xFF) as u8
+    value = ((ram[word_idx] >> (offset * 8)) & 0xFF) as u8
 }
 
 fn read_16<ram>(address:Address) -> (value:u16) {
