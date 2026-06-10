@@ -9,7 +9,7 @@ import (
 	ext "github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/commitment"
-	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamir_refactor"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/hash"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/merkle"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/parallel"
@@ -205,10 +205,10 @@ type Proof struct {
 	// Running-polynomial FRI path
 	FRIRoots      []hash.Digest // Merkle roots for running poly T_1..T_{r-1}
 	FinalField    field.Kind
-	FinalPolyBase []koalabear.Element               // populated when FinalField == field.KindBase
-	FinalPolyExt  []ext.E6                          // populated when FinalField == field.KindExt
-	FRIQueries    []Query                           // len = NumQueries
-	PoW           map[string]fiatshamir.ProofOfWork // proof of work in case grinding has nbBits > 0
+	FinalPolyBase []koalabear.Element                        // populated when FinalField == field.KindBase
+	FinalPolyExt  []ext.E6                                   // populated when FinalField == field.KindExt
+	FRIQueries    []Query                                    // len = NumQueries
+	PoW           map[string]fiatshamir_refactor.ProofOfWork // proof of work in case grinding has nbBits > 0
 }
 
 // FullDomainGenerator returns the generator of the full evaluation domain (layer 0, size N).
@@ -259,7 +259,7 @@ func (p Params) BuildLevelTreeExt(layer []ext.E6) (*merkle.Tree, error) {
 // contain one evaluation vector on exactly one rail. levels is sorted in-place
 // in decreasing order of D.
 // ts must already have been initialised with any prior-round context.
-func Prove(p Params, levels []Level, ts *fiatshamir.Transcript) (Proof, []int, error) {
+func Prove(p Params, levels []Level, ts *fiatshamir_refactor.Transcript) (Proof, []int, error) {
 	sort.Slice(levels, func(i, j int) bool { return levels[i].D > levels[j].D })
 
 	plan, err := buildProvePlan(p, levels)
@@ -335,7 +335,7 @@ func buildProvePlan(p Params, levels []Level) (provePlan, error) {
 	return plan, nil
 }
 
-func registerChallenges(p Params, numExtraLevels int, ts *fiatshamir.Transcript) {
+func registerChallenges(p Params, numExtraLevels int, ts *fiatshamir_refactor.Transcript) {
 	if numExtraLevels > 0 {
 		ts.NewChallenge(gammaName())
 	}
@@ -347,7 +347,7 @@ func registerChallenges(p Params, numExtraLevels int, ts *fiatshamir.Transcript)
 	}
 }
 
-func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcript) (Proof, []int, error) {
+func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamir_refactor.Transcript) (Proof, []int, error) {
 	// ── Gamma computation (all level roots, including level 0, bound upfront) ─
 	gammas := make([]koalabear.Element, plan.numLevels)
 	if plan.numLevels > 1 {
@@ -495,7 +495,7 @@ func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcri
 	return prf, queryPositions, nil
 }
 
-func proveExt(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcript) (Proof, []int, error) {
+func proveExt(p Params, levels []Level, plan provePlan, ts *fiatshamir_refactor.Transcript) (Proof, []int, error) {
 	// ── Gamma computation (all level roots, including level 0, bound upfront) ─
 	gammas := make([]ext.E6, plan.numLevels)
 	if plan.numLevels > 1 {
@@ -647,7 +647,7 @@ func proveExt(p Params, levels []Level, plan provePlan, ts *fiatshamir.Transcrip
 // called (i.e. decreasing D).
 //
 // ts must be in the same state as when Prove was called.
-func Verify(p Params, levelRoots []hash.Digest, levelDs []int, prf Proof, ts *fiatshamir.Transcript) error {
+func Verify(p Params, levelRoots []hash.Digest, levelDs []int, prf Proof, ts *fiatshamir_refactor.Transcript) error {
 	if len(levelDs) == 0 {
 		return fmt.Errorf("fri: Verify: at least one level required")
 	}
@@ -730,7 +730,7 @@ func Verify(p Params, levelRoots []hash.Digest, levelDs []int, prf Proof, ts *fi
 	return verifyBase(p, levelRoots, levelRootsExtra, levelAtRound, roots, prf, ts)
 }
 
-func verifyBase(p Params, levelRoots, levelRootsExtra []hash.Digest, levelAtRound map[int]int, roots []hash.Digest, prf Proof, ts *fiatshamir.Transcript) error {
+func verifyBase(p Params, levelRoots, levelRootsExtra []hash.Digest, levelAtRound map[int]int, roots []hash.Digest, prf Proof, ts *fiatshamir_refactor.Transcript) error {
 	numLevels := len(levelRoots)
 	numExtraLevels := numLevels - 1
 
@@ -804,7 +804,7 @@ func verifyBase(p Params, levelRoots, levelRootsExtra []hash.Digest, levelAtRoun
 	return nil
 }
 
-func verifyExt(p Params, levelRoots, levelRootsExtra []hash.Digest, levelAtRound map[int]int, roots []hash.Digest, prf Proof, ts *fiatshamir.Transcript) error {
+func verifyExt(p Params, levelRoots, levelRootsExtra []hash.Digest, levelAtRound map[int]int, roots []hash.Digest, prf Proof, ts *fiatshamir_refactor.Transcript) error {
 	numLevels := len(levelRoots)
 	numExtraLevels := numLevels - 1
 
@@ -881,14 +881,14 @@ func gammaName() string      { return "fri_gamma" }
 func foldName(j int) string  { return fmt.Sprintf("fri_fold_%d", j) }
 func queryName(k int) string { return fmt.Sprintf("fri_query_%d", k) }
 
-func computeProverFoldChallenge(ts *fiatshamir.Transcript, name string, grinding int) ([8]koalabear.Element, error) {
+func computeProverFoldChallenge(ts *fiatshamir_refactor.Transcript, name string, grinding int) ([8]koalabear.Element, error) {
 	if grinding == 0 {
 		return ts.ComputeChallenge(name)
 	}
-	return ts.ComputeChallenge(name, fiatshamir.WithGrinding(grinding))
+	return ts.ComputeChallenge(name, fiatshamir_refactor.WithGrinding(grinding))
 }
 
-func computeVerifierFoldChallenge(ts *fiatshamir.Transcript, name string, grinding int, proofsOfWork map[string]fiatshamir.ProofOfWork) ([8]koalabear.Element, error) {
+func computeVerifierFoldChallenge(ts *fiatshamir_refactor.Transcript, name string, grinding int, proofsOfWork map[string]fiatshamir_refactor.ProofOfWork) ([8]koalabear.Element, error) {
 	if grinding == 0 {
 		return ts.ComputeChallenge(name)
 	}
@@ -900,14 +900,14 @@ func computeVerifierFoldChallenge(ts *fiatshamir.Transcript, name string, grindi
 	if err := ts.SetProofOfWork(name, pow); err != nil {
 		return [8]koalabear.Element{}, err
 	}
-	return ts.ComputeChallenge(name, fiatshamir.WithGrinding(grinding))
+	return ts.ComputeChallenge(name, fiatshamir_refactor.WithGrinding(grinding))
 }
 
-func recordFoldProofsOfWork(p Params, prf *Proof, ts *fiatshamir.Transcript) error {
+func recordFoldProofsOfWork(p Params, prf *Proof, ts *fiatshamir_refactor.Transcript) error {
 	if p.grinding == 0 || p.numRounds == 0 {
 		return nil
 	}
-	prf.PoW = make(map[string]fiatshamir.ProofOfWork, p.numRounds)
+	prf.PoW = make(map[string]fiatshamir_refactor.ProofOfWork, p.numRounds)
 	for j := 0; j < p.numRounds; j++ {
 		name := foldName(j)
 		pow, ok := ts.ProofOfWork(name)

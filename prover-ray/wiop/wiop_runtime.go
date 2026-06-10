@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/hash"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/utils"
 )
@@ -33,7 +31,7 @@ type Runtime struct {
 	// fs is the Fiat-Shamir state. It is updated with column and cell
 	// assignments at the end of each round and used to derive coin values for
 	// the next round.
-	fs *fiatshamir.Transcript
+	fs *fiatshamir.FiatShamir
 	// columns maps each column's [ObjectID] to its concrete vector assignment.
 	columns map[ObjectID]*ConcreteVector
 	// cells maps each cell's [ObjectID] to its concrete scalar value.
@@ -57,10 +55,10 @@ type Runtime struct {
 //
 // Panics if sys has no interactive rounds (len(sys.Rounds) == 0).
 func NewRuntime(sys *System) Runtime {
-	poseidon2Hasher := hash.NewPoseidon2SpongeHasher()
+
 	run := Runtime{
 		System:       sys,
-		fs:           fiatshamir.NewTranscript(&poseidon2Hasher),
+		fs:           fiatshamir.NewFiatShamir(),
 		columns:      make(map[ObjectID]*ConcreteVector),
 		cells:        make(map[ObjectID]field.Gen),
 		coins:        make(map[ObjectID]field.Gen),
@@ -127,34 +125,20 @@ func (run *Runtime) AdvanceRound() {
 			continue
 		}
 		cv := run.GetColumnAssignment(col) // panics if unassigned
-
-		if cv.Plain.IsBase() {
-			run.fs.Bind("current challenge", cv.Plain.AsBase())
-		} else {
-			cvExt := cv.Plain.AsExt()
-			for _, e := range cvExt {
-				run.fs.Bind("current challenge", []koalabear.Element{e.B0.A0})
-				run.fs.Bind("current challenge", []koalabear.Element{e.B0.A1})
-				run.fs.Bind("current challenge", []koalabear.Element{e.B1.A0})
-				run.fs.Bind("current challenge", []koalabear.Element{e.B1.A1})
-				run.fs.Bind("current challenge", []koalabear.Element{e.B2.A0})
-				run.fs.Bind("current challenge", []koalabear.Element{e.B2.A1})
-			}
-		}
-		//run.fs.UpdateSV(cv.Plain)
+		run.fs.UpdateSV(cv.Plain)
 	}
 
 	// Feed all cell values into the Fiat-Shamir state.
-	// for _, cell := range run.currentRound.Cells {
-	// 	v, ok := run.cells[cell.Context.ID]
-	// 	if !ok {
-	// 		panic(fmt.Sprintf(
-	// 			"wiop: AdvanceRound: cell %q not assigned before advancing round",
-	// 			cell.Context.Path(),
-	// 		))
-	// 	}
-	// 	run.fs.UpdateGeneric(v)
-	// }
+	for _, cell := range run.currentRound.Cells {
+		v, ok := run.cells[cell.Context.ID]
+		if !ok {
+			panic(fmt.Sprintf(
+				"wiop: AdvanceRound: cell %q not assigned before advancing round",
+				cell.Context.Path(),
+			))
+		}
+		run.fs.UpdateGeneric(v)
+	}
 
 	run.currentRound = next
 
