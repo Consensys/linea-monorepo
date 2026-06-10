@@ -73,3 +73,15 @@ runs:
         key: riscv-guests-zig-pkg-${{ hashFiles('riscv-guests/**/build.zig.zon') }}
         restore-keys: |
           riscv-guests-zig-pkg-
+
+    # Compile cache (the Makefiles pass --cache-dir <guest>/.zig-cache). Restoring it turns the
+    # multi-minute zesu graph rebuild into a no-op; zig's cache is content-addressed, so a stale
+    # restore (restore-keys fallback) still reuses every unchanged object. Keys hash only tracked
+    # build inputs — zig-pkg/ is populated at run time and must stay out of the key.
+    - name: Cache Zig compile cache
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: riscv-guests/*/.zig-cache
+        key: riscv-guests-zig-cache-${{ hashFiles('riscv-guests/.zigversion', 'riscv-guests/build_common/**', 'riscv-guests/*/build.zig', 'riscv-guests/*/build.zig.zon', 'riscv-guests/*/src/**') }}
+        restore-keys: |
+          riscv-guests-zig-cache-
