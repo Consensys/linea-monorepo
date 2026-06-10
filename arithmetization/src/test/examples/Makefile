@@ -3,7 +3,7 @@
 # Moreover, ABI being LP64 (soft-float) is relevant only for float numbers, which we do not use, so it can be omitted as well.
 
 # Declare all targets as phony to prevent conflicts with files of the same name
-.PHONY: exec debug compile elf-exec elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-build vector-json vector-exec keccak-rust-build keccak-rust-json keccak-rust-exec blake-rust-build blake-rust-json blake-rust-exec act4-build act4-exec require-test require-src require-bin-ext require-vector-file require-n-vectors require-vector-build-artifacts require-vector-json-mode
+.PHONY: exec debug compile elf-exec elf-debug elf-to-json install-zkc zkc-exec zkc-debug clean clean-all linker-script verify-elf vector-build vector-json vector-exec keccak-rust-build keccak-rust-json keccak-rust-exec blake-rust-build blake-rust-json blake-rust-exec act4-build act4-exec require-test require-src require-bin-ext require-vector-file require-n-vectors require-vector-build-artifacts require-vector-json-mode
 
 # Keep validation, build, and execution targets running in order
 .NOTPARALLEL:
@@ -148,6 +148,10 @@ compile: require-src linker-script
 # Convert and execute an already compiled external ELF
 elf-exec: elf-to-json
 	zkc exec $(ZKC_EXEC_FLAGS) $(JSON_EXT) $(ZKC_MAIN)
+
+# Convert and debug an already compiled external ELF
+elf-debug: elf-to-json
+	zkc debug $(JSON_EXT) $(ZKC_MAIN)
 
 # Convert an already compiled external ELF to a JSON
 elf-to-json: require-bin-ext
