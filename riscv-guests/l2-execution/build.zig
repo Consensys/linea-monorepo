@@ -42,9 +42,16 @@ pub fn build(b: *std.Build) void {
     // Delegate the in-guest precompile implementations to zesu-zkvm's stdlibs_accel (consumed by
     // zkvm_provide.zig's `.native` arms). It is std-only, so it builds for freestanding rv64im.
     const zesu_zkvm = b.dependency("zesu_zkvm", .{});
-    const accel_src = zesu_zkvm.path("linea/src/runtime/stdlibs_accel.zig");
+    const zesu_accel_src = zesu_zkvm.path("linea/src/runtime/stdlibs_accel.zig");
     obj.root_module.addImport("zesu_zkvm_accel", b.createModule(.{
-        .root_source_file = accel_src,
+        .root_source_file = zesu_accel_src,
+        .target = target,
+        .optimize = optimize,
+    }));
+    // exposing Linea's zkvm wrappers (sibling path in the monorepo)
+    const linea_accel_src = b.path("../../arithmetization/src/wrappers/root.zig");
+    obj.root_module.addImport("linea_zkvm_accel", b.createModule(.{
+        .root_source_file = linea_accel_src,
         .target = target,
         .optimize = optimize,
     }));
@@ -86,7 +93,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
     accel_tests.root_module.addImport("zesu_zkvm_accel", b.createModule(.{
-        .root_source_file = accel_src,
+        .root_source_file = zesu_accel_src,
         .target = native_target,
         .optimize = optimize,
     }));

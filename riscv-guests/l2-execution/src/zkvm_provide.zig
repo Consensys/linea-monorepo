@@ -17,14 +17,15 @@
 //! Only the freestanding RISC-V guest references these (see evm_execution_guest.zig, pulled in for
 //! `builtin.cpu.arch == .riscv64`); the native host build uses Zesu's `default.zig` (C libs).
 
-const accel = @import("zesu_zkvm_accel"); // zesu-zkvm linea/src/runtime/stdlibs_accel.zig
+const zesu_accel = @import("zesu_zkvm_accel"); // zesu-zkvm linea/src/runtime/stdlibs_accel.zig
+const linea_accel = @import("linea_zkvm_accel"); // TODO: comment
 
 pub const Mode = enum { intercept, native };
 
 /// THE TOGGLE TABLE — flip `.native` → `.intercept` once ZkC arithmetizes that precompile.
 /// keccak is intercepted by ZkC; everything else runs in-guest via zesu-zkvm's stdlibs_accel.
 pub const policy = struct {
-    pub const keccak256: Mode = .intercept;
+    pub const keccak256: Mode = .native;
     pub const sha256: Mode = .native;
     pub const secp256k1_verify: Mode = .native;
     pub const secp256k1_ecrecover: Mode = .native;
@@ -60,66 +61,72 @@ const ERR: i32 = 1;
 // referenced, so its `accel.*` call is not compiled in (the prover supplies that symbol instead).
 
 fn keccak256(data: [*]const u8, len: usize, output: *[32]u8) callconv(.c) i32 {
-    accel.keccak256(data[0..len], output);
+    // Our 'zkvm_keccak256' writes into a '*zkvm_keccak256_hash' — an extern struct wrapping
+    // '[32]u8 align(8)'. The 'output' param here is '*[32]u8', a different pointee type with
+    // weaker alignment (implicitly align(1)), so it can't be passed directly. 'hash' gives a
+    // correctly typed, 8-aligned destination; we copy its bytes out to 'output' afterwards.
+    var hash: linea_accel.keccak.zkvm_keccak256_hash = undefined;
+    _ = linea_accel.keccak.zkvm_keccak256(data, len, &hash);
+    output.* = hash.data;
     return OK;
 }
 fn sha256(data: [*]const u8, len: usize, output: *[32]u8) callconv(.c) i32 {
-    accel.sha256(data[0..len], output);
+    zesu_accel.sha256(data[0..len], output);
     return OK;
 }
 fn ripemd160(data: [*]const u8, len: usize, output: *[32]u8) callconv(.c) i32 {
-    accel.ripemd160(data[0..len], output);
+    zesu_accel.ripemd160(data[0..len], output);
     return OK;
 }
 fn secp256k1_ecrecover(msg: *const [32]u8, sig: *const [64]u8, recid: u8, output: *[64]u8) callconv(.c) i32 {
-    return if (accel.ecrecover(msg, sig, recid, output)) OK else ERR;
+    return if (zesu_accel.ecrecover(msg, sig, recid, output)) OK else ERR;
 }
 fn secp256k1_verify(msg: *const [32]u8, sig: *const [64]u8, pubkey: *const [64]u8, verified: *bool) callconv(.c) i32 {
-    accel.secp256k1_verify(msg, sig, pubkey, verified);
+    zesu_accel.secp256k1_verify(msg, sig, pubkey, verified);
     return OK;
 }
 fn secp256r1_verify(msg: *const [32]u8, sig: *const [64]u8, pubkey: *const [64]u8, verified: *bool) callconv(.c) i32 {
-    accel.secp256r1_verify(msg, sig, pubkey, verified);
+    zesu_accel.secp256r1_verify(msg, sig, pubkey, verified);
     return OK;
 }
 fn modexp(base: [*]const u8, base_len: usize, exp: [*]const u8, exp_len: usize, modulus: [*]const u8, mod_len: usize, output: [*]u8) callconv(.c) i32 {
-    return if (accel.modexp(base[0..base_len], exp[0..exp_len], modulus[0..mod_len], output[0..mod_len])) OK else ERR;
+    return if (zesu_accel.modexp(base[0..base_len], exp[0..exp_len], modulus[0..mod_len], output[0..mod_len])) OK else ERR;
 }
 fn bn254_g1_add(p1: *const [64]u8, p2: *const [64]u8, result: *[64]u8) callconv(.c) i32 {
-    return if (accel.bn254_g1_add(p1, p2, result)) OK else ERR;
+    return if (zesu_accel.bn254_g1_add(p1, p2, result)) OK else ERR;
 }
 fn bn254_g1_mul(point: *const [64]u8, scalar: *const [32]u8, result: *[64]u8) callconv(.c) i32 {
-    return if (accel.bn254_g1_mul(point, scalar, result)) OK else ERR;
+    return if (zesu_accel.bn254_g1_mul(point, scalar, result)) OK else ERR;
 }
 fn bn254_pairing(pairs: [*]const Bn254PairingPair, num_pairs: usize, verified: *bool) callconv(.c) i32 {
-    return if (accel.bn254_pairing(pairs[0..num_pairs], verified)) OK else ERR;
+    return if (zesu_accel.bn254_pairing(pairs[0..num_pairs], verified)) OK else ERR;
 }
 fn blake2f(rounds: u32, h: *[64]u8, m: *const [128]u8, t: *const [16]u8, f: u8) callconv(.c) i32 {
-    return if (accel.blake2f(rounds, h, m, t, f)) OK else ERR;
+    return if (zesu_accel.blake2f(rounds, h, m, t, f)) OK else ERR;
 }
 fn kzg_point_eval(commitment: *const [48]u8, z: *const [32]u8, y: *const [32]u8, proof: *const [48]u8, verified: *bool) callconv(.c) i32 {
-    return if (accel.kzg_point_eval(commitment, z, y, proof, verified)) OK else ERR;
+    return if (zesu_accel.kzg_point_eval(commitment, z, y, proof, verified)) OK else ERR;
 }
 fn bls12_g1_add(p1: *const [96]u8, p2: *const [96]u8, result: *[96]u8) callconv(.c) i32 {
-    return if (accel.bls12_g1_add(p1, p2, result)) OK else ERR;
+    return if (zesu_accel.bls12_g1_add(p1, p2, result)) OK else ERR;
 }
 fn bls12_g1_msm(pairs: [*]const Bls12G1MsmPair, num_pairs: usize, result: *[96]u8) callconv(.c) i32 {
-    return if (accel.bls12_g1_msm(pairs[0..num_pairs], result)) OK else ERR;
+    return if (zesu_accel.bls12_g1_msm(pairs[0..num_pairs], result)) OK else ERR;
 }
 fn bls12_g2_add(p1: *const [192]u8, p2: *const [192]u8, result: *[192]u8) callconv(.c) i32 {
-    return if (accel.bls12_g2_add(p1, p2, result)) OK else ERR;
+    return if (zesu_accel.bls12_g2_add(p1, p2, result)) OK else ERR;
 }
 fn bls12_g2_msm(pairs: [*]const Bls12G2MsmPair, num_pairs: usize, result: *[192]u8) callconv(.c) i32 {
-    return if (accel.bls12_g2_msm(pairs[0..num_pairs], result)) OK else ERR;
+    return if (zesu_accel.bls12_g2_msm(pairs[0..num_pairs], result)) OK else ERR;
 }
 fn bls12_pairing(pairs: [*]const Bls12PairingPair, num_pairs: usize, verified: *bool) callconv(.c) i32 {
-    return if (accel.bls12_pairing(pairs[0..num_pairs], verified)) OK else ERR;
+    return if (zesu_accel.bls12_pairing(pairs[0..num_pairs], verified)) OK else ERR;
 }
 fn bls12_map_fp_to_g1(field_element: *const [48]u8, result: *[96]u8) callconv(.c) i32 {
-    return if (accel.bls12_map_fp_to_g1(field_element, result)) OK else ERR;
+    return if (zesu_accel.bls12_map_fp_to_g1(field_element, result)) OK else ERR;
 }
 fn bls12_map_fp2_to_g2(field_element: *const [96]u8, result: *[192]u8) callconv(.c) i32 {
-    return if (accel.bls12_map_fp2_to_g2(field_element, result)) OK else ERR;
+    return if (zesu_accel.bls12_map_fp2_to_g2(field_element, result)) OK else ERR;
 }
 
 // Define (export) exactly the `.native` symbols; `.intercept` ones stay undefined for the prover.
