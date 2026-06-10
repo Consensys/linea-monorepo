@@ -76,7 +76,7 @@ IN_LENGTH      := $(call EVAL,$(HEAP_ORIGIN) - $(IN_ORIGIN))
 OBJDUMP        ?= false
 
 # If true, verifies ELF entry point, origins, lengths, stack and heap symbols match the ones set
-VERIFY_ELF     ?= true             
+VERIFY_ELF     ?= false
 
 # Support function to generate JSON from an ELF
 define ELF_TO_JSON

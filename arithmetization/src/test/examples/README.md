@@ -335,10 +335,7 @@ ___________________________________________ 0x08800000 ≡ _program_end = IN_ORI
 ___________________________________________ 0x48800000 ≡ _in_end = HEAP_ORIGIN * = _heap_start
  HEAP:    ↓ until address-space overflows
 
-* = Parameters that can be set, all others are derived.
+* = Parameters to optionally set, others are derived (all have default values).
 ≡ = Default values.
-SP_START and PROGRAM_ORIGIN are equal by default, but can be configured independently.
 The order of memory regions is fixed.
-The generated linker script exposes `_heap_start`, but not a heap length or upper heap-boundary symbol.
-Runtime allocators must use checked arithmetic to catch heap growth past the address-space limit.
 ```
