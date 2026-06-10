@@ -29,7 +29,7 @@ This measures the RISC-V instruction count for the typed vanishing benchmark gue
 
 | Tool | Value |
 | --- | --- |
-| Git commit | `4eb6413a7` |
+| Git commit | `73f5d3bcf` |
 | Zig | `0.16.0` |
 | zkc | `mod	github.com/consensys/go-corset	v1.2.18-0.20260521022840-414e7b73971e` |
 | zkc main | `bench/riscv_main_bench.zkc` |

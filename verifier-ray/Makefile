@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: ci help fmt fmt-zig fmt-codegen fmt-testdata-generate fmt-bench build build-zig build-release build-r5 run run-passing run-failing run-failing-expected test test-zig test-generated-zig test-codegen generate-testdata verify-testdata zkc-build zkc-verify zkc-verify-passing zkc-verify-failing zkc-verify-failing-expected bench-vanishing-build bench-vanishing-json bench-vanishing-zkc bench-vanishing-doc clean
+.PHONY: ci help fmt fmt-zig fmt-codegen fmt-testdata-generate fmt-bench build build-zig build-release build-r5 run run-passing run-failing run-failing-expected test test-zig test-generated-zig test-codegen generate-testdata verify-testdata zkc-build zkc-verify zkc-verify-passing zkc-verify-failing zkc-verify-failing-expected bench-vanishing-build bench-vanishing-json bench-vanishing-zkc bench-vanishing-zkc-failing bench-vanishing-zkc-failing-expected bench-vanishing-doc clean
 
 R5_BIN := zig-out/bin/verifier-ray
 R5_JSON := $(R5_BIN).json
@@ -13,6 +13,7 @@ VANISHING_BENCH_LOG := zig-out/vanishing-bench.log
 VANISHING_BENCH_DOC := docs/vanishing-benchmark.md
 VANISHING_BENCH_CASE ?= 0
 VANISHING_BENCH_RELEASE ?= small
+VANISHING_INVALID ?= false
 
 PASSING_INPUT_FILE := testdata/inputs/passing.bin
 FAILING_INPUT_FILE := testdata/inputs/failing.bin
@@ -49,6 +50,7 @@ help:
 		'  zkc-verify-failing    Run zkc with the failing fixture (exits non-zero)' \
 		'  zkc-verify-failing-expected  Require zkc failing fixture to fail' \
 		'  bench-vanishing-doc   Run the R5 vanishing benchmark and write docs/vanishing-benchmark.md' \
+		'  bench-vanishing-zkc-failing-expected  Require the selected invalid vanishing benchmark case to fail under zkc' \
 		'  clean                 Remove Zig build artifacts' \
 		'' \
 		'input variables:' \
@@ -61,7 +63,8 @@ help:
 		'' \
 		'benchmark variables:' \
 		'  VANISHING_BENCH_CASE     Generated vanishing case index, default 0' \
-		'  VANISHING_BENCH_RELEASE  Zig release mode for R5 benchmark, default small'
+		'  VANISHING_BENCH_RELEASE  Zig release mode for R5 benchmark, default small' \
+		'  VANISHING_INVALID        Use invalid benchmark fixture when true, default false'
 
 fmt: fmt-zig fmt-codegen fmt-testdata-generate fmt-bench
 
@@ -163,14 +166,25 @@ zkc-verify-failing-expected:
 	fi
 
 bench-vanishing-build: generate-testdata
-	zig build --release=$(VANISHING_BENCH_RELEASE) -Dstrip=true -Dr5=true -Dvanishing-bench=true -Dvanishing-case=$(VANISHING_BENCH_CASE)
+	zig build --release=$(VANISHING_BENCH_RELEASE) -Dstrip=true -Dr5=true -Dvanishing-bench=true -Dvanishing-case=$(VANISHING_BENCH_CASE) -Dvanishing-invalid=$(VANISHING_INVALID)
 
 bench-vanishing-json: bench-vanishing-build
 	go run $(ELF_TO_JSON) $(VANISHING_BENCH_BIN) "" $(IN_BYTES_OFFSET) > $(VANISHING_BENCH_JSON)
 
 bench-vanishing-zkc: bench-vanishing-json
 	mkdir -p $(dir $(VANISHING_BENCH_LOG))
-	zkc exec -q $(VANISHING_BENCH_JSON) $(VANISHING_BENCH_ZKC_MAIN) | tee $(VANISHING_BENCH_LOG)
+	set -o pipefail; zkc exec -q $(VANISHING_BENCH_JSON) $(VANISHING_BENCH_ZKC_MAIN) | tee $(VANISHING_BENCH_LOG)
+
+bench-vanishing-zkc-failing:
+	$(MAKE) bench-vanishing-zkc VANISHING_INVALID=true
+
+bench-vanishing-zkc-failing-expected:
+	@if $(MAKE) bench-vanishing-zkc-failing; then \
+		echo "expected bench-vanishing-zkc-failing to fail"; \
+		exit 1; \
+	else \
+		echo "bench-vanishing-zkc-failing failed as expected"; \
+	fi
 
 bench-vanishing-doc: bench-vanishing-zkc
 	go run bench/render_vanishing_benchmark/main.go \

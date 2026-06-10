@@ -877,56 +877,62 @@ func writeVanishingBenchHeader(out *bytes.Buffer, count int) {
 }
 
 func writeVanishingBenchCase(out *bytes.Buffer, idx int, tc vanishingFixtureCase) {
-	proof := tc.honest
-	fmt.Fprintf(out, "const bench_case_%d_witness_claims = [_]ext.Ext{\n", idx)
+	writeVanishingBenchProof(out, fmt.Sprintf("bench_case_%d", idx), tc.honest)
+	if tc.invalid != nil {
+		writeVanishingBenchProof(out, fmt.Sprintf("bench_case_%d_invalid", idx), *tc.invalid)
+	}
+}
+
+func writeVanishingBenchProof(out *bytes.Buffer, prefix string, proof vanishingProofView) {
+	fmt.Fprintf(out, "const %s_witness_claims = [_]ext.Ext{\n", prefix)
 	for _, claim := range proof.witnessClaims {
 		fmt.Fprintf(out, "    %s,\n", extValueLiteral(claim))
 	}
 	fmt.Fprintln(out, "};")
 	fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "const bench_case_%d_quotient_claims = [_]ext.Ext{\n", idx)
+	fmt.Fprintf(out, "const %s_quotient_claims = [_]ext.Ext{\n", prefix)
 	for _, claim := range proof.quotientClaims {
 		fmt.Fprintf(out, "    %s,\n", extValueLiteral(claim))
 	}
 	fmt.Fprintln(out, "};")
 	fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "const bench_case_%d_module_sizes = [_]usize%s;\n", idx, intArrayLiteral(proof.moduleSizes))
+	fmt.Fprintf(out, "const %s_module_sizes = [_]usize%s;\n", prefix, intArrayLiteral(proof.moduleSizes))
 	fmt.Fprintln(out)
 
 	for roundIdx, round := range proof.rounds {
-		writeVanishingBenchRoundData(out, idx, roundIdx, round)
+		writeVanishingBenchRoundData(out, prefix, roundIdx, round)
 	}
 
-	fmt.Fprintf(out, "const bench_case_%d_rounds = [_]runtime.RoundMessage{\n", idx)
+	fmt.Fprintf(out, "const %s_rounds = [_]runtime.RoundMessage{\n", prefix)
 	for roundIdx := range proof.rounds {
-		fmt.Fprintf(out, "    .{ .columns = &bench_case_%d_round_%d_columns, .cells = &bench_case_%d_round_%d_cells },\n", idx, roundIdx, idx, roundIdx)
+		fmt.Fprintf(out, "    .{ .columns = &%s_round_%d_columns, .cells = &%s_round_%d_cells },\n", prefix, roundIdx, prefix, roundIdx)
 	}
 	fmt.Fprintln(out, "};")
 	fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "const bench_case_%d_input = vanishing.CheckInput{\n", idx)
-	fmt.Fprintf(out, "    .rounds = &bench_case_%d_rounds,\n", idx)
-	fmt.Fprintf(out, "    .witness_claims = &bench_case_%d_witness_claims,\n", idx)
-	fmt.Fprintf(out, "    .quotient_claims = &bench_case_%d_quotient_claims,\n", idx)
-	fmt.Fprintf(out, "    .module_sizes = &bench_case_%d_module_sizes,\n", idx)
+	fmt.Fprintf(out, "const %s_input = vanishing.CheckInput{\n", prefix)
+	fmt.Fprintf(out, "    .rounds = &%s_rounds,\n", prefix)
+	fmt.Fprintf(out, "    .witness_claims = &%s_witness_claims,\n", prefix)
+	fmt.Fprintf(out, "    .quotient_claims = &%s_quotient_claims,\n", prefix)
+	fmt.Fprintf(out, "    .module_sizes = &%s_module_sizes,\n", prefix)
 	fmt.Fprintln(out, "};")
 	fmt.Fprintln(out)
 }
 
-func writeVanishingBenchRoundData(out *bytes.Buffer, caseIdx, roundIdx int, round runtimeTraceRound) {
+func writeVanishingBenchRoundData(out *bytes.Buffer, prefix string, roundIdx int, round runtimeTraceRound) {
 	for columnIdx, column := range round.columns {
 		switch {
 		case column.publicBaseValues != nil:
-			fmt.Fprintf(out, "const bench_case_%d_round_%d_column_%d_base = [_]field.Element{\n", caseIdx, roundIdx, columnIdx)
+			fmt.Fprintf(out, "const %s_round_%d_column_%d_base = [_]field.Element{\n", prefix, roundIdx, columnIdx)
 			for _, value := range column.publicBaseValues {
 				fmt.Fprintf(out, "    %s,\n", fieldValueLiteral(value))
 			}
 			fmt.Fprintln(out, "};")
 			fmt.Fprintln(out)
 		case column.publicExtValues != nil:
-			fmt.Fprintf(out, "const bench_case_%d_round_%d_column_%d_ext = [_]ext.Ext{\n", caseIdx, roundIdx, columnIdx)
+			fmt.Fprintf(out, "const %s_round_%d_column_%d_ext = [_]ext.Ext{\n", prefix, roundIdx, columnIdx)
 			for _, value := range column.publicExtValues {
 				fmt.Fprintf(out, "    %s,\n", extValueLiteral(value))
 			}
@@ -935,7 +941,7 @@ func writeVanishingBenchRoundData(out *bytes.Buffer, caseIdx, roundIdx int, roun
 		}
 	}
 
-	fmt.Fprintf(out, "const bench_case_%d_round_%d_columns = [_]runtime.ColumnMessage{\n", caseIdx, roundIdx)
+	fmt.Fprintf(out, "const %s_round_%d_columns = [_]runtime.ColumnMessage{\n", prefix, roundIdx)
 	for columnIdx, column := range round.columns {
 		switch {
 		case column.commitments != nil:
@@ -943,9 +949,9 @@ func writeVanishingBenchRoundData(out *bytes.Buffer, caseIdx, roundIdx int, roun
 				fmt.Fprintf(out, "    .{ .oracle_commitment = %s },\n", commitmentValueLiteral(value))
 			}
 		case column.publicBaseValues != nil:
-			fmt.Fprintf(out, "    .{ .public_column = .{ .base = &bench_case_%d_round_%d_column_%d_base } },\n", caseIdx, roundIdx, columnIdx)
+			fmt.Fprintf(out, "    .{ .public_column = .{ .base = &%s_round_%d_column_%d_base } },\n", prefix, roundIdx, columnIdx)
 		case column.publicExtValues != nil:
-			fmt.Fprintf(out, "    .{ .public_column = .{ .ext = &bench_case_%d_round_%d_column_%d_ext } },\n", caseIdx, roundIdx, columnIdx)
+			fmt.Fprintf(out, "    .{ .public_column = .{ .ext = &%s_round_%d_column_%d_ext } },\n", prefix, roundIdx, columnIdx)
 		default:
 			panic("runtime trace column has no data variant")
 		}
@@ -953,7 +959,7 @@ func writeVanishingBenchRoundData(out *bytes.Buffer, caseIdx, roundIdx int, roun
 	fmt.Fprintln(out, "};")
 	fmt.Fprintln(out)
 
-	fmt.Fprintf(out, "const bench_case_%d_round_%d_cells = [_]runtime.Scalar{\n", caseIdx, roundIdx)
+	fmt.Fprintf(out, "const %s_round_%d_cells = [_]runtime.Scalar{\n", prefix, roundIdx)
 	for _, cell := range round.cells {
 		switch {
 		case cell.baseValue != nil:
@@ -996,6 +1002,18 @@ func writeVanishingBenchCaseSwitch(out *bytes.Buffer, cases []vanishingFixtureCa
 		fmt.Fprintf(out, "        %d => .{ .name = \"%s\", .system = system_%d, .input = bench_case_%d_input },\n", i, zigString(tc.name), i, i)
 	}
 	fmt.Fprintln(out, "        else => @compileError(\"unknown vanishing benchmark case index\"),")
+	fmt.Fprintln(out, "    };")
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "pub fn getInvalid(comptime index: usize) BenchCase {")
+	fmt.Fprintln(out, "    return switch (index) {")
+	for i, tc := range cases {
+		if tc.invalid == nil {
+			continue
+		}
+		fmt.Fprintf(out, "        %d => .{ .name = \"%s\", .system = system_%d, .input = bench_case_%d_invalid_input },\n", i, zigString(tc.name), i, i)
+	}
+	fmt.Fprintln(out, "        else => @compileError(\"vanishing benchmark case does not have an invalid input\"),")
 	fmt.Fprintln(out, "    };")
 	fmt.Fprintln(out, "}")
 }
