@@ -118,8 +118,8 @@ riscv-test <name>.<ext> OBJDUMP=true
 riscv-test debug <name>.<ext>
 # Compile and debug with input bytes
 riscv-test debug <name>.<ext> IN_BYTES="0xAABB"
-# Compile and execute with input bytes at a custom offset
-riscv-test <name>.<ext> IN_BYTES="0xAABB" IN_BYTES_OFFSET=0x09000008
+# Compile and execute with input bytes at a custom input origin
+riscv-test <name>.<ext> IN_BYTES="0xAABB" IN_ORIGIN=0x08800008
 # Compile only
 riscv-test compile <name>.<ext>
 # Build, convert and execute vectors with the generic vector targets
@@ -155,12 +155,12 @@ riscv-test blake/blake_with_in_embedded.rs
 # Run blake_with_in_bytes.rs
 # written in RAM as <213-byte input><64-byte expected output>
 riscv-test blake/blake_with_in_bytes.rs IN_BYTES="0x239900d4ed8623b95a92f1dba88ad31895cc3345ded552c22d79ab2a39c5877dd1a2ffdb6fbb124bb7c45a68142f214ce9f6129fb697276a0d4d1c983fa580ba010000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006362615be0cd19137e21791f83d9abfb41bd6b9b05688c2b3e6c1f510e527fade682d1a54ff53a5f1d36f13c6ef372fe94f82bbb67ae8584caa73b6a09e667f2bdc9480c000000"
-# Generate the linker script with custom input bytes offset
-riscv-test linker-script IN_BYTES_OFFSET=0x09000008
+# Generate the linker script with a custom input origin
+riscv-test linker-script IN_ORIGIN=0x08800008
 # Verify ELF offsets, entry point, stack and heap symbols match the default ones
 riscv-test verify-elf <name>.<ext>
-# Verify ELF offsets, entry point, stack and heap symbols match the custom ones
-riscv-test verify-elf <name>.<ext> PROGRAM_OFFSET=0x10000000
+# Compile and verify generated ELF offsets, entry point, stack and heap symbols match a custom stack/program boundary
+riscv-test compile <name>.<ext> SP_START=0x01000000 VERIFY_ELF=true
 # Compile and verify generated ELF offsets, entry point, stack and heap symbols match the default ones
 riscv-test compile <name>.<ext> VERIFY_ELF=true
 ```
@@ -209,10 +209,12 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `VECTOR_JSON_FILE`           | `$(JSON)`                                                                              | Batched JSON path used when `VECTOR_JSON_MODE=batched`                                                                                        |
 | `VECTOR_JSON_DIR`            | `$(dir $(JSON))vector_json`                                                            | JSON directory used when `VECTOR_JSON_MODE=per-vector`                                                                                        |
 | `VECTOR_SUBSET_FILE`         | `$(BIN).all`                                                                           | Intermediate `.all` file selected from `VECTOR_FILE`; one line per vector, or one blob including all vectors                                  |
-| `IN_BYTES`                   | `""`                                                                                   | Hex big-endian input written in RAM at `IN_BYTES_OFFSET` as little-endian bytes before execution (either string or `@path/to/in_bytes`)       |
-| `PROGRAM_OFFSET`             | `0x00000000`                                                                           | Program address used by this Makefile's generated linker script (up to 128 MiB)                                                               |
-| `SP`                         | `(PROGRAM_OFFSET) + 0x09000000`                                                        | Top of the stack region, derived from `PROGRAM_OFFSET` and fixed region sizes by default                                                      |
-| `IN_BYTES_OFFSET`            | `SP`                                                                                   | Memory address where input bytes are written (up to 1 GiB), by default equal to the top of the stack                                          |
+| `IN_BYTES`                   | `""`                                                                                   | Hex big-endian input written in RAM at `IN_ORIGIN` as little-endian bytes before execution (either string or `@path/to/in_bytes`)             |
+| `STACK_ORIGIN`               | `0x00000000`                                                                           | Low stack boundary; `_stack_end` is generated from this value                                                                                  |
+| `SP_START`                   | `STACK_ORIGIN + 0x00800000`                                                           | Initial stack pointer; `_stack_start` is generated from this value                                                                             |
+| `PROGRAM_ORIGIN`             | `SP_START`                                                                             | Program start address                                                                                                                          |
+| `IN_ORIGIN`                  | `PROGRAM_ORIGIN + 0x08000000`                                                          | Input region start address; `_input_start` is generated from this value                                                                        |
+| `HEAP_ORIGIN`                | `IN_ORIGIN + 0x40000000`                                                               | Heap start address; `_heap_start` is generated from this value                                                                                 |
 | `OBJDUMP`                    | `false`                                                                                | Set to `true` to generate an objdump file for each compiled ELF                                                                               |
 | `VERIFY_ELF`                 | `false`                                                                                | Set to `true` to verify offsets, entry point, stack and heap symbols match the ELF ones                                                       |
 | `ACT4_BUILD_MODE`            | `host`                                                                                 | Build ACT4 ELFs with `host` or `docker`                                                                                                       |
@@ -331,11 +333,12 @@ _____________________________________ 0x00800000 ≡ SP_START * = _stack_start =
 _____________________________________ 0x08800000 ≡ _program_end = IN_ORIGIN *
  IN:      ↓ 1 GiB: IN_LENGTH
 _____________________________________ 0x48800000 ≡ _in_end = HEAP_ORIGIN * = _heap_start
- HEAP:    ↓ ∞ : HEAP_LENGTH
-_____________________________________ ∞          ≡ _heap_end  (physical memory limitation)
+ HEAP:    ↓ until address-space overflow
 
-* = Paramaters that can be set, all others are derived.
+* = Parameters that can be set, all others are derived.
 ≡ = Default values.
-STACK_START needs to be equal to PROGRAM_ORIGIN.
+SP_START and PROGRAM_ORIGIN are equal by default, but can be configured independently.
 The order of memory regions is fixed.
+The generated linker script exposes `_heap_start`, but not a heap length or upper heap-boundary symbol.
+Runtime allocators must use checked arithmetic to catch heap growth past the address-space limit.
 ```

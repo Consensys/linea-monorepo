@@ -1,16 +1,14 @@
 const custom_std = @import("wrappers").custom_std;
 
-// Linker-defined symbols whose addresses mark the heap boundaries
+// Linker-defined symbol whose address marks where runtime heap allocations can start
 extern var _heap_start: u8;
-extern var _heap_end: u8;
 
 export fn main() noreturn {
-    // Read the heap boundary addresses
+    // Read the heap start address
     const heap_start = @intFromPtr(&_heap_start);
-    const heap_end = @intFromPtr(&_heap_end);
 
-    // Check the heap is at least 1 byte
-    if (heap_start + 1 > heap_end) {
+    // A real allocator must fail if growing the heap would overflow the address space
+    if (@addWithOverflow(heap_start, 1)[1] != 0) {
         custom_std.panic();
     }
 
