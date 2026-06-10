@@ -61,14 +61,14 @@ EVAL = $(shell printf "0x%08x" $$(( $(1) )))
 
 # Configurable parameters for the linker script
 STACK_ORIGIN   ?= 0x00000000
-SP_START       ?= 0x00800000
+SP             ?= 0x00800000
 PROGRAM_ORIGIN ?= 0x00800000
 IN_ORIGIN      ?= 0x08800000
 HEAP_ORIGIN    ?= 0x48800000
 
 # Derived parameters for the linker script
 ENTRY_POINT    := $(PROGRAM_ORIGIN)
-STACK_LENGTH   := $(call EVAL,$(SP_START) - $(STACK_ORIGIN))
+STACK_LENGTH   := $(call EVAL,$(SP) - $(STACK_ORIGIN))
 PROGRAM_LENGTH := $(call EVAL,$(IN_ORIGIN) - $(PROGRAM_ORIGIN))
 IN_LENGTH      := $(call EVAL,$(HEAP_ORIGIN) - $(IN_ORIGIN))
 
@@ -257,7 +257,7 @@ verify-elf: require-test
 	verify "IN_LENGTH" "$(IN_LENGTH)" "$$(( $$(elf_symbol _in_end) - $$(elf_symbol _in_start) ))"; \
 	verify "HEAP_ORIGIN" "$(HEAP_ORIGIN)" "$$(elf_symbol _heap_start)"; \
 	verify "_stack_end" "$(STACK_ORIGIN)" "$$(elf_symbol _stack_end)"; \
-	verify "_stack_start" "$(SP_START)" "$$(elf_symbol _stack_start)"; \
+	verify "_stack_start" "$(SP)" "$$(elf_symbol _stack_start)"; \
 	verify "_program_start" "$(PROGRAM_ORIGIN)" "$$(elf_symbol _program_start)"; \
 	verify "_program_end" "$(IN_ORIGIN)" "$$(elf_symbol _program_end)"; \
 	verify "_in_start" "$(IN_ORIGIN)" "$$(elf_symbol _in_start)"; \
