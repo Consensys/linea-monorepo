@@ -72,7 +72,7 @@ help:
 		'  VANISHING_BENCH_RELEASE  Zig release mode for R5 benchmark, default small' \
 		'  VANISHING_INVALID        Use invalid benchmark fixture when true, default false'
 
-fmt: fmt-zig fmt-codegen fmt-testdata-generate fmt-bench
+fmt: generate-testdata fmt-zig fmt-codegen fmt-testdata-generate fmt-bench
 
 fmt-zig:
 	zig fmt --check build.zig src test testdata/generated bench/vanishing_main.zig bench/generated/vanishing.zig
