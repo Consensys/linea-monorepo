@@ -20,9 +20,9 @@ pub fn zkvm_keccak256(data: [*c]const u8, len: usize, output: [*c]zkvm_keccak256
     }
 
     // invoke custom opcode for keccak
-    // opcode format: opcode(0x0c = custom-1) | funct3(0b000) | funct7(0b0000000) | rd(output_offset) | rs1(input_offset) | rs2(input_size)
+    // opcode format: opcode(0x2b = custom-1) | funct3(0b000) | funct7(0b0000000) | rd(output_offset) | rs1(input_offset) | rs2(input_size)
     asm volatile (
-        \\.insn r 0x0c, 0b000, 0b0000000, %[out], %[in], %[size]
+        \\.insn r 0x2b, 0b000, 0b0000000, %[out], %[in], %[size]
         :
         : [out] "r" (@intFromPtr(output)),
           [in] "r" (@intFromPtr(data)),
