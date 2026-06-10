@@ -153,7 +153,7 @@ func BuildVanishingSystem(sys *wiop.System, routing CoinRouting) (VanishingSyste
 				out.TotalQuotientClaims += len(bucket.QuotientClaims)
 
 				for _, v := range bucket.Vanishings {
-					exprIdx, err := appendExpr(&module, views, routing.RoundCoinOffsets, v.Expression)
+					exprIdx, err := appendExpr(&module, views, routing, v.Expression)
 					if err != nil {
 						return VanishingSystem{}, err
 					}
@@ -205,7 +205,7 @@ func flatCoinIndex(routing CoinRouting, coin *wiop.CoinField) (int, error) {
 	return idx, nil
 }
 
-func appendExpr(module *VanishingModule, views map[viewKey]int, roundCoinOffsets []int, expr wiop.Expression) (int, error) {
+func appendExpr(module *VanishingModule, views map[viewKey]int, routing CoinRouting, expr wiop.Expression) (int, error) {
 	switch e := expr.(type) {
 	case *wiop.ColumnView:
 		idx, ok := views[viewKey{id: e.Column.Context.ID, shift: e.ShiftingOffset}]
@@ -220,7 +220,7 @@ func appendExpr(module *VanishingModule, views map[viewKey]int, roundCoinOffsets
 	case *wiop.ArithmeticOperation:
 		operands := make([]int, len(e.Operands))
 		for i, operand := range e.Operands {
-			idx, err := appendExpr(module, views, roundCoinOffsets, operand)
+			idx, err := appendExpr(module, views, routing, operand)
 			if err != nil {
 				return 0, err
 			}
@@ -243,13 +243,16 @@ func appendExpr(module *VanishingModule, views map[viewKey]int, roundCoinOffsets
 		})
 		return len(module.Expressions) - 1, nil
 	case *wiop.CoinField:
-		round := e.Context.ID.Slot()
+		flatIdx, err := flatCoinIndex(routing, e)
+		if err != nil {
+			return 0, fmt.Errorf("coin %q: %w", e.Context.Path(), err)
+		}
 		module.Expressions = append(module.Expressions, ExprNode{
 			Kind: ExprCoinValue,
 			Coin: ScalarRef{
-				Round:      round,
+				Round:      e.Context.ID.Slot(),
 				Index:      e.Context.ID.Position(),
-				FlatIndex:  roundCoinOffsets[round] + e.Context.ID.Position(),
+				FlatIndex:  flatIdx,
 				SourceName: e.Context.Label,
 			},
 		})
