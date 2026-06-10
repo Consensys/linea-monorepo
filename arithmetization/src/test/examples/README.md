@@ -345,13 +345,17 @@ against `_stack_end`, and heap allocators should check allocations against `_hea
 ## Proposal for new memory layout and naming
 
 ```
-___________________________ _stack_end = 0
- ↑ 8 MiB: STACK_LENGTH   
-___________________________ STACK_ORIGIN = _stack_start = PROGRAM_ORIGIN
- ↓ 128 MiB: PROGRAM_LENGTH 
-___________________________ _program_end = IN_ORIGIN
- ↓ 1 GiB: IN_LENGTH
-___________________________ _in_end = HEAP_ORIGIN = _heap_start
- ↓ 8+ MiB: HEAP
-___________________________ _headp_end = ∞ (physical memory limitation)
+_____________________________________ _stack_end = 0
+ STACK:   ↑ 8 MiB STACK_LENGTH   
+_____________________________________ STACK_ORIGIN * = _stack_start = PROGRAM_ORIGIN * = _program_start
+ PROGRAM: ↓ 128 MiB PROGRAM_LENGTH 
+_____________________________________ _program_end = IN_ORIGIN *
+ IN:      ↓ 1 GiB: IN_LENGTH
+_____________________________________ _in_end = HEAP_ORIGIN * = _heap_start
+ HEAP:    ↓ ∞ : HEAP_LENGTH
+_____________________________________ _heap_end = ∞ (physical memory limitation)
+
+* = Paramaters that can be set, all others are derived.
+STACK_ORIGIN needs to be equal to PROGRAM_ORIGIN.
+The order of memory regions is fixed.
 ```
