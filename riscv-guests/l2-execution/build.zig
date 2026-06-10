@@ -1,39 +1,23 @@
 const std = @import("std");
-const builtin = @import("builtin");
-
-const required_zig_version = "0.16.0-dev.3153+d6f43caad";
+const common = @import("build_common");
 
 pub fn build(b: *std.Build) void {
-    if (!std.mem.eql(u8, builtin.zig_version_string, required_zig_version)) {
-        std.debug.print(
-            "riscv-guests requires Zig {s}; found {s}\n",
-            .{ required_zig_version, builtin.zig_version_string },
-        );
-        @panic("unsupported Zig version");
-    }
+    common.requireZigVersion();
 
-    const target = b.standardTargetOptions(.{
-        .default_target = .{
-            .cpu_arch = .riscv64,
-            .cpu_model = .{ .explicit = &std.Target.riscv.cpu.generic_rv64 },
-            .cpu_features_add = std.Target.riscv.featureSet(&.{.m}),
-            .cpu_features_sub = std.Target.riscv.featureSet(&.{ .a, .c, .d, .f, .zicsr, .zaamo, .zalrsc }),
-            .os_tag = .freestanding,
-            .abi = .none,
-        },
-    });
+    // All guests target the same freestanding rv64im ZkC profile (shared helper).
+    const target = common.standardGuestTarget(b);
 
     const optimize = b.standardOptimizeOption(.{
         .preferred_optimize_mode = .ReleaseSmall,
     });
     const input_offset = b.option([]const u8, "input-offset", "Input memory origin") orelse "0x08800000";
-    const input_offset_value: usize = @intCast(parseAddress("input-offset", input_offset));
+    const input_offset_value: usize = @intCast(common.parseAddress("input-offset", input_offset));
     const guest_options = b.addOptions();
     guest_options.addOption(usize, "input_offset", input_offset_value);
     const guest_options_mod = guest_options.createModule();
 
     const guest_name = "evm_execution_guest";
-    const source = "l2-execution/src/evm_execution_guest.zig";
+    const source = "src/evm_execution_guest.zig";
 
     // ── Guest relocatable object ──────────────────────────────────────────────
     // Built the same way zesu builds zesu.rv64im.o: a relocatable rv64im object with all execution
@@ -64,7 +48,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     }));
-    clearFreestandingNativeLinkage(b, obj.root_module);
+    common.clearFreestandingNativeLinkage(b, obj.root_module);
     const install_obj = b.addInstallFile(obj.getEmittedBin(), b.fmt("lib/{s}.o", .{guest_name}));
     b.getInstallStep().dependOn(&install_obj.step);
 
@@ -96,7 +80,7 @@ pub fn build(b: *std.Build) void {
     // the dependency only — no fixtures, no native crypto libs.
     const accel_tests = b.addTest(.{
         .root_module = b.createModule(.{
-            .root_source_file = b.path("l2-execution/src/stdlibs_accel_test.zig"),
+            .root_source_file = b.path("src/stdlibs_accel_test.zig"),
             .target = native_target,
             .optimize = optimize,
         }),
@@ -114,7 +98,7 @@ pub fn build(b: *std.Build) void {
     const fixture_rel = "blockchain_tests/for_amsterdam/amsterdam/eip7928_block_level_access_lists/block_access_lists/bal_empty_block_no_coinbase.json";
     if (b.lazyDependency("execution_spec_tests_zkevm", .{})) |fixtures_dep| {
         const fixtures_mod = b.createModule(.{
-            .root_source_file = b.path("l2-execution/src/evm_execution_fixtures.zig"),
+            .root_source_file = b.path("src/evm_execution_fixtures.zig"),
             .target = native_target,
             .optimize = optimize,
         });
@@ -125,7 +109,7 @@ pub fn build(b: *std.Build) void {
 
         const tests = b.addTest(.{
             .root_module = b.createModule(.{
-                .root_source_file = b.path("l2-execution/src/evm_execution_guest_test.zig"),
+                .root_source_file = b.path("src/evm_execution_guest_test.zig"),
                 .target = native_target,
                 .optimize = optimize,
             }),
@@ -145,7 +129,7 @@ pub fn build(b: *std.Build) void {
         const spec_runner_exe = b.addExecutable(.{
             .name = "evm-execution-spec-runner",
             .root_module = b.createModule(.{
-                .root_source_file = b.path("l2-execution/src/evm_spec_runner.zig"),
+                .root_source_file = b.path("src/evm_spec_runner.zig"),
                 .target = native_target,
                 .optimize = optimize,
             }),
@@ -160,6 +144,10 @@ pub fn build(b: *std.Build) void {
         spec_step.dependOn(&run_spec.step);
     }
 }
+
+// ── zesu / EVM-execution wiring (l2-execution-specific) ───────────────────────────────────────────
+// These are NOT in build_common: only guests that run the EVM via zesu need them. The rollup and
+// rollup-aggregation guests (KZG/compression + recursive proof verification) do not.
 
 const ZesuImports = struct {
     allocator: *std.Build.Module,
@@ -186,35 +174,6 @@ fn addExecutionImports(module: *std.Build.Module, imports: ZesuImports) void {
     module.addImport("zesu_ssz_output", imports.ssz_output);
 }
 
-fn parseAddress(comptime name: []const u8, value: []const u8) u64 {
-    return std.fmt.parseInt(u64, value, 0) catch @panic("invalid -D" ++ name ++ " value");
-}
-
-fn clearFreestandingNativeLinkage(b: *std.Build, module: *std.Build.Module) void {
-    var seen = std.AutoHashMap(*std.Build.Module, void).init(b.allocator);
-    clearFreestandingNativeLinkageInner(&seen, module);
-}
-
-fn clearFreestandingNativeLinkageInner(
-    seen: *std.AutoHashMap(*std.Build.Module, void),
-    module: *std.Build.Module,
-) void {
-    if (seen.get(module) != null) return;
-    seen.put(module, {}) catch @panic("OOM");
-
-    if (@hasField(std.Build.Module, "link_libc")) {
-        module.link_libc = false;
-    }
-    if (@hasField(std.Build.Module, "link_libcpp")) {
-        module.link_libcpp = false;
-    }
-
-    var imports = module.import_table.iterator();
-    while (imports.next()) |entry| {
-        clearFreestandingNativeLinkageInner(seen, entry.value_ptr.*);
-    }
-}
-
 const NativeCrypto = struct {
     include_path: []const u8,
     lib_path: []const u8,
@@ -237,10 +196,10 @@ fn resolveNativeCrypto(b: *std.Build, target: std.Build.ResolvedTarget) NativeCr
     };
 }
 
-// Links the full native crypto backing zesu's default.zig accelerator: secp256k1 (ecrecover),
-// OpenSSL (P-256), blst (BLS12-381 + KZG), mcl (BN254). No-op for freestanding targets, whose
-// crypto is the extern zkvm_* bridge. zesu sets the @cImport include path on its accel module, so
-// here we only need the library search path + the libraries.
+/// Links the full native crypto backing zesu's default.zig accelerator: secp256k1 (ecrecover),
+/// OpenSSL (P-256), blst (BLS12-381 + KZG), mcl (BN254). No-op for freestanding targets, whose
+/// crypto is the extern zkvm_* bridge. zesu sets the @cImport include path on its accel module, so
+/// here we only need the library search path + the libraries.
 fn linkNativeZesuCrypto(
     step: *std.Build.Step.Compile,
     target: std.Build.ResolvedTarget,

@@ -1,7 +1,7 @@
 .{
-    .name = .linea_riscv_guests,
+    .name = .l2_execution_guest,
     .version = "0.0.0",
-    .fingerprint = 0x12189ef5bd7663a,
+    .fingerprint = 0x16d3d5ae145fe30c,
     .minimum_zig_version = "0.16.0-dev.3153+d6f43caad",
     .dependencies = .{
         // TODO: repoint to the upstream Consensys/zesu repo once these changes are merged there
@@ -28,11 +28,12 @@
             .url = "https://github.com/Consensys/zesu-zkvm/archive/781e8ab5b86e2e08b111c8bee778f6fd777f8172.tar.gz",
             .hash = "N-V-__8AALcFYQDEKjFlPv80maZPDDtCeu9sPCIH_vmRza1W",
         },
+        // Shared build helpers for all riscv-guests packages (sibling path dependency).
+        .build_common = .{ .path = "../build_common" },
     },
     .paths = .{
         "build.zig",
         "build.zig.zon",
-        "l2-execution",
-        "tools",
+        "src",
     },
 }
