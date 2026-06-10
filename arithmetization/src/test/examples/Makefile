@@ -89,7 +89,7 @@ STACK_ORIGIN_FROM_ELF    = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$
 SP_START_FROM_ELF        = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_stack_start" {print "0x"$$1}')
 PROGRAM_START_FROM_ELF   = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_program_start" {print "0x"$$1}')
 PROGRAM_END_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_program_end" {print "0x"$$1}')
-IN_ORIGIN_FROM_ELF       = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_input_start" {print "0x"$$1}')
+IN_ORIGIN_FROM_ELF       = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_in_start" {print "0x"$$1}')
 IN_END_FROM_ELF          = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_in_end" {print "0x"$$1}')
 HEAP_ORIGIN_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_heap_start" {print "0x"$$1}')
 VERIFY_ELF               ?= false             
@@ -228,7 +228,7 @@ linker-script:
 		'' \
 		'    /* program and input regions grow upward */' \
 		'    _program_end = ORIGIN(PROGRAM) + LENGTH(PROGRAM);' \
-		'    _input_start = ORIGIN(IN);' \
+		'    _in_start = ORIGIN(IN);' \
 		'    _in_end = ORIGIN(IN) + LENGTH(IN);' \
 		'' \
 		'    /* heap grows upward from this address by program convention */' \
@@ -242,27 +242,35 @@ verify-elf: require-test
 	@[ "$(shell printf '0x%016x' $$(($(STACK_ORIGIN_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(STACK_ORIGIN))))" ] || \
 		(echo "ERROR: STACK_ORIGIN mismatch: expected $(STACK_ORIGIN), got $(STACK_ORIGIN_FROM_ELF)" && exit 1)
 	@echo "  STACK_ORIGIN:   $(STACK_ORIGIN) (expected) = $(STACK_ORIGIN_FROM_ELF) (from ELF)"
+
 	@[ "$(shell printf '0x%016x' $$(($(SP_START_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(SP_START))))" ] || \
 		(echo "ERROR: SP_START mismatch: expected $(SP_START), got $(SP_START_FROM_ELF)" && exit 1)
 	@echo "  SP_START:       $(SP_START) (expected) = $(SP_START_FROM_ELF) (from ELF)"
+
 	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_ORIGIN_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(PROGRAM_ORIGIN))))" ] || \
 		(echo "ERROR: PROGRAM_ORIGIN mismatch: expected $(PROGRAM_ORIGIN), got $(PROGRAM_ORIGIN_FROM_ELF)" && exit 1)
 	@echo "  PROGRAM_ORIGIN: $(PROGRAM_ORIGIN) (expected) = $(PROGRAM_ORIGIN_FROM_ELF) (from ELF)"
+
 	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_START_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(PROGRAM_ORIGIN))))" ] || \
 		(echo "ERROR: _program_start mismatch: expected $(PROGRAM_ORIGIN), got $(PROGRAM_START_FROM_ELF)" && exit 1)
 	@echo "  _program_start: $(PROGRAM_ORIGIN) (expected) = $(PROGRAM_START_FROM_ELF) (from ELF)"
+
 	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_END_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(IN_ORIGIN))))" ] || \
 		(echo "ERROR: _program_end mismatch: expected $(IN_ORIGIN), got $(PROGRAM_END_FROM_ELF)" && exit 1)
 	@echo "  _program_end:   $(IN_ORIGIN) (expected) = $(PROGRAM_END_FROM_ELF) (from ELF)"
+
 	@[ "$(shell printf '0x%016x' $$(($(IN_ORIGIN_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(IN_ORIGIN))))" ] || \
 		(echo "ERROR: IN_ORIGIN mismatch: expected $(IN_ORIGIN), got $(IN_ORIGIN_FROM_ELF)" && exit 1)
 	@echo "  IN_ORIGIN:      $(IN_ORIGIN) (expected) = $(IN_ORIGIN_FROM_ELF) (from ELF)"
+
 	@[ "$(shell printf '0x%016x' $$(($(IN_END_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(HEAP_ORIGIN))))" ] || \
 		(echo "ERROR: _in_end mismatch: expected $(HEAP_ORIGIN), got $(IN_END_FROM_ELF)" && exit 1)
 	@echo "  _in_end:        $(HEAP_ORIGIN) (expected) = $(IN_END_FROM_ELF) (from ELF)"
+
 	@[ "$(shell printf '0x%016x' $$(($(HEAP_ORIGIN_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(HEAP_ORIGIN))))" ] || \
 		(echo "ERROR: HEAP_ORIGIN mismatch: expected $(HEAP_ORIGIN), got $(HEAP_ORIGIN_FROM_ELF)" && exit 1)
 	@echo "  HEAP_ORIGIN:    $(HEAP_ORIGIN) (expected) = $(HEAP_ORIGIN_FROM_ELF) (from ELF)"
+
 	@[ "$(shell printf '0x%016x' $$(($(ENTRY_POINT_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(ENTRY_POINT))))" ] || \
 		(echo "ERROR: ENTRY_POINT mismatch: expected $(ENTRY_POINT), got $(ENTRY_POINT_FROM_ELF)" && exit 1)
 	@echo "  ENTRY_POINT:    $(ENTRY_POINT) (expected) = $(ENTRY_POINT_FROM_ELF) (from ELF)"

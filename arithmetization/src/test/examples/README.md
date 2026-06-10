@@ -210,11 +210,11 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `VECTOR_JSON_DIR`            | `$(dir $(JSON))vector_json`                                                            | JSON directory used when `VECTOR_JSON_MODE=per-vector`                                                                                        |
 | `VECTOR_SUBSET_FILE`         | `$(BIN).all`                                                                           | Intermediate `.all` file selected from `VECTOR_FILE`; one line per vector, or one blob including all vectors                                  |
 | `IN_BYTES`                   | `""`                                                                                   | Hex big-endian input written in RAM at `IN_ORIGIN` as little-endian bytes before execution (either string or `@path/to/in_bytes`)             |
-| `STACK_ORIGIN`               | `0x00000000`                                                                           | Low stack boundary; `_stack_end` is generated from this value                                                                                  |
-| `SP_START`                   | `STACK_ORIGIN + 0x00800000`                                                           | Initial stack pointer; `_stack_start` is generated from this value                                                                             |
-| `PROGRAM_ORIGIN`             | `SP_START`                                                                             | Program start address                                                                                                                          |
-| `IN_ORIGIN`                  | `PROGRAM_ORIGIN + 0x08000000`                                                          | Input region start address; `_input_start` is generated from this value                                                                        |
-| `HEAP_ORIGIN`                | `IN_ORIGIN + 0x40000000`                                                               | Heap start address; `_heap_start` is generated from this value                                                                                 |
+| `STACK_ORIGIN`               | `0x00000000`                                                                           | Low stack boundary; `_stack_end` is generated from this value                                                                                 |
+| `SP_START`                   | `STACK_ORIGIN + 0x00800000`                                                            | Initial stack pointer; `_stack_start` is generated from this value                                                                            |
+| `PROGRAM_ORIGIN`             | `SP_START`                                                                             | Program start address                                                                                                                         |
+| `IN_ORIGIN`                  | `PROGRAM_ORIGIN + 0x08000000`                                                          | Input region start address; `_in_start` is generated from this value                                                                          |
+| `HEAP_ORIGIN`                | `IN_ORIGIN + 0x40000000`                                                               | Heap start address; `_heap_start` is generated from this value                                                                                |
 | `OBJDUMP`                    | `false`                                                                                | Set to `true` to generate an objdump file for each compiled ELF                                                                               |
 | `VERIFY_ELF`                 | `false`                                                                                | Set to `true` to verify offsets, entry point, stack and heap symbols match the ELF ones                                                       |
 | `ACT4_BUILD_MODE`            | `host`                                                                                 | Build ACT4 ELFs with `host` or `docker`                                                                                                       |
@@ -330,7 +330,7 @@ _____________________________________ 0x00000000 ≡ STACK_ORIGIN * = _stack_end
  STACK:   ↑ 8 MiB STACK_LENGTH   
 _____________________________________ 0x00800000 ≡ SP_START * = _stack_start = PROGRAM_ORIGIN * = _program_start
  PROGRAM: ↓ 128 MiB PROGRAM_LENGTH 
-_____________________________________ 0x08800000 ≡ _program_end = IN_ORIGIN *
+_____________________________________ 0x08800000 ≡ _program_end = IN_ORIGIN * = _in_start
  IN:      ↓ 1 GiB: IN_LENGTH
 _____________________________________ 0x48800000 ≡ _in_end = HEAP_ORIGIN * = _heap_start
  HEAP:    ↓ until address-space overflow
