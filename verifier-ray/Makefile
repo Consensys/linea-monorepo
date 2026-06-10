@@ -10,7 +10,7 @@ VANISHING_BENCH_ZKC_MAIN := bench/riscv_main_bench.zkc
 VANISHING_BENCH_BIN := zig-out/bin/verifier-ray-vanishing-bench
 VANISHING_BENCH_JSON := $(VANISHING_BENCH_BIN).json
 VANISHING_BENCH_LOG := zig-out/vanishing-bench.log
-VANISHING_BENCH_DOC := docs/vanishing-benchmark.md
+VANISHING_BENCH_DOC := bench/vanishing-benchmark.md
 VANISHING_BENCH_CASE ?= 0
 VANISHING_BENCH_RELEASE ?= small
 VANISHING_INVALID ?= false
@@ -49,7 +49,7 @@ help:
 		'  zkc-verify-passing    Run zkc with the passing fixture' \
 		'  zkc-verify-failing    Run zkc with the failing fixture (exits non-zero)' \
 		'  zkc-verify-failing-expected  Require zkc failing fixture to fail' \
-		'  bench-vanishing-doc   Run the R5 vanishing benchmark and write docs/vanishing-benchmark.md' \
+		'  bench-vanishing-doc   Run the R5 vanishing benchmark and write bench/vanishing-benchmark.md' \
 		'  bench-vanishing-zkc-failing-expected  Require the selected invalid vanishing benchmark case to fail under zkc' \
 		'  clean                 Remove Zig build artifacts' \
 		'' \
