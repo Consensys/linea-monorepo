@@ -143,9 +143,9 @@ func (run *Runtime) AdvanceRound() {
 	run.currentRound = next
 
 	// Derive a coin for every CoinField declared in the new round.
-	// for _, coin := range run.currentRound.Coins {
-	// 	run.coins[coin.Context.ID] = field.ElemFromExt(run.fs.RandomFext())
-	// }
+	for _, coin := range run.currentRound.Coins {
+		run.coins[coin.Context.ID] = field.ElemFromExt(run.fs.RandomFext())
+	}
 }
 
 // AssignColumn stores a concrete vector assignment for col.
