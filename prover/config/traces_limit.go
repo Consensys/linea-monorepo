@@ -143,15 +143,22 @@ func (tl *TracesLimits) Checksum() string {
 	return digest
 }
 
-// findModuleLimits returns the limits for a module or panics.
-// mustFindModuleLimits returns the limits corresponding to the
-// name of the method. (auto-generated)
+// mustFindModuleLimits returns the limits for a module using longest-prefix match.
+// The list must be sorted in reverse alphabetical order so longer prefixes are
+// checked before shorter ones. The empty-string default entry acts as a fallback.
 func (tl *TracesLimits) mustFindModuleLimits(module string) ModuleLimit {
 	moduleLower := strings.ToLower(module)
-	for _, m := range tl.Modules {
+	var best *ModuleLimit
+	for i := range tl.Modules {
+		m := &tl.Modules[i]
 		if strings.HasPrefix(moduleLower, m.Module) {
-			return m
+			if best == nil || len(m.Module) > len(best.Module) {
+				best = m
+			}
 		}
+	}
+	if best != nil {
+		return *best
 	}
 	utils.Panic("found no module limits for module %q", module)
 	return ModuleLimit{}
