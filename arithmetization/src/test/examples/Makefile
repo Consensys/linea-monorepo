@@ -222,6 +222,10 @@ linker-script:
 
 # Verify that the generated ELF matches the configured memory layout
 verify-elf: require-test
+# elf_symbol reads a linker-defined symbol address from the ELF symbol table
+# section_addr reads a section virtual address from the ELF section headers
+# hex normalizes decimal or hex values to 16-digit hex before comparing them
+# verify compares one expected Makefile value with the corresponding ELF value
 	@echo "\nVerify that the generated ELF matches the configured memory layout"
 	@set -e; \
 	elf_symbol() { \
