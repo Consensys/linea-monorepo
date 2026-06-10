@@ -53,36 +53,30 @@ BIN  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EX
 JSON := $(BIN).json
 # Note: in the future the JSON file will be removed and main.zkc will receive directly the ELF file
 
-# Support function to evaluate expressions and format them as hex
-EVAL = $(shell printf "0x%08x" $$(( $(1) )))
-
 # Inputs and offsets for the program
 IN_BYTES        ?= ""
 
-# Configurable memory region boundaries (* in the README layout)
+# Support function to evaluate expressions and format them as hex
+EVAL = $(shell printf "0x%08x" $$(( $(1) )))
+
+# Configurable parameters for the linker script
 STACK_ORIGIN   ?= 0x00000000
+SP_START       ?= 0x00800000
+PROGRAM_ORIGIN ?= 0x00800000
+IN_ORIGIN      ?= 0x08800000
+HEAP_ORIGIN    ?= 0x48800000
 
-ifneq ($(origin PROGRAM_ORIGIN), undefined)
-SP_START       ?= $(PROGRAM_ORIGIN)
-endif
-
-SP_START       ?= $(call EVAL,$(STACK_ORIGIN) + 0x00800000)
-PROGRAM_ORIGIN ?= $(SP_START)
-IN_ORIGIN      ?= $(call EVAL,$(PROGRAM_ORIGIN) + 0x08000000)
-HEAP_ORIGIN    ?= $(call EVAL,$(IN_ORIGIN) + 0x40000000)
-
-# Derived memory region sizes
-override STACK_LENGTH   = $(call EVAL,$(SP_START) - $(STACK_ORIGIN))
-override PROGRAM_LENGTH = $(call EVAL,$(IN_ORIGIN) - $(PROGRAM_ORIGIN))
-override IN_LENGTH      = $(call EVAL,$(HEAP_ORIGIN) - $(IN_ORIGIN))
-
-# Since program starts from _start, the entry point is the same as the program origin
-override ENTRY_POINT    := $(PROGRAM_ORIGIN)
+# Derived parameters for the linker script
+ENTRY_POINT    := $(PROGRAM_ORIGIN)
+STACK_LENGTH   := $(call EVAL,$(SP_START) - $(STACK_ORIGIN))
+PROGRAM_LENGTH := $(call EVAL,$(IN_ORIGIN) - $(PROGRAM_ORIGIN))
+IN_LENGTH      := $(call EVAL,$(HEAP_ORIGIN) - $(IN_ORIGIN))
 
 # If true, generates an objdump of the generated ELF for debugging purposes
-OBJDUMP ?= false
+OBJDUMP        ?= false
 
-VERIFY_ELF               ?= false             
+# If true, verifies ELF entry point, origins, lengths, stack and heap symbols match the ones set
+VERIFY_ELF     ?= true             
 
 # Support function to generate JSON from an ELF
 define ELF_TO_JSON
@@ -257,9 +251,9 @@ verify-elf: require-test
 	verify "IN_ORIGIN" "$(IN_ORIGIN)" "$$(elf_symbol _in_start)"; \
 	verify "IN_LENGTH" "$(IN_LENGTH)" "$$(( $$(elf_symbol _in_end) - $$(elf_symbol _in_start) ))"; \
 	verify "HEAP_ORIGIN" "$(HEAP_ORIGIN)" "$$(elf_symbol _heap_start)"; \
-	verify "_program_start" "$(PROGRAM_ORIGIN)" "$$(elf_symbol _program_start)"; \
 	verify "_stack_end" "$(STACK_ORIGIN)" "$$(elf_symbol _stack_end)"; \
 	verify "_stack_start" "$(SP_START)" "$$(elf_symbol _stack_start)"; \
+	verify "_program_start" "$(PROGRAM_ORIGIN)" "$$(elf_symbol _program_start)"; \
 	verify "_program_end" "$(IN_ORIGIN)" "$$(elf_symbol _program_end)"; \
 	verify "_in_start" "$(IN_ORIGIN)" "$$(elf_symbol _in_start)"; \
 	verify "_in_end" "$(HEAP_ORIGIN)" "$$(elf_symbol _in_end)"; \
