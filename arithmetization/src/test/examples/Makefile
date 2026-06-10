@@ -82,16 +82,6 @@ override ENTRY_POINT    := $(PROGRAM_ORIGIN)
 # If true, generates an objdump of the generated ELF for debugging purposes
 OBJDUMP ?= false
 
-# Parsed values are just to verify that the generated ELF is correct (lazy evaluation allows to parse the ELF only after it is generated)
-PROGRAM_ORIGIN_FROM_ELF  = $(shell LANG=C riscv64-unknown-elf-readelf -S $(BIN) | grep '\.text' | awk '{print "0x"$$5}')
-ENTRY_POINT_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-readelf -h $(BIN) | grep 'Entry point' | awk '{print $$4}')
-STACK_ORIGIN_FROM_ELF    = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_stack_end" {print "0x"$$1}')
-SP_START_FROM_ELF        = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_stack_start" {print "0x"$$1}')
-PROGRAM_START_FROM_ELF   = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_program_start" {print "0x"$$1}')
-PROGRAM_END_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_program_end" {print "0x"$$1}')
-IN_ORIGIN_FROM_ELF       = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_in_start" {print "0x"$$1}')
-IN_END_FROM_ELF          = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_in_end" {print "0x"$$1}')
-HEAP_ORIGIN_FROM_ELF     = $(shell LANG=C riscv64-unknown-elf-nm $(BIN) | awk '$$3 == "_heap_start" {print "0x"$$1}')
 VERIFY_ELF               ?= false             
 
 # Support function to generate JSON from an ELF
@@ -239,42 +229,42 @@ linker-script:
 # Verify that the generated ELF matches the configured memory layout
 verify-elf: require-test
 	@echo "\nVerify that the generated ELF matches the configured memory layout"
-	@[ "$(shell printf '0x%016x' $$(($(STACK_ORIGIN_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(STACK_ORIGIN))))" ] || \
-		(echo "ERROR: STACK_ORIGIN mismatch: expected $(STACK_ORIGIN), got $(STACK_ORIGIN_FROM_ELF)" && exit 1)
-	@echo "  STACK_ORIGIN:   $(STACK_ORIGIN) (expected) = $(STACK_ORIGIN_FROM_ELF) (from ELF)"
-
-	@[ "$(shell printf '0x%016x' $$(($(SP_START_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(SP_START))))" ] || \
-		(echo "ERROR: SP_START mismatch: expected $(SP_START), got $(SP_START_FROM_ELF)" && exit 1)
-	@echo "  SP_START:       $(SP_START) (expected) = $(SP_START_FROM_ELF) (from ELF)"
-
-	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_ORIGIN_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(PROGRAM_ORIGIN))))" ] || \
-		(echo "ERROR: PROGRAM_ORIGIN mismatch: expected $(PROGRAM_ORIGIN), got $(PROGRAM_ORIGIN_FROM_ELF)" && exit 1)
-	@echo "  PROGRAM_ORIGIN: $(PROGRAM_ORIGIN) (expected) = $(PROGRAM_ORIGIN_FROM_ELF) (from ELF)"
-
-	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_START_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(PROGRAM_ORIGIN))))" ] || \
-		(echo "ERROR: _program_start mismatch: expected $(PROGRAM_ORIGIN), got $(PROGRAM_START_FROM_ELF)" && exit 1)
-	@echo "  _program_start: $(PROGRAM_ORIGIN) (expected) = $(PROGRAM_START_FROM_ELF) (from ELF)"
-
-	@[ "$(shell printf '0x%016x' $$(($(PROGRAM_END_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(IN_ORIGIN))))" ] || \
-		(echo "ERROR: _program_end mismatch: expected $(IN_ORIGIN), got $(PROGRAM_END_FROM_ELF)" && exit 1)
-	@echo "  _program_end:   $(IN_ORIGIN) (expected) = $(PROGRAM_END_FROM_ELF) (from ELF)"
-
-	@[ "$(shell printf '0x%016x' $$(($(IN_ORIGIN_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(IN_ORIGIN))))" ] || \
-		(echo "ERROR: IN_ORIGIN mismatch: expected $(IN_ORIGIN), got $(IN_ORIGIN_FROM_ELF)" && exit 1)
-	@echo "  IN_ORIGIN:      $(IN_ORIGIN) (expected) = $(IN_ORIGIN_FROM_ELF) (from ELF)"
-
-	@[ "$(shell printf '0x%016x' $$(($(IN_END_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(HEAP_ORIGIN))))" ] || \
-		(echo "ERROR: _in_end mismatch: expected $(HEAP_ORIGIN), got $(IN_END_FROM_ELF)" && exit 1)
-	@echo "  _in_end:        $(HEAP_ORIGIN) (expected) = $(IN_END_FROM_ELF) (from ELF)"
-
-	@[ "$(shell printf '0x%016x' $$(($(HEAP_ORIGIN_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(HEAP_ORIGIN))))" ] || \
-		(echo "ERROR: HEAP_ORIGIN mismatch: expected $(HEAP_ORIGIN), got $(HEAP_ORIGIN_FROM_ELF)" && exit 1)
-	@echo "  HEAP_ORIGIN:    $(HEAP_ORIGIN) (expected) = $(HEAP_ORIGIN_FROM_ELF) (from ELF)"
-
-	@[ "$(shell printf '0x%016x' $$(($(ENTRY_POINT_FROM_ELF))))" = "$(shell printf '0x%016x' $$(($(ENTRY_POINT))))" ] || \
-		(echo "ERROR: ENTRY_POINT mismatch: expected $(ENTRY_POINT), got $(ENTRY_POINT_FROM_ELF)" && exit 1)
-	@echo "  ENTRY_POINT:    $(ENTRY_POINT) (expected) = $(ENTRY_POINT_FROM_ELF) (from ELF)"
-	@echo "All values match\n"
+	@set -e; \
+	elf_symbol() { \
+		LANG=C riscv64-unknown-elf-nm $(BIN) | awk -v symbol="$$1" '$$3 == symbol { print "0x" $$1; found = 1; exit } END { if (!found) exit 1 }'; \
+	}; \
+	section_addr() { \
+		LANG=C riscv64-unknown-elf-readelf -S $(BIN) | awk -v section="$$1" '{ for (i = 1; i <= NF; i++) if ($$i == section) { print "0x" $$(i + 2); found = 1; exit } } END { if (!found) exit 1 }'; \
+	}; \
+	hex() { printf '0x%016x' "$$(( $$1 ))"; }; \
+	verify() { \
+		label="$$1"; \
+		expected_raw="$$2"; \
+		actual_raw="$$3"; \
+		expected="$$(hex "$$expected_raw")"; \
+		actual="$$(hex "$$actual_raw")"; \
+		if [ "$$actual" != "$$expected" ]; then \
+			echo "ERROR: $$label mismatch: expected $$expected, got $$actual"; \
+			exit 1; \
+		fi; \
+		printf '  %-16s %s (expected) = %s (from ELF)\n' "$$label:" "$$expected" "$$actual"; \
+	}; \
+	verify "ENTRY_POINT" "$(ENTRY_POINT)" "$$(LANG=C riscv64-unknown-elf-readelf -h $(BIN) | awk '/Entry point/ { print $$4; found = 1; exit } END { if (!found) exit 1 }')"; \
+	verify "STACK_ORIGIN" "$(STACK_ORIGIN)" "$$(elf_symbol _stack_end)"; \
+	verify "STACK_LENGTH" "$(STACK_LENGTH)" "$$(( $$(elf_symbol _stack_start) - $$(elf_symbol _stack_end) ))"; \
+	verify "PROGRAM_ORIGIN" "$(PROGRAM_ORIGIN)" "$$(section_addr .text)"; \
+	verify "PROGRAM_LENGTH" "$(PROGRAM_LENGTH)" "$$(( $$(elf_symbol _program_end) - $$(elf_symbol _program_start) ))"; \
+	verify "IN_ORIGIN" "$(IN_ORIGIN)" "$$(elf_symbol _in_start)"; \
+	verify "IN_LENGTH" "$(IN_LENGTH)" "$$(( $$(elf_symbol _in_end) - $$(elf_symbol _in_start) ))"; \
+	verify "HEAP_ORIGIN" "$(HEAP_ORIGIN)" "$$(elf_symbol _heap_start)"; \
+	verify "_program_start" "$(PROGRAM_ORIGIN)" "$$(elf_symbol _program_start)"; \
+	verify "_stack_end" "$(STACK_ORIGIN)" "$$(elf_symbol _stack_end)"; \
+	verify "_stack_start" "$(SP_START)" "$$(elf_symbol _stack_start)"; \
+	verify "_program_end" "$(IN_ORIGIN)" "$$(elf_symbol _program_end)"; \
+	verify "_in_start" "$(IN_ORIGIN)" "$$(elf_symbol _in_start)"; \
+	verify "_in_end" "$(HEAP_ORIGIN)" "$$(elf_symbol _in_end)"; \
+	verify "_heap_start" "$(HEAP_ORIGIN)" "$$(elf_symbol _heap_start)"; \
+	echo "All values match\n"
 
 #####################################################################
 # Test vector targets
