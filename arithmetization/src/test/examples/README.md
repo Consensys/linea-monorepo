@@ -326,7 +326,7 @@ zkc exec -q act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
 ```
 _____________________________________ 0x00000000 ≡ STACK_ORIGIN * = _stack_end
  STACK:   ↑ 8 MiB STACK_LENGTH   
-_____________________________________ 0x00800000 ≡ _stack_start = PROGRAM_ORIGIN * = _program_start
+_____________________________________ 0x00800000 ≡ SP_START * = _stack_start = PROGRAM_ORIGIN * = _program_start
  PROGRAM: ↓ 128 MiB PROGRAM_LENGTH 
 _____________________________________ 0x08800000 ≡ _program_end = IN_ORIGIN *
  IN:      ↓ 1 GiB: IN_LENGTH
@@ -336,6 +336,6 @@ _____________________________________ ∞          ≡ _heap_end  (physical memo
 
 * = Paramaters that can be set, all others are derived.
 ≡ = Default values.
-STACK_ORIGIN needs to be equal to PROGRAM_ORIGIN.
+STACK_START needs to be equal to PROGRAM_ORIGIN.
 The order of memory regions is fixed.
 ```
