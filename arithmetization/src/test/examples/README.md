@@ -341,3 +341,17 @@ The generated linker script exposes `_heap_start`, `_heap_end`, `_stack_end`, `_
 Freestanding programs do not get automatic stack or heap overflow checks from the linker script.
 Programs that need those guarantees must implement them explicitly: stack checks should compare `sp`
 against `_stack_end`, and heap allocators should check allocations against `_heap_end`.
+
+## Proposal for new memory layout and naming
+
+```
+___________________________ _stack_end = 0
+ ↑ 8 MiB: STACK_LENGTH   
+___________________________ STACK_ORIGIN = _stack_start = PROGRAM_ORIGIN
+ ↓ 128 MiB: PROGRAM_LENGTH 
+___________________________ _program_end = IN_ORIGIN
+ ↓ 1 GiB: IN_LENGTH
+___________________________ _in_end = HEAP_ORIGIN = _heap_start
+ ↓ 8+ MiB: HEAP
+___________________________ _headp_end = ∞ (physical memory limitation)
+```
