@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: ci help fmt fmt-zig fmt-codegen fmt-testdata-generate fmt-bench build build-zig build-release build-r5 run run-passing run-failing run-failing-expected test test-zig test-generated-zig test-codegen generate-testdata verify-testdata zkc-build zkc-verify zkc-verify-passing zkc-verify-failing zkc-verify-failing-expected bench-vanishing-build bench-vanishing-json bench-vanishing-zkc bench-vanishing-zkc-failing bench-vanishing-zkc-failing-expected bench-vanishing-doc clean
+.PHONY: ci help fmt fmt-zig fmt-codegen fmt-testdata-generate fmt-bench build build-zig build-release build-r5 run run-passing run-failing run-failing-expected test test-zig test-generated-zig test-codegen generate-testdata verify-testdata zkc-build zkc-verify zkc-verify-passing zkc-verify-failing zkc-verify-failing-expected bench-vanishing-build bench-vanishing-json bench-vanishing-zkc bench-vanishing-zkc-failing bench-vanishing-zkc-failing-expected bench-vanishing-doc bench-vanishing-compare-doc bench-vanishing-all-doc clean
 
 R5_BIN := zig-out/bin/verifier-ray
 R5_JSON := $(R5_BIN).json
@@ -10,8 +10,11 @@ VANISHING_BENCH_ZKC_MAIN := bench/riscv_main_bench.zkc
 VANISHING_BENCH_BIN := zig-out/bin/verifier-ray-vanishing-bench
 VANISHING_BENCH_JSON := $(VANISHING_BENCH_BIN).json
 VANISHING_BENCH_LOG := zig-out/vanishing-bench.log
+VANISHING_BENCH_LOG_DIR := zig-out/vanishing-bench
 VANISHING_BENCH_DOC := bench/vanishing-benchmark.md
+VANISHING_BENCH_COMPARE_DOC := bench/vanishing-benchmark-comparison.md
 VANISHING_BENCH_CASE ?= 0
+VANISHING_BENCH_CASES ?= 0-5
 VANISHING_BENCH_RELEASE ?= small
 VANISHING_INVALID ?= false
 
@@ -50,6 +53,8 @@ help:
 		'  zkc-verify-failing    Run zkc with the failing fixture (exits non-zero)' \
 		'  zkc-verify-failing-expected  Require zkc failing fixture to fail' \
 		'  bench-vanishing-doc   Run the R5 vanishing benchmark and write bench/vanishing-benchmark.md' \
+		'  bench-vanishing-compare-doc  Run selected vanishing benchmarks and write bench/vanishing-benchmark-comparison.md' \
+		'  bench-vanishing-all-doc  Run all generated vanishing benchmarks and write the comparison report' \
 		'  bench-vanishing-zkc-failing-expected  Require the selected invalid vanishing benchmark case to fail under zkc' \
 		'  clean                 Remove Zig build artifacts' \
 		'' \
@@ -63,6 +68,7 @@ help:
 		'' \
 		'benchmark variables:' \
 		'  VANISHING_BENCH_CASE     Generated vanishing case index, default 0' \
+		'  VANISHING_BENCH_CASES    Case selector for comparison, default 0-5; examples: all, 0-10, 0,2,5-8' \
 		'  VANISHING_BENCH_RELEASE  Zig release mode for R5 benchmark, default small' \
 		'  VANISHING_INVALID        Use invalid benchmark fixture when true, default false'
 
@@ -196,6 +202,32 @@ bench-vanishing-doc: bench-vanishing-zkc
 		-case-index $(VANISHING_BENCH_CASE) \
 		-release $(VANISHING_BENCH_RELEASE) \
 		-zkc-main $(VANISHING_BENCH_ZKC_MAIN)
+
+bench-vanishing-compare-doc: generate-testdata
+	mkdir -p $(VANISHING_BENCH_LOG_DIR)
+	rm -f $(VANISHING_BENCH_LOG_DIR)/case-*.log
+	set -e; set -o pipefail; \
+	cases="$$(go run bench/render_vanishing_benchmark/main.go \
+		-metadata bench/generated/vanishing.zig \
+		-case-spec "$(VANISHING_BENCH_CASES)" \
+		-print-cases)"; \
+	echo "vanishing benchmark cases: $$cases"; \
+	for case in $$cases; do \
+		echo "benchmarking vanishing case $$case"; \
+		zig build --release=$(VANISHING_BENCH_RELEASE) -Dstrip=true -Dr5=true -Dvanishing-bench=true -Dvanishing-case=$$case -Dvanishing-invalid=false; \
+		go run $(ELF_TO_JSON) $(VANISHING_BENCH_BIN) "" $(IN_BYTES_OFFSET) > $(VANISHING_BENCH_JSON); \
+		zkc exec -q $(VANISHING_BENCH_JSON) $(VANISHING_BENCH_ZKC_MAIN) | tee $(VANISHING_BENCH_LOG_DIR)/case-$$case.log; \
+	done; \
+	go run bench/render_vanishing_benchmark/main.go \
+		-log-dir $(VANISHING_BENCH_LOG_DIR) \
+		-out $(VANISHING_BENCH_COMPARE_DOC) \
+		-metadata bench/generated/vanishing.zig \
+		-case-spec "$(VANISHING_BENCH_CASES)" \
+		-release $(VANISHING_BENCH_RELEASE) \
+		-zkc-main $(VANISHING_BENCH_ZKC_MAIN)
+
+bench-vanishing-all-doc:
+	$(MAKE) bench-vanishing-compare-doc VANISHING_BENCH_CASES=all
 
 clean:
 	rm -rf .zig-cache zig-out

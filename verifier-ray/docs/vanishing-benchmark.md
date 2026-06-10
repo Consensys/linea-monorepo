@@ -1,6 +1,6 @@
 # Vanishing Benchmarking
 
-This document explains how verifier-ray measures the RISC-V cost of the vanishing verifier. The generated benchmark result lives in `bench/vanishing-benchmark.md`.
+This document explains how verifier-ray measures the RISC-V cost of the vanishing verifier. The generated single-case result lives in `bench/vanishing-benchmark.md`, and the generated comparison report lives in `bench/vanishing-benchmark-comparison.md`.
 
 ## Technique
 
@@ -37,6 +37,23 @@ make bench-vanishing-doc VANISHING_BENCH_CASE=1 VANISHING_BENCH_RELEASE=small
 ```
 
 The generated catalog currently has 83 honest benchmark cases. `VANISHING_BENCH_CASE` selects which one is compiled into the guest.
+
+## Comparison Runs
+
+Use `bench-vanishing-compare-doc` to benchmark more than one honest case and write a comparison table:
+
+```bash
+make bench-vanishing-compare-doc VANISHING_BENCH_CASES=0-10
+```
+
+`VANISHING_BENCH_CASES` accepts `all`, an inclusive range, a comma-separated list, or a mix:
+
+```bash
+make bench-vanishing-compare-doc VANISHING_BENCH_CASES=all
+make bench-vanishing-compare-doc VANISHING_BENCH_CASES=0,2,5-8
+```
+
+`make bench-vanishing-all-doc` is a shortcut for the full generated catalog. The comparison target rebuilds the tiny R5 guest once per selected case, stores logs under `zig-out/vanishing-bench/case-<index>.log`, and renders the table from those logs plus `bench/generated/vanishing.zig` metadata.
 
 ## Invalid Sanity Check
 

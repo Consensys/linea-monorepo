@@ -24,16 +24,70 @@ type metadata struct {
 	totalQuotientClaims string
 }
 
+type benchmarkResult struct {
+	caseIndex int
+	meta      metadata
+	cycles    uint64
+}
+
 func main() {
 	logPath := flag.String("log", "", "zkc benchmark log path")
+	logDir := flag.String("log-dir", "", "directory containing per-case zkc benchmark logs")
 	outPath := flag.String("out", "", "markdown output path")
 	metadataPath := flag.String("metadata", "", "generated benchmark Zig fixture path")
 	binPath := flag.String("bin", "", "R5 ELF path")
 	jsonPath := flag.String("json", "", "zkc JSON input path")
 	caseIndex := flag.Int("case-index", 0, "vanishing benchmark case index")
+	caseSpec := flag.String("case-spec", "", "case selector for comparison: all, 0-10, or 0,2,5-8")
+	printCases := flag.Bool("print-cases", false, "print selected case indexes from -case-spec and exit")
 	releaseMode := flag.String("release", "", "Zig release mode")
 	zkcMain := flag.String("zkc-main", "", "zkc RISC-V benchmark main path")
 	flag.Parse()
+
+	var metadataData []byte
+	if *metadataPath != "" {
+		metadataData = mustRead(*metadataPath)
+	}
+
+	if *printCases {
+		if *metadataPath == "" || *caseSpec == "" {
+			fatalf("-metadata and -case-spec are required with -print-cases")
+		}
+		metas, err := parseAllMetadata(metadataData)
+		if err != nil {
+			fatalf("%v", err)
+		}
+		cases, err := parseCaseSpec(*caseSpec, len(metas))
+		if err != nil {
+			fatalf("%v", err)
+		}
+		var parts []string
+		for _, c := range cases {
+			parts = append(parts, strconv.Itoa(c))
+		}
+		fmt.Println(strings.Join(parts, " "))
+		return
+	}
+
+	if *logDir != "" || *caseSpec != "" {
+		if *logDir == "" || *outPath == "" || *metadataPath == "" || *caseSpec == "" {
+			fatalf("-log-dir, -out, -metadata, and -case-spec are required for comparison reports")
+		}
+		metas, err := parseAllMetadata(metadataData)
+		if err != nil {
+			fatalf("%v", err)
+		}
+		cases, err := parseCaseSpec(*caseSpec, len(metas))
+		if err != nil {
+			fatalf("%v", err)
+		}
+		results, err := readComparisonResults(*logDir, metas, cases)
+		if err != nil {
+			fatalf("%v", err)
+		}
+		renderComparisonReport(*outPath, *logDir, *caseSpec, *releaseMode, *zkcMain, results)
+		return
+	}
 
 	if *logPath == "" || *outPath == "" || *metadataPath == "" {
 		fatalf("-log, -out, and -metadata are required")
@@ -45,7 +99,7 @@ func main() {
 		fatalf("%v", err)
 	}
 
-	meta, err := parseMetadata(mustRead(*metadataPath), *caseIndex)
+	meta, err := parseMetadata(metadataData, *caseIndex)
 	if err != nil {
 		fatalf("%v", err)
 	}
@@ -138,6 +192,17 @@ func parseCycles(log string) (uint64, error) {
 }
 
 func parseMetadata(data []byte, caseIndex int) (metadata, error) {
+	metas, err := parseAllMetadata(data)
+	if err != nil {
+		return metadata{}, err
+	}
+	if caseIndex < 0 || caseIndex >= len(metas) {
+		return metadata{}, fmt.Errorf("case index %d outside metadata range 0..%d", caseIndex, len(metas)-1)
+	}
+	return metas[caseIndex], nil
+}
+
+func parseAllMetadata(data []byte) ([]metadata, error) {
 	var lines []string
 	inMetadata := false
 	for _, line := range strings.Split(string(data), "\n") {
@@ -152,11 +217,22 @@ func parseMetadata(data []byte, caseIndex int) (metadata, error) {
 			lines = append(lines, line)
 		}
 	}
-	if caseIndex < 0 || caseIndex >= len(lines) {
-		return metadata{}, fmt.Errorf("case index %d outside metadata range 0..%d", caseIndex, len(lines)-1)
+	if len(lines) == 0 {
+		return nil, fmt.Errorf("no benchmark metadata found")
 	}
 
-	line := lines[caseIndex]
+	metas := make([]metadata, 0, len(lines))
+	for i, line := range lines {
+		meta, err := parseMetadataLine(line)
+		if err != nil {
+			return nil, fmt.Errorf("parse metadata case %d: %w", i, err)
+		}
+		metas = append(metas, meta)
+	}
+	return metas, nil
+}
+
+func parseMetadataLine(line string) (metadata, error) {
 	name, err := strconv.Unquote(`"` + field(line, `\.name = "((?:\\.|[^"])*)"`) + `"`)
 	if err != nil {
 		return metadata{}, err
@@ -172,6 +248,177 @@ func parseMetadata(data []byte, caseIndex int) (metadata, error) {
 		totalWitnessClaims:  field(line, `\.total_witness_claims = (\d+)`),
 		totalQuotientClaims: field(line, `\.total_quotient_claims = (\d+)`),
 	}, nil
+}
+
+func parseCaseSpec(spec string, caseCount int) ([]int, error) {
+	spec = strings.TrimSpace(spec)
+	if spec == "" {
+		return nil, fmt.Errorf("empty case selector")
+	}
+	if strings.EqualFold(spec, "all") {
+		cases := make([]int, caseCount)
+		for i := range cases {
+			cases[i] = i
+		}
+		return cases, nil
+	}
+
+	seen := make(map[int]bool)
+	var cases []int
+	for _, token := range strings.Split(spec, ",") {
+		token = strings.TrimSpace(token)
+		if token == "" {
+			return nil, fmt.Errorf("empty token in case selector %q", spec)
+		}
+		if strings.Contains(token, "-") {
+			parts := strings.Split(token, "-")
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("invalid case range %q", token)
+			}
+			start, err := parseCaseIndex(parts[0], caseCount)
+			if err != nil {
+				return nil, fmt.Errorf("invalid range start %q: %w", token, err)
+			}
+			end, err := parseCaseIndex(parts[1], caseCount)
+			if err != nil {
+				return nil, fmt.Errorf("invalid range end %q: %w", token, err)
+			}
+			if start > end {
+				return nil, fmt.Errorf("invalid descending case range %q", token)
+			}
+			for i := start; i <= end; i++ {
+				if !seen[i] {
+					seen[i] = true
+					cases = append(cases, i)
+				}
+			}
+			continue
+		}
+
+		index, err := parseCaseIndex(token, caseCount)
+		if err != nil {
+			return nil, err
+		}
+		if !seen[index] {
+			seen[index] = true
+			cases = append(cases, index)
+		}
+	}
+	if len(cases) == 0 {
+		return nil, fmt.Errorf("case selector %q selected no cases", spec)
+	}
+	return cases, nil
+}
+
+func parseCaseIndex(value string, caseCount int) (int, error) {
+	value = strings.TrimSpace(value)
+	index, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid case index %q", value)
+	}
+	if index < 0 || index >= caseCount {
+		return 0, fmt.Errorf("case index %d outside metadata range 0..%d", index, caseCount-1)
+	}
+	return index, nil
+}
+
+func readComparisonResults(logDir string, metas []metadata, cases []int) ([]benchmarkResult, error) {
+	results := make([]benchmarkResult, 0, len(cases))
+	for _, caseIndex := range cases {
+		logPath := filepath.Join(logDir, fmt.Sprintf("case-%d.log", caseIndex))
+		cycles, err := parseCycles(string(mustRead(logPath)))
+		if err != nil {
+			return nil, fmt.Errorf("case %d: %w", caseIndex, err)
+		}
+		results = append(results, benchmarkResult{
+			caseIndex: caseIndex,
+			meta:      metas[caseIndex],
+			cycles:    cycles,
+		})
+	}
+	return results, nil
+}
+
+func renderComparisonReport(outPath, logDir, caseSpec, releaseMode, zkcMain string, results []benchmarkResult) {
+	if len(results) == 0 {
+		fatalf("no benchmark results to render")
+	}
+
+	minResult := results[0]
+	maxResult := results[0]
+	for _, result := range results[1:] {
+		if result.cycles < minResult.cycles {
+			minResult = result
+		}
+		if result.cycles > maxResult.cycles {
+			maxResult = result
+		}
+	}
+
+	var out bytes.Buffer
+	fmt.Fprintln(&out, "# Vanishing RISC-V Benchmark Comparison")
+	fmt.Fprintln(&out)
+	fmt.Fprintln(&out, "<!-- Code generated by make bench-vanishing-compare-doc; DO NOT EDIT. -->")
+	fmt.Fprintln(&out)
+	fmt.Fprintln(&out, "Generated by `make bench-vanishing-compare-doc`.")
+	fmt.Fprintln(&out)
+	fmt.Fprintln(&out, "Each row measures one generated honest vanishing benchmark case. The reported value is the RISC-V instruction count emitted by `cycle_count` from the zkc RISC-V runner.")
+	fmt.Fprintln(&out)
+	fmt.Fprintln(&out, "## Summary")
+	fmt.Fprintln(&out)
+	fmt.Fprintln(&out, "| Metric | Value |")
+	fmt.Fprintln(&out, "| --- | --- |")
+	fmt.Fprintf(&out, "| Case selector | `%s` |\n", caseSpec)
+	fmt.Fprintf(&out, "| Cases measured | %d |\n", len(results))
+	fmt.Fprintf(&out, "| Fastest | `%d %s` (%s cycles) |\n", minResult.caseIndex, markdownCell(minResult.meta.name), formatThousands(minResult.cycles))
+	fmt.Fprintf(&out, "| Slowest | `%d %s` (%s cycles) |\n", maxResult.caseIndex, markdownCell(maxResult.meta.name), formatThousands(maxResult.cycles))
+	if releaseMode != "" {
+		fmt.Fprintf(&out, "| Zig release mode | `%s` |\n", releaseMode)
+	}
+	fmt.Fprintf(&out, "| Git commit | `%s` |\n", commandText("git", "rev-parse", "--short", "HEAD"))
+	fmt.Fprintf(&out, "| Zig | `%s` |\n", commandText("zig", "version"))
+	fmt.Fprintf(&out, "| zkc | `%s` |\n", zkcVersion())
+	if zkcMain != "" {
+		fmt.Fprintf(&out, "| zkc main | `%s` |\n", zkcMain)
+	}
+	fmt.Fprintf(&out, "| Logs | `%s/case-<index>.log` |\n", logDir)
+	fmt.Fprintln(&out)
+	fmt.Fprintln(&out, "## Results")
+	fmt.Fprintln(&out)
+	fmt.Fprintln(&out, "| Case | Scenario | RISC-V cycles | vs fastest | Modules | Dynamic | Rounds | Expressions | Buckets | Vanishings | Witness | Quotient |")
+	fmt.Fprintln(&out, "| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+	for _, result := range results {
+		fmt.Fprintf(
+			&out,
+			"| %d | `%s` | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n",
+			result.caseIndex,
+			markdownCell(result.meta.name),
+			formatThousands(result.cycles),
+			formatCycleDelta(result.cycles, minResult.cycles),
+			result.meta.moduleCount,
+			result.meta.dynamicModuleCount,
+			result.meta.roundCount,
+			result.meta.expressionCount,
+			result.meta.bucketCount,
+			result.meta.vanishingCount,
+			result.meta.totalWitnessClaims,
+			result.meta.totalQuotientClaims,
+		)
+	}
+	fmt.Fprintln(&out)
+	fmt.Fprintln(&out, "## Reproduce")
+	fmt.Fprintln(&out)
+	fmt.Fprintln(&out, "```bash")
+	fmt.Fprintln(&out, "cd verifier-ray")
+	fmt.Fprintf(&out, "make bench-vanishing-compare-doc VANISHING_BENCH_CASES=%s VANISHING_BENCH_RELEASE=%s\n", shellQuote(caseSpec), shellQuote(releaseMode))
+	fmt.Fprintln(&out, "```")
+
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		fatalf("create output dir: %v", err)
+	}
+	if err := os.WriteFile(outPath, out.Bytes(), 0o644); err != nil {
+		fatalf("write %s: %v", outPath, err)
+	}
 }
 
 func field(line, pattern string) string {
@@ -234,6 +481,32 @@ func formatThousands[T ~uint64](value T) string {
 		b.WriteString(s[i : i+3])
 	}
 	return b.String()
+}
+
+func formatCycleDelta(cycles, baseline uint64) string {
+	if cycles == baseline {
+		return "fastest"
+	}
+	delta := cycles - baseline
+	percent := 100 * float64(delta) / float64(baseline)
+	return fmt.Sprintf("+%s (%.1f%%)", formatThousands(delta), percent)
+}
+
+func markdownCell(value string) string {
+	return strings.ReplaceAll(value, "|", `\|`)
+}
+
+func shellQuote(value string) string {
+	if value == "" {
+		return "''"
+	}
+	for _, r := range value {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || strings.ContainsRune("-_./", r) {
+			continue
+		}
+		return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'"
+	}
+	return value
 }
 
 func fatalf(format string, args ...any) {
