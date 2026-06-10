@@ -73,6 +73,15 @@ make -C l2-execution spec-test ZIG=/path/to/zig SPEC_ARGS="--report-only"
 
 The runner walks the `blockchain_tests/` tree from the lazy `execution_spec_tests_zkevm` dependency and runs every block through the guest, failing if any output differs from the fixture's expected `statelessOutputBytes`. The corpus walking/reporting is reusable ([`spec_runner.zig`](l2-execution/src/spec_runner.zig)); a future extended-execution guest supplies its own input **adapter** ([`evm_spec_runner.zig`](l2-execution/src/evm_spec_runner.zig) is the vanilla one).
 
+## Continuous Integration
+
+[`riscv-guests-host-tests.yml`](../.github/workflows/riscv-guests-host-tests.yml) runs on every PR touching `riscv-guests/**`, with two parallel host-machine jobs:
+
+- **Guest unit tests** — `zig fmt --check` plus the orchestrated `make test` (every guest in `GUESTS`).
+- **l2-execution EF spec tests** — the full fixture suite via `make spec-test` (fail-hard; ~2,900 files / ~23k blocks, minutes on a warm cache).
+
+The shared setup lives in [`.github/actions/setup-riscv-guests`](../.github/actions/setup-riscv-guests/action.yml): it installs the Zig pinned in `.zigversion` (via community mirrors — ziglang.org prunes dev builds), the apt crypto packages, and blst/mcl built from pinned upstream sources into `/usr/local`, with the builds and Zig package fetches cached. Running a guest **inside the ZKC interpreter** in CI is a separate, later stage — blocked on the prover link toolchain (see below).
+
 ## ZKC Interpreter Integration
 
 Running a guest inside the Lineth proving system (memory layout, ELF→JSON, `zkc`) is owned by [`arithmetization/src/test/examples/Makefile`](../arithmetization/src/test/examples/Makefile). A guest's `exec`/`debug` build it and **delegate** the run there (single source of truth for ELF→JSON + `zkc`):
