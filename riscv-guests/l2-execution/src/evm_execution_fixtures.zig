@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const zkevm_fixture = @import("zkevm_fixture.zig");
+
 /// One zkevm stateless-block fixture (execution-spec-tests `tests-zkevm` format), reduced to the
 /// fields the guest smoke test needs.
 pub const StatelessBlockFixture = struct {
@@ -15,52 +17,15 @@ pub const embedded = struct {
     pub const zkevm_stateless_block = @embedFile("zkevm_stateless_block.json");
 };
 
-/// Parse an execution-spec-tests zkevm blockchain_test fixture and return the first block's SSZ
-/// input/output. Fixture shape: { "<test_name>": { "network": "...", "blocks": [
-///   { "statelessInputBytes": "0x...", "statelessOutputBytes": "0x...", ... } ] } }
+/// First stateless block of a zkevm fixture — a smoke-test convenience over the shared
+/// `zkevm_fixture.parseBlocks` (the full-corpus runner consumes all blocks via the same parser).
 pub fn loadStatelessBlock(allocator: std.mem.Allocator, fixture_json: []const u8) !StatelessBlockFixture {
-    const parsed = try std.json.parseFromSlice(std.json.Value, allocator, fixture_json, .{});
-    defer parsed.deinit();
-
-    if (parsed.value != .object) return error.InvalidFixture;
-    var it = parsed.value.object.iterator();
-    const entry = it.next() orelse return error.EmptyFixture;
-    const test_case = entry.value_ptr.*;
-    if (test_case != .object) return error.InvalidFixture;
-
-    const network = switch (test_case.object.get("network") orelse return error.InvalidFixture) {
-        .string => |s| s,
-        else => return error.InvalidFixture,
-    };
-
-    const blocks = switch (test_case.object.get("blocks") orelse return error.InvalidFixture) {
-        .array => |a| a,
-        else => return error.InvalidFixture,
-    };
-    if (blocks.items.len == 0) return error.InvalidFixture;
-    const block = blocks.items[0];
-    if (block != .object) return error.InvalidFixture;
-
-    const in_hex = switch (block.object.get("statelessInputBytes") orelse return error.InvalidFixture) {
-        .string => |s| s,
-        else => return error.InvalidFixture,
-    };
-    const out_hex = switch (block.object.get("statelessOutputBytes") orelse return error.InvalidFixture) {
-        .string => |s| s,
-        else => return error.InvalidFixture,
-    };
-
+    const blocks = try zkevm_fixture.parseBlocks(allocator, fixture_json);
+    if (blocks.len == 0) return error.EmptyFixture;
+    const block = blocks[0];
     return .{
-        .network = try allocator.dupe(u8, network),
-        .input = try hexToOwnedBytes(allocator, in_hex),
-        .expected_output = try hexToOwnedBytes(allocator, out_hex),
+        .network = block.network orelse return error.InvalidFixture,
+        .input = block.input,
+        .expected_output = block.expected_output,
     };
-}
-
-fn hexToOwnedBytes(allocator: std.mem.Allocator, hex: []const u8) ![]const u8 {
-    const stripped = if (hex.len >= 2 and hex[0] == '0' and (hex[1] == 'x' or hex[1] == 'X')) hex[2..] else hex;
-    if (stripped.len % 2 != 0) return error.OddHexLength;
-    const out = try allocator.alloc(u8, stripped.len / 2);
-    _ = try std.fmt.hexToBytes(out, stripped);
-    return out;
 }

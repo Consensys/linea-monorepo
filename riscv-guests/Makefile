@@ -9,7 +9,7 @@
 #     arithmetization/src/test/examples/Makefile; the exec/debug/fixture-* targets
 #     below only build the guest and hand the artifact to it (no duplicated recipes).
 
-.PHONY: fetch compile test exec debug fixture-exec fixture-debug clean
+.PHONY: fetch compile test spec-test exec debug fixture-exec fixture-debug clean
 
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
@@ -64,6 +64,13 @@ compile:
 
 test:
 	$(ZIG) build test $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS)
+
+# Run the guest against the full EF zkevm stateless fixture set on the host. The fixtures come
+# from the lazy execution_spec_tests_zkevm dependency (fetched on demand). Narrow/triage with
+# SPEC_ARGS, e.g. `make spec-test SPEC_ARGS="--fork Amsterdam -x"` or `SPEC_ARGS="--report-only"`.
+SPEC_ARGS ?=
+spec-test:
+	$(ZIG) build spec-tests $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS) $(if $(strip $(SPEC_ARGS)),-- $(SPEC_ARGS))
 
 clean:
 	rm -rf $(MAKEFILE_DIR)zig-out/

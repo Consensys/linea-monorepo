@@ -62,6 +62,20 @@ The guest input offset can be overridden when compiling:
 make compile ZIG=/path/to/zig INPUT_OFFSET=0x08800000
 ```
 
+### Spec tests (full EF zkevm fixture suite)
+
+`make test` is a fast single-fixture smoke test. To run the guest against the **whole** EF execution-spec-tests zkevm stateless suite on the host (needs the same native crypto libs as `make test`):
+
+```bash
+make spec-test ZIG=/path/to/zig
+# narrow / triage with SPEC_ARGS:
+make spec-test ZIG=/path/to/zig SPEC_ARGS="--fork Amsterdam"   # one fork only
+make spec-test ZIG=/path/to/zig SPEC_ARGS="--limit 50 -x"      # first 50 blocks, stop on first fail
+make spec-test ZIG=/path/to/zig SPEC_ARGS="--report-only"      # print pass-rate, always exit 0
+```
+
+This builds `evm-execution-spec-runner` and walks the `blockchain_tests/` tree from the lazy `execution_spec_tests_zkevm` dependency (downloaded on demand — no curl, no embedding), running every block through the guest and failing if any block's output differs from the fixture's expected `statelessOutputBytes`. The corpus walking/reporting is guest-agnostic ([`spec_runner.zig`](l2-execution/src/spec_runner.zig)); each guest supplies a small input **adapter** ([`evm_spec_runner.zig`](l2-execution/src/evm_spec_runner.zig) for the vanilla guest), so a future extended guest reuses the same runner and only adapts the input.
+
 ## ZKC Interpreter Integration
 
 Running a guest inside the Lineth proving system (memory layout, ELF→JSON conversion and the `zkc` interpreter) is proving-system-specific and is owned by [`arithmetization/src/test/examples/Makefile`](../arithmetization/src/test/examples/Makefile). The targets below build the guest and **delegate** the run to it (via its `elf-exec` / `elf-debug` external-ELF path), so the ELF→JSON and `zkc` recipes have a single source of truth:

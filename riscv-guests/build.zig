@@ -55,6 +55,15 @@ pub fn build(b: *std.Build) void {
     obj.root_module.code_model = .medium;
     addExecutionImports(obj.root_module, zesuImports(zesu_guest));
     obj.root_module.addImport("guest_options", guest_options_mod);
+    // Delegate the in-guest precompile implementations to zesu-zkvm's stdlibs_accel (consumed by
+    // zkvm_provide.zig's `.native` arms). It is std-only, so it builds for freestanding rv64im.
+    const zesu_zkvm = b.dependency("zesu_zkvm", .{});
+    const accel_src = zesu_zkvm.path("linea/src/runtime/stdlibs_accel.zig");
+    obj.root_module.addImport("zesu_zkvm_accel", b.createModule(.{
+        .root_source_file = accel_src,
+        .target = target,
+        .optimize = optimize,
+    }));
     clearFreestandingNativeLinkage(b, obj.root_module);
     const install_obj = b.addInstallFile(obj.getEmittedBin(), b.fmt("lib/{s}.o", .{guest_name}));
     b.getInstallStep().dependOn(&install_obj.step);
@@ -80,6 +89,24 @@ pub fn build(b: *std.Build) void {
     guest_mod.addImport("guest_options", guest_options_mod);
 
     const test_step = b.step("test", "Run native Zig unit tests for the EVM execution guest");
+    const spec_step = b.step("spec-tests", "Run the guest against all EF zkevm stateless fixtures (host)");
+
+    // Integration smoke test for the delegated precompiles: verifies zesu-zkvm's stdlibs_accel
+    // imports and that its ecrecover round-trips (the in-guest precompiles delegate to it). std +
+    // the dependency only — no fixtures, no native crypto libs.
+    const accel_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("l2-execution/src/stdlibs_accel_test.zig"),
+            .target = native_target,
+            .optimize = optimize,
+        }),
+    });
+    accel_tests.root_module.addImport("zesu_zkvm_accel", b.createModule(.{
+        .root_source_file = accel_src,
+        .target = native_target,
+        .optimize = optimize,
+    }));
+    test_step.dependOn(&b.addRunArtifact(accel_tests).step);
 
     // The SSZ fixture comes from the execution-spec-tests zkevm dependency (lazy: only fetched when
     // this test is built). An empty-block vector → no transactions → no secp256k1/curve precompiles,
@@ -108,6 +135,29 @@ pub fn build(b: *std.Build) void {
         linkNativeZesuCrypto(tests, native_target, native_crypto);
 
         test_step.dependOn(&b.addRunArtifact(tests).step);
+
+        // ── Spec-test runner ────────────────────────────────────────────────────
+        // Standalone host executable that walks the WHOLE zkevm fixture tree and runs every block
+        // through this guest (mirrors zesu's zkevm-blockchain-test-runner). Fixtures come from the
+        // same lazy dependency — no curl, no embedding; `zig build spec-tests` passes the
+        // blockchain_tests/ directory as --fixtures. Pass-through extra args after `--`, e.g.
+        // `zig build spec-tests -- --fork Amsterdam -x`.
+        const spec_runner_exe = b.addExecutable(.{
+            .name = "evm-execution-spec-runner",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("l2-execution/src/evm_spec_runner.zig"),
+                .target = native_target,
+                .optimize = optimize,
+            }),
+        });
+        spec_runner_exe.root_module.addImport("evm_execution_guest", guest_mod);
+        linkNativeZesuCrypto(spec_runner_exe, native_target, native_crypto);
+
+        const run_spec = b.addRunArtifact(spec_runner_exe);
+        run_spec.addArg("--fixtures");
+        run_spec.addDirectoryArg(fixtures_dep.path("blockchain_tests"));
+        if (b.args) |extra| run_spec.addArgs(extra);
+        spec_step.dependOn(&run_spec.step);
     }
 }
 

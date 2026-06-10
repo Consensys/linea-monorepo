@@ -64,8 +64,16 @@ fn guestMain() callconv(.c) noreturn {
 }
 
 comptime {
-    if (!builtin.is_test) {
+    // Export `main` only for the freestanding RISC-V guest, which owns its entry point. Native
+    // builds import this as a library (the unit test and the spec runner exe) and get `main` from
+    // std.start — exporting it here too would be a symbol collision.
+    if (builtin.cpu.arch == .riscv64) {
         @export(&guestMain, .{ .name = "main" });
+        // Pull in the per-precompile accelerator providers (zkvm_provide.zig): it DEFINES the
+        // zkvm_* symbols whose policy is .native/.stub and leaves .intercept ones undefined for the
+        // prover to resolve. Freestanding only — the native build uses Zesu's C backend and never
+        // references zkvm_*.
+        _ = @import("zkvm_provide.zig");
     }
 }
 
