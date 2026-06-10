@@ -41,19 +41,33 @@ func checkAllVerifierActions(rt *wiop.Runtime) error {
 	return nil
 }
 
+// setupMessageBusCoins allocates a fresh round, registers the shared
+// (α, β) pair on it, and stores both on the System. The fresh round
+// stands in for the round on which the production Fiat–Shamir mechanism
+// would sample the coins (always strictly after the round-0 columns it
+// derives them from, so the runtime can sample them once those columns
+// have been absorbed into the FS state).
+func setupMessageBusCoins(sys *wiop.System) *wiop.Round {
+	r := sys.NewRound()
+	sys.MessageBusAlpha = r.NewCoinField(sys.Context.Childf("mb-alpha"))
+	sys.MessageBusBeta = r.NewCoinField(sys.Context.Childf("mb-beta"))
+	return r
+}
+
 // drive runs the canonical "assign-witness → advance to coin round → advance
 // to result round → run prover" loop for a message-bus pipeline. After this
 // returns, every prover action has executed and the verifier actions are
 // ready to be checked.
 //
-// Round structure produced by messagebus.Compile + logderivativesum.Compile:
+// Round structure produced by setupMessageBusCoins + messagebus.Compile +
+// logderivativesum.Compile:
 //
 //   - Round 0: user-witness columns (selectors, value columns, multiplicities).
-//   - Round 1: per-handle (α, β) coins; no prover actions.
+//   - Round 1: the externally-supplied (α, β) coins; no prover actions.
 //   - Round 2: LogDerivativeSum Result cells + Z columns; one prover action
 //     per LogDerivativeSum query that assigns Z and the result.
 func drive(rt *wiop.Runtime) {
-	rt.AdvanceRound() // → coin round
+	rt.AdvanceRound() // → coin round, samples α and β
 	rt.AdvanceRound() // → result round
 	runRound(rt)      // assigns Z columns + result cells
 }
@@ -64,6 +78,7 @@ func drive(rt *wiop.Runtime) {
 func TestCompile_TwoSegmentsBalanced(t *testing.T) {
 	sys := wiop.NewSystemf("mb-balanced")
 	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
 
 	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
 	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
@@ -101,6 +116,7 @@ func TestCompile_TwoSegmentsBalanced(t *testing.T) {
 func TestCompile_TamperedMultiplicity(t *testing.T) {
 	sys := wiop.NewSystemf("mb-tampered")
 	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
 
 	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
 	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
@@ -140,6 +156,7 @@ func TestCompile_TamperedMultiplicity(t *testing.T) {
 func TestCompile_MultipleSendersOneReceiver(t *testing.T) {
 	sys := wiop.NewSystemf("mb-multi-senders")
 	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
 
 	modS1 := sys.NewSizedModule(sys.Context.Childf("modS1"), 2, wiop.PaddingDirectionNone)
 	modS2 := sys.NewSizedModule(sys.Context.Childf("modS2"), 2, wiop.PaddingDirectionNone)
@@ -186,6 +203,7 @@ func TestCompile_MultipleSendersOneReceiver(t *testing.T) {
 func TestCompile_MultiColumnTuples(t *testing.T) {
 	sys := wiop.NewSystemf("mb-tuples")
 	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
 
 	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
 	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
@@ -227,6 +245,7 @@ func TestCompile_MultiColumnTuples(t *testing.T) {
 func TestCompile_FilteredSelectors(t *testing.T) {
 	sys := wiop.NewSystemf("mb-filter")
 	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
 
 	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
 	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
@@ -266,11 +285,13 @@ func TestCompile_FilteredSelectors(t *testing.T) {
 }
 
 // TestCompile_TwoHandlesIndependent verifies that two unrelated handles in
-// the same system are checked independently: each handle gets its own (α, β)
-// coins and its own verifier action.
+// the same system are checked independently: they share the global (α, β)
+// coins but each handle still gets its own LogDerivativeSum cells and its
+// own verifier action, so tampering one handle cannot mask the other.
 func TestCompile_TwoHandlesIndependent(t *testing.T) {
 	sys := wiop.NewSystemf("mb-two-handles")
 	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
 
 	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 2, wiop.PaddingDirectionNone)
 	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 2, wiop.PaddingDirectionNone)
@@ -321,6 +342,7 @@ func TestCompile_TwoHandlesIndependent(t *testing.T) {
 func TestCompile_ReceiveWithoutMultiplicity(t *testing.T) {
 	sys := wiop.NewSystemf("mb-no-mul")
 	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
 
 	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 2, wiop.PaddingDirectionNone)
 	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 2, wiop.PaddingDirectionNone)
@@ -368,6 +390,7 @@ func TestCompile_NoMessageBusesIsNoOp(t *testing.T) {
 func TestCompile_WidthMismatchPanics(t *testing.T) {
 	sys := wiop.NewSystemf("mb-width-mismatch")
 	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
 
 	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 2, wiop.PaddingDirectionNone)
 	colA := mod.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
@@ -385,6 +408,24 @@ func TestCompile_WidthMismatchPanics(t *testing.T) {
 	)
 
 	assert.Panics(t, func() { messagebus.Compile(sys) })
+}
+
+// TestCompile_MissingCoinsPanics asserts that running the compiler with
+// unreduced MessageBus entries but no externally-supplied (α, β) coins
+// panics. The pass intentionally does not allocate its own coins.
+func TestCompile_MissingCoinsPanics(t *testing.T) {
+	sys := wiop.NewSystemf("mb-missing-coins")
+	r0 := sys.NewRound()
+
+	mod := sys.NewSizedModule(sys.Context.Childf("m"), 2, wiop.PaddingDirectionNone)
+	col := mod.NewColumn(sys.Context.Childf("c"), wiop.VisibilityOracle, r0)
+	sys.NewMessageBusSend(
+		sys.Context.Childf("send"), "seg", "h",
+		wiop.NewTable(col.View()),
+	)
+
+	assert.Panics(t, func() { messagebus.Compile(sys) },
+		"Compile must panic when MessageBusAlpha/MessageBusBeta are unset")
 }
 
 // TestNewMessageBusReceive_WrongMultiplicityModulePanics asserts that the

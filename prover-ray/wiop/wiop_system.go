@@ -34,6 +34,17 @@ type System struct {
 	// via [System.NewMessageBusSend] and [System.NewMessageBusReceive], in
 	// declaration order.
 	MessageBuses []*MessageBus
+	// MessageBusAlpha is the α coin shared by every [MessageBus] entry reduced
+	// by the messagebus compiler. The pass does NOT allocate α itself; it must
+	// be populated externally (typically by a Fiat–Shamir mechanism that
+	// derives both coins from round-0 columns) before messagebus.Compile is
+	// invoked. Required whenever the System contains any unreduced MessageBus
+	// entry — the compiler panics if it is nil.
+	MessageBusAlpha *CoinField
+	// MessageBusBeta is the β coin shared by every [MessageBus] entry reduced
+	// by the messagebus compiler. Same lifecycle and requirement as
+	// MessageBusAlpha.
+	MessageBusBeta *CoinField
 	// scratchArena backs the [PlanningContext] used by [Materialize]. It is
 	// nil until Materialize is called.
 	scratchArena *arena.VectorArena

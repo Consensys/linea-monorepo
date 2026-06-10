@@ -5,17 +5,28 @@
 // each (segment, handle) pair, a [wiop.LogDerivativeSum] holding the per-pair
 // running sum. A single verifier action per handle then asserts that the
 // per-segment cells for that handle sum to zero. By Schwartz–Zippel over two
-// freshly-sampled extension-field coins α, β (shared across all participants
-// of a handle), the resulting identity holds iff
+// extension-field coins α, β (shared across every participant of every
+// handle reduced by this pass), the resulting identity holds, for each
+// handle h, iff
 //
 //	∑_{Send entries on h}  Σ_row filter(row) ·  1               / d_h(row)
 //	    =
 //	∑_{Recv entries on h}  Σ_row filter(row) ·  Multiplicity(row) / d_h(row)
 //
-// where d_h(row) = β_h + α_h^{w-1}·c_0(row) + … + c_{w-1}(row). Equivalently,
+// where d_h(row) = β + α^{w_h-1}·c_0(row) + … + c_{w_h-1}(row). Equivalently,
 // the multiset of rows sent into h equals the multiset of rows received from
-// h, weighted by the receiver-side multiplicities. See [wiop.MessageBus] for
-// the per-entry semantics.
+// h, weighted by the receiver-side multiplicities. The same α, β are reused
+// across handles (each handle just folds with α raised to powers up to its
+// own width); handles remain independent multiset identities because each is
+// asserted by its own verifier action. See [wiop.MessageBus] for the
+// per-entry semantics.
+//
+// The coins themselves are NOT allocated by this pass: they must be
+// pre-populated on the System as [wiop.System.MessageBusAlpha] and
+// [wiop.System.MessageBusBeta] by an external mechanism (typically a
+// Fiat–Shamir derivation from round-0 columns) before Compile runs. The pass
+// panics if either is nil while there are unreduced MessageBus entries to
+// process.
 //
 // Caller order: invoke messagebus.Compile(sys) BEFORE
 // logderivativesum.Compile(sys); the latter discharges the LogDerivativeSums
@@ -35,10 +46,12 @@ import (
 // pair) plus one [wiop.VerifierAction] per handle that asserts the per-segment
 // sums total to zero. See the package documentation for the full reduction.
 //
-// The pass appends up to two fresh interactive rounds to sys.Rounds: one for
-// the per-handle (α, β) coins, one for the LogDerivativeSum result cells. If
-// the participating tables include multi-column tuples for some handle, an α
-// coin is allocated for that handle; otherwise only β is allocated.
+// The pass appends up to one fresh interactive round to sys.Rounds: the
+// round on which the [wiop.LogDerivativeSum] result cells and the per-handle
+// verifier action live. The coin round is NOT allocated here — the supplied
+// [wiop.System.MessageBusAlpha] and [wiop.System.MessageBusBeta] are
+// expected to already be registered on some earlier round. Both coins must
+// be non-nil whenever there is at least one unreduced MessageBus entry.
 //
 // Already-reduced entries are skipped; remaining unreduced entries are marked
 // reduced on return.
@@ -64,21 +77,30 @@ func Compile(sys *wiop.System) {
 
 	compCtx := sys.Context.Childf("message-bus")
 
-	// Locate the latest participant round across every entry. Coins must be
-	// sampled strictly later, so we allocate two fresh rounds (coin + result)
-	// at the tail of sys.Rounds — that guarantees the ordering regardless of
-	// what existed before.
-	maxParticipantRound := latestParticipantRound(byHandle)
-	coinRound, resultRound := ensureTwoRoundsAfter(sys, maxParticipantRound)
-
-	type handlePlan struct {
-		alpha *wiop.CoinField // nil when no multi-column tab participates in this handle
-		beta  *wiop.CoinField
-		width int // shared column width of every participant in this handle
+	// Pull the shared (α, β) coins from the System. They are NOT allocated
+	// here — the caller (typically a round-0 Fiat–Shamir derivation) must
+	// have populated both fields before this pass runs.
+	alpha := sys.MessageBusAlpha
+	beta := sys.MessageBusBeta
+	if alpha == nil {
+		panic("wiop/compilers/messagebus: System.MessageBusAlpha is nil; the messagebus pass requires an externally-supplied α coin")
 	}
-	plans := make(map[string]handlePlan, len(handles))
+	if beta == nil {
+		panic("wiop/compilers/messagebus: System.MessageBusBeta is nil; the messagebus pass requires an externally-supplied β coin")
+	}
 
-	// Per-handle: validate uniform width, then allocate (α?, β).
+	// The result round (where LDS cells and the verifier action live) must
+	// come strictly after the latest of (a) every participant column's round
+	// and (b) the round on which the supplied α/β are sampled. Otherwise the
+	// LDS cell could be assigned before its inputs are available.
+	maxRound := latestParticipantRound(byHandle)
+	maxRound = laterRound(maxRound, alpha.Round())
+	maxRound = laterRound(maxRound, beta.Round())
+	resultRound := ensureRoundAfter(sys, maxRound)
+
+	// Per-handle: validate uniform width within a handle. Widths may differ
+	// across handles (each handle just raises the shared α to powers up to
+	// its own width).
 	for _, h := range handles {
 		entries := byHandle[h]
 		width := entries[0].Tab.Width()
@@ -91,14 +113,6 @@ func Compile(sys *wiop.System) {
 				))
 			}
 		}
-
-		hCtx := compCtx.Childf("handle-%s", h)
-		plan := handlePlan{width: width}
-		if width > 1 {
-			plan.alpha = coinRound.NewCoinField(hCtx.Childf("alpha"))
-		}
-		plan.beta = coinRound.NewCoinField(hCtx.Childf("beta"))
-		plans[h] = plan
 	}
 
 	// Per (handle, segment): collect Fractions, build one LogDerivativeSum,
@@ -106,7 +120,6 @@ func Compile(sys *wiop.System) {
 	cellsByHandle := make(map[string][]*wiop.Cell, len(handles))
 	for _, h := range handles {
 		entries := byHandle[h]
-		plan := plans[h]
 
 		// Group entries by segment. We iterate in declaration order so that
 		// segment order is deterministic; the registration ordering of
@@ -122,7 +135,7 @@ func Compile(sys *wiop.System) {
 
 		hCtx := compCtx.Childf("handle-%s", h)
 		for _, seg := range segmentOrder {
-			fractions := buildFractionsForSegment(plan.alpha, plan.beta, bySegment[seg])
+			fractions := buildFractionsForSegment(alpha, beta, bySegment[seg])
 			ld := sys.NewLogDerivativeSum(hCtx.Childf("seg-%s", seg), fractions)
 			cellsByHandle[h] = append(cellsByHandle[h], ld.Result)
 		}
@@ -164,23 +177,34 @@ func latestParticipantRound(byHandle map[string][]*wiop.MessageBus) *wiop.Round 
 	return best
 }
 
-// ensureTwoRoundsAfter returns two rounds (coin, result) with coin.ID >
-// after.ID and result.ID == coin.ID + 1. Existing rounds at the tail of
-// sys.Rounds are reused when present; otherwise fresh ones are appended via
-// sys.NewRound. after may be nil, in which case coin = sys.Rounds[0] if it
-// exists or a freshly-appended round.
-func ensureTwoRoundsAfter(sys *wiop.System, after *wiop.Round) (coin, result *wiop.Round) {
+// laterRound returns whichever of a, b has the higher ID. nil counts as
+// "earlier than every real round"; if both are nil the result is nil.
+func laterRound(a, b *wiop.Round) *wiop.Round {
+	switch {
+	case a == nil:
+		return b
+	case b == nil:
+		return a
+	case b.ID > a.ID:
+		return b
+	default:
+		return a
+	}
+}
+
+// ensureRoundAfter returns a round with ID > after.ID, reusing the existing
+// tail round when one already sits in that slot; otherwise appending a fresh
+// round via sys.NewRound. after may be nil, in which case the returned round
+// is sys.Rounds[0] (allocated if absent).
+func ensureRoundAfter(sys *wiop.System, after *wiop.Round) *wiop.Round {
 	startID := -1
 	if after != nil {
 		startID = after.ID
 	}
-	// Need rounds at indices startID+1 and startID+2.
-	for len(sys.Rounds) <= startID+2 {
+	for len(sys.Rounds) <= startID+1 {
 		sys.NewRound()
 	}
-	coin = sys.Rounds[startID+1]
-	result = sys.Rounds[startID+2]
-	return
+	return sys.Rounds[startID+1]
 }
 
 // buildFractionsForSegment turns every MessageBus entry on one (segment,
@@ -192,8 +216,9 @@ func ensureTwoRoundsAfter(sys *wiop.System, after *wiop.Round) (coin, result *wi
 //	Receive: Filter = Tab.Selector, Numerator = -Multiplicity,  Denominator = d_h(row)
 //
 // where d_h(row) = β + α^{w-1}·c_0(row) + … + c_{w-1}(row). For width-1 tabs
-// alpha is nil and the fold collapses to β + c_0(row). A nil Multiplicity on
-// the Receive side becomes the constant 1 (so the numerator is just -1).
+// the Horner loop is empty and the fold reduces to β + c_0(row); α is still
+// passed in but never multiplied. A nil Multiplicity on the Receive side
+// becomes the constant 1 (so the numerator is just -1).
 func buildFractionsForSegment(
 	alpha *wiop.CoinField,
 	beta *wiop.CoinField,
@@ -237,13 +262,10 @@ func buildFractionsForSegment(
 }
 
 // foldDenominator returns the expression β + α^{w-1}·c_0 + … + α·c_{w-2} +
-// c_{w-1}, evaluated as a Horner pass over cols. When alpha is nil (width-1
-// table), the result is β + c_0.
+// c_{w-1}, evaluated as a Horner pass over cols. For width-1 tabs the loop
+// is empty and the result is β + c_0; α is not consulted in that case but
+// must still be non-nil so callers don't need to special-case it.
 func foldDenominator(alpha, beta *wiop.CoinField, cols []*wiop.ColumnView) wiop.Expression {
-	if alpha == nil {
-		// width == 1: β + c_0
-		return wiop.Add(beta, cols[0])
-	}
 	acc := wiop.Expression(cols[0])
 	for _, c := range cols[1:] {
 		acc = wiop.Add(wiop.Mul(acc, alpha), c)

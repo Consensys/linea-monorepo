@@ -33,9 +33,10 @@ func (d BusDirection) String() string {
 // participation: one Send entry adds its rows to the accumulator; one Receive
 // entry subtracts them.
 //
-// Semantics. Two coins α and β (extension field, shared per Handle across all
-// participants) are drawn after every participant column is committed. For an
-// entry with column views (c_0, …, c_{w-1}), define the row-folding
+// Semantics. Two coins α and β (extension field, shared across every
+// participant of every Handle reduced together by the [messagebus] compiler)
+// are drawn after every participant column is committed. For an entry with
+// column views (c_0, …, c_{w-1}), define the row-folding
 //
 //	d(row) = β + α^{w-1}·c_0(row) + … + α·c_{w-2}(row) + c_{w-1}(row)
 //
