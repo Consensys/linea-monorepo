@@ -14,60 +14,52 @@ include "../utils/constants.zkc"
 fn read_8<ram>(address:Address) -> (value:u8) {
     var word_idx:Address = address >> 2
     var offset:Address = address & 3
-    if offset == 0 {
-        value = (ram[word_idx] & 0xFF) as u8
-        return
-    }
-    if offset == 1 {
-        value = ((ram[word_idx] >> 8) & 0xFF) as u8
-        return
-    }
-    if offset == 2 {
-        value = ((ram[word_idx] >> 16) & 0xFF) as u8
-        return
-    } else {
-        value = (ram[word_idx] >> 24) as u8
-        return
-    }
+    value = ((ram[word_idx] >> (offset*8)) & 0xFF) as u8
 }
 
 fn read_16<ram>(address:Address) -> (value:u16) {
     var word_idx:Address = address >> 2
     var offset:Address = address & 3
-    if offset == 0 {
-        value = (ram[word_idx] & 0xFFFF) as u16
-        return
-    }
-    if offset == 1 {
-        value = ((ram[word_idx] >> 8) & 0xFFFF) as u16
-        return
-    }
-    if offset == 2 {
-        value = (ram[word_idx] >> 16) as u16
-        return
-    } else {
-        value = ((ram[word_idx] >> 24) | ((ram[word_idx + 1] & 0xFF) << 8)) as u16
-        return
+    switch offset {
+        case 0: {
+            value = (ram[word_idx] & 0xFFFF) as u16
+            return
+        }
+        case 1: {
+            value = ((ram[word_idx] >> 8) & 0xFFFF) as u16
+            return
+        }
+        case 2: {
+            value = (ram[word_idx] >> 16) as u16
+            return
+        }
+        default: {
+            value = ((ram[word_idx] >> 24) | ((ram[word_idx + 1] & 0xFF) << 8)) as u16
+            return
+        }
     }
 }
 
 fn read_32<ram>(address:Address) -> (value:u32) {
     var word_idx:Address = address >> 2
     var offset:Address = address & 3
-    if offset == 0 {
-        value = ram[word_idx]
-        return
-    }
-    if offset == 1 {
-        value = (ram[word_idx] >> 8) | ((ram[word_idx + 1] & 0xFF) << 24)
-        return
-    }
-    if offset == 2 {
-        value = (ram[word_idx] >> 16) | ((ram[word_idx + 1] & 0xFFFF) << 16)
-        return
-    } else {
-        value = (ram[word_idx] >> 24) | ((ram[word_idx + 1] & 0xFFFFFF) << 8)
-        return
+    switch offset {
+        case 0: {
+            value = ram[word_idx]
+            return
+        }
+        case 1: {
+            value = (ram[word_idx] >> 8) | ((ram[word_idx + 1] & 0xFF) << 24)
+            return
+        }
+        case 2: {
+            value = (ram[word_idx] >> 16) | ((ram[word_idx + 1] & 0xFFFF) << 16)
+            return
+        }
+        default: {
+            value = (ram[word_idx] >> 24) | ((ram[word_idx + 1] & 0xFFFFFF) << 8)
+            return
+        }
     }
 }
 
