@@ -17,19 +17,33 @@ fn write_8<ram>(address:Address, value:u8) -> () {
     var offset:Address = address & 3
     switch offset {
         case 0: {
-            ram[word_idx] = (ram[word_idx] & 0xFFFFFF00) | (value as u32)
+            var hi:u24
+            var lo:u8
+            hi::lo = ram[word_idx]
+            ram[word_idx] = hi::value
             return
         }
         case 1: {
-            ram[word_idx] = (ram[word_idx] & 0xFFFF00FF) | ((value as u32) << 8)
+            var hi:u16
+            var mid:u8
+            var lo:u8
+            hi::mid::lo = ram[word_idx]
+            ram[word_idx] = hi::value::lo
             return
         }
         case 2: {
-            ram[word_idx] = (ram[word_idx] & 0xFF00FFFF) | ((value as u32) << 16)
+            var hi:u8
+            var mid:u8
+            var lo:u16
+            hi::mid::lo = ram[word_idx]
+            ram[word_idx] = hi::value::lo
             return
         }
         default: {
-            ram[word_idx] = (ram[word_idx] & 0x00FFFFFF) | ((value as u32) << 24)
+            var hi:u8
+            var lo:u24
+            hi::lo = ram[word_idx]
+            ram[word_idx] = value::lo
             return
         }
     }
@@ -41,12 +55,18 @@ fn write_16<ram>(address:Address, value:u16) -> () {
     switch offset {
         case 0: {
             word_idx = address >> 2
-            ram[word_idx] = (ram[word_idx] & 0xFFFF0000) | (value as u32)
+            var hi:u16
+            var lo:u16
+            hi::lo = ram[word_idx]
+            ram[word_idx] = hi::value
             return
         }
         case 2: {
             word_idx = address >> 2
-            ram[word_idx] = (ram[word_idx] & 0xFFFF) | ((value as u32) << 16)
+            var hi:u16
+            var lo:u16
+            hi::lo = ram[word_idx]
+            ram[word_idx] = value::hi
             return
         }
         default: {
