@@ -43,7 +43,8 @@ jobs:
         uses: ./.github/actions/setup-riscv-guests
 
       - name: Check Zig formatting
-        run: zig fmt --check build_common/build.zig l2-execution/build.zig l2-execution/src
+        # File list lives in the Makefile (FMT_PATHS, driven by GUESTS) so CI and local stay in sync.
+        run: make fmt-check
         working-directory: riscv-guests
         timeout-minutes: 2
 

@@ -13,7 +13,12 @@
 GUESTS ?= l2-execution
 ZIG    ?= zig
 
-.PHONY: compile test fetch clean help
+# Sources to format: the shared build helper plus each guest's build.zig and hand-written src/ —
+# NOT the whole guest dir, which would walk generated .zig under .zig-cache/ and zig-out/. Mirrors
+# the CI `zig fmt --check` invocation (riscv-guests-host-tests.yml) and scales with GUESTS.
+FMT_PATHS := build_common/build.zig $(foreach g,$(GUESTS),$(g)/build.zig $(g)/src)
+
+.PHONY: compile test fetch clean fmt fmt-check help
 
 # Each common target fans out to every guest's own Makefile.
 compile test fetch clean:
@@ -22,6 +27,14 @@ compile test fetch clean:
 		$(MAKE) -C $$g $@ ZIG="$(ZIG)" || exit $$?; \
 	done
 
+# Formatting spans build_common + all guests, so it lives here (not fanned out). `fmt` rewrites in
+# place; `fmt-check` only verifies — the same gate CI runs.
+fmt:
+	$(ZIG) fmt $(FMT_PATHS)
+
+fmt-check:
+	$(ZIG) fmt --check $(FMT_PATHS)
+
 help:
 	@echo "riscv-guests — builds every guest in GUESTS=\"$(GUESTS)\""
 	@echo ""
@@ -29,6 +42,8 @@ help:
 	@echo "  make test        # run each guest's native host tests"
 	@echo "  make fetch       # pre-fetch each guest's Zig dependencies"
 	@echo "  make clean       # remove each guest's zig-out/ and .zig-cache/"
+	@echo "  make fmt         # format build_common + all guest sources in place (zig fmt)"
+	@echo "  make fmt-check   # verify formatting without writing (the CI gate)"
 	@echo ""
 	@echo "Guest-specific targets run directly, e.g.:"
 	@echo "  make -C l2-execution spec-test   # EF zkevm stateless fixtures (SPEC_ARGS=…)"

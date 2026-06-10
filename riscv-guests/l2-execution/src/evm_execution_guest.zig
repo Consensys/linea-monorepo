@@ -69,10 +69,10 @@ comptime {
     // std.start — exporting it here too would be a symbol collision.
     if (builtin.cpu.arch == .riscv64) {
         @export(&guestMain, .{ .name = "main" });
-        // Pull in the per-precompile accelerator providers (zkvm_provide.zig): it DEFINES the
-        // zkvm_* symbols whose policy is .native/.stub and leaves .intercept ones undefined for the
-        // prover to resolve. Freestanding only — the native build uses Zesu's C backend and never
-        // references zkvm_*.
+        // Pull in the precompile providers (zkvm_provide.zig): it DEFINES every zkvm_* symbol
+        // zesu's extern bridge references — keccak from the Linea wrapper (custom opcode), the rest
+        // from zesu-zkvm's stdlibs_accel. Freestanding only — the native build uses Zesu's C
+        // backend and never references zkvm_*.
         _ = @import("zkvm_provide.zig");
     }
 }

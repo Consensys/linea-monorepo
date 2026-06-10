@@ -1,50 +1,49 @@
-//! Per-precompile accelerator toggle for the ZkC guest.
+//! `zkvm_*` precompile providers for the ZkC guest.
 //!
 //! Zesu's freestanding build routes every precompile through `extern fn zkvm_*` symbols
-//! (src/crypto/extern_bridge.zig). This module decides, per symbol, who provides it in the final
-//! guest — and the in-guest implementations are **delegated to zesu-zkvm's `stdlibs_accel`**
-//! (imported as `zesu_zkvm_accel`) so we don't maintain our own crypto:
+//! (src/crypto/extern_bridge.zig). This module defines all of them, from two sources:
 //!
-//!   .intercept — leave `zkvm_X` UNDEFINED in the guest object; the prover/ZkC resolves it at link
-//!                time (e.g. arithmetized keccak). Use once ZkC implements that precompile.
-//!   .native    — DEFINE `zkvm_X` in-guest as a thin C-ABI wrapper over zesu-zkvm `stdlibs_accel`
-//!                (real for keccak/sha256/ecrecover/secp256k1_verify; a failing stub for the rest
-//!                until upstream implements them). ZkC interprets it like any other rv64im code.
-//!
-//! INVARIANT: every symbol is `.intercept` XOR defined here (`.native`); a symbol that is neither
-//! is an unresolved link error. Keep this table in lockstep with what the prover intercepts.
+//!   • Linea wrappers (`linea_zkvm_accel`, arithmetization/src/wrappers) — keccak today. The wrapper
+//!     body is a custom RISC-V opcode that ZkC arithmetizes at execution time (keccak via
+//!     `.insn r 0x0c`); we re-export it under the C symbol zesu references. The *set of wrappers
+//!     that exist* is what defines what is hardware-accelerated, and grows as ZkC implements more.
+//!   • zesu-zkvm `stdlibs_accel` (imported as `zesu_zkvm_accel`) — every precompile without a
+//!     wrapper yet, via a thin C-ABI shim (ptr+len → slice/array). Pure rv64im code ZkC runs like
+//!     any other; we don't maintain our own crypto. When a precompile gains a wrapper, move its
+//!     line to the wrapper export below and delete its shim further down.
 //!
 //! Only the freestanding RISC-V guest references these (see evm_execution_guest.zig, pulled in for
 //! `builtin.cpu.arch == .riscv64`); the native host build uses Zesu's `default.zig` (C libs).
 
 const zesu_accel = @import("zesu_zkvm_accel"); // zesu-zkvm linea/src/runtime/stdlibs_accel.zig
-const linea_accel = @import("linea_zkvm_accel"); // TODO: comment
+const linea_accel = @import("linea_zkvm_accel"); // Linea custom-opcode accelerators (arithmetization/src/wrappers)
 
-pub const Mode = enum { intercept, native };
+// The manifest: every `zkvm_*` symbol zesu's extern bridge references, and where it comes from.
+// keccak is the Linea wrapper (custom opcode); the rest are the stdlibs_accel shims defined below.
+comptime {
+    @export(&linea_accel.keccak.zkvm_keccak256, .{ .name = "zkvm_keccak256" });
+    @export(&sha256, .{ .name = "zkvm_sha256" });
+    @export(&secp256k1_verify, .{ .name = "zkvm_secp256k1_verify" });
+    @export(&secp256k1_ecrecover, .{ .name = "zkvm_secp256k1_ecrecover" });
+    @export(&ripemd160, .{ .name = "zkvm_ripemd160" });
+    @export(&modexp, .{ .name = "zkvm_modexp" });
+    @export(&bn254_g1_add, .{ .name = "zkvm_bn254_g1_add" });
+    @export(&bn254_g1_mul, .{ .name = "zkvm_bn254_g1_mul" });
+    @export(&bn254_pairing, .{ .name = "zkvm_bn254_pairing" });
+    @export(&blake2f, .{ .name = "zkvm_blake2f" });
+    @export(&kzg_point_eval, .{ .name = "zkvm_kzg_point_eval" });
+    @export(&bls12_g1_add, .{ .name = "zkvm_bls12_g1_add" });
+    @export(&bls12_g1_msm, .{ .name = "zkvm_bls12_g1_msm" });
+    @export(&bls12_g2_add, .{ .name = "zkvm_bls12_g2_add" });
+    @export(&bls12_g2_msm, .{ .name = "zkvm_bls12_g2_msm" });
+    @export(&bls12_pairing, .{ .name = "zkvm_bls12_pairing" });
+    @export(&bls12_map_fp_to_g1, .{ .name = "zkvm_bls12_map_fp_to_g1" });
+    @export(&bls12_map_fp2_to_g2, .{ .name = "zkvm_bls12_map_fp2_to_g2" });
+    @export(&secp256r1_verify, .{ .name = "zkvm_secp256r1_verify" });
+}
 
-/// THE TOGGLE TABLE — flip `.native` → `.intercept` once ZkC arithmetizes that precompile.
-/// keccak is intercepted by ZkC; everything else runs in-guest via zesu-zkvm's stdlibs_accel.
-pub const policy = struct {
-    pub const keccak256: Mode = .native;
-    pub const sha256: Mode = .native;
-    pub const secp256k1_verify: Mode = .native;
-    pub const secp256k1_ecrecover: Mode = .native;
-    pub const ripemd160: Mode = .native;
-    pub const modexp: Mode = .native;
-    pub const bn254_g1_add: Mode = .native;
-    pub const bn254_g1_mul: Mode = .native;
-    pub const bn254_pairing: Mode = .native;
-    pub const blake2f: Mode = .native;
-    pub const kzg_point_eval: Mode = .native;
-    pub const bls12_g1_add: Mode = .native;
-    pub const bls12_g1_msm: Mode = .native;
-    pub const bls12_g2_add: Mode = .native;
-    pub const bls12_g2_msm: Mode = .native;
-    pub const bls12_pairing: Mode = .native;
-    pub const bls12_map_fp_to_g1: Mode = .native;
-    pub const bls12_map_fp2_to_g2: Mode = .native;
-    pub const secp256r1_verify: Mode = .native;
-};
+const OK: i32 = 0;
+const ERR: i32 = 1;
 
 // Pairing/MSM pair layouts — must byte-match zesu's extern_bridge.zig; passed straight to
 // stdlibs_accel's `anytype` parameters.
@@ -53,23 +52,9 @@ const Bls12G1MsmPair = extern struct { point: [96]u8, scalar: [32]u8 };
 const Bls12G2MsmPair = extern struct { point: [192]u8, scalar: [32]u8 };
 const Bls12PairingPair = extern struct { g1: [96]u8, g2: [192]u8 };
 
-const OK: i32 = 0;
-const ERR: i32 = 1;
+// ── C-ABI shims: extern zkvm_* (ptr+len) → stdlibs_accel's slice/array API ───────────────────────
+// One per precompile that has no Linea wrapper yet; all exported in the comptime block above.
 
-// ── C-ABI wrappers: extern zkvm_* (ptr+len) → stdlibs_accel's slice/array API ────────────────────
-// A `.native` symbol's wrapper is exported (below); an `.intercept` symbol's wrapper is never
-// referenced, so its `accel.*` call is not compiled in (the prover supplies that symbol instead).
-
-fn keccak256(data: [*]const u8, len: usize, output: *[32]u8) callconv(.c) i32 {
-    // Our 'zkvm_keccak256' writes into a '*zkvm_keccak256_hash' — an extern struct wrapping
-    // '[32]u8 align(8)'. The 'output' param here is '*[32]u8', a different pointee type with
-    // weaker alignment (implicitly align(1)), so it can't be passed directly. 'hash' gives a
-    // correctly typed, 8-aligned destination; we copy its bytes out to 'output' afterwards.
-    var hash: linea_accel.keccak.zkvm_keccak256_hash = undefined;
-    _ = linea_accel.keccak.zkvm_keccak256(data, len, &hash);
-    output.* = hash.data;
-    return OK;
-}
 fn sha256(data: [*]const u8, len: usize, output: *[32]u8) callconv(.c) i32 {
     zesu_accel.sha256(data[0..len], output);
     return OK;
@@ -127,27 +112,4 @@ fn bls12_map_fp_to_g1(field_element: *const [48]u8, result: *[96]u8) callconv(.c
 }
 fn bls12_map_fp2_to_g2(field_element: *const [96]u8, result: *[192]u8) callconv(.c) i32 {
     return if (zesu_accel.bls12_map_fp2_to_g2(field_element, result)) OK else ERR;
-}
-
-// Define (export) exactly the `.native` symbols; `.intercept` ones stay undefined for the prover.
-comptime {
-    if (policy.keccak256 == .native) @export(&keccak256, .{ .name = "zkvm_keccak256" });
-    if (policy.sha256 == .native) @export(&sha256, .{ .name = "zkvm_sha256" });
-    if (policy.secp256k1_verify == .native) @export(&secp256k1_verify, .{ .name = "zkvm_secp256k1_verify" });
-    if (policy.secp256k1_ecrecover == .native) @export(&secp256k1_ecrecover, .{ .name = "zkvm_secp256k1_ecrecover" });
-    if (policy.ripemd160 == .native) @export(&ripemd160, .{ .name = "zkvm_ripemd160" });
-    if (policy.modexp == .native) @export(&modexp, .{ .name = "zkvm_modexp" });
-    if (policy.bn254_g1_add == .native) @export(&bn254_g1_add, .{ .name = "zkvm_bn254_g1_add" });
-    if (policy.bn254_g1_mul == .native) @export(&bn254_g1_mul, .{ .name = "zkvm_bn254_g1_mul" });
-    if (policy.bn254_pairing == .native) @export(&bn254_pairing, .{ .name = "zkvm_bn254_pairing" });
-    if (policy.blake2f == .native) @export(&blake2f, .{ .name = "zkvm_blake2f" });
-    if (policy.kzg_point_eval == .native) @export(&kzg_point_eval, .{ .name = "zkvm_kzg_point_eval" });
-    if (policy.bls12_g1_add == .native) @export(&bls12_g1_add, .{ .name = "zkvm_bls12_g1_add" });
-    if (policy.bls12_g1_msm == .native) @export(&bls12_g1_msm, .{ .name = "zkvm_bls12_g1_msm" });
-    if (policy.bls12_g2_add == .native) @export(&bls12_g2_add, .{ .name = "zkvm_bls12_g2_add" });
-    if (policy.bls12_g2_msm == .native) @export(&bls12_g2_msm, .{ .name = "zkvm_bls12_g2_msm" });
-    if (policy.bls12_pairing == .native) @export(&bls12_pairing, .{ .name = "zkvm_bls12_pairing" });
-    if (policy.bls12_map_fp_to_g1 == .native) @export(&bls12_map_fp_to_g1, .{ .name = "zkvm_bls12_map_fp_to_g1" });
-    if (policy.bls12_map_fp2_to_g2 == .native) @export(&bls12_map_fp2_to_g2, .{ .name = "zkvm_bls12_map_fp2_to_g2" });
-    if (policy.secp256r1_verify == .native) @export(&secp256r1_verify, .{ .name = "zkvm_secp256r1_verify" });
 }

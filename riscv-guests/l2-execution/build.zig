@@ -48,7 +48,10 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     }));
-    // exposing Linea's zkvm wrappers (sibling path in the monorepo)
+    // Linea zkVM wrappers (custom-opcode accelerators, sibling path in the monorepo). zkvm_provide.zig
+    // @exports the zkvm_* symbols these define (currently keccak); the set of wrappers is what's
+    // intercepted via opcode. riscv only — the wrappers emit RISC-V custom instructions, so they're
+    // imported on the guest object.
     const linea_accel_src = b.path("../../arithmetization/src/wrappers/root.zig");
     obj.root_module.addImport("linea_zkvm_accel", b.createModule(.{
         .root_source_file = linea_accel_src,
@@ -66,15 +69,25 @@ pub fn build(b: *std.Build) void {
     // crypto backend (default.zig); linea adds the library search path so it links on macOS. The
     // committed fixture is an empty block (only keccak), but the full backend is linked so the suite
     // can grow to tx-bearing fixtures (ecrecover/curves) without further build changes.
+    //
+    // Host artifacts never build at ReleaseSmall: zig 0.16 (stable and dev.3153) -Oz miscompiles
+    // zesu's value-semantics hot paths on aarch64 hosts — stack slots of by-value hash-map captures
+    // (`if (m.get(k)) |v|` + iterate) and by-value `self` receivers are recycled while still live,
+    // yielding SIGSEGVs/wrong results across the EF zkevm suite (first hit: BaTracker.computeHash,
+    // zesu transition.zig). Debug/ReleaseSafe/ReleaseFast pass (23,264/23,264 blocks). ReleaseSafe
+    // is the optimized mode CI runs for host tests; the rv64im guest object above keeps `optimize`
+    // (ReleaseSmall) for the prover toolchain.
+    const host_optimize: std.builtin.OptimizeMode =
+        if (optimize == .ReleaseSmall) .ReleaseSafe else optimize;
     const native_target = b.resolveTargetQuery(.{});
     const native_crypto = resolveNativeCrypto(b, native_target);
-    const zesu_native = b.dependency("zesu", .{ .target = native_target, .optimize = optimize });
+    const zesu_native = b.dependency("zesu", .{ .target = native_target, .optimize = host_optimize });
     const native_imports = zesuImports(zesu_native);
 
     const guest_mod = b.createModule(.{
         .root_source_file = b.path(source),
         .target = native_target,
-        .optimize = optimize,
+        .optimize = host_optimize,
     });
     addExecutionImports(guest_mod, native_imports);
     guest_mod.addImport("guest_options", guest_options_mod);
@@ -89,13 +102,13 @@ pub fn build(b: *std.Build) void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/stdlibs_accel_test.zig"),
             .target = native_target,
-            .optimize = optimize,
+            .optimize = host_optimize,
         }),
     });
     accel_tests.root_module.addImport("zesu_zkvm_accel", b.createModule(.{
         .root_source_file = zesu_accel_src,
         .target = native_target,
-        .optimize = optimize,
+        .optimize = host_optimize,
     }));
     test_step.dependOn(&b.addRunArtifact(accel_tests).step);
 
@@ -107,7 +120,7 @@ pub fn build(b: *std.Build) void {
         const fixtures_mod = b.createModule(.{
             .root_source_file = b.path("src/evm_execution_fixtures.zig"),
             .target = native_target,
-            .optimize = optimize,
+            .optimize = host_optimize,
         });
         // Embed the chosen fixture straight from the dependency tree (no committed copy).
         fixtures_mod.addAnonymousImport("zkevm_stateless_block.json", .{
@@ -118,7 +131,7 @@ pub fn build(b: *std.Build) void {
             .root_module = b.createModule(.{
                 .root_source_file = b.path("src/evm_execution_guest_test.zig"),
                 .target = native_target,
-                .optimize = optimize,
+                .optimize = host_optimize,
             }),
         });
         tests.root_module.addImport("evm_execution_guest", guest_mod);
@@ -138,7 +151,7 @@ pub fn build(b: *std.Build) void {
             .root_module = b.createModule(.{
                 .root_source_file = b.path("src/evm_spec_runner.zig"),
                 .target = native_target,
-                .optimize = optimize,
+                .optimize = host_optimize,
             }),
         });
         spec_runner_exe.root_module.addImport("evm_execution_guest", guest_mod);
