@@ -141,14 +141,19 @@ func Compile(sys *wiop.System) {
 		}
 	}
 
-	// One verifier action per handle: the per-segment LogDerivativeSum cells
-	// must algebraically sum to zero.
-	for _, h := range handles {
-		resultRound.RegisterVerifierAction(&handleSumIsZero{
-			Handle: h,
-			Cells:  cellsByHandle[h],
-			Path:   compCtx.Childf("handle-%s", h).Childf("sum-is-zero").Path(),
-		})
+	// One in-shard verifier action per handle: the per-segment LogDerivativeSum
+	// cells must algebraically sum to Expected (zero in the single-shard case).
+	// Suppressed when System.MessageBusSkipInShardCheck is set, so a downstream
+	// cross-shard layer can own the consistency check instead.
+	if !sys.MessageBusSkipInShardCheck {
+		for _, h := range handles {
+			resultRound.RegisterVerifierAction(&CheckHandleSumInShard{
+				Handle:   h,
+				Cells:    cellsByHandle[h],
+				Path:     compCtx.Childf("handle-%s", h).Childf("sum-in-shard").Path(),
+				Expected: field.ElemZero(),
+			})
+		}
 	}
 
 	// Mark every consumed entry as reduced.
@@ -273,10 +278,14 @@ func foldDenominator(alpha, beta *wiop.CoinField, cols []*wiop.ColumnView) wiop.
 	return wiop.Add(beta, acc)
 }
 
-// handleSumIsZero is the verifier action that closes the message-bus
-// reduction: the LogDerivativeSum cells produced for one handle (one per
-// participating segment) must algebraically sum to zero.
-type handleSumIsZero struct {
+// CheckHandleSumInShard is the verifier action that closes the in-shard half
+// of the message-bus reduction: the LogDerivativeSum cells produced for one
+// handle (one per participating segment on this shard) must algebraically
+// sum to [CheckHandleSumInShard.Expected]. For a single-shard protocol the
+// expected value is always zero; the field exists so a sharded protocol can
+// later instantiate this action with the residual the cross-shard layer
+// expects to see on this shard.
+type CheckHandleSumInShard struct {
 	// Handle names the bus this check belongs to. Diagnostic-only.
 	Handle string
 	// Cells is the per-segment result cells, in registration order.
@@ -284,20 +293,27 @@ type handleSumIsZero struct {
 	// Path is the qualified ContextFrame path of the check, used in error
 	// messages.
 	Path string
+	// Expected is the value the per-segment cells must sum to on this shard.
+	// Constant — fixed at action-construction time, not derived from any
+	// other runtime state. [Compile] sets this to [field.ElemZero] for the
+	// single-shard case; sharded callers that bypass [Compile]'s built-in
+	// registration may construct the action directly with a non-zero value.
+	Expected field.Gen
 }
 
 // Check implements [wiop.VerifierAction]. Sums the values of every per-segment
-// cell registered for this handle and returns an error if the total is
-// non-zero.
-func (h *handleSumIsZero) Check(rt wiop.Runtime) error {
+// cell registered for this handle and returns an error if the total differs
+// from [CheckHandleSumInShard.Expected].
+func (h *CheckHandleSumInShard) Check(rt wiop.Runtime) error {
 	acc := field.ElemZero()
 	for _, c := range h.Cells {
 		acc = acc.Add(rt.GetCellValue(c))
 	}
-	if !acc.IsZero() {
+	diff := acc.Sub(h.Expected)
+	if !diff.IsZero() {
 		return fmt.Errorf(
-			"wiop/compilers/messagebus: handle %q (%s): per-segment cells sum to %v, expected 0",
-			h.Handle, h.Path, acc,
+			"wiop/compilers/messagebus: handle %q (%s): per-segment cells sum to %v, expected %v",
+			h.Handle, h.Path, acc, h.Expected,
 		)
 	}
 	return nil

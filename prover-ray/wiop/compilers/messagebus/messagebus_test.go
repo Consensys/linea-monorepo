@@ -149,6 +149,90 @@ func TestCompile_TamperedMultiplicity(t *testing.T) {
 		"verifier must reject a multiplicity that miscounts the senders")
 }
 
+// TestCompile_TamperedValueFailsInShardCheck exercises the in-shard sum
+// rejection path through a tampered VALUE column (rather than a tampered
+// multiplicity, which TestCompile_TamperedMultiplicity already covers). The
+// send and receive multisets disagree on a single row's value, so the
+// folded denominators differ and the per-handle sum lands at a non-zero
+// element of the extension field.
+func TestCompile_TamperedValueFailsInShardCheck(t *testing.T) {
+	sys := wiop.NewSystemf("mb-tampered-value")
+	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
+
+	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
+	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
+	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+
+	sys.NewMessageBusSend(
+		sys.Context.Childf("send-A"),
+		"segA", "ping",
+		wiop.NewTable(colA.View()),
+	)
+	sys.NewMessageBusReceive(
+		sys.Context.Childf("recv-B"),
+		"segB", "ping",
+		wiop.NewTable(colB.View()),
+		mulB.View(),
+	)
+
+	messagebus.Compile(sys)
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(colB, makeVec(10, 21, 30, 40)) // wrong: row 1 holds 21, not 20
+	rt.AssignColumn(mulB, makeVec(1, 1, 1, 1))
+
+	drive(&rt)
+	assert.Error(t, checkAllVerifierActions(&rt),
+		"verifier must reject when a receive row's value does not appear in the send multiset")
+}
+
+// TestCompile_TamperedFilterFailsInShardCheck exercises the in-shard sum
+// rejection path through an ASYMMETRIC selector. The send side filters out
+// a row that the receive side still claims, so the multiset on each side
+// has a different cardinality and the per-handle sum is non-zero.
+func TestCompile_TamperedFilterFailsInShardCheck(t *testing.T) {
+	sys := wiop.NewSystemf("mb-tampered-filter")
+	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
+
+	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
+	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
+	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+	selA := modA.NewColumn(sys.Context.Childf("selA"), wiop.VisibilityOracle, r0)
+	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+
+	sys.NewMessageBusSend(
+		sys.Context.Childf("send-A"),
+		"segA", "ping",
+		wiop.NewFilteredTable(selA.View(), colA.View()),
+	)
+	sys.NewMessageBusReceive(
+		sys.Context.Childf("recv-B"),
+		"segB", "ping",
+		wiop.NewTable(colB.View()),
+		mulB.View(),
+	)
+
+	messagebus.Compile(sys)
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(selA, makeVec(1, 0, 1, 1)) // sender filters out row 1 (value 20)
+	rt.AssignColumn(colB, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(mulB, makeVec(1, 1, 1, 1)) // receiver still claims all four
+
+	drive(&rt)
+	assert.Error(t, checkAllVerifierActions(&rt),
+		"verifier must reject when the send-side selector drops a row the receive side still claims")
+}
+
 // TestCompile_MultipleSendersOneReceiver verifies that several Send segments
 // can balance against a single Receive segment if multiplicities tally them
 // correctly. Sender 1 emits values [10, 20]; sender 2 also emits [10, 20];
@@ -581,6 +665,90 @@ func TestCompile_MissingCoinsPanics(t *testing.T) {
 
 	assert.Panics(t, func() { messagebus.Compile(sys) },
 		"Compile must panic when MessageBusAlpha/MessageBusBeta are unset")
+}
+
+// TestCheckHandleSumInShard_ExpectedNonZero exercises the Expected field on
+// [messagebus.CheckHandleSumInShard]. The compile-time path always sets
+// Expected to zero (single-shard semantics); the non-zero branch is intended
+// for the cross-shard layer that constructs this action itself. This test
+// fills that coverage gap by:
+//
+//  1. Building a balanced single-handle, two-segment pipeline so the
+//     per-segment LDS Result cells are guaranteed to sum to zero.
+//  2. Suppressing Compile's auto-registered action via
+//     [wiop.System.MessageBusSkipInShardCheck].
+//  3. Constructing CheckHandleSumInShard directly with two Expected values:
+//     zero (matches the actual sum) and one (does not), and asserting Check
+//     accepts/rejects accordingly.
+//
+// The error message is also spot-checked to confirm it mentions the handle
+// name and the "expected" framing, since the cross-shard caller will rely
+// on those for diagnostics.
+func TestCheckHandleSumInShard_ExpectedNonZero(t *testing.T) {
+	sys := wiop.NewSystemf("mb-expected-nonzero")
+	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
+
+	// Own the in-shard check ourselves so Compile doesn't pre-register one.
+	sys.MessageBusSkipInShardCheck = true
+
+	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
+	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
+	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+
+	sys.NewMessageBusSend(
+		sys.Context.Childf("send-A"), "segA", "ping",
+		wiop.NewTable(colA.View()),
+	)
+	sys.NewMessageBusReceive(
+		sys.Context.Childf("recv-B"), "segB", "ping",
+		wiop.NewTable(colB.View()), mulB.View(),
+	)
+
+	messagebus.Compile(sys)
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(colB, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(mulB, makeVec(1, 1, 1, 1))
+
+	drive(&rt)
+
+	// The two LDS queries (one per segment) are the cells this handle's
+	// action would consume.
+	require.Len(t, sys.LogDerivativeSums, 2, "expected exactly one LDS per segment")
+	cells := []*wiop.Cell{
+		sys.LogDerivativeSums[0].Result,
+		sys.LogDerivativeSums[1].Result,
+	}
+
+	// Happy path: Expected matches the actual sum (zero for a balanced bus).
+	happy := &messagebus.CheckHandleSumInShard{
+		Handle:   "ping",
+		Cells:    cells,
+		Path:     "test/ping/expected-zero",
+		Expected: field.ElemZero(),
+	}
+	require.NoError(t, happy.Check(rt),
+		"Check must accept when Expected matches the actual cell sum")
+
+	// Sad path: Expected differs from the actual sum, so Check must reject.
+	sad := &messagebus.CheckHandleSumInShard{
+		Handle:   "ping",
+		Cells:    cells,
+		Path:     "test/ping/expected-one",
+		Expected: field.ElemOne(),
+	}
+	err := sad.Check(rt)
+	require.Error(t, err,
+		"Check must reject when Expected differs from the actual cell sum")
+	assert.Contains(t, err.Error(), `handle "ping"`,
+		"error must name the handle for diagnostics")
+	assert.Contains(t, err.Error(), "expected",
+		"error must include the expected-value context for diagnostics")
 }
 
 // TestNewMessageBusReceive_WrongMultiplicityModulePanics asserts that the
