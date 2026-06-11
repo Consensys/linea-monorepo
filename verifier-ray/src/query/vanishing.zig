@@ -123,12 +123,6 @@ fn verifyModule(
     }
     if (static_n == 0 and !validModuleSize(dynamic_n)) return error.InvalidModuleSize;
 
-    // Resolve the comptime/dynamic size distinction once, here. Everything below
-    // works with a plain runtime n. The canonical n-th root of unity is not
-    // resolved here: it is consulted only by lagrange_selector leaves, which
-    // derive it locally (static modules fold omega^position at comptime via
-    // static_n; dynamic modules compute it from ctx.n) — mirroring how
-    // cancellationAtPoint already derives its own roots.
     // Let r be the evaluation coin and H the module domain of size n (= static_n
     // for static modules, else dynamic_n). The prover computes the domain
     // annihilator Z_H(r) = r^n - 1.
@@ -174,9 +168,7 @@ fn verifyBucket(
     var coin_power = ext.Ext.one();
     inline for (bucket.vanishings) |v| {
         // Aggregate the vanished numerators with the merge coin alpha:
-        // P_agg(r) = sum_i alpha^i * P_i(r) * C_i(r). The cancellation factor
-        // keeps its comptime root computation, so it takes static_n/dynamic_n
-        // directly rather than the resolved ctx.
+        // P_agg(r) = sum_i alpha^i * P_i(r) * C_i(r).
         const value = try evalExpr(module, v.expression, static_n, ctx, input);
         const cancellation = try cancellationAtPoint(v.cancelled_positions, static_n, dynamic_n, ctx.coin);
         aggregate = aggregate.add(coin_power.mul(value.mul(cancellation)));
@@ -260,10 +252,10 @@ fn evalOp(
 // position is comptime-known (it lives in the comptime expression DAG), so for
 // static modules (static_n != 0) omega^position folds to a comptime field
 // constant via staticRootPower — no runtime exponentiation. Dynamic modules
-// (static_n == 0) derive the n-th root of unity from ctx.n and take the runtime
-// pow. Everything else (the annihilator, the r - omega^position denominator,
-// the division) depends on the runtime eval coin r and stays runtime in both
-// cases.
+// (static_n == 0) derive the n-th root of unity from ctx.dynamic_n and take the
+// runtime pow. Everything else (the annihilator, the r - omega^position
+// denominator, the division) depends on the runtime eval coin r and stays
+// runtime in both cases.
 fn evalLagrangeSelector(comptime position: usize, comptime static_n: usize, ctx: EvalCtx) Error!ext.Ext {
     const omega_pos = if (static_n != 0)
         comptime staticRootPower(static_n, position)
