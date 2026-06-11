@@ -27,6 +27,9 @@ pub fn zkvm_keccak256(data: [*c]const u8, len: usize, output: [*c]zkvm_keccak256
         : [out] "r" (@intFromPtr(output)),
           [in] "r" (@intFromPtr(data)),
           [size] "r" (len),
-    );
+          // The opcode writes 32 bytes to *output through rd. output is passed as an integer
+          // (@intFromPtr), so without this memory clobber the optimizer assumes the asm touches no
+          // memory and may drop/reorder/stale-read the output buffer in the emitted ELF.
+        : .{ .memory = true });
     return .ZKVM_EOK;
 }
