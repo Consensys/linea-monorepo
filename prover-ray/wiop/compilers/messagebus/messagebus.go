@@ -21,12 +21,16 @@
 // asserted by its own verifier action. See [wiop.MessageBus] for the
 // per-entry semantics.
 //
-// The coins themselves are NOT allocated by this pass: they must be
-// pre-populated on the System as [wiop.System.MessageBusAlpha] and
-// [wiop.System.MessageBusBeta] by an external mechanism (typically a
-// Fiat–Shamir derivation from round-0 columns) before Compile runs. The pass
-// panics if either is nil while there are unreduced MessageBus entries to
-// process.
+// The pass allocates α and β itself, via [Round.NewCoinField] on a fresh
+// (or reused) coin round immediately after the latest participant round.
+// In a sharded protocol the caller is expected to pre-allocate that coin
+// round and register a [Round.RegisterPreSamplingHook] entry on it that
+// calls [Runtime.SetFSState] with shared randomness derived from a
+// cross-shard handoff. [Round.ensureRoundAfter] reuses any pre-existing
+// tail round at the right position, so messagebus's coin allocation
+// transparently lands on the same round the hook is registered on — and
+// every shard's α, β therefore derive from the seeded FS state instead of
+// the local transcript.
 //
 // Caller order: invoke messagebus.Compile(sys) BEFORE
 // logderivativesum.Compile(sys); the latter discharges the LogDerivativeSums
@@ -46,12 +50,13 @@ import (
 // pair) plus one [wiop.VerifierAction] per handle that asserts the per-segment
 // sums total to zero. See the package documentation for the full reduction.
 //
-// The pass appends up to one fresh interactive round to sys.Rounds: the
-// round on which the [wiop.LogDerivativeSum] result cells and the per-handle
-// verifier action live. The coin round is NOT allocated here — the supplied
-// [wiop.System.MessageBusAlpha] and [wiop.System.MessageBusBeta] are
-// expected to already be registered on some earlier round. Both coins must
-// be non-nil whenever there is at least one unreduced MessageBus entry.
+// The pass appends up to two fresh interactive rounds to sys.Rounds: a
+// coin round where the shared α and β are declared, and a result round
+// where the [wiop.LogDerivativeSum] result cells and the per-handle
+// verifier action live. Either round may already exist at the right
+// position (e.g. when a sharded protocol pre-allocates the coin round to
+// attach a [Round.RegisterPreSamplingHook]); [ensureRoundAfter] reuses
+// existing tail rounds rather than appending duplicates.
 //
 // Already-reduced entries are skipped; remaining unreduced entries are marked
 // reduced on return.
@@ -77,26 +82,21 @@ func Compile(sys *wiop.System) {
 
 	compCtx := sys.Context.Childf("message-bus")
 
-	// Pull the shared (α, β) coins from the System. They are NOT allocated
-	// here — the caller (typically a round-0 Fiat–Shamir derivation) must
-	// have populated both fields before this pass runs.
-	alpha := sys.MessageBusAlpha
-	beta := sys.MessageBusBeta
-	if alpha == nil {
-		panic("wiop/compilers/messagebus: System.MessageBusAlpha is nil; the messagebus pass requires an externally-supplied α coin")
-	}
-	if beta == nil {
-		panic("wiop/compilers/messagebus: System.MessageBusBeta is nil; the messagebus pass requires an externally-supplied β coin")
-	}
+	// Allocate the shared (α, β) coins on a fresh — or pre-existing — coin
+	// round immediately after the latest participant round. A sharded
+	// protocol typically pre-allocates this round so it can register a
+	// PreSamplingHook that seeds FS with cross-shard shared randomness;
+	// ensureRoundAfter reuses any tail round already at this position
+	// rather than appending a duplicate.
+	maxParticipantRound := latestParticipantRound(byHandle)
+	coinRound := ensureRoundAfter(sys, maxParticipantRound)
+	alpha := coinRound.NewCoinField(compCtx.Childf("alpha"))
+	beta := coinRound.NewCoinField(compCtx.Childf("beta"))
 
-	// The result round (where LDS cells and the verifier action live) must
-	// come strictly after the latest of (a) every participant column's round
-	// and (b) the round on which the supplied α/β are sampled. Otherwise the
-	// LDS cell could be assigned before its inputs are available.
-	maxRound := latestParticipantRound(byHandle)
-	maxRound = laterRound(maxRound, alpha.Round())
-	maxRound = laterRound(maxRound, beta.Round())
-	resultRound := ensureRoundAfter(sys, maxRound)
+	// The result round (where LDS cells and the verifier action live) sits
+	// strictly after the coin round so the LDS prover action sees α and β
+	// already sampled.
+	resultRound := ensureRoundAfter(sys, coinRound)
 
 	// Per-handle: validate uniform width within a handle. Widths may differ
 	// across handles (each handle just raises the shared α to powers up to
@@ -180,21 +180,6 @@ func latestParticipantRound(byHandle map[string][]*wiop.MessageBus) *wiop.Round 
 		}
 	}
 	return best
-}
-
-// laterRound returns whichever of a, b has the higher ID. nil counts as
-// "earlier than every real round"; if both are nil the result is nil.
-func laterRound(a, b *wiop.Round) *wiop.Round {
-	switch {
-	case a == nil:
-		return b
-	case b == nil:
-		return a
-	case b.ID > a.ID:
-		return b
-	default:
-		return a
-	}
 }
 
 // ensureRoundAfter returns a round with ID > after.ID, reusing the existing

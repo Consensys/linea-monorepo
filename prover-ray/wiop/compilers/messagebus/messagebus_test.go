@@ -41,17 +41,70 @@ func checkAllVerifierActions(rt *wiop.Runtime) error {
 	return nil
 }
 
-// setupMessageBusCoins allocates a fresh round, registers the shared
-// (α, β) pair on it, and stores both on the System. The fresh round
-// stands in for the round on which the production Fiat–Shamir mechanism
-// would sample the coins (always strictly after the round-0 columns it
-// derives them from, so the runtime can sample them once those columns
-// have been absorbed into the FS state).
-func setupMessageBusCoins(sys *wiop.System) *wiop.Round {
-	r := sys.NewRound()
-	sys.MessageBusAlpha = r.NewCoinField(sys.Context.Childf("mb-alpha"))
-	sys.MessageBusBeta = r.NewCoinField(sys.Context.Childf("mb-beta"))
-	return r
+// fixedSeedHook is a test [wiop.ProverAction] that overrides the runtime's
+// Fiat–Shamir state with a precomputed seed before any coin in the
+// containing round is sampled. It is the test stand-in for the cross-shard
+// layer's SetInitialFSHash-equivalent in production: the cross-shard layer
+// would read the seed from a shared-randomness column; this test version
+// carries the seed inline.
+type fixedSeedHook struct {
+	seed field.Octuplet
+}
+
+func (h *fixedSeedHook) Run(rt wiop.Runtime) {
+	rt.SetFSState(h.seed)
+}
+
+// testMessageBusSeed is the seed every messagebus test uses on the
+// with-hook code path. The concrete value is unimportant — any
+// deterministic non-zero octuplet works.
+var testMessageBusSeed = field.NewOctupletFromStrings(
+	[8]string{"1", "2", "3", "5", "8", "13", "21", "34"},
+)
+
+// setupMessageBusHook pre-allocates the round that [messagebus.Compile]
+// will claim for α and β (immediately after the witness round) and
+// registers a [fixedSeedHook] on it. When Compile later runs,
+// ensureRoundAfter discovers the pre-allocated tail round and reuses it,
+// so α and β get declared on the same round the hook lives on. Subsequent
+// [wiop.Runtime.AdvanceRound] fires the hook before sampling, which means
+// α and β derive deterministically from testMessageBusSeed instead of
+// from the witness columns absorbed on the round before.
+//
+// This mirrors the wiring a sharded protocol uses in production — the
+// only difference is the seed source: a hard-coded octuplet here, a
+// shared-randomness column in the real cross-shard layer.
+func setupMessageBusHook(sys *wiop.System) *wiop.Round {
+	coinRound := sys.NewRound()
+	coinRound.RegisterPreSamplingHook(&fixedSeedHook{seed: testMessageBusSeed})
+	return coinRound
+}
+
+// runWithAndWithoutHook runs body as two subtests covering both coin
+// pathways for any messagebus pipeline: once with the natural Fiat–Shamir
+// transcript driving α/β (no hook registered) and once with
+// [setupMessageBusHook] pre-attached so α/β derive from testMessageBusSeed
+// instead. body receives a fresh [wiop.System] (named after the running
+// subtest), the witness round r0 already allocated, and is expected to
+// declare modules/columns/queries on r0 and drive the proof.
+func runWithAndWithoutHook(t *testing.T, body func(t *testing.T, sys *wiop.System, r0 *wiop.Round)) {
+	t.Helper()
+	for _, tc := range []struct {
+		name     string
+		withHook bool
+	}{
+		{"natural-fs", false},
+		{"with-presampling-hook", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sys := wiop.NewSystemf("%s", t.Name())
+			r0 := sys.NewRound()
+			if tc.withHook {
+				setupMessageBusHook(sys)
+			}
+			body(t, sys, r0)
+		})
+	}
 }
 
 // drive runs the canonical "assign-witness → advance to coin round → advance
@@ -59,11 +112,10 @@ func setupMessageBusCoins(sys *wiop.System) *wiop.Round {
 // returns, every prover action has executed and the verifier actions are
 // ready to be checked.
 //
-// Round structure produced by setupMessageBusCoins + messagebus.Compile +
-// logderivativesum.Compile:
+// Round structure produced by [messagebus.Compile] + [logderivativesum.Compile]:
 //
 //   - Round 0: user-witness columns (selectors, value columns, multiplicities).
-//   - Round 1: the externally-supplied (α, β) coins; no prover actions.
+//   - Round 1: shared (α, β) coins; no prover actions.
 //   - Round 2: LogDerivativeSum Result cells + Z columns; one prover action
 //     per LogDerivativeSum query that assigns Z and the result.
 func drive(rt *wiop.Runtime) {
@@ -76,77 +128,73 @@ func drive(rt *wiop.Runtime) {
 // handle, one Send segment, one Receive segment, multiplicities all 1, every
 // sent row matches a received row. The verifier must accept.
 func TestCompile_TwoSegmentsBalanced(t *testing.T) {
-	sys := wiop.NewSystemf("mb-balanced")
-	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
+		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
+		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+		colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+		mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
 
-	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
-	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
-	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
-	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
-	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+		sys.NewMessageBusSend(
+			sys.Context.Childf("send-A"),
+			"segA", "ping",
+			wiop.NewTable(colA.View()),
+		)
+		sys.NewMessageBusReceive(
+			sys.Context.Childf("recv-B"),
+			"segB", "ping",
+			wiop.NewTable(colB.View()),
+			mulB.View(),
+		)
 
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send-A"),
-		"segA", "ping",
-		wiop.NewTable(colA.View()),
-	)
-	sys.NewMessageBusReceive(
-		sys.Context.Childf("recv-B"),
-		"segB", "ping",
-		wiop.NewTable(colB.View()),
-		mulB.View(),
-	)
+		messagebus.Compile(sys)
+		logderivativesum.Compile(sys)
 
-	messagebus.Compile(sys)
-	logderivativesum.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
+		rt.AssignColumn(colB, makeVec(10, 20, 30, 40))
+		rt.AssignColumn(mulB, makeVec(1, 1, 1, 1))
 
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
-	rt.AssignColumn(colB, makeVec(10, 20, 30, 40))
-	rt.AssignColumn(mulB, makeVec(1, 1, 1, 1))
-
-	drive(&rt)
-	require.NoError(t, checkAllVerifierActions(&rt))
+		drive(&rt)
+		require.NoError(t, checkAllVerifierActions(&rt))
+	})
 }
 
 // TestCompile_TamperedMultiplicity exercises the soundness path: with a
 // receiver multiplicity that no longer counts the senders correctly, the
 // per-handle cells should not sum to zero and the verifier must reject.
 func TestCompile_TamperedMultiplicity(t *testing.T) {
-	sys := wiop.NewSystemf("mb-tampered")
-	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
+		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
+		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+		colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+		mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
 
-	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
-	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
-	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
-	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
-	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+		sys.NewMessageBusSend(
+			sys.Context.Childf("send-A"),
+			"segA", "ping",
+			wiop.NewTable(colA.View()),
+		)
+		sys.NewMessageBusReceive(
+			sys.Context.Childf("recv-B"),
+			"segB", "ping",
+			wiop.NewTable(colB.View()),
+			mulB.View(),
+		)
 
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send-A"),
-		"segA", "ping",
-		wiop.NewTable(colA.View()),
-	)
-	sys.NewMessageBusReceive(
-		sys.Context.Childf("recv-B"),
-		"segB", "ping",
-		wiop.NewTable(colB.View()),
-		mulB.View(),
-	)
+		messagebus.Compile(sys)
+		logderivativesum.Compile(sys)
 
-	messagebus.Compile(sys)
-	logderivativesum.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
+		rt.AssignColumn(colB, makeVec(10, 20, 30, 40))
+		rt.AssignColumn(mulB, makeVec(2, 1, 1, 1)) // wrong: row 0 is counted twice
 
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
-	rt.AssignColumn(colB, makeVec(10, 20, 30, 40))
-	rt.AssignColumn(mulB, makeVec(2, 1, 1, 1)) // wrong: row 0 is counted twice
-
-	drive(&rt)
-	assert.Error(t, checkAllVerifierActions(&rt),
-		"verifier must reject a multiplicity that miscounts the senders")
+		drive(&rt)
+		assert.Error(t, checkAllVerifierActions(&rt),
+			"verifier must reject a multiplicity that miscounts the senders")
+	})
 }
 
 // TestCompile_TamperedValueFailsInShardCheck exercises the in-shard sum
@@ -156,39 +204,37 @@ func TestCompile_TamperedMultiplicity(t *testing.T) {
 // folded denominators differ and the per-handle sum lands at a non-zero
 // element of the extension field.
 func TestCompile_TamperedValueFailsInShardCheck(t *testing.T) {
-	sys := wiop.NewSystemf("mb-tampered-value")
-	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
+		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
+		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+		colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+		mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
 
-	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
-	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
-	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
-	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
-	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+		sys.NewMessageBusSend(
+			sys.Context.Childf("send-A"),
+			"segA", "ping",
+			wiop.NewTable(colA.View()),
+		)
+		sys.NewMessageBusReceive(
+			sys.Context.Childf("recv-B"),
+			"segB", "ping",
+			wiop.NewTable(colB.View()),
+			mulB.View(),
+		)
 
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send-A"),
-		"segA", "ping",
-		wiop.NewTable(colA.View()),
-	)
-	sys.NewMessageBusReceive(
-		sys.Context.Childf("recv-B"),
-		"segB", "ping",
-		wiop.NewTable(colB.View()),
-		mulB.View(),
-	)
+		messagebus.Compile(sys)
+		logderivativesum.Compile(sys)
 
-	messagebus.Compile(sys)
-	logderivativesum.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
+		rt.AssignColumn(colB, makeVec(10, 21, 30, 40)) // wrong: row 1 holds 21, not 20
+		rt.AssignColumn(mulB, makeVec(1, 1, 1, 1))
 
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
-	rt.AssignColumn(colB, makeVec(10, 21, 30, 40)) // wrong: row 1 holds 21, not 20
-	rt.AssignColumn(mulB, makeVec(1, 1, 1, 1))
-
-	drive(&rt)
-	assert.Error(t, checkAllVerifierActions(&rt),
-		"verifier must reject when a receive row's value does not appear in the send multiset")
+		drive(&rt)
+		assert.Error(t, checkAllVerifierActions(&rt),
+			"verifier must reject when a receive row's value does not appear in the send multiset")
+	})
 }
 
 // TestCompile_TamperedFilterFailsInShardCheck exercises the in-shard sum
@@ -196,41 +242,39 @@ func TestCompile_TamperedValueFailsInShardCheck(t *testing.T) {
 // a row that the receive side still claims, so the multiset on each side
 // has a different cardinality and the per-handle sum is non-zero.
 func TestCompile_TamperedFilterFailsInShardCheck(t *testing.T) {
-	sys := wiop.NewSystemf("mb-tampered-filter")
-	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
+		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
+		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+		selA := modA.NewColumn(sys.Context.Childf("selA"), wiop.VisibilityOracle, r0)
+		colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+		mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
 
-	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
-	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
-	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
-	selA := modA.NewColumn(sys.Context.Childf("selA"), wiop.VisibilityOracle, r0)
-	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
-	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+		sys.NewMessageBusSend(
+			sys.Context.Childf("send-A"),
+			"segA", "ping",
+			wiop.NewFilteredTable(selA.View(), colA.View()),
+		)
+		sys.NewMessageBusReceive(
+			sys.Context.Childf("recv-B"),
+			"segB", "ping",
+			wiop.NewTable(colB.View()),
+			mulB.View(),
+		)
 
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send-A"),
-		"segA", "ping",
-		wiop.NewFilteredTable(selA.View(), colA.View()),
-	)
-	sys.NewMessageBusReceive(
-		sys.Context.Childf("recv-B"),
-		"segB", "ping",
-		wiop.NewTable(colB.View()),
-		mulB.View(),
-	)
+		messagebus.Compile(sys)
+		logderivativesum.Compile(sys)
 
-	messagebus.Compile(sys)
-	logderivativesum.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
+		rt.AssignColumn(selA, makeVec(1, 0, 1, 1)) // sender filters out row 1 (value 20)
+		rt.AssignColumn(colB, makeVec(10, 20, 30, 40))
+		rt.AssignColumn(mulB, makeVec(1, 1, 1, 1)) // receiver still claims all four
 
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
-	rt.AssignColumn(selA, makeVec(1, 0, 1, 1)) // sender filters out row 1 (value 20)
-	rt.AssignColumn(colB, makeVec(10, 20, 30, 40))
-	rt.AssignColumn(mulB, makeVec(1, 1, 1, 1)) // receiver still claims all four
-
-	drive(&rt)
-	assert.Error(t, checkAllVerifierActions(&rt),
-		"verifier must reject when the send-side selector drops a row the receive side still claims")
+		drive(&rt)
+		assert.Error(t, checkAllVerifierActions(&rt),
+			"verifier must reject when the send-side selector drops a row the receive side still claims")
+	})
 }
 
 // TestCompile_MultipleSendersOneReceiver verifies that several Send segments
@@ -238,46 +282,44 @@ func TestCompile_TamperedFilterFailsInShardCheck(t *testing.T) {
 // correctly. Sender 1 emits values [10, 20]; sender 2 also emits [10, 20];
 // the receiver holds [10, 20] with multiplicity [2, 2].
 func TestCompile_MultipleSendersOneReceiver(t *testing.T) {
-	sys := wiop.NewSystemf("mb-multi-senders")
-	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		modS1 := sys.NewSizedModule(sys.Context.Childf("modS1"), 2, wiop.PaddingDirectionNone)
+		modS2 := sys.NewSizedModule(sys.Context.Childf("modS2"), 2, wiop.PaddingDirectionNone)
+		modR := sys.NewSizedModule(sys.Context.Childf("modR"), 2, wiop.PaddingDirectionNone)
+		colS1 := modS1.NewColumn(sys.Context.Childf("S1"), wiop.VisibilityOracle, r0)
+		colS2 := modS2.NewColumn(sys.Context.Childf("S2"), wiop.VisibilityOracle, r0)
+		colR := modR.NewColumn(sys.Context.Childf("R"), wiop.VisibilityOracle, r0)
+		mulR := modR.NewColumn(sys.Context.Childf("mR"), wiop.VisibilityOracle, r0)
 
-	modS1 := sys.NewSizedModule(sys.Context.Childf("modS1"), 2, wiop.PaddingDirectionNone)
-	modS2 := sys.NewSizedModule(sys.Context.Childf("modS2"), 2, wiop.PaddingDirectionNone)
-	modR := sys.NewSizedModule(sys.Context.Childf("modR"), 2, wiop.PaddingDirectionNone)
-	colS1 := modS1.NewColumn(sys.Context.Childf("S1"), wiop.VisibilityOracle, r0)
-	colS2 := modS2.NewColumn(sys.Context.Childf("S2"), wiop.VisibilityOracle, r0)
-	colR := modR.NewColumn(sys.Context.Childf("R"), wiop.VisibilityOracle, r0)
-	mulR := modR.NewColumn(sys.Context.Childf("mR"), wiop.VisibilityOracle, r0)
+		sys.NewMessageBusSend(
+			sys.Context.Childf("send-S1"),
+			"segS1", "bus",
+			wiop.NewTable(colS1.View()),
+		)
+		sys.NewMessageBusSend(
+			sys.Context.Childf("send-S2"),
+			"segS2", "bus",
+			wiop.NewTable(colS2.View()),
+		)
+		sys.NewMessageBusReceive(
+			sys.Context.Childf("recv-R"),
+			"segR", "bus",
+			wiop.NewTable(colR.View()),
+			mulR.View(),
+		)
 
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send-S1"),
-		"segS1", "bus",
-		wiop.NewTable(colS1.View()),
-	)
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send-S2"),
-		"segS2", "bus",
-		wiop.NewTable(colS2.View()),
-	)
-	sys.NewMessageBusReceive(
-		sys.Context.Childf("recv-R"),
-		"segR", "bus",
-		wiop.NewTable(colR.View()),
-		mulR.View(),
-	)
+		messagebus.Compile(sys)
+		logderivativesum.Compile(sys)
 
-	messagebus.Compile(sys)
-	logderivativesum.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(colS1, makeVec(10, 20))
+		rt.AssignColumn(colS2, makeVec(10, 20))
+		rt.AssignColumn(colR, makeVec(10, 20))
+		rt.AssignColumn(mulR, makeVec(2, 2))
 
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(colS1, makeVec(10, 20))
-	rt.AssignColumn(colS2, makeVec(10, 20))
-	rt.AssignColumn(colR, makeVec(10, 20))
-	rt.AssignColumn(mulR, makeVec(2, 2))
-
-	drive(&rt)
-	require.NoError(t, checkAllVerifierActions(&rt))
+		drive(&rt)
+		require.NoError(t, checkAllVerifierActions(&rt))
+	})
 }
 
 // TestCompile_MultiColumnTuples covers width > 1 tables: senders push
@@ -285,87 +327,83 @@ func TestCompile_MultipleSendersOneReceiver(t *testing.T) {
 // compiler must allocate an α coin (in addition to β) and fold each tuple
 // via Horner before hashing.
 func TestCompile_MultiColumnTuples(t *testing.T) {
-	sys := wiop.NewSystemf("mb-tuples")
-	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
+		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
+		keyA := modA.NewColumn(sys.Context.Childf("kA"), wiop.VisibilityOracle, r0)
+		valA := modA.NewColumn(sys.Context.Childf("vA"), wiop.VisibilityOracle, r0)
+		keyB := modB.NewColumn(sys.Context.Childf("kB"), wiop.VisibilityOracle, r0)
+		valB := modB.NewColumn(sys.Context.Childf("vB"), wiop.VisibilityOracle, r0)
+		mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
 
-	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
-	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
-	keyA := modA.NewColumn(sys.Context.Childf("kA"), wiop.VisibilityOracle, r0)
-	valA := modA.NewColumn(sys.Context.Childf("vA"), wiop.VisibilityOracle, r0)
-	keyB := modB.NewColumn(sys.Context.Childf("kB"), wiop.VisibilityOracle, r0)
-	valB := modB.NewColumn(sys.Context.Childf("vB"), wiop.VisibilityOracle, r0)
-	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+		sys.NewMessageBusSend(
+			sys.Context.Childf("send-A"),
+			"segA", "kv",
+			wiop.NewTable(keyA.View(), valA.View()),
+		)
+		sys.NewMessageBusReceive(
+			sys.Context.Childf("recv-B"),
+			"segB", "kv",
+			wiop.NewTable(keyB.View(), valB.View()),
+			mulB.View(),
+		)
 
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send-A"),
-		"segA", "kv",
-		wiop.NewTable(keyA.View(), valA.View()),
-	)
-	sys.NewMessageBusReceive(
-		sys.Context.Childf("recv-B"),
-		"segB", "kv",
-		wiop.NewTable(keyB.View(), valB.View()),
-		mulB.View(),
-	)
+		messagebus.Compile(sys)
+		logderivativesum.Compile(sys)
 
-	messagebus.Compile(sys)
-	logderivativesum.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(keyA, makeVec(1, 2, 3, 4))
+		rt.AssignColumn(valA, makeVec(10, 20, 30, 40))
+		rt.AssignColumn(keyB, makeVec(1, 2, 3, 4))
+		rt.AssignColumn(valB, makeVec(10, 20, 30, 40))
+		rt.AssignColumn(mulB, makeVec(1, 1, 1, 1))
 
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(keyA, makeVec(1, 2, 3, 4))
-	rt.AssignColumn(valA, makeVec(10, 20, 30, 40))
-	rt.AssignColumn(keyB, makeVec(1, 2, 3, 4))
-	rt.AssignColumn(valB, makeVec(10, 20, 30, 40))
-	rt.AssignColumn(mulB, makeVec(1, 1, 1, 1))
-
-	drive(&rt)
-	require.NoError(t, checkAllVerifierActions(&rt))
+		drive(&rt)
+		require.NoError(t, checkAllVerifierActions(&rt))
+	})
 }
 
 // TestCompile_FilteredSelectors covers Tables with a selector column on
 // either side: only rows where the selector is 1 contribute to the
 // accumulator.
 func TestCompile_FilteredSelectors(t *testing.T) {
-	sys := wiop.NewSystemf("mb-filter")
-	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
+		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
+		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+		selA := modA.NewColumn(sys.Context.Childf("selA"), wiop.VisibilityOracle, r0)
+		colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+		selB := modB.NewColumn(sys.Context.Childf("selB"), wiop.VisibilityOracle, r0)
+		mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
 
-	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
-	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
-	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
-	selA := modA.NewColumn(sys.Context.Childf("selA"), wiop.VisibilityOracle, r0)
-	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
-	selB := modB.NewColumn(sys.Context.Childf("selB"), wiop.VisibilityOracle, r0)
-	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+		sys.NewMessageBusSend(
+			sys.Context.Childf("send-A"),
+			"segA", "filtered",
+			wiop.NewFilteredTable(selA.View(), colA.View()),
+		)
+		sys.NewMessageBusReceive(
+			sys.Context.Childf("recv-B"),
+			"segB", "filtered",
+			wiop.NewFilteredTable(selB.View(), colB.View()),
+			mulB.View(),
+		)
 
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send-A"),
-		"segA", "filtered",
-		wiop.NewFilteredTable(selA.View(), colA.View()),
-	)
-	sys.NewMessageBusReceive(
-		sys.Context.Childf("recv-B"),
-		"segB", "filtered",
-		wiop.NewFilteredTable(selB.View(), colB.View()),
-		mulB.View(),
-	)
+		messagebus.Compile(sys)
+		logderivativesum.Compile(sys)
 
-	messagebus.Compile(sys)
-	logderivativesum.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		// Active sends: A[0]=10, A[2]=20 (selA = [1,0,1,0]).
+		// Active receives at same values, multiplicities counted by selB-respecting
+		// filter (selB = [1,1,0,0], mulB = [1,1,0,0]) → receives 10 and 20 once each.
+		rt.AssignColumn(colA, makeVec(10, 99, 20, 99))
+		rt.AssignColumn(selA, makeVec(1, 0, 1, 0))
+		rt.AssignColumn(colB, makeVec(10, 20, 77, 77))
+		rt.AssignColumn(selB, makeVec(1, 1, 0, 0))
+		rt.AssignColumn(mulB, makeVec(1, 1, 0, 0))
 
-	rt := wiop.NewRuntime(sys)
-	// Active sends: A[0]=10, A[2]=20 (selA = [1,0,1,0]).
-	// Active receives at same values, multiplicities counted by selB-respecting
-	// filter (selB = [1,1,0,0], mulB = [1,1,0,0]) → receives 10 and 20 once each.
-	rt.AssignColumn(colA, makeVec(10, 99, 20, 99))
-	rt.AssignColumn(selA, makeVec(1, 0, 1, 0))
-	rt.AssignColumn(colB, makeVec(10, 20, 77, 77))
-	rt.AssignColumn(selB, makeVec(1, 1, 0, 0))
-	rt.AssignColumn(mulB, makeVec(1, 1, 0, 0))
-
-	drive(&rt)
-	require.NoError(t, checkAllVerifierActions(&rt))
+		drive(&rt)
+		require.NoError(t, checkAllVerifierActions(&rt))
+	})
 }
 
 // TestCompile_TwoHandlesIndependent verifies that two unrelated handles in
@@ -373,85 +411,81 @@ func TestCompile_FilteredSelectors(t *testing.T) {
 // coins but each handle still gets its own LogDerivativeSum cells and its
 // own verifier action, so tampering one handle cannot mask the other.
 func TestCompile_TwoHandlesIndependent(t *testing.T) {
-	sys := wiop.NewSystemf("mb-two-handles")
-	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 2, wiop.PaddingDirectionNone)
+		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 2, wiop.PaddingDirectionNone)
+		modC := sys.NewSizedModule(sys.Context.Childf("modC"), 2, wiop.PaddingDirectionNone)
+		modD := sys.NewSizedModule(sys.Context.Childf("modD"), 2, wiop.PaddingDirectionNone)
+		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+		colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+		mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+		colC := modC.NewColumn(sys.Context.Childf("C"), wiop.VisibilityOracle, r0)
+		colD := modD.NewColumn(sys.Context.Childf("D"), wiop.VisibilityOracle, r0)
+		mulD := modD.NewColumn(sys.Context.Childf("mD"), wiop.VisibilityOracle, r0)
 
-	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 2, wiop.PaddingDirectionNone)
-	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 2, wiop.PaddingDirectionNone)
-	modC := sys.NewSizedModule(sys.Context.Childf("modC"), 2, wiop.PaddingDirectionNone)
-	modD := sys.NewSizedModule(sys.Context.Childf("modD"), 2, wiop.PaddingDirectionNone)
-	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
-	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
-	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
-	colC := modC.NewColumn(sys.Context.Childf("C"), wiop.VisibilityOracle, r0)
-	colD := modD.NewColumn(sys.Context.Childf("D"), wiop.VisibilityOracle, r0)
-	mulD := modD.NewColumn(sys.Context.Childf("mD"), wiop.VisibilityOracle, r0)
+		sys.NewMessageBusSend(
+			sys.Context.Childf("send-A"), "segA", "alpha",
+			wiop.NewTable(colA.View()),
+		)
+		sys.NewMessageBusReceive(
+			sys.Context.Childf("recv-B"), "segB", "alpha",
+			wiop.NewTable(colB.View()), mulB.View(),
+		)
+		sys.NewMessageBusSend(
+			sys.Context.Childf("send-C"), "segC", "beta",
+			wiop.NewTable(colC.View()),
+		)
+		sys.NewMessageBusReceive(
+			sys.Context.Childf("recv-D"), "segD", "beta",
+			wiop.NewTable(colD.View()), mulD.View(),
+		)
 
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send-A"), "segA", "alpha",
-		wiop.NewTable(colA.View()),
-	)
-	sys.NewMessageBusReceive(
-		sys.Context.Childf("recv-B"), "segB", "alpha",
-		wiop.NewTable(colB.View()), mulB.View(),
-	)
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send-C"), "segC", "beta",
-		wiop.NewTable(colC.View()),
-	)
-	sys.NewMessageBusReceive(
-		sys.Context.Childf("recv-D"), "segD", "beta",
-		wiop.NewTable(colD.View()), mulD.View(),
-	)
+		messagebus.Compile(sys)
+		logderivativesum.Compile(sys)
 
-	messagebus.Compile(sys)
-	logderivativesum.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(colA, makeVec(7, 8))
+		rt.AssignColumn(colB, makeVec(7, 8))
+		rt.AssignColumn(mulB, makeVec(1, 1))
+		rt.AssignColumn(colC, makeVec(100, 200))
+		rt.AssignColumn(colD, makeVec(100, 200))
+		rt.AssignColumn(mulD, makeVec(1, 1))
 
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(colA, makeVec(7, 8))
-	rt.AssignColumn(colB, makeVec(7, 8))
-	rt.AssignColumn(mulB, makeVec(1, 1))
-	rt.AssignColumn(colC, makeVec(100, 200))
-	rt.AssignColumn(colD, makeVec(100, 200))
-	rt.AssignColumn(mulD, makeVec(1, 1))
-
-	drive(&rt)
-	require.NoError(t, checkAllVerifierActions(&rt))
+		drive(&rt)
+		require.NoError(t, checkAllVerifierActions(&rt))
+	})
 }
 
 // TestCompile_ReceiveWithoutMultiplicity covers the "implicit-1 multiplicity"
 // path on the Receive side. Pass nil and the compiler must treat it as the
 // constant 1.
 func TestCompile_ReceiveWithoutMultiplicity(t *testing.T) {
-	sys := wiop.NewSystemf("mb-no-mul")
-	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 2, wiop.PaddingDirectionNone)
+		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 2, wiop.PaddingDirectionNone)
+		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+		colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
 
-	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 2, wiop.PaddingDirectionNone)
-	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 2, wiop.PaddingDirectionNone)
-	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
-	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+		sys.NewMessageBusSend(
+			sys.Context.Childf("send-A"), "segA", "impl-one",
+			wiop.NewTable(colA.View()),
+		)
+		sys.NewMessageBusReceive(
+			sys.Context.Childf("recv-B"), "segB", "impl-one",
+			wiop.NewTable(colB.View()),
+			nil, // explicit nil → constant-1 multiplicity
+		)
 
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send-A"), "segA", "impl-one",
-		wiop.NewTable(colA.View()),
-	)
-	sys.NewMessageBusReceive(
-		sys.Context.Childf("recv-B"), "segB", "impl-one",
-		wiop.NewTable(colB.View()),
-		nil, // explicit nil → constant-1 multiplicity
-	)
+		messagebus.Compile(sys)
+		logderivativesum.Compile(sys)
 
-	messagebus.Compile(sys)
-	logderivativesum.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(colA, makeVec(5, 6))
+		rt.AssignColumn(colB, makeVec(5, 6))
 
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(colA, makeVec(5, 6))
-	rt.AssignColumn(colB, makeVec(5, 6))
-
-	drive(&rt)
-	require.NoError(t, checkAllVerifierActions(&rt))
+		drive(&rt)
+		require.NoError(t, checkAllVerifierActions(&rt))
+	})
 }
 
 // TestCompile_NoMessageBusesIsNoOp asserts that running the compiler against
@@ -484,7 +518,7 @@ func TestCompile_DynamicModule_TwoSegmentsBalanced(t *testing.T) {
 
 	sys := wiop.NewSystemf("mb-dyn-balanced")
 	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	setupMessageBusHook(sys)
 
 	modA := sys.NewDynamicModule(sys.Context.Childf("modA"), wiop.PaddingDirectionRight)
 	modB := sys.NewDynamicModule(sys.Context.Childf("modB"), wiop.PaddingDirectionRight)
@@ -542,7 +576,7 @@ func TestCompile_DynamicModule_TamperedFails(t *testing.T) {
 
 	sys := wiop.NewSystemf("mb-dyn-tampered")
 	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	setupMessageBusHook(sys)
 
 	modA := sys.NewDynamicModule(sys.Context.Childf("modA"), wiop.PaddingDirectionRight)
 	modB := sys.NewDynamicModule(sys.Context.Childf("modB"), wiop.PaddingDirectionRight)
@@ -587,7 +621,7 @@ func TestCompile_DynamicModule_MultiColumnTuples(t *testing.T) {
 
 	sys := wiop.NewSystemf("mb-dyn-tuples")
 	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	setupMessageBusHook(sys)
 
 	modA := sys.NewDynamicModule(sys.Context.Childf("modA"), wiop.PaddingDirectionRight)
 	modB := sys.NewDynamicModule(sys.Context.Childf("modB"), wiop.PaddingDirectionRight)
@@ -629,7 +663,6 @@ func TestCompile_DynamicModule_MultiColumnTuples(t *testing.T) {
 func TestCompile_WidthMismatchPanics(t *testing.T) {
 	sys := wiop.NewSystemf("mb-width-mismatch")
 	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
 
 	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 2, wiop.PaddingDirectionNone)
 	colA := mod.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
@@ -647,24 +680,6 @@ func TestCompile_WidthMismatchPanics(t *testing.T) {
 	)
 
 	assert.Panics(t, func() { messagebus.Compile(sys) })
-}
-
-// TestCompile_MissingCoinsPanics asserts that running the compiler with
-// unreduced MessageBus entries but no externally-supplied (α, β) coins
-// panics. The pass intentionally does not allocate its own coins.
-func TestCompile_MissingCoinsPanics(t *testing.T) {
-	sys := wiop.NewSystemf("mb-missing-coins")
-	r0 := sys.NewRound()
-
-	mod := sys.NewSizedModule(sys.Context.Childf("m"), 2, wiop.PaddingDirectionNone)
-	col := mod.NewColumn(sys.Context.Childf("c"), wiop.VisibilityOracle, r0)
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send"), "seg", "h",
-		wiop.NewTable(col.View()),
-	)
-
-	assert.Panics(t, func() { messagebus.Compile(sys) },
-		"Compile must panic when MessageBusAlpha/MessageBusBeta are unset")
 }
 
 // TestCheckHandleSumInShard_ExpectedNonZero exercises the Expected field on
@@ -685,70 +700,70 @@ func TestCompile_MissingCoinsPanics(t *testing.T) {
 // name and the "expected" framing, since the cross-shard caller will rely
 // on those for diagnostics.
 func TestCheckHandleSumInShard_ExpectedNonZero(t *testing.T) {
-	sys := wiop.NewSystemf("mb-expected-nonzero")
-	r0 := sys.NewRound()
-	setupMessageBusCoins(sys)
+	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		// Own the in-shard check ourselves so Compile doesn't pre-register one.
+		// This flag is orthogonal to the coin-source variation (hook vs natural
+		// FS) — both subtests exercise the manual CheckHandleSumInShard path.
+		sys.MessageBusSkipInShardCheck = true
 
-	// Own the in-shard check ourselves so Compile doesn't pre-register one.
-	sys.MessageBusSkipInShardCheck = true
+		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
+		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
+		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+		colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+		mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
 
-	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
-	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
-	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
-	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
-	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+		sys.NewMessageBusSend(
+			sys.Context.Childf("send-A"), "segA", "ping",
+			wiop.NewTable(colA.View()),
+		)
+		sys.NewMessageBusReceive(
+			sys.Context.Childf("recv-B"), "segB", "ping",
+			wiop.NewTable(colB.View()), mulB.View(),
+		)
 
-	sys.NewMessageBusSend(
-		sys.Context.Childf("send-A"), "segA", "ping",
-		wiop.NewTable(colA.View()),
-	)
-	sys.NewMessageBusReceive(
-		sys.Context.Childf("recv-B"), "segB", "ping",
-		wiop.NewTable(colB.View()), mulB.View(),
-	)
+		messagebus.Compile(sys)
+		logderivativesum.Compile(sys)
 
-	messagebus.Compile(sys)
-	logderivativesum.Compile(sys)
+		rt := wiop.NewRuntime(sys)
+		rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
+		rt.AssignColumn(colB, makeVec(10, 20, 30, 40))
+		rt.AssignColumn(mulB, makeVec(1, 1, 1, 1))
 
-	rt := wiop.NewRuntime(sys)
-	rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
-	rt.AssignColumn(colB, makeVec(10, 20, 30, 40))
-	rt.AssignColumn(mulB, makeVec(1, 1, 1, 1))
+		drive(&rt)
 
-	drive(&rt)
+		// The two LDS queries (one per segment) are the cells this handle's
+		// action would consume.
+		require.Len(t, sys.LogDerivativeSums, 2, "expected exactly one LDS per segment")
+		cells := []*wiop.Cell{
+			sys.LogDerivativeSums[0].Result,
+			sys.LogDerivativeSums[1].Result,
+		}
 
-	// The two LDS queries (one per segment) are the cells this handle's
-	// action would consume.
-	require.Len(t, sys.LogDerivativeSums, 2, "expected exactly one LDS per segment")
-	cells := []*wiop.Cell{
-		sys.LogDerivativeSums[0].Result,
-		sys.LogDerivativeSums[1].Result,
-	}
+		// Happy path: Expected matches the actual sum (zero for a balanced bus).
+		happy := &messagebus.CheckHandleSumInShard{
+			Handle:   "ping",
+			Cells:    cells,
+			Path:     "test/ping/expected-zero",
+			Expected: field.ElemZero(),
+		}
+		require.NoError(t, happy.Check(rt),
+			"Check must accept when Expected matches the actual cell sum")
 
-	// Happy path: Expected matches the actual sum (zero for a balanced bus).
-	happy := &messagebus.CheckHandleSumInShard{
-		Handle:   "ping",
-		Cells:    cells,
-		Path:     "test/ping/expected-zero",
-		Expected: field.ElemZero(),
-	}
-	require.NoError(t, happy.Check(rt),
-		"Check must accept when Expected matches the actual cell sum")
-
-	// Sad path: Expected differs from the actual sum, so Check must reject.
-	sad := &messagebus.CheckHandleSumInShard{
-		Handle:   "ping",
-		Cells:    cells,
-		Path:     "test/ping/expected-one",
-		Expected: field.ElemOne(),
-	}
-	err := sad.Check(rt)
-	require.Error(t, err,
-		"Check must reject when Expected differs from the actual cell sum")
-	assert.Contains(t, err.Error(), `handle "ping"`,
-		"error must name the handle for diagnostics")
-	assert.Contains(t, err.Error(), "expected",
-		"error must include the expected-value context for diagnostics")
+		// Sad path: Expected differs from the actual sum, so Check must reject.
+		sad := &messagebus.CheckHandleSumInShard{
+			Handle:   "ping",
+			Cells:    cells,
+			Path:     "test/ping/expected-one",
+			Expected: field.ElemOne(),
+		}
+		err := sad.Check(rt)
+		require.Error(t, err,
+			"Check must reject when Expected differs from the actual cell sum")
+		assert.Contains(t, err.Error(), `handle "ping"`,
+			"error must name the handle for diagnostics")
+		assert.Contains(t, err.Error(), "expected",
+			"error must include the expected-value context for diagnostics")
+	})
 }
 
 // TestNewMessageBusReceive_WrongMultiplicityModulePanics asserts that the
