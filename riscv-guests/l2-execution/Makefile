@@ -58,13 +58,13 @@ clean:
 # gp-linker-scritpt, gp-exec, gp-debug delegate logic
 # to arithmetization/src/test/examples/Makefile.
 
-# To change the default memory layout / linker script defined in arithmetization/src/test/examples/Makefile
-# ovveride the following variables:
+# The following variables 
 # STACK_ORIGIN   
 # SP             
 # PROGRAM_ORIGIN 
 # IN_ORIGIN      
 # HEAP_ORIGIN
+# in arithmetization/src/test/examples/Makefile have default values but can be overriden.
 
 gp-linker-script:
 	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) linker-script LINKER_SCRIPT=$(MAKEFILE_DIR)../build_common/linker_script.ld
