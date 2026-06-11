@@ -14,7 +14,8 @@ include "../utils/constants.zkc"
 fn read_8<ram>(address:Address) -> (value:u8) {
     var word_idx:Address = address / 4
     var offset:Address = address % 4
-    value = ((ram[word_idx] >> (offset * 8)) & 0xFF) as u8
+    var trash: u24
+    trash::value = ram[word_idx] >> (offset * 8)
 }
 
 fn read_16<ram>(address:Address) -> (value:u16) {
@@ -22,15 +23,18 @@ fn read_16<ram>(address:Address) -> (value:u16) {
     var offset:Address = address % 4
     switch offset {
         case 0: {
-            value = (ram[word_idx] & 0xFFFF) as u16
+            var trash: u16
+            trash::value = ram[word_idx]
             return
         }
         case 1: {
-            value = ((ram[word_idx] >> 8) & 0xFFFF) as u16
+            var trash: u16
+            trash::value = ram[word_idx] >> 8
             return
         }
         case 2: {
-            value = (ram[word_idx] >> 16) as u16
+            var trash: u16
+            trash::value = ram[word_idx] >> 16
             return
         }
         default: {
