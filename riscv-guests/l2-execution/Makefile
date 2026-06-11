@@ -83,8 +83,8 @@ gp-compile: gp-linker-script
 		echo "\nSkipping objdump: riscv64-unknown-elf-objdump is not on PATH"; \
 	fi
 
-gp-exec: gp-compile
+gp-exec:
 	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) elf-exec BIN_EXT="$(ELF_BIN)" IN_BYTES="@$(SAMPLE_INPUT)" ZKC_EXEC_FLAGS=-q
 
-gp-debug: gp-compile
+gp-debug:
 	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) elf-debug BIN_EXT="$(ELF_BIN)" IN_BYTES="@$(SAMPLE_INPUT)"
