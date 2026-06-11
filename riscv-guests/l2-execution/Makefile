@@ -83,6 +83,9 @@ debug: compile
 linker-script:
 	$(MAKE) -C $(EXAMPLES_DIR) linker-script LINKER_SCRIPT=$(MAKEFILE_DIR)../build_common/linker_script.ld
 
+elf-exec:
+	$(MAKE) -C $(EXAMPLES_DIR) elf-exec BIN_EXT="$(ELF_BIN)" IN_BYTES=@$(SAMPLE_INPUT) ZKC_EXEC_FLAGS=-q
+
 # Guest-owned sample run: feed the committed, pre-framed sample input through ZkC (no IN_BYTES
 # needed). The converter byte-reverses the 0x-hex back into [u64 LE len][SSZ] at _in_start.
 fixture-exec:

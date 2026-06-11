@@ -330,9 +330,9 @@ zkc exec -q act4/bin/logs/<test-name>.json ../../main/riscv/main.zkc
 
 ```
 ___________________________________________ 0x00000000 ≡ STACK_ORIGIN * = _stack_end
- STACK:   ↑ 8 MiB STACK_LENGTH   
+ STACK:   ↑ 8 MiB STACK_LENGTH
 ___________________________________________ 0x00800000 ≡ SP * = _stack_start = PROGRAM_ORIGIN * = _program_start
- PROGRAM: ↓ 128 MiB PROGRAM_LENGTH 
+ PROGRAM: ↓ 128 MiB PROGRAM_LENGTH
 ___________________________________________ 0x08800000 ≡ _program_end = IN_ORIGIN * = _in_start
  IN:      ↓ 1 GiB: IN_LENGTH
 ___________________________________________ 0x48800000 ≡ _in_end = HEAP_ORIGIN * = _heap_start
