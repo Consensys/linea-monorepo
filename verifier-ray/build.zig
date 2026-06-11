@@ -44,14 +44,17 @@ pub fn build(b: *std.Build) void {
             .{ .name = "verifier_ray", .module = verifier_mod },
         },
     });
-    const vanishing_bench_data_mod = b.addModule("vanishing_bench_data", .{
-        .root_source_file = b.path("bench/generated/vanishing.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "verifier_ray", .module = verifier_mod },
-        },
-    });
+    var vanishing_bench_data_mod: *std.Build.Module = undefined;
+    if (vanishing_bench) {
+        vanishing_bench_data_mod = b.addModule("vanishing_bench_data", .{
+            .root_source_file = b.path("bench/generated/vanishing.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "verifier_ray", .module = verifier_mod },
+            },
+        });
+    }
     const vanishing_bench_options = b.addOptions();
     vanishing_bench_options.addOption(usize, "case_index", vanishing_case_index);
     vanishing_bench_options.addOption(bool, "invalid", vanishing_invalid);

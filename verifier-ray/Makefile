@@ -75,7 +75,7 @@ help:
 fmt: generate-testdata fmt-zig fmt-codegen fmt-testdata-generate fmt-bench
 
 fmt-zig:
-	zig fmt --check build.zig src test testdata/generated bench/vanishing_main.zig bench/generated/vanishing.zig
+	zig fmt --check build.zig src test testdata/generated bench/vanishing_main.zig
 
 fmt-codegen:
 	@if [[ -n "$$(gofmt -l codegen)" ]]; then \

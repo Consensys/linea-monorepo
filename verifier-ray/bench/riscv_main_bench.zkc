@@ -20,7 +20,6 @@ include "../../arithmetization/src/main/riscv/utils/constants.zkc"
 include "../../arithmetization/src/main/riscv/utils/signed_comparisons.zkc"
 include "../../arithmetization/src/main/riscv/utils/absolute_value.zkc"
 include "../../arithmetization/src/main/riscv/utils/bit_flip.zkc"
-include "../../arithmetization/src/main/riscv/utils/signed_comparisons.zkc"
 include "../../arithmetization/src/main/riscv/utils/sign_bit.zkc"
 include "../../arithmetization/src/main/riscv/utils/negative.zkc"
 include "../../arithmetization/src/main/riscv/utils/register_utils.zkc"
@@ -28,7 +27,7 @@ include "../../arithmetization/src/main/riscv/memory.zkc"
 
 pub output cycle_count(address:u1) -> (cycles:u64)
 
-fn main<ram, registers>() {
+fn main<registers, ram, state_row0, state_row1, state_row2, state_row3, state_row4, b0, b1, b2, b3, b4, c, d, padded_input_block>() {
     var instruction:Instruction
     var clock_cycle:u64 = 0
     var entry_point:Address
