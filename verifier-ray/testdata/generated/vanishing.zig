@@ -2650,18 +2650,20 @@ pub const system_30_spec = protocol.Spec{
     .total_round_coins = 2,
 };
 
-// scenario: "LocalVanishing/SingleColumnFirstRowZero"
+// scenario: "Vanishing/DynamicLagrangeSelectorBoundary"
 
-// expression: "global"
+// expression: "boundary"
 const system_30_module_0_expressions = [_]vanishing.ExprNode{
+    .{ .lagrange_selector = 1 },
     .{ .column_claim = 0 }, // col: "col"
-    .{ .lagrange_selector = 0 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
+    .{ .constant = field.Element.init(99) },
+    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 2 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 0, 3 } } },
 };
 
 const system_30_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
-    // expression: "global"
-    .{ .expression = 2, .cancelled_positions = &.{} },
+    // expression: "boundary"
+    .{ .expression = 4, .cancelled_positions = &.{} },
 };
 
 const system_30_module_0_buckets = [_]vanishing.Bucket{
@@ -2670,21 +2672,102 @@ const system_30_module_0_buckets = [_]vanishing.Bucket{
 
 const system_30_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_30_module_0_expressions, .buckets = &system_30_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .dynamic = 0 }, .expressions = &system_30_module_0_expressions, .buckets = &system_30_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
-// system: "lv-row0"
+// system: "lagrange-sel-dyn"
 const system_30 = vanishing.System{
     .modules = &system_30_modules,
-    .dynamic_module_count = 0,
+    .dynamic_module_count = 1,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
 const vanishing_scenario_30 = VanishingScenario{
-    .name = "LocalVanishing/SingleColumnFirstRowZero",
+    .name = "Vanishing/DynamicLagrangeSelectorBoundary",
     .spec = system_30_spec,
     .system = system_30,
+    .honest = .{
+        .rounds = &.{
+            .{
+                .columns = &.{
+                    .{ .public_base = &.{ 7, 99, 7, 7 } },
+                },
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 192184320, 0, 0, 0, 0, 0 }, .{ 1065353251, 0, 0, 0, 0, 0 }, .{ 1938522136, 0, 0, 0, 0, 0 }, .{ 1065353228, 0, 0, 0, 0, 0 } } },
+                },
+                .cells = &.{},
+            },
+        },
+        .witness_claims = &.{.{ 1370783823, 1546879596, 798776142, 991766015, 1033848109, 1879031930 }},
+        .quotient_claims = &.{.{ 1757317135, 673144868, 1021019227, 431729862, 73071499, 20723336 }},
+        .module_sizes = &.{4},
+    },
+    .invalid = .{
+        .rounds = &.{
+            .{
+                .columns = &.{
+                    .{ .public_base = &.{ 7, 98, 7, 7 } },
+                },
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 190095360, 0, 0, 0, 0, 0 }, .{ 186436847, 0, 0, 0, 0, 0 }, .{ 342581271, 0, 0, 0, 0, 0 }, .{ 1331691532, 0, 0, 0, 0, 0 } } },
+                },
+                .cells = &.{},
+            },
+        },
+        .witness_claims = &.{.{ 1671379099, 1820225737, 745496736, 1520101385, 483404820, 33935710 }},
+        .quotient_claims = &.{.{ 1758585595, 2051671926, 1287228006, 2025059932, 959328724, 423678391 }},
+        .module_sizes = &.{4},
+    },
+};
+
+pub const system_31_spec = protocol.Spec{
+    .round_coin_counts = &[_]usize{ 0, 1, 1 },
+    .round_coin_offsets = &[_]usize{ 0, 0, 1 },
+    .total_round_coins = 2,
+};
+
+// scenario: "LocalVanishing/SingleColumnFirstRowZero"
+
+// expression: "global"
+const system_31_module_0_expressions = [_]vanishing.ExprNode{
+    .{ .column_claim = 0 }, // col: "col"
+    .{ .lagrange_selector = 0 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
+};
+
+const system_31_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+    // expression: "global"
+    .{ .expression = 2, .cancelled_positions = &.{} },
+};
+
+const system_31_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_31_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+};
+
+const system_31_modules = [_]vanishing.Module{
+    // module: "mod"
+    .{ .size = .{ .static = 4 }, .expressions = &system_31_module_0_expressions, .buckets = &system_31_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+};
+
+// system: "lv-row0"
+const system_31 = vanishing.System{
+    .modules = &system_31_modules,
+    .dynamic_module_count = 0,
+    .total_witness_claims = 1,
+    .total_quotient_claims = 1,
+};
+
+const vanishing_scenario_31 = VanishingScenario{
+    .name = "LocalVanishing/SingleColumnFirstRowZero",
+    .spec = system_31_spec,
+    .system = system_31,
     .honest = .{
         .rounds = &.{
             .{
@@ -2725,7 +2808,7 @@ const vanishing_scenario_30 = VanishingScenario{
     },
 };
 
-pub const system_31_spec = protocol.Spec{
+pub const system_32_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -2734,38 +2817,38 @@ pub const system_31_spec = protocol.Spec{
 // scenario: "LocalVanishing/SingleColumnLastRowZero"
 
 // expression: "global"
-const system_31_module_0_expressions = [_]vanishing.ExprNode{
+const system_32_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "col"
     .{ .lagrange_selector = 3 },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
 };
 
-const system_31_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_32_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 2, .cancelled_positions = &.{} },
 };
 
-const system_31_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_31_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_32_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_32_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_31_modules = [_]vanishing.Module{
+const system_32_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_31_module_0_expressions, .buckets = &system_31_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_32_module_0_expressions, .buckets = &system_32_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-rowN"
-const system_31 = vanishing.System{
-    .modules = &system_31_modules,
+const system_32 = vanishing.System{
+    .modules = &system_32_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_31 = VanishingScenario{
+const vanishing_scenario_32 = VanishingScenario{
     .name = "LocalVanishing/SingleColumnLastRowZero",
-    .spec = system_31_spec,
-    .system = system_31,
+    .spec = system_32_spec,
+    .system = system_32,
     .honest = .{
         .rounds = &.{
             .{
@@ -2806,7 +2889,7 @@ const vanishing_scenario_31 = VanishingScenario{
     },
 };
 
-pub const system_32_spec = protocol.Spec{
+pub const system_33_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -2815,38 +2898,38 @@ pub const system_32_spec = protocol.Spec{
 // scenario: "LocalVanishing/ShiftedColumnFirstRowZero"
 
 // expression: "global"
-const system_32_module_0_expressions = [_]vanishing.ExprNode{
+const system_33_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "col"
     .{ .lagrange_selector = 1 },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
 };
 
-const system_32_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_33_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 2, .cancelled_positions = &.{} },
 };
 
-const system_32_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_32_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_33_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_33_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_32_modules = [_]vanishing.Module{
+const system_33_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_32_module_0_expressions, .buckets = &system_32_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_33_module_0_expressions, .buckets = &system_33_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-shift"
-const system_32 = vanishing.System{
-    .modules = &system_32_modules,
+const system_33 = vanishing.System{
+    .modules = &system_33_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_32 = VanishingScenario{
+const vanishing_scenario_33 = VanishingScenario{
     .name = "LocalVanishing/ShiftedColumnFirstRowZero",
-    .spec = system_32_spec,
-    .system = system_32,
+    .spec = system_33_spec,
+    .system = system_33,
     .honest = .{
         .rounds = &.{
             .{
@@ -2887,7 +2970,7 @@ const vanishing_scenario_32 = VanishingScenario{
     },
 };
 
-pub const system_33_spec = protocol.Spec{
+pub const system_34_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -2896,7 +2979,7 @@ pub const system_33_spec = protocol.Spec{
 // scenario: "LocalVanishing/TwoColumnsEqualAtFirstRow"
 
 // expression: "global"
-const system_33_module_0_expressions = [_]vanishing.ExprNode{
+const system_34_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "a"
     .{ .column_claim = 1 }, // col: "b"
     .{ .op = .{ .operator = .sub, .operands = &.{ 0, 1 } } },
@@ -2904,32 +2987,32 @@ const system_33_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 2, 3 } } },
 };
 
-const system_33_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_34_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 4, .cancelled_positions = &.{} },
 };
 
-const system_33_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_33_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_34_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_34_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_33_modules = [_]vanishing.Module{
+const system_34_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_33_module_0_expressions, .buckets = &system_33_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_34_module_0_expressions, .buckets = &system_34_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-pair"
-const system_33 = vanishing.System{
-    .modules = &system_33_modules,
+const system_34 = vanishing.System{
+    .modules = &system_34_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 2,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_33 = VanishingScenario{
+const vanishing_scenario_34 = VanishingScenario{
     .name = "LocalVanishing/TwoColumnsEqualAtFirstRow",
-    .spec = system_33_spec,
-    .system = system_33,
+    .spec = system_34_spec,
+    .system = system_34,
     .honest = .{
         .rounds = &.{
             .{
@@ -2972,7 +3055,7 @@ const vanishing_scenario_33 = VanishingScenario{
     },
 };
 
-pub const system_34_spec = protocol.Spec{
+pub const system_35_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -2980,7 +3063,7 @@ pub const system_34_spec = protocol.Spec{
 
 // scenario: "LocalVanishing/MultipleConstraintsSameModule"
 
-const system_34_module_0_expressions = [_]vanishing.ExprNode{
+const system_35_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "col"
     .{ .lagrange_selector = 0 },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -2989,34 +3072,34 @@ const system_34_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 3, 4 } } },
 };
 
-const system_34_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_35_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 2, .cancelled_positions = &.{} },
     // expression: "global"
     .{ .expression = 5, .cancelled_positions = &.{} },
 };
 
-const system_34_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_34_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_35_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_35_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_34_modules = [_]vanishing.Module{
+const system_35_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_34_module_0_expressions, .buckets = &system_34_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_35_module_0_expressions, .buckets = &system_35_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-multi"
-const system_34 = vanishing.System{
-    .modules = &system_34_modules,
+const system_35 = vanishing.System{
+    .modules = &system_35_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_34 = VanishingScenario{
+const vanishing_scenario_35 = VanishingScenario{
     .name = "LocalVanishing/MultipleConstraintsSameModule",
-    .spec = system_34_spec,
-    .system = system_34,
+    .spec = system_35_spec,
+    .system = system_35,
     .honest = .{
         .rounds = &.{
             .{
@@ -3057,7 +3140,7 @@ const vanishing_scenario_34 = VanishingScenario{
     },
 };
 
-pub const system_35_spec = protocol.Spec{
+pub const system_36_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -3066,7 +3149,7 @@ pub const system_35_spec = protocol.Spec{
 // scenario: "LocalVanishing/SecondRowConstraint"
 
 // expression: "global"
-const system_35_module_0_expressions = [_]vanishing.ExprNode{
+const system_36_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "col"
     .{ .constant = field.Element.init(42) },
     .{ .op = .{ .operator = .sub, .operands = &.{ 0, 1 } } },
@@ -3074,32 +3157,32 @@ const system_35_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 2, 3 } } },
 };
 
-const system_35_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_36_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 4, .cancelled_positions = &.{} },
 };
 
-const system_35_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_35_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_36_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_36_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_35_modules = [_]vanishing.Module{
+const system_36_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_35_module_0_expressions, .buckets = &system_35_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_36_module_0_expressions, .buckets = &system_36_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-row1"
-const system_35 = vanishing.System{
-    .modules = &system_35_modules,
+const system_36 = vanishing.System{
+    .modules = &system_36_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_35 = VanishingScenario{
+const vanishing_scenario_36 = VanishingScenario{
     .name = "LocalVanishing/SecondRowConstraint",
-    .spec = system_35_spec,
-    .system = system_35,
+    .spec = system_36_spec,
+    .system = system_36,
     .honest = .{
         .rounds = &.{
             .{
@@ -3140,7 +3223,7 @@ const vanishing_scenario_35 = VanishingScenario{
     },
 };
 
-pub const system_36_spec = protocol.Spec{
+pub const system_37_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -3149,7 +3232,7 @@ pub const system_36_spec = protocol.Spec{
 // scenario: "LocalVanishing/CellEquality"
 
 // expression: "global"
-const system_36_module_0_expressions = [_]vanishing.ExprNode{
+const system_37_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "col"
     .{ .cell_value = .{ .round = 0, .index = 0 } }, // cell: "c"
     .{ .op = .{ .operator = .sub, .operands = &.{ 0, 1 } } },
@@ -3157,32 +3240,32 @@ const system_36_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 2, 3 } } },
 };
 
-const system_36_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_37_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 4, .cancelled_positions = &.{} },
 };
 
-const system_36_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_36_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_37_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_37_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_36_modules = [_]vanishing.Module{
+const system_37_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_36_module_0_expressions, .buckets = &system_36_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_37_module_0_expressions, .buckets = &system_37_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-cell"
-const system_36 = vanishing.System{
-    .modules = &system_36_modules,
+const system_37 = vanishing.System{
+    .modules = &system_37_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_36 = VanishingScenario{
+const vanishing_scenario_37 = VanishingScenario{
     .name = "LocalVanishing/CellEquality",
-    .spec = system_36_spec,
-    .system = system_36,
+    .spec = system_37_spec,
+    .system = system_37,
     .honest = .{
         .rounds = &.{
             .{
@@ -3227,7 +3310,7 @@ const vanishing_scenario_36 = VanishingScenario{
     },
 };
 
-pub const system_37_spec = protocol.Spec{
+pub const system_38_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 2 },
     .total_round_coins = 3,
@@ -3236,7 +3319,7 @@ pub const system_37_spec = protocol.Spec{
 // scenario: "LocalVanishing/CoinScaled"
 
 // expression: "global"
-const system_37_module_0_expressions = [_]vanishing.ExprNode{
+const system_38_module_0_expressions = [_]vanishing.ExprNode{
     .{ .coin_value = 0 }, // coin: "coin"
     .{ .column_claim = 0 }, // col: "col"
     .{ .constant = field.Element.init(5) },
@@ -3246,32 +3329,32 @@ const system_37_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 4, 5 } } },
 };
 
-const system_37_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_38_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 6, .cancelled_positions = &.{} },
 };
 
-const system_37_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_37_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_38_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_38_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_37_modules = [_]vanishing.Module{
+const system_38_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_37_module_0_expressions, .buckets = &system_37_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 2 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_38_module_0_expressions, .buckets = &system_38_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 2 },
 };
 
 // system: "lv-coin"
-const system_37 = vanishing.System{
-    .modules = &system_37_modules,
+const system_38 = vanishing.System{
+    .modules = &system_38_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_37 = VanishingScenario{
+const vanishing_scenario_38 = VanishingScenario{
     .name = "LocalVanishing/CoinScaled",
-    .spec = system_37_spec,
-    .system = system_37,
+    .spec = system_38_spec,
+    .system = system_38,
     .honest = .{
         .rounds = &.{
             .{
@@ -3320,7 +3403,7 @@ const vanishing_scenario_37 = VanishingScenario{
     },
 };
 
-pub const system_38_spec = protocol.Spec{
+pub const system_39_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -3328,7 +3411,7 @@ pub const system_38_spec = protocol.Spec{
 
 // scenario: "LocalVanishing/MultipleAnchorsSharedColumn"
 
-const system_38_module_0_expressions = [_]vanishing.ExprNode{
+const system_39_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "col"
     .{ .constant = field.Element.init(10) },
     .{ .op = .{ .operator = .sub, .operands = &.{ 0, 1 } } },
@@ -3346,7 +3429,7 @@ const system_38_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 12, 13 } } },
 };
 
-const system_38_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_39_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 4, .cancelled_positions = &.{} },
     // expression: "global"
@@ -3355,27 +3438,27 @@ const system_38_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 14, .cancelled_positions = &.{} },
 };
 
-const system_38_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_38_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_39_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_39_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_38_modules = [_]vanishing.Module{
+const system_39_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_38_module_0_expressions, .buckets = &system_38_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_39_module_0_expressions, .buckets = &system_39_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-anchors"
-const system_38 = vanishing.System{
-    .modules = &system_38_modules,
+const system_39 = vanishing.System{
+    .modules = &system_39_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_38 = VanishingScenario{
+const vanishing_scenario_39 = VanishingScenario{
     .name = "LocalVanishing/MultipleAnchorsSharedColumn",
-    .spec = system_38_spec,
-    .system = system_38,
+    .spec = system_39_spec,
+    .system = system_39,
     .honest = .{
         .rounds = &.{
             .{
@@ -3416,7 +3499,7 @@ const vanishing_scenario_38 = VanishingScenario{
     },
 };
 
-pub const system_39_spec = protocol.Spec{
+pub const system_40_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -3425,7 +3508,7 @@ pub const system_39_spec = protocol.Spec{
 // scenario: "LocalVanishing/ConstantSubtraction"
 
 // expression: "global"
-const system_39_module_0_expressions = [_]vanishing.ExprNode{
+const system_40_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "col"
     .{ .constant = field.Element.init(7) },
     .{ .op = .{ .operator = .sub, .operands = &.{ 0, 1 } } },
@@ -3433,32 +3516,32 @@ const system_39_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 2, 3 } } },
 };
 
-const system_39_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_40_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 4, .cancelled_positions = &.{} },
 };
 
-const system_39_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_39_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_40_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_40_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_39_modules = [_]vanishing.Module{
+const system_40_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_39_module_0_expressions, .buckets = &system_39_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_40_module_0_expressions, .buckets = &system_40_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-const"
-const system_39 = vanishing.System{
-    .modules = &system_39_modules,
+const system_40 = vanishing.System{
+    .modules = &system_40_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_39 = VanishingScenario{
+const vanishing_scenario_40 = VanishingScenario{
     .name = "LocalVanishing/ConstantSubtraction",
-    .spec = system_39_spec,
-    .system = system_39,
+    .spec = system_40_spec,
+    .system = system_40,
     .honest = .{
         .rounds = &.{
             .{
@@ -3499,7 +3582,7 @@ const vanishing_scenario_39 = VanishingScenario{
     },
 };
 
-pub const system_40_spec = protocol.Spec{
+pub const system_41_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -3508,38 +3591,38 @@ pub const system_40_spec = protocol.Spec{
 // scenario: "LocalVanishing/WrapAroundShift"
 
 // expression: "global"
-const system_40_module_0_expressions = [_]vanishing.ExprNode{
+const system_41_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "col"
     .{ .lagrange_selector = 3 },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
 };
 
-const system_40_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_41_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 2, .cancelled_positions = &.{} },
 };
 
-const system_40_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_40_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_41_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_41_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_40_modules = [_]vanishing.Module{
+const system_41_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_40_module_0_expressions, .buckets = &system_40_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_41_module_0_expressions, .buckets = &system_41_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-wrap"
-const system_40 = vanishing.System{
-    .modules = &system_40_modules,
+const system_41 = vanishing.System{
+    .modules = &system_41_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_40 = VanishingScenario{
+const vanishing_scenario_41 = VanishingScenario{
     .name = "LocalVanishing/WrapAroundShift",
-    .spec = system_40_spec,
-    .system = system_40,
+    .spec = system_41_spec,
+    .system = system_41,
     .honest = .{
         .rounds = &.{
             .{
@@ -3580,7 +3663,7 @@ const vanishing_scenario_40 = VanishingScenario{
     },
 };
 
-pub const system_41_spec = protocol.Spec{
+pub const system_42_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -3589,7 +3672,7 @@ pub const system_41_spec = protocol.Spec{
 // scenario: "LocalVanishing/ProductIsZero"
 
 // expression: "global"
-const system_41_module_0_expressions = [_]vanishing.ExprNode{
+const system_42_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "a"
     .{ .column_claim = 1 }, // col: "b"
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -3597,32 +3680,32 @@ const system_41_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 2, 3 } } },
 };
 
-const system_41_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_42_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 4, .cancelled_positions = &.{} },
 };
 
-const system_41_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 2, .vanishings = &system_41_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_42_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 2, .vanishings = &system_42_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_41_modules = [_]vanishing.Module{
+const system_42_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_41_module_0_expressions, .buckets = &system_41_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_42_module_0_expressions, .buckets = &system_42_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-prod"
-const system_41 = vanishing.System{
-    .modules = &system_41_modules,
+const system_42 = vanishing.System{
+    .modules = &system_42_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 2,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_41 = VanishingScenario{
+const vanishing_scenario_42 = VanishingScenario{
     .name = "LocalVanishing/ProductIsZero",
-    .spec = system_41_spec,
-    .system = system_41,
+    .spec = system_42_spec,
+    .system = system_42,
     .honest = .{
         .rounds = &.{
             .{
@@ -3667,7 +3750,7 @@ const vanishing_scenario_41 = VanishingScenario{
     },
 };
 
-pub const system_42_spec = protocol.Spec{
+pub const system_43_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 2 },
     .total_round_coins = 3,
@@ -3676,7 +3759,7 @@ pub const system_42_spec = protocol.Spec{
 // scenario: "LocalVanishing/CellAndCoin"
 
 // expression: "global"
-const system_42_module_0_expressions = [_]vanishing.ExprNode{
+const system_43_module_0_expressions = [_]vanishing.ExprNode{
     .{ .coin_value = 0 }, // coin: "coin"
     .{ .column_claim = 0 }, // col: "col"
     .{ .cell_value = .{ .round = 0, .index = 0 } }, // cell: "c"
@@ -3686,32 +3769,32 @@ const system_42_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 4, 5 } } },
 };
 
-const system_42_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_43_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 6, .cancelled_positions = &.{} },
 };
 
-const system_42_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_42_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_43_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_43_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_42_modules = [_]vanishing.Module{
+const system_43_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_42_module_0_expressions, .buckets = &system_42_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 2 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_43_module_0_expressions, .buckets = &system_43_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 2 },
 };
 
 // system: "lv-cell-coin"
-const system_42 = vanishing.System{
-    .modules = &system_42_modules,
+const system_43 = vanishing.System{
+    .modules = &system_43_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_42 = VanishingScenario{
+const vanishing_scenario_43 = VanishingScenario{
     .name = "LocalVanishing/CellAndCoin",
-    .spec = system_42_spec,
-    .system = system_42,
+    .spec = system_43_spec,
+    .system = system_43,
     .honest = .{
         .rounds = &.{
             .{
@@ -3764,7 +3847,7 @@ const vanishing_scenario_42 = VanishingScenario{
     },
 };
 
-pub const system_43_spec = protocol.Spec{
+pub const system_44_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -3773,7 +3856,7 @@ pub const system_43_spec = protocol.Spec{
 // scenario: "LocalVanishing/ThreeColumnLinear"
 
 // expression: "global"
-const system_43_module_0_expressions = [_]vanishing.ExprNode{
+const system_44_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "a"
     .{ .column_claim = 1 }, // col: "b"
     .{ .op = .{ .operator = .add, .operands = &.{ 0, 1 } } },
@@ -3783,32 +3866,32 @@ const system_43_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 4, 5 } } },
 };
 
-const system_43_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_44_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 6, .cancelled_positions = &.{} },
 };
 
-const system_43_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_43_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_44_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_44_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_43_modules = [_]vanishing.Module{
+const system_44_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_43_module_0_expressions, .buckets = &system_43_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_44_module_0_expressions, .buckets = &system_44_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-3col"
-const system_43 = vanishing.System{
-    .modules = &system_43_modules,
+const system_44 = vanishing.System{
+    .modules = &system_44_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 3,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_43 = VanishingScenario{
+const vanishing_scenario_44 = VanishingScenario{
     .name = "LocalVanishing/ThreeColumnLinear",
-    .spec = system_43_spec,
-    .system = system_43,
+    .spec = system_44_spec,
+    .system = system_44,
     .honest = .{
         .rounds = &.{
             .{
@@ -3853,7 +3936,7 @@ const vanishing_scenario_43 = VanishingScenario{
     },
 };
 
-pub const system_44_spec = protocol.Spec{
+pub const system_45_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -3861,7 +3944,7 @@ pub const system_44_spec = protocol.Spec{
 
 // scenario: "LocalVanishing/MultiAnchorMultiColumn"
 
-const system_44_module_0_expressions = [_]vanishing.ExprNode{
+const system_45_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "a"
     .{ .lagrange_selector = 0 },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -3872,34 +3955,34 @@ const system_44_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 5, 6 } } },
 };
 
-const system_44_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_45_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 2, .cancelled_positions = &.{} },
     // expression: "global"
     .{ .expression = 7, .cancelled_positions = &.{} },
 };
 
-const system_44_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_44_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_45_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_45_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_44_modules = [_]vanishing.Module{
+const system_45_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_44_module_0_expressions, .buckets = &system_44_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_45_module_0_expressions, .buckets = &system_45_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-multi-anchor-multi-col"
-const system_44 = vanishing.System{
-    .modules = &system_44_modules,
+const system_45 = vanishing.System{
+    .modules = &system_45_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 2,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_44 = VanishingScenario{
+const vanishing_scenario_45 = VanishingScenario{
     .name = "LocalVanishing/MultiAnchorMultiColumn",
-    .spec = system_44_spec,
-    .system = system_44,
+    .spec = system_45_spec,
+    .system = system_45,
     .honest = .{
         .rounds = &.{
             .{
@@ -3942,7 +4025,7 @@ const vanishing_scenario_44 = VanishingScenario{
     },
 };
 
-pub const system_45_spec = protocol.Spec{
+pub const system_46_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -3951,7 +4034,7 @@ pub const system_45_spec = protocol.Spec{
 // scenario: "LocalVanishing/CubeAtFirstRow"
 
 // expression: "global"
-const system_45_module_0_expressions = [_]vanishing.ExprNode{
+const system_46_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "col"
     .{ .column_claim = 0 }, // col: "col"
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -3963,32 +4046,32 @@ const system_45_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 6, 7 } } },
 };
 
-const system_45_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_46_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 8, .cancelled_positions = &.{} },
 };
 
-const system_45_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 4, .vanishings = &system_45_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_46_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 4, .vanishings = &system_46_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_45_modules = [_]vanishing.Module{
+const system_46_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_45_module_0_expressions, .buckets = &system_45_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_46_module_0_expressions, .buckets = &system_46_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-cube"
-const system_45 = vanishing.System{
-    .modules = &system_45_modules,
+const system_46 = vanishing.System{
+    .modules = &system_46_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 1,
     .total_quotient_claims = 4,
 };
 
-const vanishing_scenario_45 = VanishingScenario{
+const vanishing_scenario_46 = VanishingScenario{
     .name = "LocalVanishing/CubeAtFirstRow",
-    .spec = system_45_spec,
-    .system = system_45,
+    .spec = system_46_spec,
+    .system = system_46,
     .honest = .{
         .rounds = &.{
             .{
@@ -4035,7 +4118,7 @@ const vanishing_scenario_45 = VanishingScenario{
     },
 };
 
-pub const system_46_spec = protocol.Spec{
+pub const system_47_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 2 },
     .total_round_coins = 4,
@@ -4044,56 +4127,56 @@ pub const system_46_spec = protocol.Spec{
 // scenario: "LocalVanishing/MultiModule"
 
 // expression: "global"
-const system_46_module_0_expressions = [_]vanishing.ExprNode{
+const system_47_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "a"
     .{ .lagrange_selector = 0 },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
 };
 
-const system_46_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_47_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 2, .cancelled_positions = &.{} },
 };
 
-const system_46_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_46_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_47_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_47_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
 // expression: "global"
-const system_46_module_1_expressions = [_]vanishing.ExprNode{
+const system_47_module_1_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "b"
     .{ .lagrange_selector = 3 },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
 };
 
-const system_46_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_47_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 2, .cancelled_positions = &.{} },
 };
 
-const system_46_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_46_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_47_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_47_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_46_modules = [_]vanishing.Module{
+const system_47_modules = [_]vanishing.Module{
     // module: "modA"
-    .{ .size = .{ .static = 4 }, .expressions = &system_46_module_0_expressions, .buckets = &system_46_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 2 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_47_module_0_expressions, .buckets = &system_47_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 2 },
     // module: "modB"
-    .{ .size = .{ .static = 4 }, .expressions = &system_46_module_1_expressions, .buckets = &system_46_module_1_buckets, .witness_claim_offset = 1, .merge_coin_index = 1, .eval_coin_index = 3 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_47_module_1_expressions, .buckets = &system_47_module_1_buckets, .witness_claim_offset = 1, .merge_coin_index = 1, .eval_coin_index = 3 },
 };
 
 // system: "lv-multi-mod"
-const system_46 = vanishing.System{
-    .modules = &system_46_modules,
+const system_47 = vanishing.System{
+    .modules = &system_47_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 2,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_46 = VanishingScenario{
+const vanishing_scenario_47 = VanishingScenario{
     .name = "LocalVanishing/MultiModule",
-    .spec = system_46_spec,
-    .system = system_46,
+    .spec = system_47_spec,
+    .system = system_47,
     .honest = .{
         .rounds = &.{
             .{
@@ -4138,7 +4221,7 @@ const vanishing_scenario_46 = VanishingScenario{
     },
 };
 
-pub const system_47_spec = protocol.Spec{
+pub const system_48_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -4147,38 +4230,38 @@ pub const system_47_spec = protocol.Spec{
 // scenario: "LocalVanishing/DynamicFirstRowZero"
 
 // expression: "global"
-const system_47_module_0_expressions = [_]vanishing.ExprNode{
+const system_48_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "col"
     .{ .lagrange_selector = 0 },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
 };
 
-const system_47_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_48_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 2, .cancelled_positions = &.{} },
 };
 
-const system_47_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_47_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_48_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_48_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_47_modules = [_]vanishing.Module{
+const system_48_modules = [_]vanishing.Module{
     // module: "dynmod"
-    .{ .size = .{ .dynamic = 0 }, .expressions = &system_47_module_0_expressions, .buckets = &system_47_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .dynamic = 0 }, .expressions = &system_48_module_0_expressions, .buckets = &system_48_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-dyn-row0"
-const system_47 = vanishing.System{
-    .modules = &system_47_modules,
+const system_48 = vanishing.System{
+    .modules = &system_48_modules,
     .dynamic_module_count = 1,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_47 = VanishingScenario{
+const vanishing_scenario_48 = VanishingScenario{
     .name = "LocalVanishing/DynamicFirstRowZero",
-    .spec = system_47_spec,
-    .system = system_47,
+    .spec = system_48_spec,
+    .system = system_48,
     .honest = .{
         .rounds = &.{
             .{
@@ -4219,7 +4302,7 @@ const vanishing_scenario_47 = VanishingScenario{
     },
 };
 
-pub const system_48_spec = protocol.Spec{
+pub const system_49_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -4228,38 +4311,38 @@ pub const system_48_spec = protocol.Spec{
 // scenario: "LocalVanishing/DynamicShifted"
 
 // expression: "global"
-const system_48_module_0_expressions = [_]vanishing.ExprNode{
+const system_49_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "col"
     .{ .lagrange_selector = 1 },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
 };
 
-const system_48_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_49_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 2, .cancelled_positions = &.{} },
 };
 
-const system_48_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_48_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_49_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_49_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_48_modules = [_]vanishing.Module{
+const system_49_modules = [_]vanishing.Module{
     // module: "dynmod"
-    .{ .size = .{ .dynamic = 0 }, .expressions = &system_48_module_0_expressions, .buckets = &system_48_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .dynamic = 0 }, .expressions = &system_49_module_0_expressions, .buckets = &system_49_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-dyn-shift"
-const system_48 = vanishing.System{
-    .modules = &system_48_modules,
+const system_49 = vanishing.System{
+    .modules = &system_49_modules,
     .dynamic_module_count = 1,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_48 = VanishingScenario{
+const vanishing_scenario_49 = VanishingScenario{
     .name = "LocalVanishing/DynamicShifted",
-    .spec = system_48_spec,
-    .system = system_48,
+    .spec = system_49_spec,
+    .system = system_49,
     .honest = .{
         .rounds = &.{
             .{
@@ -4300,7 +4383,7 @@ const vanishing_scenario_48 = VanishingScenario{
     },
 };
 
-pub const system_49_spec = protocol.Spec{
+pub const system_50_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1 },
     .total_round_coins = 2,
@@ -4309,7 +4392,7 @@ pub const system_49_spec = protocol.Spec{
 // scenario: "LocalVanishing/DynamicProductIsZero"
 
 // expression: "global"
-const system_49_module_0_expressions = [_]vanishing.ExprNode{
+const system_50_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "a"
     .{ .column_claim = 1 }, // col: "b"
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -4317,32 +4400,32 @@ const system_49_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 2, 3 } } },
 };
 
-const system_49_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_50_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 4, .cancelled_positions = &.{} },
 };
 
-const system_49_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 2, .vanishings = &system_49_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_50_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 2, .vanishings = &system_50_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_49_modules = [_]vanishing.Module{
+const system_50_modules = [_]vanishing.Module{
     // module: "dynmod"
-    .{ .size = .{ .dynamic = 0 }, .expressions = &system_49_module_0_expressions, .buckets = &system_49_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .dynamic = 0 }, .expressions = &system_50_module_0_expressions, .buckets = &system_50_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lv-dyn-prod"
-const system_49 = vanishing.System{
-    .modules = &system_49_modules,
+const system_50 = vanishing.System{
+    .modules = &system_50_modules,
     .dynamic_module_count = 1,
     .total_witness_claims = 2,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_49 = VanishingScenario{
+const vanishing_scenario_50 = VanishingScenario{
     .name = "LocalVanishing/DynamicProductIsZero",
-    .spec = system_49_spec,
-    .system = system_49,
+    .spec = system_50_spec,
+    .system = system_50,
     .honest = .{
         .rounds = &.{
             .{
@@ -4387,7 +4470,7 @@ const vanishing_scenario_49 = VanishingScenario{
     },
 };
 
-pub const system_50_spec = protocol.Spec{
+pub const system_51_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 0, 1 },
     .total_round_coins = 2,
@@ -4395,7 +4478,7 @@ pub const system_50_spec = protocol.Spec{
 
 // scenario: "LogDerivativeSumCompiler/SingleFractionAllOnes"
 
-const system_50_module_0_expressions = [_]vanishing.ExprNode{
+const system_51_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "num"
     .{ .column_claim = 1 }, // col: "z-b0-k0"
     .{ .column_claim = 2 }, // col: "z-b0-k0"
@@ -4415,7 +4498,7 @@ const system_50_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 14, 15 } } },
 };
 
-const system_50_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_51_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 6, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -4424,27 +4507,27 @@ const system_50_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 16, .cancelled_positions = &.{} },
 };
 
-const system_50_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_50_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_51_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_51_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_50_modules = [_]vanishing.Module{
+const system_51_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_50_module_0_expressions, .buckets = &system_50_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_51_module_0_expressions, .buckets = &system_51_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lds-ones"
-const system_50 = vanishing.System{
-    .modules = &system_50_modules,
+const system_51 = vanishing.System{
+    .modules = &system_51_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 3,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_50 = VanishingScenario{
+const vanishing_scenario_51 = VanishingScenario{
     .name = "LogDerivativeSumCompiler/SingleFractionAllOnes",
-    .spec = system_50_spec,
-    .system = system_50,
+    .spec = system_51_spec,
+    .system = system_51,
     .honest = .{
         .rounds = &.{
             .{
@@ -4476,105 +4559,13 @@ const vanishing_scenario_50 = VanishingScenario{
     },
 };
 
-pub const system_51_spec = protocol.Spec{
-    .round_coin_counts = &[_]usize{ 0, 0, 1, 1 },
-    .round_coin_offsets = &[_]usize{ 0, 0, 0, 1 },
-    .total_round_coins = 2,
-};
-
-// scenario: "LogDerivativeSumCompiler/PartialFilter"
-
-const system_51_module_0_expressions = [_]vanishing.ExprNode{
-    .{ .column_claim = 0 }, // col: "flt"
-    .{ .column_claim = 1 }, // col: "num"
-    .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
-    .{ .column_claim = 2 }, // col: "z-b0-k0"
-    .{ .column_claim = 3 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 3, 4 } } },
-    .{ .constant = field.Element.init(1) },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 5, 6 } } },
-    .{ .op = .{ .operator = .sub, .operands = &.{ 2, 7 } } },
-    .{ .cell_value = .{ .round = 1, .index = 1 } }, // cell: "result"
-    .{ .column_claim = 2 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 9, 10 } } },
-    .{ .lagrange_selector = 0 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 11, 12 } } },
-    .{ .cell_value = .{ .round = 1, .index = 2 } }, // cell: "result"
-    .{ .column_claim = 2 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 14, 15 } } },
-    .{ .lagrange_selector = 3 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
-};
-
-const system_51_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
-    // expression: "z-recurrence-b0-k0"
-    .{ .expression = 8, .cancelled_positions = &.{0} },
-    // expression: "global"
-    .{ .expression = 13, .cancelled_positions = &.{} },
-    // expression: "global"
-    .{ .expression = 18, .cancelled_positions = &.{} },
-};
-
-const system_51_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_51_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
-};
-
-const system_51_modules = [_]vanishing.Module{
-    // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_51_module_0_expressions, .buckets = &system_51_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
-};
-
-// system: "lds-partial"
-const system_51 = vanishing.System{
-    .modules = &system_51_modules,
-    .dynamic_module_count = 0,
-    .total_witness_claims = 4,
-    .total_quotient_claims = 1,
-};
-
-const vanishing_scenario_51 = VanishingScenario{
-    .name = "LogDerivativeSumCompiler/PartialFilter",
-    .spec = system_51_spec,
-    .system = system_51,
-    .honest = .{
-        .rounds = &.{
-            .{
-                .columns = &.{
-                    .{ .public_base = &.{ 3, 5, 7, 9 } },
-                    .{ .public_base = &.{ 1, 0, 1, 0 } },
-                },
-                .cells = &.{},
-            },
-            .{
-                .columns = &.{
-                    .{ .public_ext = &.{ .{ 3, 0, 0, 0, 0, 0 }, .{ 3, 0, 0, 0, 0, 0 }, .{ 10, 0, 0, 0, 0, 0 }, .{ 10, 0, 0, 0, 0, 0 } } },
-                },
-                .cells = &.{
-                    .{ .ext = .{ 10, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 3, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 10, 0, 0, 0, 0, 0 } },
-                },
-            },
-            .{
-                .columns = &.{
-                    .{ .public_ext = &.{ .{ 2108876653, 435998075, 1172833909, 291275425, 1862755219, 892047536 }, .{ 1244516639, 1868935826, 1246423474, 1430707718, 393606013, 643873682 }, .{ 838445398, 279408296, 733004961, 1828034402, 1758482220, 1871273231 }, .{ 1975879657, 1747621425, 504038530, 962125203, 332096614, 261273904 } } },
-                },
-                .cells = &.{},
-            },
-        },
-        .witness_claims = &.{ .{ 669619807, 1709147735, 2045343512, 1637749969, 576680601, 1141454916 }, .{ 1788511010, 1107467505, 2035613521, 179742479, 1202851018, 1189010269 }, .{ 679474112, 995289299, 600170397, 187231539, 1992664952, 216417486 }, .{ 586903946, 1831671907, 58680065, 1009110593, 426868852, 1626512860 } },
-        .quotient_claims = &.{.{ 23222693, 1616827171, 1791336199, 1369268728, 1820950219, 2121344996 }},
-        .module_sizes = &.{},
-    },
-};
-
 pub const system_52_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 0, 1 },
     .total_round_coins = 2,
 };
 
-// scenario: "LogDerivativeSumCompiler/AllZeroFilter"
+// scenario: "LogDerivativeSumCompiler/PartialFilter"
 
 const system_52_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "flt"
@@ -4616,7 +4607,7 @@ const system_52_modules = [_]vanishing.Module{
     .{ .size = .{ .static = 4 }, .expressions = &system_52_module_0_expressions, .buckets = &system_52_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
-// system: "lds-zeros"
+// system: "lds-partial"
 const system_52 = vanishing.System{
     .modules = &system_52_modules,
     .dynamic_module_count = 0,
@@ -4625,7 +4616,7 @@ const system_52 = vanishing.System{
 };
 
 const vanishing_scenario_52 = VanishingScenario{
-    .name = "LogDerivativeSumCompiler/AllZeroFilter",
+    .name = "LogDerivativeSumCompiler/PartialFilter",
     .spec = system_52_spec,
     .system = system_52,
     .honest = .{
@@ -4633,29 +4624,29 @@ const vanishing_scenario_52 = VanishingScenario{
             .{
                 .columns = &.{
                     .{ .public_base = &.{ 3, 5, 7, 9 } },
-                    .{ .public_base = &.{ 0, 0, 0, 0 } },
+                    .{ .public_base = &.{ 1, 0, 1, 0 } },
                 },
                 .cells = &.{},
             },
             .{
                 .columns = &.{
-                    .{ .public_ext = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 } } },
+                    .{ .public_ext = &.{ .{ 3, 0, 0, 0, 0, 0 }, .{ 3, 0, 0, 0, 0, 0 }, .{ 10, 0, 0, 0, 0, 0 }, .{ 10, 0, 0, 0, 0, 0 } } },
                 },
                 .cells = &.{
-                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
+                    .{ .ext = .{ 10, 0, 0, 0, 0, 0 } },
+                    .{ .ext = .{ 3, 0, 0, 0, 0, 0 } },
+                    .{ .ext = .{ 10, 0, 0, 0, 0, 0 } },
                 },
             },
             .{
                 .columns = &.{
-                    .{ .public_ext = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 } } },
+                    .{ .public_ext = &.{ .{ 2108876653, 435998075, 1172833909, 291275425, 1862755219, 892047536 }, .{ 1244516639, 1868935826, 1246423474, 1430707718, 393606013, 643873682 }, .{ 838445398, 279408296, 733004961, 1828034402, 1758482220, 1871273231 }, .{ 1975879657, 1747621425, 504038530, 962125203, 332096614, 261273904 } } },
                 },
                 .cells = &.{},
             },
         },
-        .witness_claims = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 1133963058, 62448266, 991768476, 1906186086, 2089645378, 464149100 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 } },
-        .quotient_claims = &.{.{ 0, 0, 0, 0, 0, 0 }},
+        .witness_claims = &.{ .{ 669619807, 1709147735, 2045343512, 1637749969, 576680601, 1141454916 }, .{ 1788511010, 1107467505, 2035613521, 179742479, 1202851018, 1189010269 }, .{ 679474112, 995289299, 600170397, 187231539, 1992664952, 216417486 }, .{ 586903946, 1831671907, 58680065, 1009110593, 426868852, 1626512860 } },
+        .quotient_claims = &.{.{ 23222693, 1616827171, 1791336199, 1369268728, 1820950219, 2121344996 }},
         .module_sizes = &.{},
     },
 };
@@ -4666,7 +4657,7 @@ pub const system_53_spec = protocol.Spec{
     .total_round_coins = 2,
 };
 
-// scenario: "LogDerivativeSumCompiler/FilterMasksZeroDenominator"
+// scenario: "LogDerivativeSumCompiler/AllZeroFilter"
 
 const system_53_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "flt"
@@ -4675,7 +4666,7 @@ const system_53_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 2 }, // col: "z-b0-k0"
     .{ .column_claim = 3 }, // col: "z-b0-k0"
     .{ .op = .{ .operator = .sub, .operands = &.{ 3, 4 } } },
-    .{ .column_claim = 4 }, // col: "den"
+    .{ .constant = field.Element.init(1) },
     .{ .op = .{ .operator = .mul, .operands = &.{ 5, 6 } } },
     .{ .op = .{ .operator = .sub, .operands = &.{ 2, 7 } } },
     .{ .cell_value = .{ .round = 1, .index = 1 } }, // cell: "result"
@@ -4708,18 +4699,110 @@ const system_53_modules = [_]vanishing.Module{
     .{ .size = .{ .static = 4 }, .expressions = &system_53_module_0_expressions, .buckets = &system_53_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
-// system: "lds-maskzero"
+// system: "lds-zeros"
 const system_53 = vanishing.System{
     .modules = &system_53_modules,
+    .dynamic_module_count = 0,
+    .total_witness_claims = 4,
+    .total_quotient_claims = 1,
+};
+
+const vanishing_scenario_53 = VanishingScenario{
+    .name = "LogDerivativeSumCompiler/AllZeroFilter",
+    .spec = system_53_spec,
+    .system = system_53,
+    .honest = .{
+        .rounds = &.{
+            .{
+                .columns = &.{
+                    .{ .public_base = &.{ 3, 5, 7, 9 } },
+                    .{ .public_base = &.{ 0, 0, 0, 0 } },
+                },
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 } } },
+                },
+                .cells = &.{
+                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
+                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
+                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
+                },
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 } } },
+                },
+                .cells = &.{},
+            },
+        },
+        .witness_claims = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 1133963058, 62448266, 991768476, 1906186086, 2089645378, 464149100 }, .{ 0, 0, 0, 0, 0, 0 }, .{ 0, 0, 0, 0, 0, 0 } },
+        .quotient_claims = &.{.{ 0, 0, 0, 0, 0, 0 }},
+        .module_sizes = &.{},
+    },
+};
+
+pub const system_54_spec = protocol.Spec{
+    .round_coin_counts = &[_]usize{ 0, 0, 1, 1 },
+    .round_coin_offsets = &[_]usize{ 0, 0, 0, 1 },
+    .total_round_coins = 2,
+};
+
+// scenario: "LogDerivativeSumCompiler/FilterMasksZeroDenominator"
+
+const system_54_module_0_expressions = [_]vanishing.ExprNode{
+    .{ .column_claim = 0 }, // col: "flt"
+    .{ .column_claim = 1 }, // col: "num"
+    .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
+    .{ .column_claim = 2 }, // col: "z-b0-k0"
+    .{ .column_claim = 3 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 3, 4 } } },
+    .{ .column_claim = 4 }, // col: "den"
+    .{ .op = .{ .operator = .mul, .operands = &.{ 5, 6 } } },
+    .{ .op = .{ .operator = .sub, .operands = &.{ 2, 7 } } },
+    .{ .cell_value = .{ .round = 1, .index = 1 } }, // cell: "result"
+    .{ .column_claim = 2 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 9, 10 } } },
+    .{ .lagrange_selector = 0 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 11, 12 } } },
+    .{ .cell_value = .{ .round = 1, .index = 2 } }, // cell: "result"
+    .{ .column_claim = 2 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 14, 15 } } },
+    .{ .lagrange_selector = 3 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
+};
+
+const system_54_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+    // expression: "z-recurrence-b0-k0"
+    .{ .expression = 8, .cancelled_positions = &.{0} },
+    // expression: "global"
+    .{ .expression = 13, .cancelled_positions = &.{} },
+    // expression: "global"
+    .{ .expression = 18, .cancelled_positions = &.{} },
+};
+
+const system_54_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_54_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+};
+
+const system_54_modules = [_]vanishing.Module{
+    // module: "mod"
+    .{ .size = .{ .static = 4 }, .expressions = &system_54_module_0_expressions, .buckets = &system_54_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+};
+
+// system: "lds-maskzero"
+const system_54 = vanishing.System{
+    .modules = &system_54_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 5,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_53 = VanishingScenario{
+const vanishing_scenario_54 = VanishingScenario{
     .name = "LogDerivativeSumCompiler/FilterMasksZeroDenominator",
-    .spec = system_53_spec,
-    .system = system_53,
+    .spec = system_54_spec,
+    .system = system_54,
     .honest = .{
         .rounds = &.{
             .{
@@ -4753,7 +4836,7 @@ const vanishing_scenario_53 = VanishingScenario{
     },
 };
 
-pub const system_54_spec = protocol.Spec{
+pub const system_55_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 0, 1 },
     .total_round_coins = 2,
@@ -4761,7 +4844,7 @@ pub const system_54_spec = protocol.Spec{
 
 // scenario: "LogDerivativeSumCompiler/Packing4Fractions"
 
-const system_54_module_0_expressions = [_]vanishing.ExprNode{
+const system_55_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "c0"
     .{ .constant = field.Element.init(1) },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -4818,12 +4901,12 @@ const system_54_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 51, 52 } } },
 };
 
-const system_54_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_55_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 26, .cancelled_positions = &.{0} },
 };
 
-const system_54_module_0_bucket_1_vanishings = [_]vanishing.Vanishing{
+const system_55_module_0_bucket_1_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k1"
     .{ .expression = 33, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -4836,28 +4919,28 @@ const system_54_module_0_bucket_1_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 53, .cancelled_positions = &.{} },
 };
 
-const system_54_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 4, .vanishings = &system_54_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
-    .{ .ratio = 1, .vanishings = &system_54_module_0_bucket_1_vanishings, .quotient_claim_offset = 4 },
+const system_55_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 4, .vanishings = &system_55_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+    .{ .ratio = 1, .vanishings = &system_55_module_0_bucket_1_vanishings, .quotient_claim_offset = 4 },
 };
 
-const system_54_modules = [_]vanishing.Module{
+const system_55_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_54_module_0_expressions, .buckets = &system_54_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_55_module_0_expressions, .buckets = &system_55_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lds-pack"
-const system_54 = vanishing.System{
-    .modules = &system_54_modules,
+const system_55 = vanishing.System{
+    .modules = &system_55_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 8,
     .total_quotient_claims = 5,
 };
 
-const vanishing_scenario_54 = VanishingScenario{
+const vanishing_scenario_55 = VanishingScenario{
     .name = "LogDerivativeSumCompiler/Packing4Fractions",
-    .spec = system_54_spec,
-    .system = system_54,
+    .spec = system_55_spec,
+    .system = system_55,
     .honest = .{
         .rounds = &.{
             .{
@@ -4899,7 +4982,7 @@ const vanishing_scenario_54 = VanishingScenario{
     },
 };
 
-pub const system_55_spec = protocol.Spec{
+pub const system_56_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 0, 2 },
     .total_round_coins = 4,
@@ -4907,7 +4990,7 @@ pub const system_55_spec = protocol.Spec{
 
 // scenario: "LogDerivativeSumCompiler/MultiModuleBucketing"
 
-const system_55_module_0_expressions = [_]vanishing.ExprNode{
+const system_56_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "cA"
     .{ .column_claim = 1 }, // col: "z-b0-k0"
     .{ .column_claim = 2 }, // col: "z-b0-k0"
@@ -4927,7 +5010,7 @@ const system_55_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 14, 15 } } },
 };
 
-const system_55_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_56_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 6, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -4936,11 +5019,11 @@ const system_55_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 16, .cancelled_positions = &.{} },
 };
 
-const system_55_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_55_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_56_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_56_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_55_module_1_expressions = [_]vanishing.ExprNode{
+const system_56_module_1_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "fB"
     .{ .column_claim = 1 }, // col: "cB"
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -4962,7 +5045,7 @@ const system_55_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_55_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_56_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -4971,29 +5054,29 @@ const system_55_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_55_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_55_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_56_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_56_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_55_modules = [_]vanishing.Module{
+const system_56_modules = [_]vanishing.Module{
     // module: "mA"
-    .{ .size = .{ .static = 4 }, .expressions = &system_55_module_0_expressions, .buckets = &system_55_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 2 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_56_module_0_expressions, .buckets = &system_56_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 2 },
     // module: "mB"
-    .{ .size = .{ .static = 4 }, .expressions = &system_55_module_1_expressions, .buckets = &system_55_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 1, .eval_coin_index = 3 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_56_module_1_expressions, .buckets = &system_56_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 1, .eval_coin_index = 3 },
 };
 
 // system: "lds-multi-mod"
-const system_55 = vanishing.System{
-    .modules = &system_55_modules,
+const system_56 = vanishing.System{
+    .modules = &system_56_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 7,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_55 = VanishingScenario{
+const vanishing_scenario_56 = VanishingScenario{
     .name = "LogDerivativeSumCompiler/MultiModuleBucketing",
-    .spec = system_55_spec,
-    .system = system_55,
+    .spec = system_56_spec,
+    .system = system_56,
     .honest = .{
         .rounds = &.{
             .{
@@ -5031,7 +5114,7 @@ const vanishing_scenario_55 = VanishingScenario{
     },
 };
 
-pub const system_56_spec = protocol.Spec{
+pub const system_57_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 0, 1 },
     .total_round_coins = 2,
@@ -5039,7 +5122,7 @@ pub const system_56_spec = protocol.Spec{
 
 // scenario: "LogDerivativeSumCompiler/SizeOneModule"
 
-const system_56_module_0_expressions = [_]vanishing.ExprNode{
+const system_57_module_0_expressions = [_]vanishing.ExprNode{
     .{ .cell_value = .{ .round = 1, .index = 1 } }, // cell: "result"
     .{ .column_claim = 0 }, // col: "z-b0-k0"
     .{ .op = .{ .operator = .sub, .operands = &.{ 0, 1 } } },
@@ -5052,34 +5135,34 @@ const system_56_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 7, 8 } } },
 };
 
-const system_56_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_57_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 4, .cancelled_positions = &.{} },
     // expression: "global"
     .{ .expression = 9, .cancelled_positions = &.{} },
 };
 
-const system_56_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_56_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_57_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_57_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_56_modules = [_]vanishing.Module{
+const system_57_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 1 }, .expressions = &system_56_module_0_expressions, .buckets = &system_56_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 1 }, .expressions = &system_57_module_0_expressions, .buckets = &system_57_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lds-size1"
-const system_56 = vanishing.System{
-    .modules = &system_56_modules,
+const system_57 = vanishing.System{
+    .modules = &system_57_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 1,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_56 = VanishingScenario{
+const vanishing_scenario_57 = VanishingScenario{
     .name = "LogDerivativeSumCompiler/SizeOneModule",
-    .spec = system_56_spec,
-    .system = system_56,
+    .spec = system_57_spec,
+    .system = system_57,
     .honest = .{
         .rounds = &.{
             .{
@@ -5111,7 +5194,7 @@ const vanishing_scenario_56 = VanishingScenario{
     },
 };
 
-pub const system_57_spec = protocol.Spec{
+pub const system_58_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 0, 2 },
     .total_round_coins = 4,
@@ -5119,7 +5202,7 @@ pub const system_57_spec = protocol.Spec{
 
 // scenario: "LogDerivativeSumCompiler/ConditionalLookupShape"
 
-const system_57_module_0_expressions = [_]vanishing.ExprNode{
+const system_58_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "filterS"
     .{ .constant = field.Element.init(1) },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -5143,7 +5226,7 @@ const system_57_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 18, 19 } } },
 };
 
-const system_57_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_58_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 10, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -5152,11 +5235,11 @@ const system_57_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 20, .cancelled_positions = &.{} },
 };
 
-const system_57_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_57_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_58_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_58_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_57_module_1_expressions = [_]vanishing.ExprNode{
+const system_58_module_1_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b1-k0"
@@ -5179,7 +5262,7 @@ const system_57_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
 };
 
-const system_57_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_58_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 9, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -5188,29 +5271,29 @@ const system_57_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 19, .cancelled_positions = &.{} },
 };
 
-const system_57_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_57_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_58_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_58_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_57_modules = [_]vanishing.Module{
+const system_58_modules = [_]vanishing.Module{
     // module: "mS"
-    .{ .size = .{ .static = 4 }, .expressions = &system_57_module_0_expressions, .buckets = &system_57_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 2 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_58_module_0_expressions, .buckets = &system_58_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 2 },
     // module: "mT"
-    .{ .size = .{ .static = 2 }, .expressions = &system_57_module_1_expressions, .buckets = &system_57_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 1, .eval_coin_index = 3 },
+    .{ .size = .{ .static = 2 }, .expressions = &system_58_module_1_expressions, .buckets = &system_58_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 1, .eval_coin_index = 3 },
 };
 
 // system: "lds-cond"
-const system_57 = vanishing.System{
-    .modules = &system_57_modules,
+const system_58 = vanishing.System{
+    .modules = &system_58_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 8,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_57 = VanishingScenario{
+const vanishing_scenario_58 = VanishingScenario{
     .name = "LogDerivativeSumCompiler/ConditionalLookupShape",
-    .spec = system_57_spec,
-    .system = system_57,
+    .spec = system_58_spec,
+    .system = system_58,
     .honest = .{
         .rounds = &.{
             .{
@@ -5249,7 +5332,7 @@ const vanishing_scenario_57 = VanishingScenario{
     },
 };
 
-pub const system_58_spec = protocol.Spec{
+pub const system_59_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 0, 1 },
     .total_round_coins = 2,
@@ -5257,7 +5340,7 @@ pub const system_58_spec = protocol.Spec{
 
 // scenario: "LogDerivativeSumCompiler/ManyFractions"
 
-const system_58_module_0_expressions = [_]vanishing.ExprNode{
+const system_59_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "c0"
     .{ .constant = field.Element.init(1) },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -5351,14 +5434,14 @@ const system_58_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 88, 89 } } },
 };
 
-const system_58_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_59_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 26, .cancelled_positions = &.{0} },
     // expression: "z-recurrence-b0-k1"
     .{ .expression = 53, .cancelled_positions = &.{0} },
 };
 
-const system_58_module_0_bucket_1_vanishings = [_]vanishing.Vanishing{
+const system_59_module_0_bucket_1_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k2"
     .{ .expression = 60, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -5375,28 +5458,28 @@ const system_58_module_0_bucket_1_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 90, .cancelled_positions = &.{} },
 };
 
-const system_58_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 4, .vanishings = &system_58_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
-    .{ .ratio = 1, .vanishings = &system_58_module_0_bucket_1_vanishings, .quotient_claim_offset = 4 },
+const system_59_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 4, .vanishings = &system_59_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+    .{ .ratio = 1, .vanishings = &system_59_module_0_bucket_1_vanishings, .quotient_claim_offset = 4 },
 };
 
-const system_58_modules = [_]vanishing.Module{
+const system_59_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_58_module_0_expressions, .buckets = &system_58_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_59_module_0_expressions, .buckets = &system_59_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lds-many"
-const system_58 = vanishing.System{
-    .modules = &system_58_modules,
+const system_59 = vanishing.System{
+    .modules = &system_59_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 13,
     .total_quotient_claims = 5,
 };
 
-const vanishing_scenario_58 = VanishingScenario{
+const vanishing_scenario_59 = VanishingScenario{
     .name = "LogDerivativeSumCompiler/ManyFractions",
-    .spec = system_58_spec,
-    .system = system_58,
+    .spec = system_59_spec,
+    .system = system_59,
     .honest = .{
         .rounds = &.{
             .{
@@ -5444,7 +5527,7 @@ const vanishing_scenario_58 = VanishingScenario{
     },
 };
 
-pub const system_59_spec = protocol.Spec{
+pub const system_60_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 0, 1 },
     .total_round_coins = 2,
@@ -5452,7 +5535,7 @@ pub const system_59_spec = protocol.Spec{
 
 // scenario: "LogDerivativeSumCompiler/SizeTwoModule"
 
-const system_59_module_0_expressions = [_]vanishing.ExprNode{
+const system_60_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "num"
     .{ .column_claim = 1 }, // col: "z-b0-k0"
     .{ .column_claim = 2 }, // col: "z-b0-k0"
@@ -5472,7 +5555,7 @@ const system_59_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 14, 15 } } },
 };
 
-const system_59_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_60_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 6, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -5481,27 +5564,27 @@ const system_59_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 16, .cancelled_positions = &.{} },
 };
 
-const system_59_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_59_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_60_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_60_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_59_modules = [_]vanishing.Module{
+const system_60_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 2 }, .expressions = &system_59_module_0_expressions, .buckets = &system_59_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 2 }, .expressions = &system_60_module_0_expressions, .buckets = &system_60_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lds-size2"
-const system_59 = vanishing.System{
-    .modules = &system_59_modules,
+const system_60 = vanishing.System{
+    .modules = &system_60_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 3,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_59 = VanishingScenario{
+const vanishing_scenario_60 = VanishingScenario{
     .name = "LogDerivativeSumCompiler/SizeTwoModule",
-    .spec = system_59_spec,
-    .system = system_59,
+    .spec = system_60_spec,
+    .system = system_60,
     .honest = .{
         .rounds = &.{
             .{
@@ -5533,7 +5616,7 @@ const vanishing_scenario_59 = VanishingScenario{
     },
 };
 
-pub const system_60_spec = protocol.Spec{
+pub const system_61_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 0, 1 },
     .total_round_coins = 2,
@@ -5541,7 +5624,7 @@ pub const system_60_spec = protocol.Spec{
 
 // scenario: "LogDerivativeSumCompiler/MultipleQueries"
 
-const system_60_module_0_expressions = [_]vanishing.ExprNode{
+const system_61_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "c1"
     .{ .column_claim = 1 }, // col: "z-b0-k0"
     .{ .column_claim = 2 }, // col: "z-b0-k0"
@@ -5578,7 +5661,7 @@ const system_60_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 31, 32 } } },
 };
 
-const system_60_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_61_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 6, .cancelled_positions = &.{0} },
     // expression: "z-recurrence-b0-k0"
@@ -5593,27 +5676,27 @@ const system_60_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 33, .cancelled_positions = &.{} },
 };
 
-const system_60_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_60_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_61_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_61_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_60_modules = [_]vanishing.Module{
+const system_61_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_60_module_0_expressions, .buckets = &system_60_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_61_module_0_expressions, .buckets = &system_61_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lds-multi-q"
-const system_60 = vanishing.System{
-    .modules = &system_60_modules,
+const system_61 = vanishing.System{
+    .modules = &system_61_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 6,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_60 = VanishingScenario{
+const vanishing_scenario_61 = VanishingScenario{
     .name = "LogDerivativeSumCompiler/MultipleQueries",
-    .spec = system_60_spec,
-    .system = system_60,
+    .spec = system_61_spec,
+    .system = system_61,
     .honest = .{
         .rounds = &.{
             .{
@@ -5650,7 +5733,7 @@ const vanishing_scenario_60 = VanishingScenario{
     },
 };
 
-pub const system_61_spec = protocol.Spec{
+pub const system_62_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 0, 1 },
     .total_round_coins = 2,
@@ -5658,7 +5741,7 @@ pub const system_61_spec = protocol.Spec{
 
 // scenario: "LogDerivativeSumCompiler/VectorDenominator"
 
-const system_61_module_0_expressions = [_]vanishing.ExprNode{
+const system_62_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "num"
     .{ .column_claim = 1 }, // col: "z-b0-k0"
     .{ .column_claim = 2 }, // col: "z-b0-k0"
@@ -5678,7 +5761,7 @@ const system_61_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 14, 15 } } },
 };
 
-const system_61_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_62_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 6, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -5687,27 +5770,27 @@ const system_61_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 16, .cancelled_positions = &.{} },
 };
 
-const system_61_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_61_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_62_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_62_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_61_modules = [_]vanishing.Module{
+const system_62_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_61_module_0_expressions, .buckets = &system_61_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_62_module_0_expressions, .buckets = &system_62_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lds-vec-den"
-const system_61 = vanishing.System{
-    .modules = &system_61_modules,
+const system_62 = vanishing.System{
+    .modules = &system_62_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 4,
     .total_quotient_claims = 1,
 };
 
-const vanishing_scenario_61 = VanishingScenario{
+const vanishing_scenario_62 = VanishingScenario{
     .name = "LogDerivativeSumCompiler/VectorDenominator",
-    .spec = system_61_spec,
-    .system = system_61,
+    .spec = system_62_spec,
+    .system = system_62,
     .honest = .{
         .rounds = &.{
             .{
@@ -5740,7 +5823,7 @@ const vanishing_scenario_61 = VanishingScenario{
     },
 };
 
-pub const system_62_spec = protocol.Spec{
+pub const system_63_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 0, 1, 1 },
     .round_coin_offsets = &[_]usize{ 0, 0, 0, 1 },
     .total_round_coins = 2,
@@ -5748,7 +5831,7 @@ pub const system_62_spec = protocol.Spec{
 
 // scenario: "LogDerivativeSumCompiler/AllFiltersOnesPacked"
 
-const system_62_module_0_expressions = [_]vanishing.ExprNode{
+const system_63_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "flt"
     .{ .column_claim = 1 }, // col: "n1"
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -5794,40 +5877,40 @@ const system_62_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 40, 41 } } },
 };
 
-const system_62_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_63_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 32, .cancelled_positions = &.{0} },
 };
 
-const system_62_module_0_bucket_1_vanishings = [_]vanishing.Vanishing{
+const system_63_module_0_bucket_1_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 37, .cancelled_positions = &.{} },
     // expression: "global"
     .{ .expression = 42, .cancelled_positions = &.{} },
 };
 
-const system_62_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 4, .vanishings = &system_62_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
-    .{ .ratio = 1, .vanishings = &system_62_module_0_bucket_1_vanishings, .quotient_claim_offset = 4 },
+const system_63_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 4, .vanishings = &system_63_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+    .{ .ratio = 1, .vanishings = &system_63_module_0_bucket_1_vanishings, .quotient_claim_offset = 4 },
 };
 
-const system_62_modules = [_]vanishing.Module{
+const system_63_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_62_module_0_expressions, .buckets = &system_62_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_63_module_0_expressions, .buckets = &system_63_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 0, .eval_coin_index = 1 },
 };
 
 // system: "lds-ones-pack"
-const system_62 = vanishing.System{
-    .modules = &system_62_modules,
+const system_63 = vanishing.System{
+    .modules = &system_63_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 6,
     .total_quotient_claims = 5,
 };
 
-const vanishing_scenario_62 = VanishingScenario{
+const vanishing_scenario_63 = VanishingScenario{
     .name = "LogDerivativeSumCompiler/AllFiltersOnesPacked",
-    .spec = system_62_spec,
-    .system = system_62,
+    .spec = system_63_spec,
+    .system = system_63,
     .honest = .{
         .rounds = &.{
             .{
@@ -5866,7 +5949,7 @@ const vanishing_scenario_62 = VanishingScenario{
     },
 };
 
-pub const system_63_spec = protocol.Spec{
+pub const system_64_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
     .total_round_coins = 5,
@@ -5874,7 +5957,7 @@ pub const system_63_spec = protocol.Spec{
 
 // scenario: "Lookup/SingleColumnNoFilters"
 
-const system_63_module_0_expressions = [_]vanishing.ExprNode{
+const system_64_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b0-k0"
@@ -5897,7 +5980,7 @@ const system_63_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
 };
 
-const system_63_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_64_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 9, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -5906,11 +5989,11 @@ const system_63_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 19, .cancelled_positions = &.{} },
 };
 
-const system_63_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_63_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_64_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_64_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_63_module_1_expressions = [_]vanishing.ExprNode{
+const system_64_module_1_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b1-k0"
     .{ .column_claim = 1 }, // col: "z-b1-k0"
@@ -5932,7 +6015,7 @@ const system_63_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_63_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_64_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -5941,29 +6024,29 @@ const system_63_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_63_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_63_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_64_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_64_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_63_modules = [_]vanishing.Module{
+const system_64_modules = [_]vanishing.Module{
     // module: "modT"
-    .{ .size = .{ .static = 4 }, .expressions = &system_63_module_0_expressions, .buckets = &system_63_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_64_module_0_expressions, .buckets = &system_64_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
     // module: "modS"
-    .{ .size = .{ .static = 4 }, .expressions = &system_63_module_1_expressions, .buckets = &system_63_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_64_module_1_expressions, .buckets = &system_64_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
 };
 
 // system: "lk-simple"
-const system_63 = vanishing.System{
-    .modules = &system_63_modules,
+const system_64 = vanishing.System{
+    .modules = &system_64_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 7,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_63 = VanishingScenario{
+const vanishing_scenario_64 = VanishingScenario{
     .name = "Lookup/SingleColumnNoFilters",
-    .spec = system_63_spec,
-    .system = system_63,
+    .spec = system_64_spec,
+    .system = system_64,
     .honest = .{
         .rounds = &.{
             .{
@@ -6005,7 +6088,7 @@ const vanishing_scenario_63 = VanishingScenario{
     },
 };
 
-pub const system_64_spec = protocol.Spec{
+pub const system_65_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
     .total_round_coins = 5,
@@ -6013,7 +6096,7 @@ pub const system_64_spec = protocol.Spec{
 
 // scenario: "Lookup/FilterOnIncluded"
 
-const system_64_module_0_expressions = [_]vanishing.ExprNode{
+const system_65_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b0-k0"
@@ -6036,7 +6119,7 @@ const system_64_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
 };
 
-const system_64_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_65_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 9, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -6045,11 +6128,11 @@ const system_64_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 19, .cancelled_positions = &.{} },
 };
 
-const system_64_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_64_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_65_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_65_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_64_module_1_expressions = [_]vanishing.ExprNode{
+const system_65_module_1_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "filterS"
     .{ .constant = field.Element.init(1) },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -6073,7 +6156,7 @@ const system_64_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 18, 19 } } },
 };
 
-const system_64_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_65_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 10, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -6082,29 +6165,29 @@ const system_64_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 20, .cancelled_positions = &.{} },
 };
 
-const system_64_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_64_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_65_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_65_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_64_modules = [_]vanishing.Module{
+const system_65_modules = [_]vanishing.Module{
     // module: "modT"
-    .{ .size = .{ .static = 2 }, .expressions = &system_64_module_0_expressions, .buckets = &system_64_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
+    .{ .size = .{ .static = 2 }, .expressions = &system_65_module_0_expressions, .buckets = &system_65_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
     // module: "modS"
-    .{ .size = .{ .static = 4 }, .expressions = &system_64_module_1_expressions, .buckets = &system_64_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_65_module_1_expressions, .buckets = &system_65_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
 };
 
 // system: "lk-filterA"
-const system_64 = vanishing.System{
-    .modules = &system_64_modules,
+const system_65 = vanishing.System{
+    .modules = &system_65_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 8,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_64 = VanishingScenario{
+const vanishing_scenario_65 = VanishingScenario{
     .name = "Lookup/FilterOnIncluded",
-    .spec = system_64_spec,
-    .system = system_64,
+    .spec = system_65_spec,
+    .system = system_65,
     .honest = .{
         .rounds = &.{
             .{
@@ -6147,161 +6230,13 @@ const vanishing_scenario_64 = VanishingScenario{
     },
 };
 
-pub const system_65_spec = protocol.Spec{
-    .round_coin_counts = &[_]usize{ 0, 2, 0, 2, 2 },
-    .round_coin_offsets = &[_]usize{ 0, 0, 2, 2, 4 },
-    .total_round_coins = 6,
-};
-
-// scenario: "Lookup/FilterOnIncluding"
-
-const system_65_module_0_expressions = [_]vanishing.ExprNode{
-    .{ .column_claim = 0 }, // col: "M"
-    .{ .op = .{ .operator = .negate, .operands = &.{0} } },
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .column_claim = 2 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .coin_value = 1 }, // coin: "alpha"
-    .{ .column_claim = 3 }, // col: "T"
-    .{ .op = .{ .operator = .mul, .operands = &.{ 6, 7 } } },
-    .{ .column_claim = 4 }, // col: "filterT"
-    .{ .op = .{ .operator = .add, .operands = &.{ 8, 9 } } },
-    .{ .op = .{ .operator = .add, .operands = &.{ 5, 10 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 4, 11 } } },
-    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 12 } } },
-    .{ .cell_value = .{ .round = 2, .index = 1 } }, // cell: "result"
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 14, 15 } } },
-    .{ .lagrange_selector = 0 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
-    .{ .cell_value = .{ .round = 2, .index = 2 } }, // cell: "result"
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 19, 20 } } },
-    .{ .lagrange_selector = 3 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 21, 22 } } },
-};
-
-const system_65_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
-    // expression: "z-recurrence-b0-k0"
-    .{ .expression = 13, .cancelled_positions = &.{0} },
-    // expression: "global"
-    .{ .expression = 18, .cancelled_positions = &.{} },
-    // expression: "global"
-    .{ .expression = 23, .cancelled_positions = &.{} },
-};
-
-const system_65_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_65_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
-};
-
-const system_65_module_1_expressions = [_]vanishing.ExprNode{
-    .{ .constant = field.Element.init(1) },
-    .{ .column_claim = 0 }, // col: "z-b1-k0"
-    .{ .column_claim = 1 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 2 } } },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .coin_value = 1 }, // coin: "alpha"
-    .{ .column_claim = 2 }, // col: "S"
-    .{ .op = .{ .operator = .mul, .operands = &.{ 5, 6 } } },
-    .{ .constant = field.Element.init(1) },
-    .{ .op = .{ .operator = .add, .operands = &.{ 7, 8 } } },
-    .{ .op = .{ .operator = .add, .operands = &.{ 4, 9 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 3, 10 } } },
-    .{ .op = .{ .operator = .sub, .operands = &.{ 0, 11 } } },
-    .{ .cell_value = .{ .round = 2, .index = 3 } }, // cell: "result"
-    .{ .column_claim = 0 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 13, 14 } } },
-    .{ .lagrange_selector = 0 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 15, 16 } } },
-    .{ .cell_value = .{ .round = 2, .index = 4 } }, // cell: "result"
-    .{ .column_claim = 0 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 18, 19 } } },
-    .{ .lagrange_selector = 3 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 20, 21 } } },
-};
-
-const system_65_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
-    // expression: "z-recurrence-b1-k0"
-    .{ .expression = 12, .cancelled_positions = &.{0} },
-    // expression: "global"
-    .{ .expression = 17, .cancelled_positions = &.{} },
-    // expression: "global"
-    .{ .expression = 22, .cancelled_positions = &.{} },
-};
-
-const system_65_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_65_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
-};
-
-const system_65_modules = [_]vanishing.Module{
-    // module: "modT"
-    .{ .size = .{ .static = 4 }, .expressions = &system_65_module_0_expressions, .buckets = &system_65_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 2, .eval_coin_index = 4 },
-    // module: "modS"
-    .{ .size = .{ .static = 4 }, .expressions = &system_65_module_1_expressions, .buckets = &system_65_module_1_buckets, .witness_claim_offset = 5, .merge_coin_index = 3, .eval_coin_index = 5 },
-};
-
-// system: "lk-filterT"
-const system_65 = vanishing.System{
-    .modules = &system_65_modules,
-    .dynamic_module_count = 0,
-    .total_witness_claims = 8,
-    .total_quotient_claims = 2,
-};
-
-const vanishing_scenario_65 = VanishingScenario{
-    .name = "Lookup/FilterOnIncluding",
-    .spec = system_65_spec,
-    .system = system_65,
-    .honest = .{
-        .rounds = &.{
-            .{
-                .columns = &.{
-                    .{ .public_base = &.{ 10, 999, 20, 999 } },
-                    .{ .public_base = &.{ 1, 0, 1, 0 } },
-                    .{ .public_base = &.{ 10, 20, 10, 20 } },
-                    .{ .public_base = &.{ 2, 0, 2, 0 } },
-                },
-                .cells = &.{},
-            },
-            .{
-                .columns = &.{},
-                .cells = &.{},
-            },
-            .{
-                .columns = &.{
-                    .{ .public_ext = &.{ .{ 1548344877, 41739259, 1669895060, 2108340605, 1881498562, 1210856971 }, .{ 1548344877, 41739259, 1669895060, 2108340605, 1881498562, 1210856971 }, .{ 1197184163, 1476249875, 1828461918, 771600152, 1560170919, 181936004 }, .{ 1197184163, 1476249875, 1828461918, 771600152, 1560170919, 181936004 } } },
-                    .{ .public_ext = &.{ .{ 291180778, 1044483587, 1295758903, 11182914, 1189957152, 459924731 }, .{ 466761135, 327228279, 1216475474, 1744906357, 285267757, 2039738431 }, .{ 757941913, 1371711866, 381527944, 1756089271, 1475224909, 368956729 }, .{ 933522270, 654456558, 302244515, 1359106281, 570535514, 1948770429 } } },
-                },
-                .cells = &.{
-                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 1548344877, 41739259, 1669895060, 2108340605, 1881498562, 1210856971 } },
-                    .{ .ext = .{ 1197184163, 1476249875, 1828461918, 771600152, 1560170919, 181936004 } },
-                    .{ .ext = .{ 291180778, 1044483587, 1295758903, 11182914, 1189957152, 459924731 } },
-                    .{ .ext = .{ 933522270, 654456558, 302244515, 1359106281, 570535514, 1948770429 } },
-                },
-            },
-            .{
-                .columns = &.{
-                    .{ .public_ext = &.{ .{ 1153231874, 499353070, 1341989605, 897853403, 451288494, 1527675337 }, .{ 1005432111, 2117597308, 1815790663, 761325996, 1840185175, 1936756623 }, .{ 1515589577, 1884496097, 1294857410, 1313749108, 2033979121, 639735254 }, .{ 491069799, 607554234, 802953471, 1794690482, 1102876189, 1624277189 } } },
-                    .{ .public_ext = &.{ .{ 792672796, 217087465, 1034055591, 1696194844, 1255281011, 1014551418 }, .{ 618693635, 1337828323, 203410388, 1613962073, 619370091, 1491997545 }, .{ 1216357220, 97237644, 2074407779, 431759708, 564172320, 323676848 }, .{ 630989317, 1328384153, 207278486, 2122188847, 1377019161, 1671658444 } } },
-                },
-                .cells = &.{},
-            },
-        },
-        .witness_claims = &.{ .{ 1637782861, 598331309, 1861172961, 1237577550, 619587469, 1184489684 }, .{ 1144240818, 851798703, 1490817528, 383597879, 26713749, 652698711 }, .{ 735580575, 318869750, 1170241692, 1052680348, 689179599, 852080154 }, .{ 548175724, 412108869, 1724735448, 1010272161, 1280428327, 1383402124 }, .{ 1884244647, 1364518871, 1995939697, 618788775, 1375146951, 592244842 }, .{ 483949646, 1989376581, 443094828, 149406831, 1109170708, 881447613 }, .{ 2069079257, 398278788, 1259966894, 1551969927, 1862508738, 1096576964 }, .{ 1526350230, 116281384, 898471754, 461202914, 889231509, 1397520494 } },
-        .quotient_claims = &.{ .{ 303916162, 141933705, 38013290, 2094526487, 1833493602, 1215499568 }, .{ 1111095521, 1666536502, 631397884, 127346624, 1202572496, 1333526224 } },
-        .module_sizes = &.{},
-    },
-};
-
 pub const system_66_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 2, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 2, 2, 4 },
     .total_round_coins = 6,
 };
 
-// scenario: "Lookup/DoubleConditional"
+// scenario: "Lookup/FilterOnIncluding"
 
 const system_66_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
@@ -6344,6 +6279,154 @@ const system_66_module_0_buckets = [_]vanishing.Bucket{
 };
 
 const system_66_module_1_expressions = [_]vanishing.ExprNode{
+    .{ .constant = field.Element.init(1) },
+    .{ .column_claim = 0 }, // col: "z-b1-k0"
+    .{ .column_claim = 1 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 2 } } },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .coin_value = 1 }, // coin: "alpha"
+    .{ .column_claim = 2 }, // col: "S"
+    .{ .op = .{ .operator = .mul, .operands = &.{ 5, 6 } } },
+    .{ .constant = field.Element.init(1) },
+    .{ .op = .{ .operator = .add, .operands = &.{ 7, 8 } } },
+    .{ .op = .{ .operator = .add, .operands = &.{ 4, 9 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 3, 10 } } },
+    .{ .op = .{ .operator = .sub, .operands = &.{ 0, 11 } } },
+    .{ .cell_value = .{ .round = 2, .index = 3 } }, // cell: "result"
+    .{ .column_claim = 0 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 13, 14 } } },
+    .{ .lagrange_selector = 0 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 15, 16 } } },
+    .{ .cell_value = .{ .round = 2, .index = 4 } }, // cell: "result"
+    .{ .column_claim = 0 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 18, 19 } } },
+    .{ .lagrange_selector = 3 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 20, 21 } } },
+};
+
+const system_66_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+    // expression: "z-recurrence-b1-k0"
+    .{ .expression = 12, .cancelled_positions = &.{0} },
+    // expression: "global"
+    .{ .expression = 17, .cancelled_positions = &.{} },
+    // expression: "global"
+    .{ .expression = 22, .cancelled_positions = &.{} },
+};
+
+const system_66_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_66_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+};
+
+const system_66_modules = [_]vanishing.Module{
+    // module: "modT"
+    .{ .size = .{ .static = 4 }, .expressions = &system_66_module_0_expressions, .buckets = &system_66_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 2, .eval_coin_index = 4 },
+    // module: "modS"
+    .{ .size = .{ .static = 4 }, .expressions = &system_66_module_1_expressions, .buckets = &system_66_module_1_buckets, .witness_claim_offset = 5, .merge_coin_index = 3, .eval_coin_index = 5 },
+};
+
+// system: "lk-filterT"
+const system_66 = vanishing.System{
+    .modules = &system_66_modules,
+    .dynamic_module_count = 0,
+    .total_witness_claims = 8,
+    .total_quotient_claims = 2,
+};
+
+const vanishing_scenario_66 = VanishingScenario{
+    .name = "Lookup/FilterOnIncluding",
+    .spec = system_66_spec,
+    .system = system_66,
+    .honest = .{
+        .rounds = &.{
+            .{
+                .columns = &.{
+                    .{ .public_base = &.{ 10, 999, 20, 999 } },
+                    .{ .public_base = &.{ 1, 0, 1, 0 } },
+                    .{ .public_base = &.{ 10, 20, 10, 20 } },
+                    .{ .public_base = &.{ 2, 0, 2, 0 } },
+                },
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{},
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 1548344877, 41739259, 1669895060, 2108340605, 1881498562, 1210856971 }, .{ 1548344877, 41739259, 1669895060, 2108340605, 1881498562, 1210856971 }, .{ 1197184163, 1476249875, 1828461918, 771600152, 1560170919, 181936004 }, .{ 1197184163, 1476249875, 1828461918, 771600152, 1560170919, 181936004 } } },
+                    .{ .public_ext = &.{ .{ 291180778, 1044483587, 1295758903, 11182914, 1189957152, 459924731 }, .{ 466761135, 327228279, 1216475474, 1744906357, 285267757, 2039738431 }, .{ 757941913, 1371711866, 381527944, 1756089271, 1475224909, 368956729 }, .{ 933522270, 654456558, 302244515, 1359106281, 570535514, 1948770429 } } },
+                },
+                .cells = &.{
+                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
+                    .{ .ext = .{ 1548344877, 41739259, 1669895060, 2108340605, 1881498562, 1210856971 } },
+                    .{ .ext = .{ 1197184163, 1476249875, 1828461918, 771600152, 1560170919, 181936004 } },
+                    .{ .ext = .{ 291180778, 1044483587, 1295758903, 11182914, 1189957152, 459924731 } },
+                    .{ .ext = .{ 933522270, 654456558, 302244515, 1359106281, 570535514, 1948770429 } },
+                },
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 1153231874, 499353070, 1341989605, 897853403, 451288494, 1527675337 }, .{ 1005432111, 2117597308, 1815790663, 761325996, 1840185175, 1936756623 }, .{ 1515589577, 1884496097, 1294857410, 1313749108, 2033979121, 639735254 }, .{ 491069799, 607554234, 802953471, 1794690482, 1102876189, 1624277189 } } },
+                    .{ .public_ext = &.{ .{ 792672796, 217087465, 1034055591, 1696194844, 1255281011, 1014551418 }, .{ 618693635, 1337828323, 203410388, 1613962073, 619370091, 1491997545 }, .{ 1216357220, 97237644, 2074407779, 431759708, 564172320, 323676848 }, .{ 630989317, 1328384153, 207278486, 2122188847, 1377019161, 1671658444 } } },
+                },
+                .cells = &.{},
+            },
+        },
+        .witness_claims = &.{ .{ 1637782861, 598331309, 1861172961, 1237577550, 619587469, 1184489684 }, .{ 1144240818, 851798703, 1490817528, 383597879, 26713749, 652698711 }, .{ 735580575, 318869750, 1170241692, 1052680348, 689179599, 852080154 }, .{ 548175724, 412108869, 1724735448, 1010272161, 1280428327, 1383402124 }, .{ 1884244647, 1364518871, 1995939697, 618788775, 1375146951, 592244842 }, .{ 483949646, 1989376581, 443094828, 149406831, 1109170708, 881447613 }, .{ 2069079257, 398278788, 1259966894, 1551969927, 1862508738, 1096576964 }, .{ 1526350230, 116281384, 898471754, 461202914, 889231509, 1397520494 } },
+        .quotient_claims = &.{ .{ 303916162, 141933705, 38013290, 2094526487, 1833493602, 1215499568 }, .{ 1111095521, 1666536502, 631397884, 127346624, 1202572496, 1333526224 } },
+        .module_sizes = &.{},
+    },
+};
+
+pub const system_67_spec = protocol.Spec{
+    .round_coin_counts = &[_]usize{ 0, 2, 0, 2, 2 },
+    .round_coin_offsets = &[_]usize{ 0, 0, 2, 2, 4 },
+    .total_round_coins = 6,
+};
+
+// scenario: "Lookup/DoubleConditional"
+
+const system_67_module_0_expressions = [_]vanishing.ExprNode{
+    .{ .column_claim = 0 }, // col: "M"
+    .{ .op = .{ .operator = .negate, .operands = &.{0} } },
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .column_claim = 2 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .coin_value = 1 }, // coin: "alpha"
+    .{ .column_claim = 3 }, // col: "T"
+    .{ .op = .{ .operator = .mul, .operands = &.{ 6, 7 } } },
+    .{ .column_claim = 4 }, // col: "filterT"
+    .{ .op = .{ .operator = .add, .operands = &.{ 8, 9 } } },
+    .{ .op = .{ .operator = .add, .operands = &.{ 5, 10 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 4, 11 } } },
+    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 12 } } },
+    .{ .cell_value = .{ .round = 2, .index = 1 } }, // cell: "result"
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 14, 15 } } },
+    .{ .lagrange_selector = 0 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
+    .{ .cell_value = .{ .round = 2, .index = 2 } }, // cell: "result"
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 19, 20 } } },
+    .{ .lagrange_selector = 3 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 21, 22 } } },
+};
+
+const system_67_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+    // expression: "z-recurrence-b0-k0"
+    .{ .expression = 13, .cancelled_positions = &.{0} },
+    // expression: "global"
+    .{ .expression = 18, .cancelled_positions = &.{} },
+    // expression: "global"
+    .{ .expression = 23, .cancelled_positions = &.{} },
+};
+
+const system_67_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_67_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+};
+
+const system_67_module_1_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "filterS"
     .{ .constant = field.Element.init(1) },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -6371,7 +6454,7 @@ const system_66_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 22, 23 } } },
 };
 
-const system_66_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_67_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 14, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -6380,29 +6463,29 @@ const system_66_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 24, .cancelled_positions = &.{} },
 };
 
-const system_66_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_66_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_67_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_67_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_66_modules = [_]vanishing.Module{
+const system_67_modules = [_]vanishing.Module{
     // module: "modT"
-    .{ .size = .{ .static = 4 }, .expressions = &system_66_module_0_expressions, .buckets = &system_66_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 2, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_67_module_0_expressions, .buckets = &system_67_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 2, .eval_coin_index = 4 },
     // module: "modS"
-    .{ .size = .{ .static = 4 }, .expressions = &system_66_module_1_expressions, .buckets = &system_66_module_1_buckets, .witness_claim_offset = 5, .merge_coin_index = 3, .eval_coin_index = 5 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_67_module_1_expressions, .buckets = &system_67_module_1_buckets, .witness_claim_offset = 5, .merge_coin_index = 3, .eval_coin_index = 5 },
 };
 
 // system: "lk-double"
-const system_66 = vanishing.System{
-    .modules = &system_66_modules,
+const system_67 = vanishing.System{
+    .modules = &system_67_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 9,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_66 = VanishingScenario{
+const vanishing_scenario_67 = VanishingScenario{
     .name = "Lookup/DoubleConditional",
-    .spec = system_66_spec,
-    .system = system_66,
+    .spec = system_67_spec,
+    .system = system_67,
     .honest = .{
         .rounds = &.{
             .{
@@ -6446,7 +6529,7 @@ const vanishing_scenario_66 = VanishingScenario{
     },
 };
 
-pub const system_67_spec = protocol.Spec{
+pub const system_68_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 2, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 2, 2, 4 },
     .total_round_coins = 6,
@@ -6454,7 +6537,7 @@ pub const system_67_spec = protocol.Spec{
 
 // scenario: "Lookup/MultiColumn"
 
-const system_67_module_0_expressions = [_]vanishing.ExprNode{
+const system_68_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b0-k0"
@@ -6481,7 +6564,7 @@ const system_67_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 21, 22 } } },
 };
 
-const system_67_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_68_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 13, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -6490,11 +6573,11 @@ const system_67_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 23, .cancelled_positions = &.{} },
 };
 
-const system_67_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_67_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_68_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_68_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_67_module_1_expressions = [_]vanishing.ExprNode{
+const system_68_module_1_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b1-k0"
     .{ .column_claim = 1 }, // col: "z-b1-k0"
@@ -6520,7 +6603,7 @@ const system_67_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 20, 21 } } },
 };
 
-const system_67_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_68_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 12, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -6529,29 +6612,29 @@ const system_67_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 22, .cancelled_positions = &.{} },
 };
 
-const system_67_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_67_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_68_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_68_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_67_modules = [_]vanishing.Module{
+const system_68_modules = [_]vanishing.Module{
     // module: "modT"
-    .{ .size = .{ .static = 4 }, .expressions = &system_67_module_0_expressions, .buckets = &system_67_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 2, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_68_module_0_expressions, .buckets = &system_68_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 2, .eval_coin_index = 4 },
     // module: "modS"
-    .{ .size = .{ .static = 4 }, .expressions = &system_67_module_1_expressions, .buckets = &system_67_module_1_buckets, .witness_claim_offset = 5, .merge_coin_index = 3, .eval_coin_index = 5 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_68_module_1_expressions, .buckets = &system_68_module_1_buckets, .witness_claim_offset = 5, .merge_coin_index = 3, .eval_coin_index = 5 },
 };
 
 // system: "lk-multi-col"
-const system_67 = vanishing.System{
-    .modules = &system_67_modules,
+const system_68 = vanishing.System{
+    .modules = &system_68_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 9,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_67 = VanishingScenario{
+const vanishing_scenario_68 = VanishingScenario{
     .name = "Lookup/MultiColumn",
-    .spec = system_67_spec,
-    .system = system_67,
+    .spec = system_68_spec,
+    .system = system_68,
     .honest = .{
         .rounds = &.{
             .{
@@ -6595,7 +6678,7 @@ const vanishing_scenario_67 = VanishingScenario{
     },
 };
 
-pub const system_68_spec = protocol.Spec{
+pub const system_69_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 3, 3 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 4 },
     .total_round_coins = 7,
@@ -6603,7 +6686,7 @@ pub const system_68_spec = protocol.Spec{
 
 // scenario: "Lookup/SharedTable"
 
-const system_68_module_0_expressions = [_]vanishing.ExprNode{
+const system_69_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b0-k0"
@@ -6626,7 +6709,7 @@ const system_68_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
 };
 
-const system_68_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_69_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 9, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -6635,11 +6718,11 @@ const system_68_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 19, .cancelled_positions = &.{} },
 };
 
-const system_68_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_68_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_69_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_69_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_68_module_1_expressions = [_]vanishing.ExprNode{
+const system_69_module_1_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b1-k0"
     .{ .column_claim = 1 }, // col: "z-b1-k0"
@@ -6661,7 +6744,7 @@ const system_68_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_68_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_69_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -6670,11 +6753,11 @@ const system_68_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_68_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_68_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_69_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_69_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_68_module_2_expressions = [_]vanishing.ExprNode{
+const system_69_module_2_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b2-k0"
     .{ .column_claim = 1 }, // col: "z-b2-k0"
@@ -6696,7 +6779,7 @@ const system_68_module_2_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_68_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_69_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b2-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -6705,31 +6788,31 @@ const system_68_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_68_module_2_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_68_module_2_bucket_0_vanishings, .quotient_claim_offset = 2 },
+const system_69_module_2_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_69_module_2_bucket_0_vanishings, .quotient_claim_offset = 2 },
 };
 
-const system_68_modules = [_]vanishing.Module{
+const system_69_modules = [_]vanishing.Module{
     // module: "modT"
-    .{ .size = .{ .static = 4 }, .expressions = &system_68_module_0_expressions, .buckets = &system_68_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_69_module_0_expressions, .buckets = &system_69_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 4 },
     // module: "modS1"
-    .{ .size = .{ .static = 4 }, .expressions = &system_68_module_1_expressions, .buckets = &system_68_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 5 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_69_module_1_expressions, .buckets = &system_69_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 5 },
     // module: "modS2"
-    .{ .size = .{ .static = 2 }, .expressions = &system_68_module_2_expressions, .buckets = &system_68_module_2_buckets, .witness_claim_offset = 7, .merge_coin_index = 3, .eval_coin_index = 6 },
+    .{ .size = .{ .static = 2 }, .expressions = &system_69_module_2_expressions, .buckets = &system_69_module_2_buckets, .witness_claim_offset = 7, .merge_coin_index = 3, .eval_coin_index = 6 },
 };
 
 // system: "lk-shared"
-const system_68 = vanishing.System{
-    .modules = &system_68_modules,
+const system_69 = vanishing.System{
+    .modules = &system_69_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 10,
     .total_quotient_claims = 3,
 };
 
-const vanishing_scenario_68 = VanishingScenario{
+const vanishing_scenario_69 = VanishingScenario{
     .name = "Lookup/SharedTable",
-    .spec = system_68_spec,
-    .system = system_68,
+    .spec = system_69_spec,
+    .system = system_69,
     .honest = .{
         .rounds = &.{
             .{
@@ -6776,7 +6859,7 @@ const vanishing_scenario_68 = VanishingScenario{
     },
 };
 
-pub const system_69_spec = protocol.Spec{
+pub const system_70_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 4, 4 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 5 },
     .total_round_coins = 9,
@@ -6784,7 +6867,7 @@ pub const system_69_spec = protocol.Spec{
 
 // scenario: "Lookup/DistinctTables"
 
-const system_69_module_0_expressions = [_]vanishing.ExprNode{
+const system_70_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b0-k0"
@@ -6807,7 +6890,7 @@ const system_69_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
 };
 
-const system_69_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_70_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 9, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -6816,11 +6899,11 @@ const system_69_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 19, .cancelled_positions = &.{} },
 };
 
-const system_69_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_69_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_70_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_70_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_69_module_1_expressions = [_]vanishing.ExprNode{
+const system_70_module_1_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b2-k0"
@@ -6843,7 +6926,7 @@ const system_69_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
 };
 
-const system_69_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_70_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b2-k0"
     .{ .expression = 9, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -6852,11 +6935,11 @@ const system_69_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 19, .cancelled_positions = &.{} },
 };
 
-const system_69_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_69_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_70_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_70_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_69_module_2_expressions = [_]vanishing.ExprNode{
+const system_70_module_2_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b1-k0"
     .{ .column_claim = 1 }, // col: "z-b1-k0"
@@ -6878,7 +6961,7 @@ const system_69_module_2_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_69_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_70_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -6887,11 +6970,11 @@ const system_69_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_69_module_2_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_69_module_2_bucket_0_vanishings, .quotient_claim_offset = 2 },
+const system_70_module_2_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_70_module_2_bucket_0_vanishings, .quotient_claim_offset = 2 },
 };
 
-const system_69_module_3_expressions = [_]vanishing.ExprNode{
+const system_70_module_3_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b3-k0"
     .{ .column_claim = 1 }, // col: "z-b3-k0"
@@ -6913,7 +6996,7 @@ const system_69_module_3_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_69_module_3_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_70_module_3_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b3-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -6922,33 +7005,33 @@ const system_69_module_3_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_69_module_3_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_69_module_3_bucket_0_vanishings, .quotient_claim_offset = 3 },
+const system_70_module_3_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_70_module_3_bucket_0_vanishings, .quotient_claim_offset = 3 },
 };
 
-const system_69_modules = [_]vanishing.Module{
+const system_70_modules = [_]vanishing.Module{
     // module: "modT1"
-    .{ .size = .{ .static = 4 }, .expressions = &system_69_module_0_expressions, .buckets = &system_69_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 5 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_70_module_0_expressions, .buckets = &system_70_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 5 },
     // module: "modT2"
-    .{ .size = .{ .static = 2 }, .expressions = &system_69_module_1_expressions, .buckets = &system_69_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 6 },
+    .{ .size = .{ .static = 2 }, .expressions = &system_70_module_1_expressions, .buckets = &system_70_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 6 },
     // module: "modS1"
-    .{ .size = .{ .static = 2 }, .expressions = &system_69_module_2_expressions, .buckets = &system_69_module_2_buckets, .witness_claim_offset = 8, .merge_coin_index = 3, .eval_coin_index = 7 },
+    .{ .size = .{ .static = 2 }, .expressions = &system_70_module_2_expressions, .buckets = &system_70_module_2_buckets, .witness_claim_offset = 8, .merge_coin_index = 3, .eval_coin_index = 7 },
     // module: "modS2"
-    .{ .size = .{ .static = 2 }, .expressions = &system_69_module_3_expressions, .buckets = &system_69_module_3_buckets, .witness_claim_offset = 11, .merge_coin_index = 4, .eval_coin_index = 8 },
+    .{ .size = .{ .static = 2 }, .expressions = &system_70_module_3_expressions, .buckets = &system_70_module_3_buckets, .witness_claim_offset = 11, .merge_coin_index = 4, .eval_coin_index = 8 },
 };
 
 // system: "lk-distinct"
-const system_69 = vanishing.System{
-    .modules = &system_69_modules,
+const system_70 = vanishing.System{
+    .modules = &system_70_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 14,
     .total_quotient_claims = 4,
 };
 
-const vanishing_scenario_69 = VanishingScenario{
+const vanishing_scenario_70 = VanishingScenario{
     .name = "Lookup/DistinctTables",
-    .spec = system_69_spec,
-    .system = system_69,
+    .spec = system_70_spec,
+    .system = system_70,
     .honest = .{
         .rounds = &.{
             .{
@@ -7001,7 +7084,7 @@ const vanishing_scenario_69 = VanishingScenario{
     },
 };
 
-pub const system_70_spec = protocol.Spec{
+pub const system_71_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 2, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 2, 2, 4 },
     .total_round_coins = 6,
@@ -7009,7 +7092,7 @@ pub const system_70_spec = protocol.Spec{
 
 // scenario: "Lookup/MultiColumnFilterOnIncluding"
 
-const system_70_module_0_expressions = [_]vanishing.ExprNode{
+const system_71_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b0-k0"
@@ -7040,7 +7123,7 @@ const system_70_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 25, 26 } } },
 };
 
-const system_70_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_71_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 17, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -7049,11 +7132,11 @@ const system_70_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 27, .cancelled_positions = &.{} },
 };
 
-const system_70_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_70_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_71_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_71_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_70_module_1_expressions = [_]vanishing.ExprNode{
+const system_71_module_1_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b1-k0"
     .{ .column_claim = 1 }, // col: "z-b1-k0"
@@ -7083,7 +7166,7 @@ const system_70_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 24, 25 } } },
 };
 
-const system_70_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_71_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 16, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -7092,29 +7175,29 @@ const system_70_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 26, .cancelled_positions = &.{} },
 };
 
-const system_70_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_70_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_71_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_71_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_70_modules = [_]vanishing.Module{
+const system_71_modules = [_]vanishing.Module{
     // module: "modT"
-    .{ .size = .{ .static = 4 }, .expressions = &system_70_module_0_expressions, .buckets = &system_70_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 2, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_71_module_0_expressions, .buckets = &system_71_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 2, .eval_coin_index = 4 },
     // module: "modS"
-    .{ .size = .{ .static = 4 }, .expressions = &system_70_module_1_expressions, .buckets = &system_70_module_1_buckets, .witness_claim_offset = 6, .merge_coin_index = 3, .eval_coin_index = 5 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_71_module_1_expressions, .buckets = &system_71_module_1_buckets, .witness_claim_offset = 6, .merge_coin_index = 3, .eval_coin_index = 5 },
 };
 
 // system: "lk-multi-filterT"
-const system_70 = vanishing.System{
-    .modules = &system_70_modules,
+const system_71 = vanishing.System{
+    .modules = &system_71_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 10,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_70 = VanishingScenario{
+const vanishing_scenario_71 = VanishingScenario{
     .name = "Lookup/MultiColumnFilterOnIncluding",
-    .spec = system_70_spec,
-    .system = system_70,
+    .spec = system_71_spec,
+    .system = system_71,
     .honest = .{
         .rounds = &.{
             .{
@@ -7159,152 +7242,13 @@ const vanishing_scenario_70 = VanishingScenario{
     },
 };
 
-pub const system_71_spec = protocol.Spec{
-    .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
-    .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
-    .total_round_coins = 5,
-};
-
-// scenario: "Lookup/RepeatedValueInTable"
-
-const system_71_module_0_expressions = [_]vanishing.ExprNode{
-    .{ .column_claim = 0 }, // col: "M"
-    .{ .op = .{ .operator = .negate, .operands = &.{0} } },
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .column_claim = 2 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 3 }, // col: "T"
-    .{ .op = .{ .operator = .add, .operands = &.{ 5, 6 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 4, 7 } } },
-    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 8 } } },
-    .{ .cell_value = .{ .round = 2, .index = 1 } }, // cell: "result"
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 10, 11 } } },
-    .{ .lagrange_selector = 0 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 12, 13 } } },
-    .{ .cell_value = .{ .round = 2, .index = 2 } }, // cell: "result"
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 15, 16 } } },
-    .{ .lagrange_selector = 3 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
-};
-
-const system_71_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
-    // expression: "z-recurrence-b0-k0"
-    .{ .expression = 9, .cancelled_positions = &.{0} },
-    // expression: "global"
-    .{ .expression = 14, .cancelled_positions = &.{} },
-    // expression: "global"
-    .{ .expression = 19, .cancelled_positions = &.{} },
-};
-
-const system_71_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_71_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
-};
-
-const system_71_module_1_expressions = [_]vanishing.ExprNode{
-    .{ .constant = field.Element.init(1) },
-    .{ .column_claim = 0 }, // col: "z-b1-k0"
-    .{ .column_claim = 1 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 2 } } },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 2 }, // col: "S"
-    .{ .op = .{ .operator = .add, .operands = &.{ 4, 5 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 3, 6 } } },
-    .{ .op = .{ .operator = .sub, .operands = &.{ 0, 7 } } },
-    .{ .cell_value = .{ .round = 2, .index = 3 } }, // cell: "result"
-    .{ .column_claim = 0 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 9, 10 } } },
-    .{ .lagrange_selector = 0 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 11, 12 } } },
-    .{ .cell_value = .{ .round = 2, .index = 4 } }, // cell: "result"
-    .{ .column_claim = 0 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 14, 15 } } },
-    .{ .lagrange_selector = 3 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
-};
-
-const system_71_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
-    // expression: "z-recurrence-b1-k0"
-    .{ .expression = 8, .cancelled_positions = &.{0} },
-    // expression: "global"
-    .{ .expression = 13, .cancelled_positions = &.{} },
-    // expression: "global"
-    .{ .expression = 18, .cancelled_positions = &.{} },
-};
-
-const system_71_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_71_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
-};
-
-const system_71_modules = [_]vanishing.Module{
-    // module: "modT"
-    .{ .size = .{ .static = 4 }, .expressions = &system_71_module_0_expressions, .buckets = &system_71_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
-    // module: "modS"
-    .{ .size = .{ .static = 4 }, .expressions = &system_71_module_1_expressions, .buckets = &system_71_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
-};
-
-// system: "lk-repeated"
-const system_71 = vanishing.System{
-    .modules = &system_71_modules,
-    .dynamic_module_count = 0,
-    .total_witness_claims = 7,
-    .total_quotient_claims = 2,
-};
-
-const vanishing_scenario_71 = VanishingScenario{
-    .name = "Lookup/RepeatedValueInTable",
-    .spec = system_71_spec,
-    .system = system_71,
-    .honest = .{
-        .rounds = &.{
-            .{
-                .columns = &.{
-                    .{ .public_base = &.{ 10, 20, 10, 30 } },
-                    .{ .public_base = &.{ 10, 20, 10, 30 } },
-                    .{ .public_base = &.{ 0, 1, 2, 1 } },
-                },
-                .cells = &.{},
-            },
-            .{
-                .columns = &.{},
-                .cells = &.{},
-            },
-            .{
-                .columns = &.{
-                    .{ .public_ext = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 495979900, 766046258, 886198614, 2118761613, 350844490, 1548471135 }, .{ 2110463201, 1796284634, 189247542, 1274520175, 450433941, 800386556 }, .{ 230934858, 2092297613, 481340094, 638848993, 520685285, 701533128 } } },
-                    .{ .public_ext = &.{ .{ 258111566, 1615587245, 348475536, 422120719, 1015558491, 1439395506 }, .{ 1892838099, 849540987, 1592983355, 434065539, 664714001, 2021630804 }, .{ 20243232, 334421799, 1941458891, 856186258, 1680272492, 1330319877 }, .{ 1899771575, 38408820, 1649366339, 1491857440, 1610021148, 1429173305 } } },
-                },
-                .cells = &.{
-                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 230934858, 2092297613, 481340094, 638848993, 520685285, 701533128 } },
-                    .{ .ext = .{ 258111566, 1615587245, 348475536, 422120719, 1015558491, 1439395506 } },
-                    .{ .ext = .{ 1899771575, 38408820, 1649366339, 1491857440, 1610021148, 1429173305 } },
-                },
-            },
-            .{
-                .columns = &.{
-                    .{ .public_ext = &.{ .{ 674858854, 1717069482, 435439864, 1604129177, 667303559, 1062692173 }, .{ 289908622, 2112974475, 121408608, 1733551566, 800798458, 149710413 }, .{ 321380186, 1791601434, 1035031095, 1790547448, 273198090, 1589367248 }, .{ 794195, 760377179, 774067615, 1281211486, 879384878, 558775629 } } },
-                    .{ .public_ext = &.{ .{ 2114633249, 1154148184, 827918148, 154212884, 1992973189, 190872567 }, .{ 1826456001, 713977348, 1416143665, 1163446590, 408444896, 692022252 }, .{ 768972140, 1328874201, 1878544559, 1910875107, 2010820822, 2127790413 }, .{ 39421678, 1637620602, 1718818999, 644434722, 1765409293, 733721648 } } },
-                },
-                .cells = &.{},
-            },
-        },
-        .witness_claims = &.{ .{ 639923631, 1860942214, 1270255134, 978468242, 820849178, 398398769 }, .{ 1293302876, 269833820, 163136597, 845238448, 1827572532, 1074147789 }, .{ 333954605, 66730241, 313645246, 139499334, 483960215, 1891104959 }, .{ 980633938, 2031052999, 819261701, 2024172848, 821977361, 440563414 }, .{ 809040691, 434868850, 85754746, 44247785, 1155359991, 1511545394 }, .{ 1900202615, 641369419, 1507803646, 1989828662, 1319639666, 628112074 }, .{ 1488266521, 1940429301, 1421669555, 1359940215, 1713948701, 1919118762 } },
-        .quotient_claims = &.{ .{ 1761700158, 1094684708, 1701027077, 1851266559, 1893777233, 993646953 }, .{ 560042198, 1673092902, 85182739, 825618430, 973740899, 305387470 } },
-        .module_sizes = &.{},
-    },
-};
-
 pub const system_72_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
     .total_round_coins = 5,
 };
 
-// scenario: "Lookup/ShiftedAColumn"
+// scenario: "Lookup/RepeatedValueInTable"
 
 const system_72_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
@@ -7366,10 +7310,7 @@ const system_72_module_1_expressions = [_]vanishing.ExprNode{
 
 const system_72_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
-    .{ .expression = 8, .cancelled_positions = &.{ -1, 0 } },
-};
-
-const system_72_module_1_bucket_1_vanishings = [_]vanishing.Vanishing{
+    .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
     .{ .expression = 13, .cancelled_positions = &.{} },
     // expression: "global"
@@ -7377,8 +7318,7 @@ const system_72_module_1_bucket_1_vanishings = [_]vanishing.Vanishing{
 };
 
 const system_72_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 2, .vanishings = &system_72_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
-    .{ .ratio = 1, .vanishings = &system_72_module_1_bucket_1_vanishings, .quotient_claim_offset = 3 },
+    .{ .ratio = 1, .vanishings = &system_72_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
 const system_72_modules = [_]vanishing.Module{
@@ -7388,25 +7328,25 @@ const system_72_modules = [_]vanishing.Module{
     .{ .size = .{ .static = 4 }, .expressions = &system_72_module_1_expressions, .buckets = &system_72_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
 };
 
-// system: "lk-shift-a"
+// system: "lk-repeated"
 const system_72 = vanishing.System{
     .modules = &system_72_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 7,
-    .total_quotient_claims = 4,
+    .total_quotient_claims = 2,
 };
 
 const vanishing_scenario_72 = VanishingScenario{
-    .name = "Lookup/ShiftedAColumn",
+    .name = "Lookup/RepeatedValueInTable",
     .spec = system_72_spec,
     .system = system_72,
     .honest = .{
         .rounds = &.{
             .{
                 .columns = &.{
-                    .{ .public_base = &.{ 10, 20, 30, 40 } },
-                    .{ .public_base = &.{ 40, 10, 20, 30 } },
-                    .{ .public_base = &.{ 1, 1, 1, 1 } },
+                    .{ .public_base = &.{ 10, 20, 10, 30 } },
+                    .{ .public_base = &.{ 10, 20, 10, 30 } },
+                    .{ .public_base = &.{ 0, 1, 2, 1 } },
                 },
                 .cells = &.{},
             },
@@ -7416,29 +7356,27 @@ const vanishing_scenario_72 = VanishingScenario{
             },
             .{
                 .columns = &.{
-                    .{ .public_ext = &.{ .{ 319703494, 614348285, 181600425, 1631800591, 1328994516, 325251117 }, .{ 2046705253, 755169666, 43930746, 409354579, 504473870, 1824893588 }, .{ 1831697354, 1632741062, 1051060429, 127065484, 948561551, 1632617361 }, .{ 1908128692, 2084464376, 1252625230, 2107916360, 849575935, 352318985 } } },
-                    .{ .public_ext = &.{ .{ 1811002939, 1516358148, 1949106008, 498905842, 801711917, 1805455316 }, .{ 84001180, 1375536767, 2086775687, 1721351854, 1626232563, 305812845 }, .{ 299009079, 497965371, 1079646004, 2003640949, 1182144882, 498089072 }, .{ 222577741, 46242057, 878081203, 22790073, 1281130498, 1778387448 } } },
+                    .{ .public_ext = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 495979900, 766046258, 886198614, 2118761613, 350844490, 1548471135 }, .{ 2110463201, 1796284634, 189247542, 1274520175, 450433941, 800386556 }, .{ 230934858, 2092297613, 481340094, 638848993, 520685285, 701533128 } } },
+                    .{ .public_ext = &.{ .{ 258111566, 1615587245, 348475536, 422120719, 1015558491, 1439395506 }, .{ 1892838099, 849540987, 1592983355, 434065539, 664714001, 2021630804 }, .{ 20243232, 334421799, 1941458891, 856186258, 1680272492, 1330319877 }, .{ 1899771575, 38408820, 1649366339, 1491857440, 1610021148, 1429173305 } } },
                 },
                 .cells = &.{
                     .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 319703494, 614348285, 181600425, 1631800591, 1328994516, 325251117 } },
-                    .{ .ext = .{ 1908128692, 2084464376, 1252625230, 2107916360, 849575935, 352318985 } },
-                    .{ .ext = .{ 1811002939, 1516358148, 1949106008, 498905842, 801711917, 1805455316 } },
-                    .{ .ext = .{ 222577741, 46242057, 878081203, 22790073, 1281130498, 1778387448 } },
+                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
+                    .{ .ext = .{ 230934858, 2092297613, 481340094, 638848993, 520685285, 701533128 } },
+                    .{ .ext = .{ 258111566, 1615587245, 348475536, 422120719, 1015558491, 1439395506 } },
+                    .{ .ext = .{ 1899771575, 38408820, 1649366339, 1491857440, 1610021148, 1429173305 } },
                 },
             },
             .{
                 .columns = &.{
-                    .{ .public_ext = &.{ .{ 2106810659, 1517822108, 1637313964, 165454845, 560594656, 826009481 }, .{ 1193513350, 367993418, 353338912, 1710134455, 415751762, 922343508 }, .{ 1545150706, 200720894, 967595166, 1265233789, 204222120, 800363385 }, .{ 1747616198, 233125133, 1853934210, 1677109296, 1410633668, 308379636 } } },
-                    .{ .public_ext = &.{ .{ 1363497984, 591671174, 590047124, 181624729, 1427286934, 874434432 }, .{ 500556213, 885993474, 1287756770, 1901877311, 2031200118, 1264935945 }, .{ 984386161, 1215726719, 523889941, 227730163, 249145727, 348750527 }, .{ 1346125792, 1568021499, 1859719031, 1950180663, 553780087, 1773291962 } } },
-                    .{ .public_ext = &.{ .{ 784580641, 562684934, 270987402, 180525770, 1576926346, 357414471 }, .{ 784580641, 562684934, 270987402, 180525770, 1576926346, 357414471 }, .{ 784580641, 562684934, 270987402, 180525770, 1576926346, 357414471 }, .{ 784580641, 562684934, 270987402, 180525770, 1576926346, 357414471 } } },
-                    .{ .public_ext = &.{ .{ 1876372322, 34524098, 1266637803, 1896705770, 1965362234, 53417569 }, .{ 1015086322, 875379576, 1854390127, 1150826142, 892272210, 1696881896 }, .{ 487630978, 1404822987, 1786936542, 1336567266, 1496495878, 764979372 }, .{ 640960050, 1082610776, 1992041767, 15344695, 1993378847, 892213205 } } },
+                    .{ .public_ext = &.{ .{ 674858854, 1717069482, 435439864, 1604129177, 667303559, 1062692173 }, .{ 289908622, 2112974475, 121408608, 1733551566, 800798458, 149710413 }, .{ 321380186, 1791601434, 1035031095, 1790547448, 273198090, 1589367248 }, .{ 794195, 760377179, 774067615, 1281211486, 879384878, 558775629 } } },
+                    .{ .public_ext = &.{ .{ 2114633249, 1154148184, 827918148, 154212884, 1992973189, 190872567 }, .{ 1826456001, 713977348, 1416143665, 1163446590, 408444896, 692022252 }, .{ 768972140, 1328874201, 1878544559, 1910875107, 2010820822, 2127790413 }, .{ 39421678, 1637620602, 1718818999, 644434722, 1765409293, 733721648 } } },
                 },
                 .cells = &.{},
             },
         },
-        .witness_claims = &.{ .{ 1, 0, 0, 0, 0, 0 }, .{ 7452317, 1695983860, 286103388, 1962390084, 809866276, 397742762 }, .{ 1872400526, 1488645954, 252793399, 1810097610, 484072215, 964314643 }, .{ 354678442, 1386621914, 1683050704, 1173065198, 1853416903, 1414968986 }, .{ 2098033211, 1035609126, 458739304, 368666772, 1930598066, 432905311 }, .{ 1609574666, 1101584238, 1847719409, 909306732, 117602332, 412044936 }, .{ 1855066491, 877290772, 1420953409, 1752926887, 709072583, 430003388 } },
-        .quotient_claims = &.{ .{ 1481362039, 2065669112, 879956410, 1598879898, 132402468, 637824619 }, .{ 548339269, 2031277683, 2092292774, 1393764945, 1612028451, 416962370 }, .{ 784580641, 562684934, 270987402, 180525770, 1576926346, 357414471 }, .{ 723226785, 1655863418, 1278871233, 619318838, 271823536, 1315203658 } },
+        .witness_claims = &.{ .{ 639923631, 1860942214, 1270255134, 978468242, 820849178, 398398769 }, .{ 1293302876, 269833820, 163136597, 845238448, 1827572532, 1074147789 }, .{ 333954605, 66730241, 313645246, 139499334, 483960215, 1891104959 }, .{ 980633938, 2031052999, 819261701, 2024172848, 821977361, 440563414 }, .{ 809040691, 434868850, 85754746, 44247785, 1155359991, 1511545394 }, .{ 1900202615, 641369419, 1507803646, 1989828662, 1319639666, 628112074 }, .{ 1488266521, 1940429301, 1421669555, 1359940215, 1713948701, 1919118762 } },
+        .quotient_claims = &.{ .{ 1761700158, 1094684708, 1701027077, 1851266559, 1893777233, 993646953 }, .{ 560042198, 1673092902, 85182739, 825618430, 973740899, 305387470 } },
         .module_sizes = &.{},
     },
 };
@@ -7449,7 +7387,7 @@ pub const system_73_spec = protocol.Spec{
     .total_round_coins = 5,
 };
 
-// scenario: "Lookup/ShiftedBColumn"
+// scenario: "Lookup/ShiftedAColumn"
 
 const system_73_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
@@ -7511,7 +7449,10 @@ const system_73_module_1_expressions = [_]vanishing.ExprNode{
 
 const system_73_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
-    .{ .expression = 8, .cancelled_positions = &.{0} },
+    .{ .expression = 8, .cancelled_positions = &.{ -1, 0 } },
+};
+
+const system_73_module_1_bucket_1_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 13, .cancelled_positions = &.{} },
     // expression: "global"
@@ -7519,7 +7460,8 @@ const system_73_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
 };
 
 const system_73_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_73_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+    .{ .ratio = 2, .vanishings = &system_73_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+    .{ .ratio = 1, .vanishings = &system_73_module_1_bucket_1_vanishings, .quotient_claim_offset = 3 },
 };
 
 const system_73_modules = [_]vanishing.Module{
@@ -7529,24 +7471,24 @@ const system_73_modules = [_]vanishing.Module{
     .{ .size = .{ .static = 4 }, .expressions = &system_73_module_1_expressions, .buckets = &system_73_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
 };
 
-// system: "lk-shift-b"
+// system: "lk-shift-a"
 const system_73 = vanishing.System{
     .modules = &system_73_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 7,
-    .total_quotient_claims = 2,
+    .total_quotient_claims = 4,
 };
 
 const vanishing_scenario_73 = VanishingScenario{
-    .name = "Lookup/ShiftedBColumn",
+    .name = "Lookup/ShiftedAColumn",
     .spec = system_73_spec,
     .system = system_73,
     .honest = .{
         .rounds = &.{
             .{
                 .columns = &.{
-                    .{ .public_base = &.{ 20, 30, 40, 10 } },
                     .{ .public_base = &.{ 10, 20, 30, 40 } },
+                    .{ .public_base = &.{ 40, 10, 20, 30 } },
                     .{ .public_base = &.{ 1, 1, 1, 1 } },
                 },
                 .cells = &.{},
@@ -7557,38 +7499,40 @@ const vanishing_scenario_73 = VanishingScenario{
             },
             .{
                 .columns = &.{
-                    .{ .public_ext = &.{ .{ 28105771, 1994689310, 1021857722, 1774838401, 1383526752, 1345601509 }, .{ 912004325, 985497565, 137640217, 1268535525, 695967421, 412869602 }, .{ 1243802094, 162987039, 1886021465, 967340413, 1056535181, 1497018692 }, .{ 1650825906, 2063186318, 1113450477, 615069191, 337578103, 1367955890 } } },
-                    .{ .public_ext = &.{ .{ 2102600662, 136017123, 1108848711, 355868032, 747179681, 785104924 }, .{ 1218702108, 1145208868, 1993066216, 862170908, 1434739012, 1717836831 }, .{ 886904339, 1967719394, 244684968, 1163366020, 1074171252, 633687741 }, .{ 479880527, 67520115, 1017255956, 1515637242, 1793128330, 762750543 } } },
+                    .{ .public_ext = &.{ .{ 319703494, 614348285, 181600425, 1631800591, 1328994516, 325251117 }, .{ 2046705253, 755169666, 43930746, 409354579, 504473870, 1824893588 }, .{ 1831697354, 1632741062, 1051060429, 127065484, 948561551, 1632617361 }, .{ 1908128692, 2084464376, 1252625230, 2107916360, 849575935, 352318985 } } },
+                    .{ .public_ext = &.{ .{ 1811002939, 1516358148, 1949106008, 498905842, 801711917, 1805455316 }, .{ 84001180, 1375536767, 2086775687, 1721351854, 1626232563, 305812845 }, .{ 299009079, 497965371, 1079646004, 2003640949, 1182144882, 498089072 }, .{ 222577741, 46242057, 878081203, 22790073, 1281130498, 1778387448 } } },
                 },
                 .cells = &.{
                     .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 28105771, 1994689310, 1021857722, 1774838401, 1383526752, 1345601509 } },
-                    .{ .ext = .{ 1650825906, 2063186318, 1113450477, 615069191, 337578103, 1367955890 } },
-                    .{ .ext = .{ 2102600662, 136017123, 1108848711, 355868032, 747179681, 785104924 } },
-                    .{ .ext = .{ 479880527, 67520115, 1017255956, 1515637242, 1793128330, 762750543 } },
+                    .{ .ext = .{ 319703494, 614348285, 181600425, 1631800591, 1328994516, 325251117 } },
+                    .{ .ext = .{ 1908128692, 2084464376, 1252625230, 2107916360, 849575935, 352318985 } },
+                    .{ .ext = .{ 1811002939, 1516358148, 1949106008, 498905842, 801711917, 1805455316 } },
+                    .{ .ext = .{ 222577741, 46242057, 878081203, 22790073, 1281130498, 1778387448 } },
                 },
             },
             .{
                 .columns = &.{
-                    .{ .public_ext = &.{ .{ 277909216, 742863114, 610598597, 23978290, 901929179, 728717878 }, .{ 672304382, 255359480, 991023842, 1892069514, 1322774675, 279141577 }, .{ 1925170524, 1665374309, 374609926, 1496672501, 1100326011, 1307785094 }, .{ 351840897, 1034307511, 1416715758, 733953229, 1970366187, 1700232453 } } },
-                    .{ .public_ext = &.{ .{ 1269639728, 1172977561, 1211659233, 1823811601, 1888656801, 72974979 }, .{ 2044877884, 1300048758, 645510729, 547509314, 524575309, 1791710417 }, .{ 751634520, 1842815699, 1480255851, 607058965, 1840559710, 1828480361 }, .{ 1802926387, 1179402818, 1239064849, 315671869, 823086378, 780884681 } } },
+                    .{ .public_ext = &.{ .{ 2106810659, 1517822108, 1637313964, 165454845, 560594656, 826009481 }, .{ 1193513350, 367993418, 353338912, 1710134455, 415751762, 922343508 }, .{ 1545150706, 200720894, 967595166, 1265233789, 204222120, 800363385 }, .{ 1747616198, 233125133, 1853934210, 1677109296, 1410633668, 308379636 } } },
+                    .{ .public_ext = &.{ .{ 1363497984, 591671174, 590047124, 181624729, 1427286934, 874434432 }, .{ 500556213, 885993474, 1287756770, 1901877311, 2031200118, 1264935945 }, .{ 984386161, 1215726719, 523889941, 227730163, 249145727, 348750527 }, .{ 1346125792, 1568021499, 1859719031, 1950180663, 553780087, 1773291962 } } },
+                    .{ .public_ext = &.{ .{ 784580641, 562684934, 270987402, 180525770, 1576926346, 357414471 }, .{ 784580641, 562684934, 270987402, 180525770, 1576926346, 357414471 }, .{ 784580641, 562684934, 270987402, 180525770, 1576926346, 357414471 }, .{ 784580641, 562684934, 270987402, 180525770, 1576926346, 357414471 } } },
+                    .{ .public_ext = &.{ .{ 1876372322, 34524098, 1266637803, 1896705770, 1965362234, 53417569 }, .{ 1015086322, 875379576, 1854390127, 1150826142, 892272210, 1696881896 }, .{ 487630978, 1404822987, 1786936542, 1336567266, 1496495878, 764979372 }, .{ 640960050, 1082610776, 1992041767, 15344695, 1993378847, 892213205 } } },
                 },
                 .cells = &.{},
             },
         },
-        .witness_claims = &.{ .{ 1, 0, 0, 0, 0, 0 }, .{ 332123631, 712846276, 1779544534, 2023871587, 229259940, 1751673541 }, .{ 1515838691, 9910035, 413337011, 2007850305, 1297219415, 1380848179 }, .{ 236713083, 1620616, 777378421, 642107824, 753208285, 1582481149 }, .{ 2118319975, 617712730, 81178103, 1001426045, 965995868, 1041122264 }, .{ 1575764399, 1473397620, 122547223, 851685364, 493101958, 1624464057 }, .{ 1405551010, 1671104584, 855083749, 473252570, 412729956, 1116845114 } },
-        .quotient_claims = &.{ .{ 707755116, 273588741, 523472334, 1069393283, 1219676899, 665551427 }, .{ 95955643, 1468098122, 1746860988, 1801002626, 475643633, 2077623706 } },
+        .witness_claims = &.{ .{ 1, 0, 0, 0, 0, 0 }, .{ 7452317, 1695983860, 286103388, 1962390084, 809866276, 397742762 }, .{ 1872400526, 1488645954, 252793399, 1810097610, 484072215, 964314643 }, .{ 354678442, 1386621914, 1683050704, 1173065198, 1853416903, 1414968986 }, .{ 2098033211, 1035609126, 458739304, 368666772, 1930598066, 432905311 }, .{ 1609574666, 1101584238, 1847719409, 909306732, 117602332, 412044936 }, .{ 1855066491, 877290772, 1420953409, 1752926887, 709072583, 430003388 } },
+        .quotient_claims = &.{ .{ 1481362039, 2065669112, 879956410, 1598879898, 132402468, 637824619 }, .{ 548339269, 2031277683, 2092292774, 1393764945, 1612028451, 416962370 }, .{ 784580641, 562684934, 270987402, 180525770, 1576926346, 357414471 }, .{ 723226785, 1655863418, 1278871233, 619318838, 271823536, 1315203658 } },
         .module_sizes = &.{},
     },
 };
 
 pub const system_74_spec = protocol.Spec{
-    .round_coin_counts = &[_]usize{ 0, 1, 0, 3, 3 },
-    .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 4 },
-    .total_round_coins = 7,
+    .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
+    .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
+    .total_round_coins = 5,
 };
 
-// scenario: "Lookup/MultipleAFragments"
+// scenario: "Lookup/ShiftedBColumn"
 
 const system_74_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
@@ -7632,7 +7576,7 @@ const system_74_module_1_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 1 }, // col: "z-b1-k0"
     .{ .op = .{ .operator = .sub, .operands = &.{ 1, 2 } } },
     .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 2 }, // col: "S1"
+    .{ .column_claim = 2 }, // col: "S"
     .{ .op = .{ .operator = .add, .operands = &.{ 4, 5 } } },
     .{ .op = .{ .operator = .mul, .operands = &.{ 3, 6 } } },
     .{ .op = .{ .operator = .sub, .operands = &.{ 0, 7 } } },
@@ -7661,7 +7605,146 @@ const system_74_module_1_buckets = [_]vanishing.Bucket{
     .{ .ratio = 1, .vanishings = &system_74_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_74_module_2_expressions = [_]vanishing.ExprNode{
+const system_74_modules = [_]vanishing.Module{
+    // module: "modT"
+    .{ .size = .{ .static = 4 }, .expressions = &system_74_module_0_expressions, .buckets = &system_74_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
+    // module: "modS"
+    .{ .size = .{ .static = 4 }, .expressions = &system_74_module_1_expressions, .buckets = &system_74_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
+};
+
+// system: "lk-shift-b"
+const system_74 = vanishing.System{
+    .modules = &system_74_modules,
+    .dynamic_module_count = 0,
+    .total_witness_claims = 7,
+    .total_quotient_claims = 2,
+};
+
+const vanishing_scenario_74 = VanishingScenario{
+    .name = "Lookup/ShiftedBColumn",
+    .spec = system_74_spec,
+    .system = system_74,
+    .honest = .{
+        .rounds = &.{
+            .{
+                .columns = &.{
+                    .{ .public_base = &.{ 20, 30, 40, 10 } },
+                    .{ .public_base = &.{ 10, 20, 30, 40 } },
+                    .{ .public_base = &.{ 1, 1, 1, 1 } },
+                },
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{},
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 28105771, 1994689310, 1021857722, 1774838401, 1383526752, 1345601509 }, .{ 912004325, 985497565, 137640217, 1268535525, 695967421, 412869602 }, .{ 1243802094, 162987039, 1886021465, 967340413, 1056535181, 1497018692 }, .{ 1650825906, 2063186318, 1113450477, 615069191, 337578103, 1367955890 } } },
+                    .{ .public_ext = &.{ .{ 2102600662, 136017123, 1108848711, 355868032, 747179681, 785104924 }, .{ 1218702108, 1145208868, 1993066216, 862170908, 1434739012, 1717836831 }, .{ 886904339, 1967719394, 244684968, 1163366020, 1074171252, 633687741 }, .{ 479880527, 67520115, 1017255956, 1515637242, 1793128330, 762750543 } } },
+                },
+                .cells = &.{
+                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
+                    .{ .ext = .{ 28105771, 1994689310, 1021857722, 1774838401, 1383526752, 1345601509 } },
+                    .{ .ext = .{ 1650825906, 2063186318, 1113450477, 615069191, 337578103, 1367955890 } },
+                    .{ .ext = .{ 2102600662, 136017123, 1108848711, 355868032, 747179681, 785104924 } },
+                    .{ .ext = .{ 479880527, 67520115, 1017255956, 1515637242, 1793128330, 762750543 } },
+                },
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 277909216, 742863114, 610598597, 23978290, 901929179, 728717878 }, .{ 672304382, 255359480, 991023842, 1892069514, 1322774675, 279141577 }, .{ 1925170524, 1665374309, 374609926, 1496672501, 1100326011, 1307785094 }, .{ 351840897, 1034307511, 1416715758, 733953229, 1970366187, 1700232453 } } },
+                    .{ .public_ext = &.{ .{ 1269639728, 1172977561, 1211659233, 1823811601, 1888656801, 72974979 }, .{ 2044877884, 1300048758, 645510729, 547509314, 524575309, 1791710417 }, .{ 751634520, 1842815699, 1480255851, 607058965, 1840559710, 1828480361 }, .{ 1802926387, 1179402818, 1239064849, 315671869, 823086378, 780884681 } } },
+                },
+                .cells = &.{},
+            },
+        },
+        .witness_claims = &.{ .{ 1, 0, 0, 0, 0, 0 }, .{ 332123631, 712846276, 1779544534, 2023871587, 229259940, 1751673541 }, .{ 1515838691, 9910035, 413337011, 2007850305, 1297219415, 1380848179 }, .{ 236713083, 1620616, 777378421, 642107824, 753208285, 1582481149 }, .{ 2118319975, 617712730, 81178103, 1001426045, 965995868, 1041122264 }, .{ 1575764399, 1473397620, 122547223, 851685364, 493101958, 1624464057 }, .{ 1405551010, 1671104584, 855083749, 473252570, 412729956, 1116845114 } },
+        .quotient_claims = &.{ .{ 707755116, 273588741, 523472334, 1069393283, 1219676899, 665551427 }, .{ 95955643, 1468098122, 1746860988, 1801002626, 475643633, 2077623706 } },
+        .module_sizes = &.{},
+    },
+};
+
+pub const system_75_spec = protocol.Spec{
+    .round_coin_counts = &[_]usize{ 0, 1, 0, 3, 3 },
+    .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 4 },
+    .total_round_coins = 7,
+};
+
+// scenario: "Lookup/MultipleAFragments"
+
+const system_75_module_0_expressions = [_]vanishing.ExprNode{
+    .{ .column_claim = 0 }, // col: "M"
+    .{ .op = .{ .operator = .negate, .operands = &.{0} } },
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .column_claim = 2 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .column_claim = 3 }, // col: "T"
+    .{ .op = .{ .operator = .add, .operands = &.{ 5, 6 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 4, 7 } } },
+    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 8 } } },
+    .{ .cell_value = .{ .round = 2, .index = 1 } }, // cell: "result"
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 10, 11 } } },
+    .{ .lagrange_selector = 0 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 12, 13 } } },
+    .{ .cell_value = .{ .round = 2, .index = 2 } }, // cell: "result"
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 15, 16 } } },
+    .{ .lagrange_selector = 3 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
+};
+
+const system_75_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+    // expression: "z-recurrence-b0-k0"
+    .{ .expression = 9, .cancelled_positions = &.{0} },
+    // expression: "global"
+    .{ .expression = 14, .cancelled_positions = &.{} },
+    // expression: "global"
+    .{ .expression = 19, .cancelled_positions = &.{} },
+};
+
+const system_75_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_75_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+};
+
+const system_75_module_1_expressions = [_]vanishing.ExprNode{
+    .{ .constant = field.Element.init(1) },
+    .{ .column_claim = 0 }, // col: "z-b1-k0"
+    .{ .column_claim = 1 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 2 } } },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .column_claim = 2 }, // col: "S1"
+    .{ .op = .{ .operator = .add, .operands = &.{ 4, 5 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 3, 6 } } },
+    .{ .op = .{ .operator = .sub, .operands = &.{ 0, 7 } } },
+    .{ .cell_value = .{ .round = 2, .index = 3 } }, // cell: "result"
+    .{ .column_claim = 0 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 9, 10 } } },
+    .{ .lagrange_selector = 0 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 11, 12 } } },
+    .{ .cell_value = .{ .round = 2, .index = 4 } }, // cell: "result"
+    .{ .column_claim = 0 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 14, 15 } } },
+    .{ .lagrange_selector = 3 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
+};
+
+const system_75_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+    // expression: "z-recurrence-b1-k0"
+    .{ .expression = 8, .cancelled_positions = &.{0} },
+    // expression: "global"
+    .{ .expression = 13, .cancelled_positions = &.{} },
+    // expression: "global"
+    .{ .expression = 18, .cancelled_positions = &.{} },
+};
+
+const system_75_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_75_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+};
+
+const system_75_module_2_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b2-k0"
     .{ .column_claim = 1 }, // col: "z-b2-k0"
@@ -7683,7 +7766,7 @@ const system_74_module_2_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_74_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_75_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b2-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -7692,31 +7775,31 @@ const system_74_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_74_module_2_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_74_module_2_bucket_0_vanishings, .quotient_claim_offset = 2 },
+const system_75_module_2_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_75_module_2_bucket_0_vanishings, .quotient_claim_offset = 2 },
 };
 
-const system_74_modules = [_]vanishing.Module{
+const system_75_modules = [_]vanishing.Module{
     // module: "modT"
-    .{ .size = .{ .static = 4 }, .expressions = &system_74_module_0_expressions, .buckets = &system_74_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_75_module_0_expressions, .buckets = &system_75_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 4 },
     // module: "modS1"
-    .{ .size = .{ .static = 4 }, .expressions = &system_74_module_1_expressions, .buckets = &system_74_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 5 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_75_module_1_expressions, .buckets = &system_75_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 5 },
     // module: "modS2"
-    .{ .size = .{ .static = 2 }, .expressions = &system_74_module_2_expressions, .buckets = &system_74_module_2_buckets, .witness_claim_offset = 7, .merge_coin_index = 3, .eval_coin_index = 6 },
+    .{ .size = .{ .static = 2 }, .expressions = &system_75_module_2_expressions, .buckets = &system_75_module_2_buckets, .witness_claim_offset = 7, .merge_coin_index = 3, .eval_coin_index = 6 },
 };
 
 // system: "lk-multi-A"
-const system_74 = vanishing.System{
-    .modules = &system_74_modules,
+const system_75 = vanishing.System{
+    .modules = &system_75_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 10,
     .total_quotient_claims = 3,
 };
 
-const vanishing_scenario_74 = VanishingScenario{
+const vanishing_scenario_75 = VanishingScenario{
     .name = "Lookup/MultipleAFragments",
-    .spec = system_74_spec,
-    .system = system_74,
+    .spec = system_75_spec,
+    .system = system_75,
     .honest = .{
         .rounds = &.{
             .{
@@ -7763,7 +7846,7 @@ const vanishing_scenario_74 = VanishingScenario{
     },
 };
 
-pub const system_75_spec = protocol.Spec{
+pub const system_76_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 2, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 2, 2, 4 },
     .total_round_coins = 6,
@@ -7771,7 +7854,7 @@ pub const system_75_spec = protocol.Spec{
 
 // scenario: "Lookup/WidthThree"
 
-const system_75_module_0_expressions = [_]vanishing.ExprNode{
+const system_76_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b0-k0"
@@ -7802,7 +7885,7 @@ const system_75_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 25, 26 } } },
 };
 
-const system_75_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_76_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 17, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -7811,11 +7894,11 @@ const system_75_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 27, .cancelled_positions = &.{} },
 };
 
-const system_75_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_75_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_76_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_76_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_75_module_1_expressions = [_]vanishing.ExprNode{
+const system_76_module_1_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b1-k0"
     .{ .column_claim = 1 }, // col: "z-b1-k0"
@@ -7845,7 +7928,7 @@ const system_75_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 24, 25 } } },
 };
 
-const system_75_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_76_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 16, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -7854,29 +7937,29 @@ const system_75_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 26, .cancelled_positions = &.{} },
 };
 
-const system_75_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_75_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_76_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_76_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_75_modules = [_]vanishing.Module{
+const system_76_modules = [_]vanishing.Module{
     // module: "modT"
-    .{ .size = .{ .static = 4 }, .expressions = &system_75_module_0_expressions, .buckets = &system_75_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 2, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_76_module_0_expressions, .buckets = &system_76_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 2, .eval_coin_index = 4 },
     // module: "modS"
-    .{ .size = .{ .static = 2 }, .expressions = &system_75_module_1_expressions, .buckets = &system_75_module_1_buckets, .witness_claim_offset = 6, .merge_coin_index = 3, .eval_coin_index = 5 },
+    .{ .size = .{ .static = 2 }, .expressions = &system_76_module_1_expressions, .buckets = &system_76_module_1_buckets, .witness_claim_offset = 6, .merge_coin_index = 3, .eval_coin_index = 5 },
 };
 
 // system: "lk-w3"
-const system_75 = vanishing.System{
-    .modules = &system_75_modules,
+const system_76 = vanishing.System{
+    .modules = &system_76_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 11,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_75 = VanishingScenario{
+const vanishing_scenario_76 = VanishingScenario{
     .name = "Lookup/WidthThree",
-    .spec = system_75_spec,
-    .system = system_75,
+    .spec = system_76_spec,
+    .system = system_76,
     .honest = .{
         .rounds = &.{
             .{
@@ -7922,7 +8005,7 @@ const vanishing_scenario_75 = VanishingScenario{
     },
 };
 
-pub const system_76_spec = protocol.Spec{
+pub const system_77_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
     .total_round_coins = 5,
@@ -7930,7 +8013,7 @@ pub const system_76_spec = protocol.Spec{
 
 // scenario: "Lookup/SizeOne"
 
-const system_76_module_0_expressions = [_]vanishing.ExprNode{
+const system_77_module_0_expressions = [_]vanishing.ExprNode{
     .{ .cell_value = .{ .round = 2, .index = 1 } }, // cell: "result"
     .{ .column_claim = 0 }, // col: "z-b0-k0"
     .{ .op = .{ .operator = .sub, .operands = &.{ 0, 1 } } },
@@ -7943,18 +8026,18 @@ const system_76_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 7, 8 } } },
 };
 
-const system_76_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_77_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 4, .cancelled_positions = &.{} },
     // expression: "global"
     .{ .expression = 9, .cancelled_positions = &.{} },
 };
 
-const system_76_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_76_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_77_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_77_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_76_module_1_expressions = [_]vanishing.ExprNode{
+const system_77_module_1_expressions = [_]vanishing.ExprNode{
     .{ .cell_value = .{ .round = 2, .index = 3 } }, // cell: "result"
     .{ .column_claim = 0 }, // col: "z-b1-k0"
     .{ .op = .{ .operator = .sub, .operands = &.{ 0, 1 } } },
@@ -7967,36 +8050,36 @@ const system_76_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 7, 8 } } },
 };
 
-const system_76_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_77_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 4, .cancelled_positions = &.{} },
     // expression: "global"
     .{ .expression = 9, .cancelled_positions = &.{} },
 };
 
-const system_76_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_76_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_77_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_77_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_76_modules = [_]vanishing.Module{
+const system_77_modules = [_]vanishing.Module{
     // module: "modT"
-    .{ .size = .{ .static = 1 }, .expressions = &system_76_module_0_expressions, .buckets = &system_76_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
+    .{ .size = .{ .static = 1 }, .expressions = &system_77_module_0_expressions, .buckets = &system_77_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
     // module: "modS"
-    .{ .size = .{ .static = 1 }, .expressions = &system_76_module_1_expressions, .buckets = &system_76_module_1_buckets, .witness_claim_offset = 1, .merge_coin_index = 2, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 1 }, .expressions = &system_77_module_1_expressions, .buckets = &system_77_module_1_buckets, .witness_claim_offset = 1, .merge_coin_index = 2, .eval_coin_index = 4 },
 };
 
 // system: "lk-size1"
-const system_76 = vanishing.System{
-    .modules = &system_76_modules,
+const system_77 = vanishing.System{
+    .modules = &system_77_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 2,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_76 = VanishingScenario{
+const vanishing_scenario_77 = VanishingScenario{
     .name = "Lookup/SizeOne",
-    .spec = system_76_spec,
-    .system = system_76,
+    .spec = system_77_spec,
+    .system = system_77,
     .honest = .{
         .rounds = &.{
             .{
@@ -8038,151 +8121,13 @@ const vanishing_scenario_76 = VanishingScenario{
     },
 };
 
-pub const system_77_spec = protocol.Spec{
-    .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
-    .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
-    .total_round_coins = 5,
-};
-
-// scenario: "Lookup/PrecomputedTable"
-
-const system_77_module_0_expressions = [_]vanishing.ExprNode{
-    .{ .column_claim = 0 }, // col: "M"
-    .{ .op = .{ .operator = .negate, .operands = &.{0} } },
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .column_claim = 2 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 3 }, // col: "T"
-    .{ .op = .{ .operator = .add, .operands = &.{ 5, 6 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 4, 7 } } },
-    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 8 } } },
-    .{ .cell_value = .{ .round = 2, .index = 1 } }, // cell: "result"
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 10, 11 } } },
-    .{ .lagrange_selector = 0 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 12, 13 } } },
-    .{ .cell_value = .{ .round = 2, .index = 2 } }, // cell: "result"
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 15, 16 } } },
-    .{ .lagrange_selector = 3 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
-};
-
-const system_77_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
-    // expression: "z-recurrence-b0-k0"
-    .{ .expression = 9, .cancelled_positions = &.{0} },
-    // expression: "global"
-    .{ .expression = 14, .cancelled_positions = &.{} },
-    // expression: "global"
-    .{ .expression = 19, .cancelled_positions = &.{} },
-};
-
-const system_77_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_77_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
-};
-
-const system_77_module_1_expressions = [_]vanishing.ExprNode{
-    .{ .constant = field.Element.init(1) },
-    .{ .column_claim = 0 }, // col: "z-b1-k0"
-    .{ .column_claim = 1 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 2 } } },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 2 }, // col: "S"
-    .{ .op = .{ .operator = .add, .operands = &.{ 4, 5 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 3, 6 } } },
-    .{ .op = .{ .operator = .sub, .operands = &.{ 0, 7 } } },
-    .{ .cell_value = .{ .round = 2, .index = 3 } }, // cell: "result"
-    .{ .column_claim = 0 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 9, 10 } } },
-    .{ .lagrange_selector = 0 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 11, 12 } } },
-    .{ .cell_value = .{ .round = 2, .index = 4 } }, // cell: "result"
-    .{ .column_claim = 0 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 14, 15 } } },
-    .{ .lagrange_selector = 3 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
-};
-
-const system_77_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
-    // expression: "z-recurrence-b1-k0"
-    .{ .expression = 8, .cancelled_positions = &.{0} },
-    // expression: "global"
-    .{ .expression = 13, .cancelled_positions = &.{} },
-    // expression: "global"
-    .{ .expression = 18, .cancelled_positions = &.{} },
-};
-
-const system_77_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_77_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
-};
-
-const system_77_modules = [_]vanishing.Module{
-    // module: "modT"
-    .{ .size = .{ .static = 4 }, .expressions = &system_77_module_0_expressions, .buckets = &system_77_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
-    // module: "modS"
-    .{ .size = .{ .static = 4 }, .expressions = &system_77_module_1_expressions, .buckets = &system_77_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
-};
-
-// system: "lk-precomp"
-const system_77 = vanishing.System{
-    .modules = &system_77_modules,
-    .dynamic_module_count = 0,
-    .total_witness_claims = 7,
-    .total_quotient_claims = 2,
-};
-
-const vanishing_scenario_77 = VanishingScenario{
-    .name = "Lookup/PrecomputedTable",
-    .spec = system_77_spec,
-    .system = system_77,
-    .honest = .{
-        .rounds = &.{
-            .{
-                .columns = &.{
-                    .{ .public_base = &.{ 10, 20, 30, 40 } },
-                    .{ .public_base = &.{ 1, 1, 1, 1 } },
-                },
-                .cells = &.{},
-            },
-            .{
-                .columns = &.{},
-                .cells = &.{},
-            },
-            .{
-                .columns = &.{
-                    .{ .public_ext = &.{ .{ 965153727, 1201009949, 1834687783, 1372279394, 968419923, 1474515577 }, .{ 1284207331, 1281249017, 628803563, 827046955, 650696670, 595424523 }, .{ 1550335141, 2074403650, 282352266, 150576265, 1316080553, 1429170465 }, .{ 1994496010, 540737400, 1553865964, 2007943262, 1097178214, 2107758021 } } },
-                    .{ .public_ext = &.{ .{ 1165552706, 929696484, 296018650, 758427039, 1162286510, 656190856 }, .{ 846499102, 849457416, 1501902870, 1303659478, 1480009763, 1535281910 }, .{ 580371292, 56302783, 1848354167, 1980130168, 814625880, 701535968 }, .{ 136210423, 1589969033, 576840469, 122763171, 1033528219, 22948412 } } },
-                },
-                .cells = &.{
-                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 965153727, 1201009949, 1834687783, 1372279394, 968419923, 1474515577 } },
-                    .{ .ext = .{ 1994496010, 540737400, 1553865964, 2007943262, 1097178214, 2107758021 } },
-                    .{ .ext = .{ 1165552706, 929696484, 296018650, 758427039, 1162286510, 656190856 } },
-                    .{ .ext = .{ 136210423, 1589969033, 576840469, 122763171, 1033528219, 22948412 } },
-                },
-            },
-            .{
-                .columns = &.{
-                    .{ .public_ext = &.{ .{ 1951310068, 1921580915, 236298129, 1273596409, 384410995, 1319374246 }, .{ 1541611580, 471790424, 721141800, 2001285448, 1348490191, 1394790514 }, .{ 735517441, 361819390, 903866911, 828334111, 76311392, 186793999 }, .{ 297835884, 2054785260, 1202498542, 451899414, 666240743, 647733391 } } },
-                    .{ .public_ext = &.{ .{ 167560985, 455619231, 1308922300, 816225563, 1354569107, 1351915059 }, .{ 971903095, 914144598, 635529858, 1230102735, 323893678, 1310629843 }, .{ 778385412, 986717971, 2196864, 361682160, 363428764, 1273480058 }, .{ 749803365, 1465247199, 488455872, 60358651, 1692546251, 580272293 } } },
-                },
-                .cells = &.{},
-            },
-        },
-        .witness_claims = &.{ .{ 1, 0, 0, 0, 0, 0 }, .{ 1385414097, 2085374573, 1019768401, 132435244, 1785257397, 1722425552 }, .{ 1273549835, 1193952537, 828021398, 932182108, 1496780598, 714218271 }, .{ 1870934816, 1841415682, 1443691172, 1432043843, 342108430, 88904416 }, .{ 605806758, 1812153487, 2026114328, 856841135, 1869612208, 652351545 }, .{ 244368710, 1975773056, 210223908, 1222731499, 2106657964, 813070888 }, .{ 2105825869, 992922957, 1217971120, 1094614387, 500867425, 141466016 } },
-        .quotient_claims = &.{ .{ 1713954515, 387658687, 641745587, 1202772808, 2075586307, 527976223 }, .{ 205065650, 538217418, 270366521, 1506698723, 842384727, 1361659304 } },
-        .module_sizes = &.{},
-    },
-};
-
 pub const system_78_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
     .total_round_coins = 5,
 };
 
-// scenario: "Lookup/RepeatedSValues"
+// scenario: "Lookup/PrecomputedTable"
 
 const system_78_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
@@ -8262,7 +8207,7 @@ const system_78_modules = [_]vanishing.Module{
     .{ .size = .{ .static = 4 }, .expressions = &system_78_module_1_expressions, .buckets = &system_78_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
 };
 
-// system: "lk-rep-s"
+// system: "lk-precomp"
 const system_78 = vanishing.System{
     .modules = &system_78_modules,
     .dynamic_module_count = 0,
@@ -8271,9 +8216,147 @@ const system_78 = vanishing.System{
 };
 
 const vanishing_scenario_78 = VanishingScenario{
-    .name = "Lookup/RepeatedSValues",
+    .name = "Lookup/PrecomputedTable",
     .spec = system_78_spec,
     .system = system_78,
+    .honest = .{
+        .rounds = &.{
+            .{
+                .columns = &.{
+                    .{ .public_base = &.{ 10, 20, 30, 40 } },
+                    .{ .public_base = &.{ 1, 1, 1, 1 } },
+                },
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{},
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 965153727, 1201009949, 1834687783, 1372279394, 968419923, 1474515577 }, .{ 1284207331, 1281249017, 628803563, 827046955, 650696670, 595424523 }, .{ 1550335141, 2074403650, 282352266, 150576265, 1316080553, 1429170465 }, .{ 1994496010, 540737400, 1553865964, 2007943262, 1097178214, 2107758021 } } },
+                    .{ .public_ext = &.{ .{ 1165552706, 929696484, 296018650, 758427039, 1162286510, 656190856 }, .{ 846499102, 849457416, 1501902870, 1303659478, 1480009763, 1535281910 }, .{ 580371292, 56302783, 1848354167, 1980130168, 814625880, 701535968 }, .{ 136210423, 1589969033, 576840469, 122763171, 1033528219, 22948412 } } },
+                },
+                .cells = &.{
+                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
+                    .{ .ext = .{ 965153727, 1201009949, 1834687783, 1372279394, 968419923, 1474515577 } },
+                    .{ .ext = .{ 1994496010, 540737400, 1553865964, 2007943262, 1097178214, 2107758021 } },
+                    .{ .ext = .{ 1165552706, 929696484, 296018650, 758427039, 1162286510, 656190856 } },
+                    .{ .ext = .{ 136210423, 1589969033, 576840469, 122763171, 1033528219, 22948412 } },
+                },
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 1951310068, 1921580915, 236298129, 1273596409, 384410995, 1319374246 }, .{ 1541611580, 471790424, 721141800, 2001285448, 1348490191, 1394790514 }, .{ 735517441, 361819390, 903866911, 828334111, 76311392, 186793999 }, .{ 297835884, 2054785260, 1202498542, 451899414, 666240743, 647733391 } } },
+                    .{ .public_ext = &.{ .{ 167560985, 455619231, 1308922300, 816225563, 1354569107, 1351915059 }, .{ 971903095, 914144598, 635529858, 1230102735, 323893678, 1310629843 }, .{ 778385412, 986717971, 2196864, 361682160, 363428764, 1273480058 }, .{ 749803365, 1465247199, 488455872, 60358651, 1692546251, 580272293 } } },
+                },
+                .cells = &.{},
+            },
+        },
+        .witness_claims = &.{ .{ 1, 0, 0, 0, 0, 0 }, .{ 1385414097, 2085374573, 1019768401, 132435244, 1785257397, 1722425552 }, .{ 1273549835, 1193952537, 828021398, 932182108, 1496780598, 714218271 }, .{ 1870934816, 1841415682, 1443691172, 1432043843, 342108430, 88904416 }, .{ 605806758, 1812153487, 2026114328, 856841135, 1869612208, 652351545 }, .{ 244368710, 1975773056, 210223908, 1222731499, 2106657964, 813070888 }, .{ 2105825869, 992922957, 1217971120, 1094614387, 500867425, 141466016 } },
+        .quotient_claims = &.{ .{ 1713954515, 387658687, 641745587, 1202772808, 2075586307, 527976223 }, .{ 205065650, 538217418, 270366521, 1506698723, 842384727, 1361659304 } },
+        .module_sizes = &.{},
+    },
+};
+
+pub const system_79_spec = protocol.Spec{
+    .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
+    .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
+    .total_round_coins = 5,
+};
+
+// scenario: "Lookup/RepeatedSValues"
+
+const system_79_module_0_expressions = [_]vanishing.ExprNode{
+    .{ .column_claim = 0 }, // col: "M"
+    .{ .op = .{ .operator = .negate, .operands = &.{0} } },
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .column_claim = 2 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .column_claim = 3 }, // col: "T"
+    .{ .op = .{ .operator = .add, .operands = &.{ 5, 6 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 4, 7 } } },
+    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 8 } } },
+    .{ .cell_value = .{ .round = 2, .index = 1 } }, // cell: "result"
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 10, 11 } } },
+    .{ .lagrange_selector = 0 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 12, 13 } } },
+    .{ .cell_value = .{ .round = 2, .index = 2 } }, // cell: "result"
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 15, 16 } } },
+    .{ .lagrange_selector = 3 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
+};
+
+const system_79_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+    // expression: "z-recurrence-b0-k0"
+    .{ .expression = 9, .cancelled_positions = &.{0} },
+    // expression: "global"
+    .{ .expression = 14, .cancelled_positions = &.{} },
+    // expression: "global"
+    .{ .expression = 19, .cancelled_positions = &.{} },
+};
+
+const system_79_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_79_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+};
+
+const system_79_module_1_expressions = [_]vanishing.ExprNode{
+    .{ .constant = field.Element.init(1) },
+    .{ .column_claim = 0 }, // col: "z-b1-k0"
+    .{ .column_claim = 1 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 2 } } },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .column_claim = 2 }, // col: "S"
+    .{ .op = .{ .operator = .add, .operands = &.{ 4, 5 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 3, 6 } } },
+    .{ .op = .{ .operator = .sub, .operands = &.{ 0, 7 } } },
+    .{ .cell_value = .{ .round = 2, .index = 3 } }, // cell: "result"
+    .{ .column_claim = 0 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 9, 10 } } },
+    .{ .lagrange_selector = 0 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 11, 12 } } },
+    .{ .cell_value = .{ .round = 2, .index = 4 } }, // cell: "result"
+    .{ .column_claim = 0 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 14, 15 } } },
+    .{ .lagrange_selector = 3 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
+};
+
+const system_79_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+    // expression: "z-recurrence-b1-k0"
+    .{ .expression = 8, .cancelled_positions = &.{0} },
+    // expression: "global"
+    .{ .expression = 13, .cancelled_positions = &.{} },
+    // expression: "global"
+    .{ .expression = 18, .cancelled_positions = &.{} },
+};
+
+const system_79_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_79_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+};
+
+const system_79_modules = [_]vanishing.Module{
+    // module: "modT"
+    .{ .size = .{ .static = 4 }, .expressions = &system_79_module_0_expressions, .buckets = &system_79_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
+    // module: "modS"
+    .{ .size = .{ .static = 4 }, .expressions = &system_79_module_1_expressions, .buckets = &system_79_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
+};
+
+// system: "lk-rep-s"
+const system_79 = vanishing.System{
+    .modules = &system_79_modules,
+    .dynamic_module_count = 0,
+    .total_witness_claims = 7,
+    .total_quotient_claims = 2,
+};
+
+const vanishing_scenario_79 = VanishingScenario{
+    .name = "Lookup/RepeatedSValues",
+    .spec = system_79_spec,
+    .system = system_79,
     .honest = .{
         .rounds = &.{
             .{
@@ -8315,7 +8398,7 @@ const vanishing_scenario_78 = VanishingScenario{
     },
 };
 
-pub const system_79_spec = protocol.Spec{
+pub const system_80_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
     .total_round_coins = 5,
@@ -8323,7 +8406,7 @@ pub const system_79_spec = protocol.Spec{
 
 // scenario: "Lookup/EmptySelected"
 
-const system_79_module_0_expressions = [_]vanishing.ExprNode{
+const system_80_module_0_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b0-k0"
@@ -8346,7 +8429,7 @@ const system_79_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
 };
 
-const system_79_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_80_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 9, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -8355,11 +8438,11 @@ const system_79_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 19, .cancelled_positions = &.{} },
 };
 
-const system_79_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_79_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_80_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_80_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_79_module_1_expressions = [_]vanishing.ExprNode{
+const system_80_module_1_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "filterS"
     .{ .constant = field.Element.init(1) },
     .{ .op = .{ .operator = .mul, .operands = &.{ 0, 1 } } },
@@ -8383,7 +8466,7 @@ const system_79_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 18, 19 } } },
 };
 
-const system_79_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_80_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 10, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -8392,29 +8475,29 @@ const system_79_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 20, .cancelled_positions = &.{} },
 };
 
-const system_79_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_79_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_80_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_80_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_79_modules = [_]vanishing.Module{
+const system_80_modules = [_]vanishing.Module{
     // module: "modT"
-    .{ .size = .{ .static = 4 }, .expressions = &system_79_module_0_expressions, .buckets = &system_79_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_80_module_0_expressions, .buckets = &system_80_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
     // module: "modS"
-    .{ .size = .{ .static = 4 }, .expressions = &system_79_module_1_expressions, .buckets = &system_79_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_80_module_1_expressions, .buckets = &system_80_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
 };
 
 // system: "lk-empty"
-const system_79 = vanishing.System{
-    .modules = &system_79_modules,
+const system_80 = vanishing.System{
+    .modules = &system_80_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 8,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_79 = VanishingScenario{
+const vanishing_scenario_80 = VanishingScenario{
     .name = "Lookup/EmptySelected",
-    .spec = system_79_spec,
-    .system = system_79,
+    .spec = system_80_spec,
+    .system = system_80,
     .honest = .{
         .rounds = &.{
             .{
@@ -8457,7 +8540,7 @@ const vanishing_scenario_79 = VanishingScenario{
     },
 };
 
-pub const system_80_spec = protocol.Spec{
+pub const system_81_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
     .total_round_coins = 5,
@@ -8465,7 +8548,7 @@ pub const system_80_spec = protocol.Spec{
 
 // scenario: "RangeCheckCompiler/Basic"
 
-const system_80_module_0_expressions = [_]vanishing.ExprNode{
+const system_81_module_0_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b1-k0"
     .{ .column_claim = 1 }, // col: "z-b1-k0"
@@ -8487,7 +8570,7 @@ const system_80_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_80_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_81_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -8496,11 +8579,11 @@ const system_80_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_80_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_80_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_81_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_81_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_80_module_1_expressions = [_]vanishing.ExprNode{
+const system_81_module_1_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b0-k0"
@@ -8523,7 +8606,7 @@ const system_80_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
 };
 
-const system_80_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_81_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 9, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -8532,29 +8615,29 @@ const system_80_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 19, .cancelled_positions = &.{} },
 };
 
-const system_80_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_80_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_81_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_81_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_80_modules = [_]vanishing.Module{
+const system_81_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 8 }, .expressions = &system_80_module_0_expressions, .buckets = &system_80_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
+    .{ .size = .{ .static = 8 }, .expressions = &system_81_module_0_expressions, .buckets = &system_81_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
     // module: "range-mod-b8"
-    .{ .size = .{ .static = 8 }, .expressions = &system_80_module_1_expressions, .buckets = &system_80_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 8 }, .expressions = &system_81_module_1_expressions, .buckets = &system_81_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 4 },
 };
 
 // system: "rc-basic"
-const system_80 = vanishing.System{
-    .modules = &system_80_modules,
+const system_81 = vanishing.System{
+    .modules = &system_81_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 7,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_80 = VanishingScenario{
+const vanishing_scenario_81 = VanishingScenario{
     .name = "RangeCheckCompiler/Basic",
-    .spec = system_80_spec,
-    .system = system_80,
+    .spec = system_81_spec,
+    .system = system_81,
     .honest = .{
         .rounds = &.{
             .{
@@ -8595,172 +8678,13 @@ const vanishing_scenario_80 = VanishingScenario{
     },
 };
 
-pub const system_81_spec = protocol.Spec{
+pub const system_82_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
     .total_round_coins = 5,
 };
 
 // scenario: "RangeCheckCompiler/SharedBound"
-
-const system_81_module_0_expressions = [_]vanishing.ExprNode{
-    .{ .constant = field.Element.init(1) },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 0 }, // col: "colB"
-    .{ .op = .{ .operator = .add, .operands = &.{ 1, 2 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 0, 3 } } },
-    .{ .constant = field.Element.init(1) },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 1 }, // col: "colA"
-    .{ .op = .{ .operator = .add, .operands = &.{ 6, 7 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 5, 8 } } },
-    .{ .op = .{ .operator = .add, .operands = &.{ 4, 9 } } },
-    .{ .column_claim = 2 }, // col: "z-b1-k0"
-    .{ .column_claim = 3 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 11, 12 } } },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 1 }, // col: "colA"
-    .{ .op = .{ .operator = .add, .operands = &.{ 14, 15 } } },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 0 }, // col: "colB"
-    .{ .op = .{ .operator = .add, .operands = &.{ 17, 18 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 16, 19 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 13, 20 } } },
-    .{ .op = .{ .operator = .sub, .operands = &.{ 10, 21 } } },
-    .{ .cell_value = .{ .round = 2, .index = 3 } }, // cell: "result"
-    .{ .column_claim = 2 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 23, 24 } } },
-    .{ .lagrange_selector = 0 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 25, 26 } } },
-    .{ .cell_value = .{ .round = 2, .index = 4 } }, // cell: "result"
-    .{ .column_claim = 2 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 28, 29 } } },
-    .{ .lagrange_selector = 3 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 30, 31 } } },
-};
-
-const system_81_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
-    // expression: "z-recurrence-b1-k0"
-    .{ .expression = 22, .cancelled_positions = &.{0} },
-};
-
-const system_81_module_0_bucket_1_vanishings = [_]vanishing.Vanishing{
-    // expression: "global"
-    .{ .expression = 27, .cancelled_positions = &.{} },
-    // expression: "global"
-    .{ .expression = 32, .cancelled_positions = &.{} },
-};
-
-const system_81_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 2, .vanishings = &system_81_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
-    .{ .ratio = 1, .vanishings = &system_81_module_0_bucket_1_vanishings, .quotient_claim_offset = 2 },
-};
-
-const system_81_module_1_expressions = [_]vanishing.ExprNode{
-    .{ .column_claim = 0 }, // col: "M"
-    .{ .op = .{ .operator = .negate, .operands = &.{0} } },
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .column_claim = 2 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 3 }, // col: "range-col-b4"
-    .{ .op = .{ .operator = .add, .operands = &.{ 5, 6 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 4, 7 } } },
-    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 8 } } },
-    .{ .cell_value = .{ .round = 2, .index = 1 } }, // cell: "result"
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 10, 11 } } },
-    .{ .lagrange_selector = 0 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 12, 13 } } },
-    .{ .cell_value = .{ .round = 2, .index = 2 } }, // cell: "result"
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 15, 16 } } },
-    .{ .lagrange_selector = 3 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
-};
-
-const system_81_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
-    // expression: "z-recurrence-b0-k0"
-    .{ .expression = 9, .cancelled_positions = &.{0} },
-    // expression: "global"
-    .{ .expression = 14, .cancelled_positions = &.{} },
-    // expression: "global"
-    .{ .expression = 19, .cancelled_positions = &.{} },
-};
-
-const system_81_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_81_module_1_bucket_0_vanishings, .quotient_claim_offset = 3 },
-};
-
-const system_81_modules = [_]vanishing.Module{
-    // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_81_module_0_expressions, .buckets = &system_81_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
-    // module: "range-mod-b4"
-    .{ .size = .{ .static = 4 }, .expressions = &system_81_module_1_expressions, .buckets = &system_81_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
-};
-
-// system: "rc-shared"
-const system_81 = vanishing.System{
-    .modules = &system_81_modules,
-    .dynamic_module_count = 0,
-    .total_witness_claims = 8,
-    .total_quotient_claims = 4,
-};
-
-const vanishing_scenario_81 = VanishingScenario{
-    .name = "RangeCheckCompiler/SharedBound",
-    .spec = system_81_spec,
-    .system = system_81,
-    .honest = .{
-        .rounds = &.{
-            .{
-                .columns = &.{
-                    .{ .public_base = &.{ 0, 1, 2, 3 } },
-                    .{ .public_base = &.{ 3, 0, 2, 1 } },
-                    .{ .public_base = &.{ 2, 2, 2, 2 } },
-                },
-                .cells = &.{},
-            },
-            .{
-                .columns = &.{},
-                .cells = &.{},
-            },
-            .{
-                .columns = &.{
-                    .{ .public_ext = &.{ .{ 1474670890, 1499766615, 264008049, 600452102, 385839688, 567426019 }, .{ 458347610, 895059488, 832529886, 289368190, 1625029533, 1559551509 }, .{ 1364951523, 2001258965, 1936913791, 527449197, 207285979, 684515954 }, .{ 154577905, 340358420, 64899070, 412585116, 562886263, 132307029 } } },
-                    .{ .public_ext = &.{ .{ 1998557797, 80566965, 804003336, 822559206, 1759986447, 2123097886 }, .{ 1769383992, 1763743654, 387738393, 677875111, 2012824897, 277968915 }, .{ 862780079, 657544177, 1414060921, 439794104, 1299862018, 1153004470 }, .{ 1976128528, 1790348013, 2065807363, 1718121317, 1567820170, 1998399404 } } },
-                },
-                .cells = &.{
-                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 1474670890, 1499766615, 264008049, 600452102, 385839688, 567426019 } },
-                    .{ .ext = .{ 154577905, 340358420, 64899070, 412585116, 562886263, 132307029 } },
-                    .{ .ext = .{ 1998557797, 80566965, 804003336, 822559206, 1759986447, 2123097886 } },
-                    .{ .ext = .{ 1976128528, 1790348013, 2065807363, 1718121317, 1567820170, 1998399404 } },
-                },
-            },
-            .{
-                .columns = &.{
-                    .{ .public_ext = &.{ .{ 400093994, 369110736, 971939309, 712540022, 689841153, 1791196144 }, .{ 797497428, 1846962823, 1251364558, 1481051741, 1686848121, 1250579709 }, .{ 263187746, 157737982, 1166965256, 1977341288, 2086485444, 73761000 }, .{ 1849961578, 694240849, 1655468717, 1335883946, 345112727, 973671773 } } },
-                    .{ .public_ext = &.{ .{ 372731509, 1714001753, 1125948022, 1160339383, 955630462, 1420357413 }, .{ 275117419, 1981704592, 674678311, 1199190552, 1674462318, 674677105 }, .{ 1809488161, 1167670958, 453425235, 1230369715, 1940170858, 141511993 }, .{ 1885410060, 2090970768, 1370318707, 1370171302, 81722733, 259527323 } } },
-                    .{ .public_ext = &.{ .{ 672068398, 2087585636, 1592526224, 1184375973, 644998582, 1436991463 }, .{ 2029931105, 208774874, 1786602671, 1910852622, 1105964810, 1542223234 }, .{ 946164776, 711479804, 2010965037, 464258749, 1922634637, 131256497 }, .{ 1081047307, 744439986, 1111316303, 1371209573, 159564989, 340148620 } } },
-                    .{ .public_ext = &.{ .{ 1643950574, 519650809, 1727130925, 827594353, 1435093515, 1108420402 }, .{ 1143547594, 444194002, 903435941, 819516521, 2007744832, 668665964 }, .{ 346534429, 436377272, 2110707727, 1790207945, 53330909, 276058131 }, .{ 1999309188, 680132130, 1735938431, 1465395815, 1129593284, 1460790257 } } },
-                },
-                .cells = &.{},
-            },
-        },
-        .witness_claims = &.{ .{ 1445843361, 210259314, 1153040025, 323024470, 952447848, 854802525 }, .{ 1490103527, 336693413, 1504878544, 1113409889, 1558136819, 1267641408 }, .{ 1762607697, 459299239, 7760959, 1877043811, 57950152, 1911102285 }, .{ 296308867, 1940659539, 606175652, 1966379819, 1373482169, 24412666 }, .{ 2, 0, 0, 0, 0, 0 }, .{ 797130969, 1441755013, 2059356572, 1305490027, 203574699, 54912033 }, .{ 1762038540, 543045345, 1541446635, 1520706951, 1606288299, 245677428 }, .{ 1838088837, 323774299, 1610748887, 1121536412, 1961315195, 471072261 } },
-        .quotient_claims = &.{ .{ 1705847165, 1302277660, 294002109, 148807660, 1183899679, 798302794 }, .{ 395879805, 1396974075, 1307015144, 1997786615, 1660168147, 542557294 }, .{ 712378804, 1635574253, 1056605582, 1736931081, 463327387, 165459830 }, .{ 605337608, 2003903250, 1049066366, 1513412625, 741208560, 2111005867 } },
-        .module_sizes = &.{},
-    },
-};
-
-pub const system_82_spec = protocol.Spec{
-    .round_coin_counts = &[_]usize{ 0, 1, 0, 3, 3 },
-    .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 4 },
-    .total_round_coins = 7,
-};
-
-// scenario: "RangeCheckCompiler/DistinctBounds"
 
 const system_82_module_0_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
@@ -8851,7 +8775,166 @@ const system_82_module_1_buckets = [_]vanishing.Bucket{
     .{ .ratio = 1, .vanishings = &system_82_module_1_bucket_0_vanishings, .quotient_claim_offset = 3 },
 };
 
-const system_82_module_2_expressions = [_]vanishing.ExprNode{
+const system_82_modules = [_]vanishing.Module{
+    // module: "mod"
+    .{ .size = .{ .static = 4 }, .expressions = &system_82_module_0_expressions, .buckets = &system_82_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
+    // module: "range-mod-b4"
+    .{ .size = .{ .static = 4 }, .expressions = &system_82_module_1_expressions, .buckets = &system_82_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 4 },
+};
+
+// system: "rc-shared"
+const system_82 = vanishing.System{
+    .modules = &system_82_modules,
+    .dynamic_module_count = 0,
+    .total_witness_claims = 8,
+    .total_quotient_claims = 4,
+};
+
+const vanishing_scenario_82 = VanishingScenario{
+    .name = "RangeCheckCompiler/SharedBound",
+    .spec = system_82_spec,
+    .system = system_82,
+    .honest = .{
+        .rounds = &.{
+            .{
+                .columns = &.{
+                    .{ .public_base = &.{ 0, 1, 2, 3 } },
+                    .{ .public_base = &.{ 3, 0, 2, 1 } },
+                    .{ .public_base = &.{ 2, 2, 2, 2 } },
+                },
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{},
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 1474670890, 1499766615, 264008049, 600452102, 385839688, 567426019 }, .{ 458347610, 895059488, 832529886, 289368190, 1625029533, 1559551509 }, .{ 1364951523, 2001258965, 1936913791, 527449197, 207285979, 684515954 }, .{ 154577905, 340358420, 64899070, 412585116, 562886263, 132307029 } } },
+                    .{ .public_ext = &.{ .{ 1998557797, 80566965, 804003336, 822559206, 1759986447, 2123097886 }, .{ 1769383992, 1763743654, 387738393, 677875111, 2012824897, 277968915 }, .{ 862780079, 657544177, 1414060921, 439794104, 1299862018, 1153004470 }, .{ 1976128528, 1790348013, 2065807363, 1718121317, 1567820170, 1998399404 } } },
+                },
+                .cells = &.{
+                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
+                    .{ .ext = .{ 1474670890, 1499766615, 264008049, 600452102, 385839688, 567426019 } },
+                    .{ .ext = .{ 154577905, 340358420, 64899070, 412585116, 562886263, 132307029 } },
+                    .{ .ext = .{ 1998557797, 80566965, 804003336, 822559206, 1759986447, 2123097886 } },
+                    .{ .ext = .{ 1976128528, 1790348013, 2065807363, 1718121317, 1567820170, 1998399404 } },
+                },
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 400093994, 369110736, 971939309, 712540022, 689841153, 1791196144 }, .{ 797497428, 1846962823, 1251364558, 1481051741, 1686848121, 1250579709 }, .{ 263187746, 157737982, 1166965256, 1977341288, 2086485444, 73761000 }, .{ 1849961578, 694240849, 1655468717, 1335883946, 345112727, 973671773 } } },
+                    .{ .public_ext = &.{ .{ 372731509, 1714001753, 1125948022, 1160339383, 955630462, 1420357413 }, .{ 275117419, 1981704592, 674678311, 1199190552, 1674462318, 674677105 }, .{ 1809488161, 1167670958, 453425235, 1230369715, 1940170858, 141511993 }, .{ 1885410060, 2090970768, 1370318707, 1370171302, 81722733, 259527323 } } },
+                    .{ .public_ext = &.{ .{ 672068398, 2087585636, 1592526224, 1184375973, 644998582, 1436991463 }, .{ 2029931105, 208774874, 1786602671, 1910852622, 1105964810, 1542223234 }, .{ 946164776, 711479804, 2010965037, 464258749, 1922634637, 131256497 }, .{ 1081047307, 744439986, 1111316303, 1371209573, 159564989, 340148620 } } },
+                    .{ .public_ext = &.{ .{ 1643950574, 519650809, 1727130925, 827594353, 1435093515, 1108420402 }, .{ 1143547594, 444194002, 903435941, 819516521, 2007744832, 668665964 }, .{ 346534429, 436377272, 2110707727, 1790207945, 53330909, 276058131 }, .{ 1999309188, 680132130, 1735938431, 1465395815, 1129593284, 1460790257 } } },
+                },
+                .cells = &.{},
+            },
+        },
+        .witness_claims = &.{ .{ 1445843361, 210259314, 1153040025, 323024470, 952447848, 854802525 }, .{ 1490103527, 336693413, 1504878544, 1113409889, 1558136819, 1267641408 }, .{ 1762607697, 459299239, 7760959, 1877043811, 57950152, 1911102285 }, .{ 296308867, 1940659539, 606175652, 1966379819, 1373482169, 24412666 }, .{ 2, 0, 0, 0, 0, 0 }, .{ 797130969, 1441755013, 2059356572, 1305490027, 203574699, 54912033 }, .{ 1762038540, 543045345, 1541446635, 1520706951, 1606288299, 245677428 }, .{ 1838088837, 323774299, 1610748887, 1121536412, 1961315195, 471072261 } },
+        .quotient_claims = &.{ .{ 1705847165, 1302277660, 294002109, 148807660, 1183899679, 798302794 }, .{ 395879805, 1396974075, 1307015144, 1997786615, 1660168147, 542557294 }, .{ 712378804, 1635574253, 1056605582, 1736931081, 463327387, 165459830 }, .{ 605337608, 2003903250, 1049066366, 1513412625, 741208560, 2111005867 } },
+        .module_sizes = &.{},
+    },
+};
+
+pub const system_83_spec = protocol.Spec{
+    .round_coin_counts = &[_]usize{ 0, 1, 0, 3, 3 },
+    .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 4 },
+    .total_round_coins = 7,
+};
+
+// scenario: "RangeCheckCompiler/DistinctBounds"
+
+const system_83_module_0_expressions = [_]vanishing.ExprNode{
+    .{ .constant = field.Element.init(1) },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .column_claim = 0 }, // col: "colB"
+    .{ .op = .{ .operator = .add, .operands = &.{ 1, 2 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 0, 3 } } },
+    .{ .constant = field.Element.init(1) },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .column_claim = 1 }, // col: "colA"
+    .{ .op = .{ .operator = .add, .operands = &.{ 6, 7 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 5, 8 } } },
+    .{ .op = .{ .operator = .add, .operands = &.{ 4, 9 } } },
+    .{ .column_claim = 2 }, // col: "z-b1-k0"
+    .{ .column_claim = 3 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 11, 12 } } },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .column_claim = 1 }, // col: "colA"
+    .{ .op = .{ .operator = .add, .operands = &.{ 14, 15 } } },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .column_claim = 0 }, // col: "colB"
+    .{ .op = .{ .operator = .add, .operands = &.{ 17, 18 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 16, 19 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 13, 20 } } },
+    .{ .op = .{ .operator = .sub, .operands = &.{ 10, 21 } } },
+    .{ .cell_value = .{ .round = 2, .index = 3 } }, // cell: "result"
+    .{ .column_claim = 2 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 23, 24 } } },
+    .{ .lagrange_selector = 0 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 25, 26 } } },
+    .{ .cell_value = .{ .round = 2, .index = 4 } }, // cell: "result"
+    .{ .column_claim = 2 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 28, 29 } } },
+    .{ .lagrange_selector = 3 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 30, 31 } } },
+};
+
+const system_83_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+    // expression: "z-recurrence-b1-k0"
+    .{ .expression = 22, .cancelled_positions = &.{0} },
+};
+
+const system_83_module_0_bucket_1_vanishings = [_]vanishing.Vanishing{
+    // expression: "global"
+    .{ .expression = 27, .cancelled_positions = &.{} },
+    // expression: "global"
+    .{ .expression = 32, .cancelled_positions = &.{} },
+};
+
+const system_83_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 2, .vanishings = &system_83_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+    .{ .ratio = 1, .vanishings = &system_83_module_0_bucket_1_vanishings, .quotient_claim_offset = 2 },
+};
+
+const system_83_module_1_expressions = [_]vanishing.ExprNode{
+    .{ .column_claim = 0 }, // col: "M"
+    .{ .op = .{ .operator = .negate, .operands = &.{0} } },
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .column_claim = 2 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .column_claim = 3 }, // col: "range-col-b4"
+    .{ .op = .{ .operator = .add, .operands = &.{ 5, 6 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 4, 7 } } },
+    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 8 } } },
+    .{ .cell_value = .{ .round = 2, .index = 1 } }, // cell: "result"
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 10, 11 } } },
+    .{ .lagrange_selector = 0 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 12, 13 } } },
+    .{ .cell_value = .{ .round = 2, .index = 2 } }, // cell: "result"
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 15, 16 } } },
+    .{ .lagrange_selector = 3 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
+};
+
+const system_83_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+    // expression: "z-recurrence-b0-k0"
+    .{ .expression = 9, .cancelled_positions = &.{0} },
+    // expression: "global"
+    .{ .expression = 14, .cancelled_positions = &.{} },
+    // expression: "global"
+    .{ .expression = 19, .cancelled_positions = &.{} },
+};
+
+const system_83_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_83_module_1_bucket_0_vanishings, .quotient_claim_offset = 3 },
+};
+
+const system_83_module_2_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b2-k0"
@@ -8874,7 +8957,7 @@ const system_82_module_2_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
 };
 
-const system_82_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_83_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b2-k0"
     .{ .expression = 9, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -8883,31 +8966,31 @@ const system_82_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 19, .cancelled_positions = &.{} },
 };
 
-const system_82_module_2_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_82_module_2_bucket_0_vanishings, .quotient_claim_offset = 4 },
+const system_83_module_2_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_83_module_2_bucket_0_vanishings, .quotient_claim_offset = 4 },
 };
 
-const system_82_modules = [_]vanishing.Module{
+const system_83_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_82_module_0_expressions, .buckets = &system_82_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_83_module_0_expressions, .buckets = &system_83_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 4 },
     // module: "range-mod-b4"
-    .{ .size = .{ .static = 4 }, .expressions = &system_82_module_1_expressions, .buckets = &system_82_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 5 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_83_module_1_expressions, .buckets = &system_83_module_1_buckets, .witness_claim_offset = 4, .merge_coin_index = 2, .eval_coin_index = 5 },
     // module: "range-mod-b8"
-    .{ .size = .{ .static = 8 }, .expressions = &system_82_module_2_expressions, .buckets = &system_82_module_2_buckets, .witness_claim_offset = 8, .merge_coin_index = 3, .eval_coin_index = 6 },
+    .{ .size = .{ .static = 8 }, .expressions = &system_83_module_2_expressions, .buckets = &system_83_module_2_buckets, .witness_claim_offset = 8, .merge_coin_index = 3, .eval_coin_index = 6 },
 };
 
 // system: "rc-distinct"
-const system_82 = vanishing.System{
-    .modules = &system_82_modules,
+const system_83 = vanishing.System{
+    .modules = &system_83_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 12,
     .total_quotient_claims = 5,
 };
 
-const vanishing_scenario_82 = VanishingScenario{
+const vanishing_scenario_83 = VanishingScenario{
     .name = "RangeCheckCompiler/DistinctBounds",
-    .spec = system_82_spec,
-    .system = system_82,
+    .spec = system_83_spec,
+    .system = system_83,
     .honest = .{
         .rounds = &.{
             .{
@@ -8956,7 +9039,7 @@ const vanishing_scenario_82 = VanishingScenario{
     },
 };
 
-pub const system_83_spec = protocol.Spec{
+pub const system_84_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
     .total_round_coins = 5,
@@ -8964,7 +9047,7 @@ pub const system_83_spec = protocol.Spec{
 
 // scenario: "RangeCheckCompiler/BoundIsPowerOfTwo"
 
-const system_83_module_0_expressions = [_]vanishing.ExprNode{
+const system_84_module_0_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b1-k0"
     .{ .column_claim = 1 }, // col: "z-b1-k0"
@@ -8986,7 +9069,7 @@ const system_83_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_83_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_84_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -8995,11 +9078,11 @@ const system_83_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_83_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_83_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_84_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_84_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_83_module_1_expressions = [_]vanishing.ExprNode{
+const system_84_module_1_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b0-k0"
@@ -9022,7 +9105,7 @@ const system_83_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
 };
 
-const system_83_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_84_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 9, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -9031,29 +9114,29 @@ const system_83_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 19, .cancelled_positions = &.{} },
 };
 
-const system_83_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_83_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_84_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_84_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_83_modules = [_]vanishing.Module{
+const system_84_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_83_module_0_expressions, .buckets = &system_83_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_84_module_0_expressions, .buckets = &system_84_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
     // module: "range-mod-b16"
-    .{ .size = .{ .static = 16 }, .expressions = &system_83_module_1_expressions, .buckets = &system_83_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 16 }, .expressions = &system_84_module_1_expressions, .buckets = &system_84_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 4 },
 };
 
 // system: "rc-pow2"
-const system_83 = vanishing.System{
-    .modules = &system_83_modules,
+const system_84 = vanishing.System{
+    .modules = &system_84_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 7,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_83 = VanishingScenario{
+const vanishing_scenario_84 = VanishingScenario{
     .name = "RangeCheckCompiler/BoundIsPowerOfTwo",
-    .spec = system_83_spec,
-    .system = system_83,
+    .spec = system_84_spec,
+    .system = system_84,
     .honest = .{
         .rounds = &.{
             .{
@@ -9094,7 +9177,7 @@ const vanishing_scenario_83 = VanishingScenario{
     },
 };
 
-pub const system_84_spec = protocol.Spec{
+pub const system_85_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
     .total_round_coins = 5,
@@ -9102,7 +9185,7 @@ pub const system_84_spec = protocol.Spec{
 
 // scenario: "RangeCheckCompiler/BoundIsOne"
 
-const system_84_module_0_expressions = [_]vanishing.ExprNode{
+const system_85_module_0_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b1-k0"
     .{ .column_claim = 1 }, // col: "z-b1-k0"
@@ -9124,7 +9207,7 @@ const system_84_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_84_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_85_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -9133,11 +9216,11 @@ const system_84_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_84_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_84_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_85_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_85_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_84_module_1_expressions = [_]vanishing.ExprNode{
+const system_85_module_1_expressions = [_]vanishing.ExprNode{
     .{ .cell_value = .{ .round = 2, .index = 1 } }, // cell: "result"
     .{ .column_claim = 0 }, // col: "z-b0-k0"
     .{ .op = .{ .operator = .sub, .operands = &.{ 0, 1 } } },
@@ -9150,36 +9233,36 @@ const system_84_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 7, 8 } } },
 };
 
-const system_84_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_85_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "global"
     .{ .expression = 4, .cancelled_positions = &.{} },
     // expression: "global"
     .{ .expression = 9, .cancelled_positions = &.{} },
 };
 
-const system_84_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_84_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_85_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_85_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_84_modules = [_]vanishing.Module{
+const system_85_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_84_module_0_expressions, .buckets = &system_84_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_85_module_0_expressions, .buckets = &system_85_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
     // module: "range-mod-b1"
-    .{ .size = .{ .static = 1 }, .expressions = &system_84_module_1_expressions, .buckets = &system_84_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 1 }, .expressions = &system_85_module_1_expressions, .buckets = &system_85_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 4 },
 };
 
 // system: "rc-bound1"
-const system_84 = vanishing.System{
-    .modules = &system_84_modules,
+const system_85 = vanishing.System{
+    .modules = &system_85_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 4,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_84 = VanishingScenario{
+const vanishing_scenario_85 = VanishingScenario{
     .name = "RangeCheckCompiler/BoundIsOne",
-    .spec = system_84_spec,
-    .system = system_84,
+    .spec = system_85_spec,
+    .system = system_85,
     .honest = .{
         .rounds = &.{
             .{
@@ -9220,7 +9303,7 @@ const vanishing_scenario_84 = VanishingScenario{
     },
 };
 
-pub const system_85_spec = protocol.Spec{
+pub const system_86_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 3, 3 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 4 },
     .total_round_coins = 7,
@@ -9228,7 +9311,7 @@ pub const system_85_spec = protocol.Spec{
 
 // scenario: "RangeCheckCompiler/MultiModule"
 
-const system_85_module_0_expressions = [_]vanishing.ExprNode{
+const system_86_module_0_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b1-k0"
     .{ .column_claim = 1 }, // col: "z-b1-k0"
@@ -9250,7 +9333,7 @@ const system_85_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_85_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_86_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -9259,11 +9342,11 @@ const system_85_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_85_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_85_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_86_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_86_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_85_module_1_expressions = [_]vanishing.ExprNode{
+const system_86_module_1_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b2-k0"
     .{ .column_claim = 1 }, // col: "z-b2-k0"
@@ -9285,7 +9368,7 @@ const system_85_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_85_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_86_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b2-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -9294,11 +9377,11 @@ const system_85_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_85_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_85_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_86_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_86_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_85_module_2_expressions = [_]vanishing.ExprNode{
+const system_86_module_2_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b0-k0"
@@ -9321,7 +9404,7 @@ const system_85_module_2_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
 };
 
-const system_85_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_86_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 9, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -9330,31 +9413,31 @@ const system_85_module_2_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 19, .cancelled_positions = &.{} },
 };
 
-const system_85_module_2_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_85_module_2_bucket_0_vanishings, .quotient_claim_offset = 2 },
+const system_86_module_2_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_86_module_2_bucket_0_vanishings, .quotient_claim_offset = 2 },
 };
 
-const system_85_modules = [_]vanishing.Module{
+const system_86_modules = [_]vanishing.Module{
     // module: "modA"
-    .{ .size = .{ .static = 4 }, .expressions = &system_85_module_0_expressions, .buckets = &system_85_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_86_module_0_expressions, .buckets = &system_86_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 4 },
     // module: "modB"
-    .{ .size = .{ .static = 4 }, .expressions = &system_85_module_1_expressions, .buckets = &system_85_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 5 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_86_module_1_expressions, .buckets = &system_86_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 5 },
     // module: "range-mod-b4"
-    .{ .size = .{ .static = 4 }, .expressions = &system_85_module_2_expressions, .buckets = &system_85_module_2_buckets, .witness_claim_offset = 6, .merge_coin_index = 3, .eval_coin_index = 6 },
+    .{ .size = .{ .static = 4 }, .expressions = &system_86_module_2_expressions, .buckets = &system_86_module_2_buckets, .witness_claim_offset = 6, .merge_coin_index = 3, .eval_coin_index = 6 },
 };
 
 // system: "rc-cross-mod"
-const system_85 = vanishing.System{
-    .modules = &system_85_modules,
+const system_86 = vanishing.System{
+    .modules = &system_86_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 10,
     .total_quotient_claims = 3,
 };
 
-const vanishing_scenario_85 = VanishingScenario{
+const vanishing_scenario_86 = VanishingScenario{
     .name = "RangeCheckCompiler/MultiModule",
-    .spec = system_85_spec,
-    .system = system_85,
+    .spec = system_86_spec,
+    .system = system_86,
     .honest = .{
         .rounds = &.{
             .{
@@ -9400,7 +9483,7 @@ const vanishing_scenario_85 = VanishingScenario{
     },
 };
 
-pub const system_86_spec = protocol.Spec{
+pub const system_87_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
     .total_round_coins = 5,
@@ -9408,7 +9491,7 @@ pub const system_86_spec = protocol.Spec{
 
 // scenario: "RangeCheckCompiler/LargeBound"
 
-const system_86_module_0_expressions = [_]vanishing.ExprNode{
+const system_87_module_0_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
     .{ .column_claim = 0 }, // col: "z-b1-k0"
     .{ .column_claim = 1 }, // col: "z-b1-k0"
@@ -9430,7 +9513,7 @@ const system_86_module_0_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
 };
 
-const system_86_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_87_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b1-k0"
     .{ .expression = 8, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -9439,11 +9522,11 @@ const system_86_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 18, .cancelled_positions = &.{} },
 };
 
-const system_86_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_86_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+const system_87_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_87_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
 };
 
-const system_86_module_1_expressions = [_]vanishing.ExprNode{
+const system_87_module_1_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 0 }, // col: "M"
     .{ .op = .{ .operator = .negate, .operands = &.{0} } },
     .{ .column_claim = 1 }, // col: "z-b0-k0"
@@ -9466,7 +9549,7 @@ const system_86_module_1_expressions = [_]vanishing.ExprNode{
     .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
 };
 
-const system_86_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+const system_87_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     // expression: "z-recurrence-b0-k0"
     .{ .expression = 9, .cancelled_positions = &.{0} },
     // expression: "global"
@@ -9475,29 +9558,29 @@ const system_86_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
     .{ .expression = 19, .cancelled_positions = &.{} },
 };
 
-const system_86_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_86_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+const system_87_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_87_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
 };
 
-const system_86_modules = [_]vanishing.Module{
+const system_87_modules = [_]vanishing.Module{
     // module: "mod"
-    .{ .size = .{ .static = 8 }, .expressions = &system_86_module_0_expressions, .buckets = &system_86_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
+    .{ .size = .{ .static = 8 }, .expressions = &system_87_module_0_expressions, .buckets = &system_87_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
     // module: "range-mod-b128"
-    .{ .size = .{ .static = 128 }, .expressions = &system_86_module_1_expressions, .buckets = &system_86_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 4 },
+    .{ .size = .{ .static = 128 }, .expressions = &system_87_module_1_expressions, .buckets = &system_87_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 4 },
 };
 
 // system: "rc-large"
-const system_86 = vanishing.System{
-    .modules = &system_86_modules,
+const system_87 = vanishing.System{
+    .modules = &system_87_modules,
     .dynamic_module_count = 0,
     .total_witness_claims = 7,
     .total_quotient_claims = 2,
 };
 
-const vanishing_scenario_86 = VanishingScenario{
+const vanishing_scenario_87 = VanishingScenario{
     .name = "RangeCheckCompiler/LargeBound",
-    .spec = system_86_spec,
-    .system = system_86,
+    .spec = system_87_spec,
+    .system = system_87,
     .honest = .{
         .rounds = &.{
             .{
@@ -9538,151 +9621,13 @@ const vanishing_scenario_86 = VanishingScenario{
     },
 };
 
-pub const system_87_spec = protocol.Spec{
-    .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
-    .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
-    .total_round_coins = 5,
-};
-
-// scenario: "RangeCheckCompiler/NonPowerOfTwoBound"
-
-const system_87_module_0_expressions = [_]vanishing.ExprNode{
-    .{ .constant = field.Element.init(1) },
-    .{ .column_claim = 0 }, // col: "z-b1-k0"
-    .{ .column_claim = 1 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 2 } } },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 2 }, // col: "col"
-    .{ .op = .{ .operator = .add, .operands = &.{ 4, 5 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 3, 6 } } },
-    .{ .op = .{ .operator = .sub, .operands = &.{ 0, 7 } } },
-    .{ .cell_value = .{ .round = 2, .index = 3 } }, // cell: "result"
-    .{ .column_claim = 0 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 9, 10 } } },
-    .{ .lagrange_selector = 0 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 11, 12 } } },
-    .{ .cell_value = .{ .round = 2, .index = 4 } }, // cell: "result"
-    .{ .column_claim = 0 }, // col: "z-b1-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 14, 15 } } },
-    .{ .lagrange_selector = 3 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
-};
-
-const system_87_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
-    // expression: "z-recurrence-b1-k0"
-    .{ .expression = 8, .cancelled_positions = &.{0} },
-    // expression: "global"
-    .{ .expression = 13, .cancelled_positions = &.{} },
-    // expression: "global"
-    .{ .expression = 18, .cancelled_positions = &.{} },
-};
-
-const system_87_module_0_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_87_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
-};
-
-const system_87_module_1_expressions = [_]vanishing.ExprNode{
-    .{ .column_claim = 0 }, // col: "M"
-    .{ .op = .{ .operator = .negate, .operands = &.{0} } },
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .column_claim = 2 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
-    .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 3 }, // col: "range-col-b5"
-    .{ .op = .{ .operator = .add, .operands = &.{ 5, 6 } } },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 4, 7 } } },
-    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 8 } } },
-    .{ .cell_value = .{ .round = 2, .index = 1 } }, // cell: "result"
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 10, 11 } } },
-    .{ .lagrange_selector = 0 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 12, 13 } } },
-    .{ .cell_value = .{ .round = 2, .index = 2 } }, // cell: "result"
-    .{ .column_claim = 1 }, // col: "z-b0-k0"
-    .{ .op = .{ .operator = .sub, .operands = &.{ 15, 16 } } },
-    .{ .lagrange_selector = 7 },
-    .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
-};
-
-const system_87_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
-    // expression: "z-recurrence-b0-k0"
-    .{ .expression = 9, .cancelled_positions = &.{0} },
-    // expression: "global"
-    .{ .expression = 14, .cancelled_positions = &.{} },
-    // expression: "global"
-    .{ .expression = 19, .cancelled_positions = &.{} },
-};
-
-const system_87_module_1_buckets = [_]vanishing.Bucket{
-    .{ .ratio = 1, .vanishings = &system_87_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
-};
-
-const system_87_modules = [_]vanishing.Module{
-    // module: "mod"
-    .{ .size = .{ .static = 4 }, .expressions = &system_87_module_0_expressions, .buckets = &system_87_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
-    // module: "range-mod-b5"
-    .{ .size = .{ .static = 8 }, .expressions = &system_87_module_1_expressions, .buckets = &system_87_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 4 },
-};
-
-// system: "rc-np2"
-const system_87 = vanishing.System{
-    .modules = &system_87_modules,
-    .dynamic_module_count = 0,
-    .total_witness_claims = 7,
-    .total_quotient_claims = 2,
-};
-
-const vanishing_scenario_87 = VanishingScenario{
-    .name = "RangeCheckCompiler/NonPowerOfTwoBound",
-    .spec = system_87_spec,
-    .system = system_87,
-    .honest = .{
-        .rounds = &.{
-            .{
-                .columns = &.{
-                    .{ .public_base = &.{ 0, 4, 2, 1 } },
-                    .{ .public_base = &.{ 0, 1, 1, 0, 1, 0, 0, 1 } },
-                },
-                .cells = &.{},
-            },
-            .{
-                .columns = &.{},
-                .cells = &.{},
-            },
-            .{
-                .columns = &.{
-                    .{ .public_ext = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 57836437, 2011096881, 1070815184, 956761548, 593033238, 1098834017 }, .{ 755710522, 1525665308, 1517862377, 1596915749, 2013936855, 688408168 }, .{ 755710522, 1525665308, 1517862377, 1596915749, 2013936855, 688408168 }, .{ 894937294, 1235960914, 1533680703, 1622839221, 741419675, 1162174104 }, .{ 894937294, 1235960914, 1533680703, 1622839221, 741419675, 1162174104 }, .{ 894937294, 1235960914, 1533680703, 1622839221, 741419675, 1162174104 }, .{ 554824180, 1755348024, 1710475121, 1570037434, 1084372469, 1641554151 } } },
-                    .{ .public_ext = &.{ .{ 340113114, 1611319323, 1953912015, 52801787, 1787753639, 1651326386 }, .{ 200886342, 1901023717, 1938093689, 26878315, 929564386, 1177560450 }, .{ 1633718690, 255748857, 1491046496, 1517430547, 1639367202, 1587986299 }, .{ 1575882253, 375358409, 420231312, 560668999, 1046333964, 489152282 } } },
-                },
-                .cells = &.{
-                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
-                    .{ .ext = .{ 554824180, 1755348024, 1710475121, 1570037434, 1084372469, 1641554151 } },
-                    .{ .ext = .{ 340113114, 1611319323, 1953912015, 52801787, 1787753639, 1651326386 } },
-                    .{ .ext = .{ 1575882253, 375358409, 420231312, 560668999, 1046333964, 489152282 } },
-                },
-            },
-            .{
-                .columns = &.{
-                    .{ .public_ext = &.{ .{ 978834566, 1347437438, 27448523, 1402714851, 467591769, 470431698 }, .{ 2071539453, 336771186, 394495753, 1806679703, 1997078401, 1361779457 }, .{ 690138360, 1652982856, 1944201634, 23926500, 2120473223, 407294779 }, .{ 849066200, 1375849085, 1726470823, 2003179862, 1895673212, 2008377035 } } },
-                    .{ .public_ext = &.{ .{ 1599930371, 1356165777, 2039353323, 1107690309, 1127450990, 26031937 }, .{ 1748438426, 1980693244, 1922305465, 24675094, 1369106322, 1753064128 }, .{ 161779603, 1852376692, 1430317303, 563154817, 60298694, 1855264945 }, .{ 492487535, 495621868, 499433520, 1611630139, 239779292, 1827959530 }, .{ 1202441141, 202601247, 696619843, 568177957, 1972415780, 713239096 }, .{ 1048191672, 785367506, 655481400, 1957259839, 2128786410, 2044715377 }, .{ 1015835828, 1663302185, 1214286684, 1088678698, 377702679, 1402700776 }, .{ 268019050, 1122731966, 1081013881, 762267791, 1257676575, 1388744083 } } },
-                },
-                .cells = &.{},
-            },
-        },
-        .witness_claims = &.{ .{ 1382051727, 1186337420, 1538145235, 899520370, 2130615025, 913783802 }, .{ 1270144591, 266205663, 1371633229, 1779306129, 748281182, 471522257 }, .{ 1346871052, 2034126253, 576268305, 306112891, 383863824, 539657124 }, .{ 368320751, 1985927289, 1895470014, 1328258210, 1981959906, 648155444 }, .{ 295902880, 962081821, 847805642, 194573988, 917774759, 1079650818 }, .{ 1099404123, 1789153682, 113706177, 1489048309, 1605768992, 342134470 }, .{ 336261079, 2111306802, 85430941, 1110922034, 490816949, 437929146 } },
-        .quotient_claims = &.{ .{ 1237881347, 1495666013, 1571697122, 901233667, 1337257841, 1441406883 }, .{ 618027187, 1717459723, 1065086473, 644863094, 1148081331, 330713153 } },
-        .module_sizes = &.{},
-    },
-};
-
 pub const system_88_spec = protocol.Spec{
     .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
     .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
     .total_round_coins = 5,
 };
 
-// scenario: "RangeCheckCompiler/AllZeros"
+// scenario: "RangeCheckCompiler/NonPowerOfTwoBound"
 
 const system_88_module_0_expressions = [_]vanishing.ExprNode{
     .{ .constant = field.Element.init(1) },
@@ -9726,7 +9671,7 @@ const system_88_module_1_expressions = [_]vanishing.ExprNode{
     .{ .column_claim = 2 }, // col: "z-b0-k0"
     .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
     .{ .coin_value = 0 }, // coin: "gamma"
-    .{ .column_claim = 3 }, // col: "range-col-b8"
+    .{ .column_claim = 3 }, // col: "range-col-b5"
     .{ .op = .{ .operator = .add, .operands = &.{ 5, 6 } } },
     .{ .op = .{ .operator = .mul, .operands = &.{ 4, 7 } } },
     .{ .op = .{ .operator = .sub, .operands = &.{ 1, 8 } } },
@@ -9758,11 +9703,11 @@ const system_88_module_1_buckets = [_]vanishing.Bucket{
 const system_88_modules = [_]vanishing.Module{
     // module: "mod"
     .{ .size = .{ .static = 4 }, .expressions = &system_88_module_0_expressions, .buckets = &system_88_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
-    // module: "range-mod-b8"
+    // module: "range-mod-b5"
     .{ .size = .{ .static = 8 }, .expressions = &system_88_module_1_expressions, .buckets = &system_88_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 4 },
 };
 
-// system: "rc-zeros"
+// system: "rc-np2"
 const system_88 = vanishing.System{
     .modules = &system_88_modules,
     .dynamic_module_count = 0,
@@ -9771,9 +9716,147 @@ const system_88 = vanishing.System{
 };
 
 const vanishing_scenario_88 = VanishingScenario{
-    .name = "RangeCheckCompiler/AllZeros",
+    .name = "RangeCheckCompiler/NonPowerOfTwoBound",
     .spec = system_88_spec,
     .system = system_88,
+    .honest = .{
+        .rounds = &.{
+            .{
+                .columns = &.{
+                    .{ .public_base = &.{ 0, 4, 2, 1 } },
+                    .{ .public_base = &.{ 0, 1, 1, 0, 1, 0, 0, 1 } },
+                },
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{},
+                .cells = &.{},
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 0, 0, 0, 0, 0, 0 }, .{ 57836437, 2011096881, 1070815184, 956761548, 593033238, 1098834017 }, .{ 755710522, 1525665308, 1517862377, 1596915749, 2013936855, 688408168 }, .{ 755710522, 1525665308, 1517862377, 1596915749, 2013936855, 688408168 }, .{ 894937294, 1235960914, 1533680703, 1622839221, 741419675, 1162174104 }, .{ 894937294, 1235960914, 1533680703, 1622839221, 741419675, 1162174104 }, .{ 894937294, 1235960914, 1533680703, 1622839221, 741419675, 1162174104 }, .{ 554824180, 1755348024, 1710475121, 1570037434, 1084372469, 1641554151 } } },
+                    .{ .public_ext = &.{ .{ 340113114, 1611319323, 1953912015, 52801787, 1787753639, 1651326386 }, .{ 200886342, 1901023717, 1938093689, 26878315, 929564386, 1177560450 }, .{ 1633718690, 255748857, 1491046496, 1517430547, 1639367202, 1587986299 }, .{ 1575882253, 375358409, 420231312, 560668999, 1046333964, 489152282 } } },
+                },
+                .cells = &.{
+                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
+                    .{ .ext = .{ 0, 0, 0, 0, 0, 0 } },
+                    .{ .ext = .{ 554824180, 1755348024, 1710475121, 1570037434, 1084372469, 1641554151 } },
+                    .{ .ext = .{ 340113114, 1611319323, 1953912015, 52801787, 1787753639, 1651326386 } },
+                    .{ .ext = .{ 1575882253, 375358409, 420231312, 560668999, 1046333964, 489152282 } },
+                },
+            },
+            .{
+                .columns = &.{
+                    .{ .public_ext = &.{ .{ 978834566, 1347437438, 27448523, 1402714851, 467591769, 470431698 }, .{ 2071539453, 336771186, 394495753, 1806679703, 1997078401, 1361779457 }, .{ 690138360, 1652982856, 1944201634, 23926500, 2120473223, 407294779 }, .{ 849066200, 1375849085, 1726470823, 2003179862, 1895673212, 2008377035 } } },
+                    .{ .public_ext = &.{ .{ 1599930371, 1356165777, 2039353323, 1107690309, 1127450990, 26031937 }, .{ 1748438426, 1980693244, 1922305465, 24675094, 1369106322, 1753064128 }, .{ 161779603, 1852376692, 1430317303, 563154817, 60298694, 1855264945 }, .{ 492487535, 495621868, 499433520, 1611630139, 239779292, 1827959530 }, .{ 1202441141, 202601247, 696619843, 568177957, 1972415780, 713239096 }, .{ 1048191672, 785367506, 655481400, 1957259839, 2128786410, 2044715377 }, .{ 1015835828, 1663302185, 1214286684, 1088678698, 377702679, 1402700776 }, .{ 268019050, 1122731966, 1081013881, 762267791, 1257676575, 1388744083 } } },
+                },
+                .cells = &.{},
+            },
+        },
+        .witness_claims = &.{ .{ 1382051727, 1186337420, 1538145235, 899520370, 2130615025, 913783802 }, .{ 1270144591, 266205663, 1371633229, 1779306129, 748281182, 471522257 }, .{ 1346871052, 2034126253, 576268305, 306112891, 383863824, 539657124 }, .{ 368320751, 1985927289, 1895470014, 1328258210, 1981959906, 648155444 }, .{ 295902880, 962081821, 847805642, 194573988, 917774759, 1079650818 }, .{ 1099404123, 1789153682, 113706177, 1489048309, 1605768992, 342134470 }, .{ 336261079, 2111306802, 85430941, 1110922034, 490816949, 437929146 } },
+        .quotient_claims = &.{ .{ 1237881347, 1495666013, 1571697122, 901233667, 1337257841, 1441406883 }, .{ 618027187, 1717459723, 1065086473, 644863094, 1148081331, 330713153 } },
+        .module_sizes = &.{},
+    },
+};
+
+pub const system_89_spec = protocol.Spec{
+    .round_coin_counts = &[_]usize{ 0, 1, 0, 2, 2 },
+    .round_coin_offsets = &[_]usize{ 0, 0, 1, 1, 3 },
+    .total_round_coins = 5,
+};
+
+// scenario: "RangeCheckCompiler/AllZeros"
+
+const system_89_module_0_expressions = [_]vanishing.ExprNode{
+    .{ .constant = field.Element.init(1) },
+    .{ .column_claim = 0 }, // col: "z-b1-k0"
+    .{ .column_claim = 1 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 2 } } },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .column_claim = 2 }, // col: "col"
+    .{ .op = .{ .operator = .add, .operands = &.{ 4, 5 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 3, 6 } } },
+    .{ .op = .{ .operator = .sub, .operands = &.{ 0, 7 } } },
+    .{ .cell_value = .{ .round = 2, .index = 3 } }, // cell: "result"
+    .{ .column_claim = 0 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 9, 10 } } },
+    .{ .lagrange_selector = 0 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 11, 12 } } },
+    .{ .cell_value = .{ .round = 2, .index = 4 } }, // cell: "result"
+    .{ .column_claim = 0 }, // col: "z-b1-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 14, 15 } } },
+    .{ .lagrange_selector = 3 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 16, 17 } } },
+};
+
+const system_89_module_0_bucket_0_vanishings = [_]vanishing.Vanishing{
+    // expression: "z-recurrence-b1-k0"
+    .{ .expression = 8, .cancelled_positions = &.{0} },
+    // expression: "global"
+    .{ .expression = 13, .cancelled_positions = &.{} },
+    // expression: "global"
+    .{ .expression = 18, .cancelled_positions = &.{} },
+};
+
+const system_89_module_0_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_89_module_0_bucket_0_vanishings, .quotient_claim_offset = 0 },
+};
+
+const system_89_module_1_expressions = [_]vanishing.ExprNode{
+    .{ .column_claim = 0 }, // col: "M"
+    .{ .op = .{ .operator = .negate, .operands = &.{0} } },
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .column_claim = 2 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 2, 3 } } },
+    .{ .coin_value = 0 }, // coin: "gamma"
+    .{ .column_claim = 3 }, // col: "range-col-b8"
+    .{ .op = .{ .operator = .add, .operands = &.{ 5, 6 } } },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 4, 7 } } },
+    .{ .op = .{ .operator = .sub, .operands = &.{ 1, 8 } } },
+    .{ .cell_value = .{ .round = 2, .index = 1 } }, // cell: "result"
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 10, 11 } } },
+    .{ .lagrange_selector = 0 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 12, 13 } } },
+    .{ .cell_value = .{ .round = 2, .index = 2 } }, // cell: "result"
+    .{ .column_claim = 1 }, // col: "z-b0-k0"
+    .{ .op = .{ .operator = .sub, .operands = &.{ 15, 16 } } },
+    .{ .lagrange_selector = 7 },
+    .{ .op = .{ .operator = .mul, .operands = &.{ 17, 18 } } },
+};
+
+const system_89_module_1_bucket_0_vanishings = [_]vanishing.Vanishing{
+    // expression: "z-recurrence-b0-k0"
+    .{ .expression = 9, .cancelled_positions = &.{0} },
+    // expression: "global"
+    .{ .expression = 14, .cancelled_positions = &.{} },
+    // expression: "global"
+    .{ .expression = 19, .cancelled_positions = &.{} },
+};
+
+const system_89_module_1_buckets = [_]vanishing.Bucket{
+    .{ .ratio = 1, .vanishings = &system_89_module_1_bucket_0_vanishings, .quotient_claim_offset = 1 },
+};
+
+const system_89_modules = [_]vanishing.Module{
+    // module: "mod"
+    .{ .size = .{ .static = 4 }, .expressions = &system_89_module_0_expressions, .buckets = &system_89_module_0_buckets, .witness_claim_offset = 0, .merge_coin_index = 1, .eval_coin_index = 3 },
+    // module: "range-mod-b8"
+    .{ .size = .{ .static = 8 }, .expressions = &system_89_module_1_expressions, .buckets = &system_89_module_1_buckets, .witness_claim_offset = 3, .merge_coin_index = 2, .eval_coin_index = 4 },
+};
+
+// system: "rc-zeros"
+const system_89 = vanishing.System{
+    .modules = &system_89_modules,
+    .dynamic_module_count = 0,
+    .total_witness_claims = 7,
+    .total_quotient_claims = 2,
+};
+
+const vanishing_scenario_89 = VanishingScenario{
+    .name = "RangeCheckCompiler/AllZeros",
+    .spec = system_89_spec,
+    .system = system_89,
     .honest = .{
         .rounds = &.{
             .{
@@ -9904,4 +9987,5 @@ pub const scenarios = [_]VanishingScenario{
     vanishing_scenario_86,
     vanishing_scenario_87,
     vanishing_scenario_88,
+    vanishing_scenario_89,
 };
