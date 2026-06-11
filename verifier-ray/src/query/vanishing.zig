@@ -42,10 +42,6 @@ pub const ExprNode = union(enum) {
     coin_value: usize,
     constant: field.Element,
     op: ExprOp,
-    /// A Lagrange selector leaf, 1 at the carried row position and 0 elsewhere
-    /// on the module domain. It is never a witness claim: the verifier
-    /// evaluates its low-degree extension L_position(r) at the eval coin from
-    /// the module size (see evalLagrangeSelector).
     lagrange_selector: usize,
 };
 
@@ -128,20 +124,17 @@ fn verifyModule(
     if (static_n == 0 and !validModuleSize(dynamic_n)) return error.InvalidModuleSize;
 
     // Resolve the comptime/dynamic size distinction once, here. Everything below
-    // works with a plain runtime n and the canonical n-th root of unity omega.
-    // For static modules omega folds to a comptime constant (the size is
-    // validated above); for dynamic modules it is derived from the runtime size.
-    const n = if (static_n != 0) static_n else dynamic_n;
-    const omega = if (static_n != 0)
-        comptime (field.rootOfUnityBy(static_n) catch unreachable)
-    else
-        field.rootOfUnityBy(dynamic_n) catch return error.InvalidModuleSize;
-
-    // Let r be the evaluation coin and H the module domain of size n.
-    // The prover computes the domain annihilator Z_H(r) = r^n - 1.
+    // works with a plain runtime n. The canonical n-th root of unity is not
+    // resolved here: it is consulted only by lagrange_selector leaves, which
+    // derive it locally (static modules fold omega^position at comptime via
+    // static_n; dynamic modules compute it from ctx.n) — mirroring how
+    // cancellationAtPoint already derives its own roots.
+    // Let r be the evaluation coin and H the module domain of size n (= static_n
+    // for static modules, else dynamic_n). The prover computes the domain
+    // annihilator Z_H(r) = r^n - 1.
     const annihilator = powModuleSize(eval_coin, static_n, dynamic_n).sub(ext.Ext.one());
 
-    const ctx = EvalCtx{ .coin = eval_coin, .annihilator = annihilator, .n = n, .omega = omega };
+    const ctx = EvalCtx{ .coin = eval_coin, .annihilator = annihilator, .dynamic_n = dynamic_n };
     inline for (module.buckets) |bucket| {
         try verifyBucket(module, bucket, static_n, dynamic_n, input, merge_coin, ctx);
     }
@@ -184,7 +177,7 @@ fn verifyBucket(
         // P_agg(r) = sum_i alpha^i * P_i(r) * C_i(r). The cancellation factor
         // keeps its comptime root computation, so it takes static_n/dynamic_n
         // directly rather than the resolved ctx.
-        const value = try evalExpr(module, v.expression, ctx, input);
+        const value = try evalExpr(module, v.expression, static_n, ctx, input);
         const cancellation = try cancellationAtPoint(v.cancelled_positions, static_n, dynamic_n, ctx.coin);
         aggregate = aggregate.add(coin_power.mul(value.mul(cancellation)));
         coin_power = coin_power.mul(merge_coin);
@@ -196,22 +189,23 @@ fn verifyBucket(
 }
 
 // EvalCtx carries the per-module evaluation context that is shared, unchanged,
-// by every node of an expression: the module size n, the canonical n-th root of
-// unity omega, the eval coin r, and the domain annihilator r^n - 1. The
-// comptime/dynamic size distinction is already resolved in verifyModule, so n
-// and omega are plain runtime values here. Only lagrange_selector leaves read
-// the context; the other node kinds ignore it and merely forward it down the
-// recursion. Bundling it keeps evalExpr/evalOp from threading unused scalars.
+// by every node of an expression: the eval coin r, the domain annihilator
+// r^n - 1, and dynamic_n (the runtime module size, 0 for static modules). Only
+// lagrange_selector leaves read dynamic_n, and only on the dynamic path: a
+// static module's size is the comptime static_n threaded into the leaf, so its
+// size-derived terms fold at comptime and dynamic_n stays the unused 0
+// sentinel. The other node kinds ignore the context and merely forward it down
+// the recursion. Bundling it keeps evalExpr/evalOp from threading unused scalars.
 const EvalCtx = struct {
     coin: ext.Ext,
     annihilator: ext.Ext,
-    n: usize,
-    omega: field.Element,
+    dynamic_n: usize,
 };
 
 fn evalExpr(
     comptime module: Module,
     comptime expr_index: usize,
+    comptime static_n: usize,
     ctx: EvalCtx,
     input: CheckInput,
 ) Error!ext.Ext {
@@ -221,8 +215,8 @@ fn evalExpr(
         .cell_value => |ref| scalarToExt(input.ctx.rounds[ref.round].cells[ref.index]),
         .coin_value => |coin_index| input.ctx.all_coins[coin_index],
         .constant => |value| ext.Ext.lift(value),
-        .op => |op| try evalOp(module, op, ctx, input),
-        .lagrange_selector => |position| try evalLagrangeSelector(position, ctx),
+        .op => |op| try evalOp(module, op, static_n, ctx, input),
+        .lagrange_selector => |position| try evalLagrangeSelector(position, static_n, ctx),
     };
 }
 
@@ -236,15 +230,16 @@ fn scalarToExt(value: protocol.Scalar) ext.Ext {
 fn evalOp(
     comptime module: Module,
     comptime op: ExprOp,
+    comptime static_n: usize,
     ctx: EvalCtx,
     input: CheckInput,
 ) Error!ext.Ext {
-    const a = try evalExpr(module, op.operands[0], ctx, input);
+    const a = try evalExpr(module, op.operands[0], static_n, ctx, input);
     return switch (op.operator) {
-        .add => a.add(try evalExpr(module, op.operands[1], ctx, input)),
-        .mul => a.mul(try evalExpr(module, op.operands[1], ctx, input)),
-        .sub => a.sub(try evalExpr(module, op.operands[1], ctx, input)),
-        .div => a.div(try evalExpr(module, op.operands[1], ctx, input)),
+        .add => a.add(try evalExpr(module, op.operands[1], static_n, ctx, input)),
+        .mul => a.mul(try evalExpr(module, op.operands[1], static_n, ctx, input)),
+        .sub => a.sub(try evalExpr(module, op.operands[1], static_n, ctx, input)),
+        .div => a.div(try evalExpr(module, op.operands[1], static_n, ctx, input)),
         .double => a.add(a),
         .square => a.square(),
         .negate => a.neg(),
@@ -257,23 +252,38 @@ fn evalOp(
 //
 //     L_position(r) = omega^position * (r^n - 1) / (n * (r - omega^position)),
 //
-// where omega is the canonical n-th root of unity and n is the module size,
-// both resolved in verifyModule and carried in ctx. The (r^n - 1) factor is the
-// domain annihilator, also precomputed in ctx. This mirrors prover-ray
-// wiop.LagrangeSelector.EvaluateOutOfDomain, the reference used by
-// global.Verifier.
-fn evalLagrangeSelector(position: usize, ctx: EvalCtx) Error!ext.Ext {
-    const omega_pos = ctx.omega.pow(@as(u64, @intCast(position)));
+// where omega is the canonical n-th root of unity and n is the module size, and
+// the (r^n - 1) factor is the domain annihilator precomputed in ctx. This
+// mirrors prover-ray wiop.LagrangeSelector.EvaluateOutOfDomain, the reference
+// used by global.Verifier.
+//
+// position is comptime-known (it lives in the comptime expression DAG), so for
+// static modules (static_n != 0) omega^position folds to a comptime field
+// constant via staticRootPower — no runtime exponentiation. Dynamic modules
+// (static_n == 0) derive the n-th root of unity from ctx.n and take the runtime
+// pow. Everything else (the annihilator, the r - omega^position denominator,
+// the division) depends on the runtime eval coin r and stays runtime in both
+// cases.
+fn evalLagrangeSelector(comptime position: usize, comptime static_n: usize, ctx: EvalCtx) Error!ext.Ext {
+    const omega_pos = if (static_n != 0)
+        comptime staticRootPower(static_n, position)
+    else blk: {
+        const omega = field.rootOfUnityBy(ctx.dynamic_n) catch return error.InvalidModuleSize;
+        break :blk omega.pow(@as(u64, @intCast(position)));
+    };
 
     // numerator = omega^position * (r^n - 1).
     const numerator = ctx.annihilator.mulByBase(omega_pos);
 
-    // denominator = n * (r - omega^position). The field defines 1/0 = 0, so an
-    // in-domain eval coin (r == omega^position) would silently yield 0; reject
-    // it explicitly to match the Go evaluator's out-of-domain contract.
+    // denominator = n * (r - omega^position), where n = static_n for static
+    // modules (a comptime constant that folds here) else the runtime dynamic_n.
+    // The field defines 1/0 = 0, so an in-domain eval coin (r == omega^position)
+    // would silently yield 0; reject it explicitly to match the Go evaluator's
+    // out-of-domain contract.
     const r_minus_omega = ctx.coin.sub(ext.Ext.lift(omega_pos));
     if (r_minus_omega.isZero()) return error.LagrangeSelectorInDomain;
-    const denominator = r_minus_omega.mulByBase(field.Element.init(@as(u64, ctx.n)));
+    const n = if (static_n != 0) static_n else ctx.dynamic_n;
+    const denominator = r_minus_omega.mulByBase(field.Element.init(@as(u64, n)));
 
     return numerator.div(denominator);
 }
