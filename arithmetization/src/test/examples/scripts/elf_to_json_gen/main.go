@@ -14,12 +14,99 @@ const (
 	ENTRY_POINT_AND_BLOBS_COUNT = "entry_point_and_blobs_count"
 	BLOBS_OFFSET_AND_SIZE       = "blobs_offset_and_size"
 	BLOBS_DATA                  = "blobs_data"
+	INSTRUCTION_BASE            = "instruction_base"
+	DECODED_CORE                = "decoded_core"
+	DECODED_ITYPE               = "decoded_itype"
+	DECODED_RTYPE               = "decoded_rtype"
+	DECODED_STYPE               = "decoded_stype"
 )
+
+// Instruction type identifiers. These MUST match the Type constants in
+// arithmetization/src/main/riscv/utils/constants.zkc.
+const (
+	undefinedType = 0
+	rType         = 1
+	iType         = 2
+	sType         = 3
+	bType         = 4
+	uType         = 5
+	jType         = 6
+	miscMemType   = 7
+)
+
+// RISC-V opcodes (low 7 bits), mirroring the Opcode constants in constants.zkc.
+const (
+	opcodeOP      = 0b0110011
+	opcodeOP32    = 0b0111011
+	opcodeLOAD    = 0b0000011
+	opcodeOPIMM   = 0b0010011
+	opcodeOPIMM32 = 0b0011011
+	opcodeJALR    = 0b1100111
+	opcodeSYSTEM  = 0b1110011
+	opcodeMISCMEM = 0b0001111
+	opcodeSTORE   = 0b0100011
+	opcodeBRANCH  = 0b1100011
+	opcodeLUI     = 0b0110111
+	opcodeAUIPC   = 0b0010111
+	opcodeJAL     = 0b1101111
+)
+
+// defaultMaxDecodedRecords caps the number of pre-decoded instruction records
+// (one per 4-byte word across the executable span). It guards against a
+// non-contiguous executable layout causing a giant dense table (and an OOM).
+// Overridable via the ELF2JSON_MAX_DECODED_RECORDS environment variable.
+const defaultMaxDecodedRecords = 2_000_000
+
+// instructionTypeFromOpcode mirrors instruction_type_from_opcode in
+// constants.zkc.
+func instructionTypeFromOpcode(opcode uint32) uint32 {
+	switch opcode {
+	case opcodeOP, opcodeOP32:
+		return rType
+	case opcodeLOAD, opcodeOPIMM, opcodeOPIMM32, opcodeJALR, opcodeSYSTEM:
+		return iType
+	case opcodeSTORE:
+		return sType
+	case opcodeBRANCH:
+		return bType
+	case opcodeLUI, opcodeAUIPC:
+		return uType
+	case opcodeJAL:
+		return jType
+	case opcodeMISCMEM:
+		return miscMemType
+	default:
+		return undefinedType
+	}
+}
 
 type memoryBlob struct {
 	offset uint64
 	data   []byte
 	name   string
+}
+
+// bitWriter accumulates values into a big-endian, MSB-first bit stream. This
+// matches how zkc deserializes `pub input` records (see EncodeBytes /
+// DecodeUnsignedInt in zkc): fields are packed tightly by their exact bit width
+// (NOT rounded up to bytes), records are concatenated with no per-record
+// alignment, and the final byte is zero-padded in its low bits.
+type bitWriter struct {
+	buf   []byte
+	nbits int
+}
+
+// writeBits appends the low `width` bits of `val`, most-significant bit first.
+func (w *bitWriter) writeBits(val uint64, width int) {
+	for i := width - 1; i >= 0; i-- {
+		if w.nbits%8 == 0 {
+			w.buf = append(w.buf, 0)
+		}
+		if (val>>uint(i))&1 == 1 {
+			w.buf[w.nbits/8] |= 1 << uint(7-(w.nbits%8))
+		}
+		w.nbits++
+	}
 }
 
 // parseInBytes accepts either an inline hex literal / raw string, or @path to a
@@ -115,7 +202,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ELF2JSON_WRITE_SECTIONS must be true or false, got %q\n", writeSections)
 		os.Exit(1)
 	}
-	printJson(blobs, elfFile.Entry)
+	// Statically decode the executable region into the pre-decoded instruction
+	// input tables consumed by the interpreter.
+	base, coreHex, itypeHex, rtypeHex, stypeHex := buildDecodedProgram(elfFile.Sections)
+	printJson(blobs, elfFile.Entry, base, coreHex, itypeHex, rtypeHex, stypeHex)
 }
 
 // Extract sparse memory blobs from allocated file-backed sections. Zero-filled
@@ -181,6 +271,126 @@ func readSectionBytes(s *elf.Section) []byte {
 	return data
 }
 
+// buildDecodedProgram statically decodes every 4-byte instruction word across
+// the executable region of the ELF, producing the base address plus the
+// hex-encoded decoded_core, decoded_itype, decoded_rtype and decoded_stype input
+// arrays. The arrays are dense (one record per word in [base, end)), indexed at
+// runtime by index = (pc - base) >> 2.
+func buildDecodedProgram(sections []*elf.Section) (base uint64, coreHex, itypeHex, rtypeHex, stypeHex string) {
+	var (
+		execSections []*elf.Section
+		minAddr      = ^uint64(0)
+		maxEnd       uint64
+		coveredBytes uint64
+	)
+	// Collect executable, file-backed sections.
+	for _, s := range sections {
+		if s.Size == 0 || s.Type == elf.SHT_NOBITS || s.Flags&elf.SHF_EXECINSTR == 0 {
+			continue
+		}
+		execSections = append(execSections, s)
+		coveredBytes += s.Size
+		if s.Addr < minAddr {
+			minAddr = s.Addr
+		}
+		if end := s.Addr + s.Size; end > maxEnd {
+			maxEnd = end
+		}
+	}
+	if len(execSections) == 0 {
+		panic("no executable sections found for instruction decoding")
+	}
+	if len(execSections) > 1 {
+		fmt.Fprintf(os.Stderr, "warning: %d executable sections found; the decoded tables densely cover the whole span\n",
+			len(execSections))
+	}
+	// Align base down and end up to a 4-byte instruction boundary.
+	base = minAddr &^ 0x3
+	end := (maxEnd + 3) &^ uint64(0x3)
+	nRecords := (end - base) / 4
+	// OOM safeguard: reject an implausibly large span (e.g. far-apart
+	// executable sections that would otherwise be densely filled).
+	maxRecords := maxDecodedRecordsFromEnv()
+	if nRecords > maxRecords {
+		fmt.Fprintf(os.Stderr,
+			"error: decoded program would have %d records (cap %d); executable span [%#x, %#x) is likely non-contiguous\n",
+			nRecords, maxRecords, base, end)
+		os.Exit(1)
+	}
+	// Build a flat byte image of the executable span (zero-filled gaps).
+	image := make([]byte, end-base)
+	for _, s := range execSections {
+		data := readSectionBytes(s)
+		copy(image[s.Addr-base:], data)
+	}
+	// Decode each instruction word. Field bit widths MUST match the semantic
+	// types declared for the inputs in memory.zkc, because zkc packs input
+	// records tightly by bit width:
+	//   decoded_core : opcode:Opcode(u7), instruction_type:Type(u3), instruction_parameters:u25
+	//   decoded_itype: funct3:Funct3(u3), imm12:Imm12(u12), rs1:Register(u5), rd:Register(u5)
+	//   decoded_rtype: funct7:Funct7(u7), rs2:Register(u5), rs1:Register(u5), funct3:Funct3(u3), rd:Register(u5)
+	//   decoded_stype: imm12:Imm12(u12), rs2:Register(u5), rs1:Register(u5), funct3:Funct3(u3)
+	var (
+		coreBits  bitWriter
+		itypeBits bitWriter
+		rtypeBits bitWriter
+		stypeBits bitWriter
+	)
+	for off := uint64(0); off+4 <= uint64(len(image)); off += 4 {
+		instr := uint32(image[off]) | uint32(image[off+1])<<8 | uint32(image[off+2])<<16 | uint32(image[off+3])<<24
+
+		opcode := instr & 0x7f
+		params := (instr >> 7) & 0x1ffffff
+		instrType := instructionTypeFromOpcode(opcode)
+
+		rd := (instr >> 7) & 0x1f
+		funct3 := (instr >> 12) & 0x7
+		rs1 := (instr >> 15) & 0x1f
+		rs2 := (instr >> 20) & 0x1f
+		imm12 := (instr >> 20) & 0xfff
+		funct7 := (instr >> 25) & 0x7f
+
+		// S-type immediate is split in the encoding (imm[11] :: imm[10:5] :: imm[4:0]);
+		// reassemble it into the 12-bit store immediate.
+		simm12 := (((instr >> 31) & 0x1) << 11) | (((instr >> 25) & 0x3f) << 5) | ((instr >> 7) & 0x1f)
+
+		coreBits.writeBits(uint64(opcode), 7)
+		coreBits.writeBits(uint64(instrType), 3)
+		coreBits.writeBits(uint64(params), 25)
+
+		itypeBits.writeBits(uint64(funct3), 3)
+		itypeBits.writeBits(uint64(imm12), 12)
+		itypeBits.writeBits(uint64(rs1), 5)
+		itypeBits.writeBits(uint64(rd), 5)
+
+		rtypeBits.writeBits(uint64(funct7), 7)
+		rtypeBits.writeBits(uint64(rs2), 5)
+		rtypeBits.writeBits(uint64(rs1), 5)
+		rtypeBits.writeBits(uint64(funct3), 3)
+		rtypeBits.writeBits(uint64(rd), 5)
+
+		stypeBits.writeBits(uint64(simm12), 12)
+		stypeBits.writeBits(uint64(rs2), 5)
+		stypeBits.writeBits(uint64(rs1), 5)
+		stypeBits.writeBits(uint64(funct3), 3)
+	}
+
+	return base, hex.EncodeToString(coreBits.buf), hex.EncodeToString(itypeBits.buf), hex.EncodeToString(rtypeBits.buf), hex.EncodeToString(stypeBits.buf)
+}
+
+// maxDecodedRecordsFromEnv returns the configured cap on decoded records.
+func maxDecodedRecordsFromEnv() uint64 {
+	if v := os.Getenv("ELF2JSON_MAX_DECODED_RECORDS"); v != "" {
+		n, err := strconv.ParseUint(v, 0, 64)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "invalid ELF2JSON_MAX_DECODED_RECORDS %q: %v\n", v, err)
+			os.Exit(1)
+		}
+		return n
+	}
+	return defaultMaxDecodedRecords
+}
+
 func writeSectionsFile(file *os.File, blobs []memoryBlob) {
 	fmt.Fprintln(file, "index, offset,             size,               name")
 	for i, blob := range blobs {
@@ -188,7 +398,7 @@ func writeSectionsFile(file *os.File, blobs []memoryBlob) {
 	}
 }
 
-func printJson(blobs []memoryBlob, entryPoint uint64) {
+func printJson(blobs []memoryBlob, entryPoint, instructionBase uint64, coreHex, itypeHex, rtypeHex, stypeHex string) {
 	var (
 		entryPointString   = fmt.Sprintf("%016x", entryPoint)
 		blobsCountString   = fmt.Sprintf("%016x", len(blobs))
@@ -207,6 +417,11 @@ func printJson(blobs []memoryBlob, entryPoint uint64) {
 	fmt.Println("{")
 	fmt.Printf("\t\"%s\": \"0x%s\",\n", ENTRY_POINT_AND_BLOBS_COUNT, entryPointAndBlobs)
 	fmt.Printf("\t\"%s\": \"0x%s\",\n", BLOBS_OFFSET_AND_SIZE, strings.Join(blobMetadata, "____"))
-	fmt.Printf("\t\"%s\": \"0x%s\"\n", BLOBS_DATA, strings.Join(blobData, "____"))
+	fmt.Printf("\t\"%s\": \"0x%s\",\n", BLOBS_DATA, strings.Join(blobData, "____"))
+	fmt.Printf("\t\"%s\": \"0x%016x\",\n", INSTRUCTION_BASE, instructionBase)
+	fmt.Printf("\t\"%s\": \"0x%s\",\n", DECODED_CORE, coreHex)
+	fmt.Printf("\t\"%s\": \"0x%s\",\n", DECODED_ITYPE, itypeHex)
+	fmt.Printf("\t\"%s\": \"0x%s\",\n", DECODED_RTYPE, rtypeHex)
+	fmt.Printf("\t\"%s\": \"0x%s\"\n", DECODED_STYPE, stypeHex)
 	fmt.Println("}")
 }
