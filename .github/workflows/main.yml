@@ -39,7 +39,7 @@ jobs:
 
   filter-commit-changes:
     needs: [lint-latest-commit-messages]
-    runs-on: ubuntu-24.04
+    runs-on: gha-lfdt-lineth-ss-ubuntu-24-amd64-small
     name: Filter commit changes
     outputs:
       coordinator: ${{ steps.filter.outputs.coordinator }}
