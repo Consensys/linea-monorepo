@@ -267,9 +267,15 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// ELLIPTIC CURVES
 		//
-		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
+		// Flatten columns (common.NewFlattenColumn) use size
+		// NextPowerOfTwo(origMaskSize * NbLimbs) with NbLimbs=8 for Uint128Le.
+		// Discovery BaseSize for .*FLATTEN must match that flattened size so
+		// Horner/projection counts match (here: 512*8=4096 and 4096*8=32768).
+		// These .*FLATTEN rules must appear BEFORE the generic ^blsdata\. /
+		// ^ecdata\. catch-alls.
+		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\..*FLATTEN`},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\.`},
-		{BaseSize: 1048576, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
+		{BaseSize: 32768, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\..*FLATTEN`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Column: zkevm.Ecmul.AlignedGnarkData.IsActive},
