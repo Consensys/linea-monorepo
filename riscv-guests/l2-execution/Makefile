@@ -78,7 +78,7 @@ gp-compile: gp-linker-script
 		if [ "$(OBJDUMP)" = "true" ]; then \
 			echo "\nDisassembling $(ELF_BIN)"; \
 			LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(ELF_BIN) > $(ELF_BIN).objdump; \
-		fi
+		fi \
 	else \
 		echo "\nSkipping objdump: riscv64-unknown-elf-objdump is not on PATH"; \
 	fi
