@@ -72,6 +72,8 @@ fn write_16<ram>(address:Address, value:u16) -> () {
             return
         }
         default: {
+            // Case 1, 3 and default case are collapse to reduce the number of instructions. 
+            // Default case cannot happen as offset is the result of % 4.
             var b0:u8
             var b1:u8
             b1::b0 = value
@@ -85,31 +87,41 @@ fn write_16<ram>(address:Address, value:u16) -> () {
 fn write_32<ram>(address:Address, value:u32) -> () {
     var word_idx:Address = address / 4
     var offset:Address = address % 4
-    if offset == 0 {
-        ram[word_idx] = value
-    } else {
-        var lo:u16
-        var hi:u16
-        hi::lo = value
-        write_16(address, lo)
-        write_16(address + 2, hi)
+    switch offset {
+        case 0: {
+            ram[word_idx] = value
+            return
+        }
+        default: {
+            var lo:u16
+            var hi:u16
+            hi::lo = value
+            write_16(address, lo)
+            write_16(address + 2, hi)
+            return
+        }
     }
 }
 
 fn write_64<ram>(address:Address, value:u64) -> () {
     var word_idx:Address = address / 4
     var offset:Address = address % 4
-    if offset == 0 {
-        var lo:u32
-        var hi:u32
-        hi::lo = value
-        ram[word_idx] = lo
-        ram[word_idx + 1] = hi
-    } else {
-        var lo:u32
-        var hi:u32
-        hi::lo = value
-        write_32(address, lo)
-        write_32(address + 4, hi)
+    switch offset {
+        case 0: {
+            var lo:u32
+            var hi:u32
+            hi::lo = value
+            ram[word_idx] = lo
+            ram[word_idx + 1] = hi
+            return
+        }
+        default: {
+            var lo:u32
+            var hi:u32
+            hi::lo = value
+            write_32(address, lo)
+            write_32(address + 4, hi)
+            return
+        }
     }
 }

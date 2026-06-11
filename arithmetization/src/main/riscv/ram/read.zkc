@@ -22,23 +22,15 @@ fn read_16<ram>(address:Address) -> (value:u16) {
     var word_idx:Address = address / 4
     var offset:Address = address % 4
     switch offset {
-        case 0: {
-            var trash: u16
-            trash::value = ram[word_idx]
-            return
-        }
-        case 1: {
-            var trash: u16
-            trash::value = ram[word_idx] >> 8
-            return
-        }
-        case 2: {
-            var trash: u16
-            trash::value = ram[word_idx] >> 16
+        case 3: {
+            var trash: u48
+            // Concatenate highest byte of (word_idx) and lowest byte of (word_idx + 1)
+            trash::value = (ram[word_idx + 1]::ram[word_idx]) >> 24
             return
         }
         default: {
-            value = ((ram[word_idx] >> 24) | ((ram[word_idx + 1] & 0xFF) << 8)) as u16
+            var trash: u16
+            trash::value = ram[word_idx] >> (offset * 8)
             return
         }
     }
@@ -52,16 +44,11 @@ fn read_32<ram>(address:Address) -> (value:u32) {
             value = ram[word_idx]
             return
         }
-        case 1: {
-            value = (ram[word_idx] >> 8) | ((ram[word_idx + 1] & 0xFF) << 24)
-            return
-        }
-        case 2: {
-            value = (ram[word_idx] >> 16) | ((ram[word_idx + 1] & 0xFFFF) << 16)
-            return
-        }
         default: {
-            value = (ram[word_idx] >> 24) | ((ram[word_idx + 1] & 0xFFFFFF) << 8)
+            // Case 1, 2, 3 are collapse to reduce the number of instructions. 
+            // Default case cannot happen as offset is the result of % 4.
+            var trash: u32
+            trash::value = (ram[word_idx + 1]::ram[word_idx]) >> (offset * 8)
             return
         }
     }
@@ -70,11 +57,16 @@ fn read_32<ram>(address:Address) -> (value:u32) {
 fn read_64<ram>(address:Address) -> (value:u64) {
     var word_idx:Address = address / 4
     var offset:Address = address % 4
-    if offset == 0 {
-        value = ram[word_idx + 1]::ram[word_idx]
-    } else {
-        var lo:u32 = read_32(address)
-        var hi:u32 = read_32(address + 4)
-        value = hi::lo
+    switch offset {
+        case 0: {
+            value = ram[word_idx + 1]::ram[word_idx]
+            return
+        }
+        default: {
+            var lo:u32 = read_32(address)
+            var hi:u32 = read_32(address + 4)
+            value = hi::lo
+            return
+        }
     }
 }
