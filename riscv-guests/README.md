@@ -57,7 +57,7 @@ Work on a single guest by invoking its own Makefile directly:
 
 ```bash
 make -C l2-execution compile ZIG=/path/to/zig
-make -C l2-execution compile ZIG=/path/to/zig INPUT_OFFSET=0x08800000   # override the input offset
+make -C l2-execution compile ZIG=/path/to/zig IN_ORIGIN=0x08800000   # override the input offset
 ```
 
 `make compile` builds the guest as a **statically-linked rv64im ELF** under `<guest>/zig-out/bin/` — the [zkvm-standards](https://github.com/eth-act/zkvm-standards/blob/main/standards/riscv-target/target.md) artifact ("Object Format: ELF, statically linked"). `make test` runs the native Zig unit tests (see [Native test dependencies](#native-test-dependencies)).

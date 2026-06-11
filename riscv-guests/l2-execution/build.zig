@@ -10,13 +10,13 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{
         .preferred_optimize_mode = .ReleaseSmall,
     });
-    const input_offset = b.option([]const u8, "input-offset", "Input memory origin") orelse "0x08800000";
-    const input_offset_value: usize = @intCast(common.parseAddress("input-offset", input_offset));
-    // -Dinput-offset is the converter's input-placement address (forwarded as IN_BYTES_OFFSET) and
+    const in_origin = b.option([]const u8, "in-origin", "Input memory origin") orelse "0x08800000";
+    const in_origin_value: usize = @intCast(common.parseAddress("in-origin", in_origin));
+    // -Din-origin is the converter's input-placement address (forwarded as IN_BYTES_OFFSET) and
     // must match the linker's `_in_start`. The guest no longer reads it directly — it gets the
     // input via read_input (zkvm_io reads `_in_start`), so guest_options stays wired but unconsumed.
     const guest_options = b.addOptions();
-    guest_options.addOption(usize, "input_offset", input_offset_value);
+    guest_options.addOption(usize, "in_origin", in_origin_value);
     const guest_options_mod = guest_options.createModule();
 
     const guest_name = "evm_execution_guest";

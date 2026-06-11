@@ -27,8 +27,8 @@ EXAMPLES_DIR := $(abspath $(MAKEFILE_DIR)../../arithmetization/src/test/examples
 
 # Where the ZKC run places the input — forwarded to the examples Makefile as IN_ORIGIN, and it must
 # match the ELF's `_in_start` (build_common's linker script: 0x08800000). Also passed
-# as -Dinput-offset, which the guest no longer consumes (it reads `_in_start` via read_input).
-INPUT_OFFSET ?= 0x08800000
+# as -Din-origin, which the guest no longer consumes (it reads `_in_start` via read_input).
+IN_ORIGIN ?= 0x08800000
 
 # Optional input bytes for a ZKC run (0x-prefixed; the converter byte-reverses it — see elf_to_json_gen).
 IN_BYTES ?= ""
@@ -48,7 +48,7 @@ fetch:
 	$(ZIG) build $(ZIG_BUILD_FLAGS) --fetch
 
 compile:
-	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS) -Dinput-offset=$(INPUT_OFFSET)
+	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS) -Din-origin=$(IN_ORIGIN)
 	@if command -v riscv64-unknown-elf-objdump >/dev/null 2>&1; then \
 		echo "\nDisassembling $(ELF_BIN)"; \
 		LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(ELF_BIN) > $(ELF_BIN).objdump; \
@@ -74,10 +74,10 @@ clean:
 # Build the ELF, then hand it to the ZKC layer (single source of truth for ELF->JSON + zkc). Requires
 # `zkc` and `go` on PATH. elf_to_json_gen needs the PT_LOAD segments + entry point a linked ELF has.
 exec: compile
-	$(MAKE) -C $(EXAMPLES_DIR) elf-exec BIN_EXT="$(ELF_BIN)" IN_BYTES="$(IN_BYTES)" IN_ORIGIN=$(INPUT_OFFSET)
+	$(MAKE) -C $(EXAMPLES_DIR) elf-exec BIN_EXT="$(ELF_BIN)" IN_BYTES="$(IN_BYTES)" IN_ORIGIN=$(IN_ORIGIN)
 
 debug: compile
-	$(MAKE) -C $(EXAMPLES_DIR) elf-debug BIN_EXT="$(ELF_BIN)" IN_BYTES="$(IN_BYTES)" IN_ORIGIN=$(INPUT_OFFSET)
+	$(MAKE) -C $(EXAMPLES_DIR) elf-debug BIN_EXT="$(ELF_BIN)" IN_BYTES="$(IN_BYTES)" IN_ORIGIN=$(IN_ORIGIN)
 
 # Guest-owned sample run: feed the committed, pre-framed sample input through ZkC (no IN_BYTES
 # needed). The converter byte-reverses the 0x-hex back into [u64 LE len][SSZ] at _in_start.

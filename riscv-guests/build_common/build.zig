@@ -99,7 +99,7 @@ const linker_script_source = @embedFile("linker_script.ld");
 /// Zig links its own soft-float compiler_rt (`__udivti3` / `mem*`) automatically.
 ///
 /// Installed by the DEFAULT build (`zig build` → zig-out/bin/<name>); also reachable via the `elf`
-/// step alias. NOTE: linker_script.ld's input-region origin assumes the default `-Dinput-offset`
+/// step alias. NOTE: linker_script.ld's IN origin assumes the default `-Din-origin`
 /// (0x08800000); a guest built with a custom offset needs a matching linker script.
 pub fn installGuestElf(b: *std.Build, root_module: *std.Build.Module, guest_name: []const u8) void {
     const wf = b.addWriteFiles();
