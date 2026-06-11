@@ -4,7 +4,7 @@ This document explains how verifier-ray measures the RISC-V cost of the vanishin
 
 ## Technique
 
-The benchmark builds a tiny R5 guest from `bench/vanishing_main.zig`. That guest imports one generated vanishing fixture, calls `vanishing.verify(selected_case.system, selected_case.input)`, and exits with code `0` on success or `1` on verifier rejection.
+The benchmark builds a tiny R5 guest from `bench/vanishing_main.zig`. That guest imports one generated vanishing fixture, marks the selected proof-value arrays as runtime data, calls `vanishing.verify(selected_case.system, selected_case.input)`, and exits with code `0` on success or `1` on verifier rejection.
 
 The build path is:
 
@@ -20,9 +20,9 @@ Zig benchmark guest
 
 ## Separate Fixture
 
-The ordinary vanishing test fixture in `testdata/generated/vanishing.zig` is shaped for unit tests. It stores proof values as raw `u32` limbs and the tests convert them into `runtime.RoundMessage`, `field.Element`, and `ext.Ext` values using allocator-backed helpers.
+The ordinary vanishing test fixture in `testdata/generated/vanishing.zig` is shaped for unit tests. It stores proof values as raw `u32` limbs and the tests convert them into `protocol.RoundMessage`, `field.Element`, and `ext.Ext` values using allocator-backed helpers.
 
-The benchmark fixture in `bench/generated/vanishing.zig` is shaped for measurement. It emits typed `vanishing.CheckInput` constants directly, so the guest does not spend measured RISC-V cycles parsing proof bytes, allocating arrays, or converting raw limbs into field elements. The selected proof/system data is compiled into the RISC-V ELF as immutable constants and loaded into guest memory before the interpreter starts counting RISC-V instructions.
+The benchmark fixture in `bench/generated/vanishing.zig` is shaped for measurement. It emits typed `vanishing.CheckInput` data directly, so the guest does not spend measured RISC-V cycles parsing proof bytes, allocating arrays, or converting raw limbs into field elements. The generated system metadata remains compile-time data for `vanishing.verify`; selected proof-value arrays are emitted as mutable fixture data and touched with `std.mem.doNotOptimizeAway` before verification to keep ReleaseSmall from constant-folding an honest proof into a direct success exit.
 
 ## Measurement Scope
 

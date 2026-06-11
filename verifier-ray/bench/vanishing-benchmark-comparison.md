@@ -12,10 +12,10 @@ Each row measures one generated honest vanishing benchmark case. The reported va
 | --- | --- |
 | Case selector | `all` |
 | Cases measured | 83 |
-| Fastest | `6 Vanishing/ConstantColumn` (164,896 cycles) |
-| Slowest | `80 RangeCheckCompiler/LargeBound` (7,236,804 cycles) |
+| Fastest | `6 Vanishing/ConstantColumn` (6,273 cycles) |
+| Slowest | `53 LogDerivativeSumCompiler/ManyFractions` (34,398 cycles) |
 | Zig release mode | `small` |
-| Git commit | `c54f7a417` |
+| Git commit | `582fc5455` |
 | Zig | `0.16.0` |
 | zkc | `mod	github.com/consensys/go-corset	v1.2.18-0.20260521022840-414e7b73971e` |
 | zkc main | `bench/riscv_main_bench.zkc` |
@@ -25,89 +25,89 @@ Each row measures one generated honest vanishing benchmark case. The reported va
 
 | Case | Scenario | RISC-V cycles | vs fastest | Modules | Dynamic | Rounds | Expressions | Buckets | Vanishings | Witness | Quotient |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 0 | `Vanishing/BooleanColumn` | 165,468 | +572 (0.3%) | 1 | 0 | 3 | 5 | 1 | 1 | 1 | 1 |
-| 1 | `Vanishing/Fibonacci` | 262,308 | +97,412 (59.1%) | 1 | 0 | 3 | 5 | 1 | 1 | 3 | 1 |
-| 2 | `Vanishing/GeometricProgression` | 261,931 | +97,035 (58.8%) | 1 | 0 | 3 | 5 | 1 | 1 | 2 | 1 |
-| 3 | `Vanishing/ConditionalCounter` | 293,056 | +128,160 (77.7%) | 1 | 0 | 3 | 5 | 1 | 1 | 3 | 1 |
-| 4 | `Vanishing/PythagoreanTriplet` | 326,113 | +161,217 (97.8%) | 1 | 0 | 3 | 8 | 1 | 1 | 3 | 1 |
-| 5 | `Vanishing/DynamicFibonacci` | 262,661 | +97,765 (59.3%) | 1 | 1 | 3 | 5 | 1 | 1 | 3 | 1 |
-| 6 | `Vanishing/ConstantColumn` | 164,896 | fastest | 1 | 0 | 3 | 3 | 1 | 1 | 1 | 1 |
-| 7 | `Vanishing/ForwardShiftConstant` | 261,299 | +96,403 (58.5%) | 1 | 0 | 3 | 3 | 1 | 1 | 2 | 1 |
-| 8 | `Vanishing/BooleanCube` | 263,548 | +98,652 (59.8%) | 1 | 0 | 3 | 7 | 1 | 1 | 1 | 2 |
-| 9 | `Vanishing/LinearCombination` | 197,999 | +33,103 (20.1%) | 1 | 0 | 3 | 9 | 1 | 1 | 3 | 1 |
-| 10 | `Vanishing/LargeFibonacci` | 484,635 | +319,739 (193.9%) | 1 | 0 | 3 | 5 | 1 | 1 | 3 | 1 |
-| 11 | `Vanishing/MultipleVanishingsSameRatio` | 167,128 | +2,232 (1.4%) | 1 | 0 | 3 | 6 | 1 | 2 | 2 | 1 |
-| 12 | `Vanishing/MixedRatioVanishings` | 168,803 | +3,907 (2.4%) | 1 | 0 | 3 | 8 | 1 | 2 | 2 | 1 |
-| 13 | `Vanishing/MultiModule` | 456,970 | +292,074 (177.1%) | 2 | 0 | 3 | 8 | 2 | 2 | 2 | 2 |
-| 14 | `Vanishing/ManualCancellation` | 165,963 | +1,067 (0.6%) | 1 | 0 | 3 | 5 | 1 | 1 | 2 | 1 |
-| 15 | `Vanishing/PrecomputedSelector` | 165,555 | +659 (0.4%) | 1 | 0 | 3 | 5 | 1 | 1 | 2 | 1 |
-| 16 | `Vanishing/CellLeaf` | 165,015 | +119 (0.1%) | 1 | 0 | 3 | 3 | 1 | 1 | 1 | 1 |
-| 17 | `Vanishing/CoinScaled` | 198,634 | +33,738 (20.5%) | 1 | 0 | 4 | 5 | 1 | 1 | 2 | 1 |
-| 18 | `Vanishing/ThreeStepRecurrence` | 263,295 | +98,399 (59.7%) | 1 | 0 | 3 | 5 | 1 | 1 | 3 | 1 |
-| 19 | `Vanishing/Quartic` | 457,264 | +292,368 (177.3%) | 1 | 0 | 3 | 9 | 1 | 1 | 1 | 4 |
-| 20 | `Vanishing/LeftPadDynamic` | 261,606 | +96,710 (58.6%) | 1 | 1 | 3 | 3 | 1 | 1 | 2 | 1 |
-| 21 | `Vanishing/CubicWithBackShift` | 454,926 | +290,030 (175.9%) | 1 | 0 | 3 | 7 | 1 | 1 | 2 | 2 |
-| 22 | `Vanishing/MixedHighRatio` | 1,224,304 | +1,059,408 (642.5%) | 1 | 0 | 3 | 16 | 2 | 2 | 1 | 6 |
-| 23 | `Vanishing/MultiModuleHighRatio` | 748,558 | +583,662 (354.0%) | 2 | 0 | 3 | 14 | 2 | 2 | 2 | 4 |
-| 24 | `Vanishing/SizeThirtyTwoCubic` | 1,689,553 | +1,524,657 (924.6%) | 1 | 0 | 3 | 7 | 1 | 1 | 1 | 2 |
-| 25 | `Vanishing/LargeForwardShift` | 263,205 | +98,309 (59.6%) | 1 | 0 | 3 | 3 | 1 | 1 | 2 | 1 |
-| 26 | `Vanishing/BackAndForwardShift` | 263,064 | +98,168 (59.5%) | 1 | 0 | 3 | 7 | 1 | 1 | 3 | 1 |
-| 27 | `Vanishing/DynamicQuadratic` | 261,273 | +96,377 (58.4%) | 1 | 1 | 3 | 5 | 1 | 1 | 1 | 1 |
-| 28 | `Vanishing/QuarticWithBackShift` | 839,208 | +674,312 (408.9%) | 1 | 0 | 3 | 11 | 1 | 1 | 2 | 4 |
-| 29 | `LocalVanishing/SingleColumnFirstRowZero` | 165,091 | +195 (0.1%) | 1 | 0 | 3 | 3 | 1 | 1 | 2 | 1 |
-| 30 | `LocalVanishing/SingleColumnLastRowZero` | 165,119 | +223 (0.1%) | 1 | 0 | 3 | 3 | 1 | 1 | 2 | 1 |
-| 31 | `LocalVanishing/ShiftedColumnFirstRowZero` | 165,051 | +155 (0.1%) | 1 | 0 | 3 | 3 | 1 | 1 | 2 | 1 |
-| 32 | `LocalVanishing/TwoColumnsEqualAtFirstRow` | 165,249 | +353 (0.2%) | 1 | 0 | 3 | 5 | 1 | 1 | 3 | 1 |
-| 33 | `LocalVanishing/MultipleConstraintsSameModule` | 167,942 | +3,046 (1.8%) | 1 | 0 | 3 | 6 | 1 | 2 | 3 | 1 |
-| 34 | `LocalVanishing/SecondRowConstraint` | 165,523 | +627 (0.4%) | 1 | 0 | 3 | 5 | 1 | 1 | 2 | 1 |
-| 35 | `LocalVanishing/CellEquality` | 165,618 | +722 (0.4%) | 1 | 0 | 3 | 5 | 1 | 1 | 2 | 1 |
-| 36 | `LocalVanishing/CoinScaled` | 198,291 | +33,395 (20.3%) | 1 | 0 | 4 | 7 | 1 | 1 | 2 | 1 |
-| 37 | `LocalVanishing/MultipleAnchorsSharedColumn` | 171,715 | +6,819 (4.1%) | 1 | 0 | 3 | 15 | 1 | 3 | 4 | 1 |
-| 38 | `LocalVanishing/ConstantSubtraction` | 165,567 | +671 (0.4%) | 1 | 0 | 3 | 5 | 1 | 1 | 2 | 1 |
-| 39 | `LocalVanishing/WrapAroundShift` | 165,079 | +183 (0.1%) | 1 | 0 | 3 | 3 | 1 | 1 | 2 | 1 |
-| 40 | `LocalVanishing/ProductIsZero` | 263,038 | +98,142 (59.5%) | 1 | 0 | 3 | 5 | 1 | 1 | 3 | 2 |
-| 41 | `LocalVanishing/CellAndCoin` | 230,175 | +65,279 (39.6%) | 1 | 0 | 4 | 7 | 1 | 1 | 2 | 1 |
-| 42 | `LocalVanishing/ThreeColumnLinear` | 197,294 | +32,398 (19.6%) | 1 | 0 | 3 | 7 | 1 | 1 | 4 | 1 |
-| 43 | `LocalVanishing/MultiAnchorMultiColumn` | 168,170 | +3,274 (2.0%) | 1 | 0 | 3 | 8 | 1 | 2 | 4 | 1 |
-| 44 | `LocalVanishing/CubeAtFirstRow` | 457,320 | +292,424 (177.3%) | 1 | 0 | 3 | 9 | 1 | 1 | 2 | 4 |
-| 45 | `LocalVanishing/MultiModule` | 329,784 | +164,888 (100.0%) | 2 | 0 | 3 | 6 | 2 | 2 | 4 | 2 |
-| 46 | `LogDerivativeSumCompiler/SingleFractionAllOnes` | 325,588 | +160,692 (97.5%) | 1 | 0 | 4 | 7 | 1 | 1 | 3 | 1 |
-| 47 | `LogDerivativeSumCompiler/PartialFilter` | 357,543 | +192,647 (116.8%) | 1 | 0 | 4 | 9 | 1 | 1 | 4 | 1 |
-| 48 | `LogDerivativeSumCompiler/AllZeroFilter` | 357,507 | +192,611 (116.8%) | 1 | 0 | 4 | 9 | 1 | 1 | 4 | 1 |
-| 49 | `LogDerivativeSumCompiler/FilterMasksZeroDenominator` | 357,752 | +192,856 (117.0%) | 1 | 0 | 4 | 9 | 1 | 1 | 5 | 1 |
-| 50 | `LogDerivativeSumCompiler/Packing4Fractions` | 912,147 | +747,251 (453.2%) | 1 | 0 | 4 | 34 | 2 | 2 | 8 | 5 |
-| 51 | `LogDerivativeSumCompiler/MultiModuleBucketing` | 682,225 | +517,329 (313.7%) | 2 | 0 | 4 | 16 | 2 | 2 | 7 | 2 |
-| 52 | `LogDerivativeSumCompiler/ConditionalLookupShape` | 555,554 | +390,658 (236.9%) | 2 | 0 | 4 | 21 | 2 | 2 | 8 | 2 |
-| 53 | `LogDerivativeSumCompiler/ManyFractions` | 1,112,240 | +947,344 (574.5%) | 1 | 0 | 4 | 61 | 2 | 3 | 13 | 5 |
-| 54 | `LogDerivativeSumCompiler/SizeTwoModule` | 197,948 | +33,052 (20.0%) | 1 | 0 | 4 | 7 | 1 | 1 | 3 | 1 |
-| 55 | `LogDerivativeSumCompiler/MultipleQueries` | 520,058 | +355,162 (215.4%) | 1 | 0 | 4 | 14 | 1 | 2 | 6 | 1 |
-| 56 | `LogDerivativeSumCompiler/VectorDenominator` | 356,859 | +191,963 (116.4%) | 1 | 0 | 4 | 7 | 1 | 1 | 4 | 1 |
-| 57 | `LogDerivativeSumCompiler/AllFiltersOnesPacked` | 686,955 | +522,059 (316.6%) | 1 | 0 | 4 | 33 | 1 | 1 | 6 | 4 |
-| 58 | `Lookup/SingleColumnNoFilters` | 682,938 | +518,042 (314.2%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
-| 59 | `Lookup/FilterOnIncluded` | 587,921 | +423,025 (256.5%) | 2 | 0 | 5 | 21 | 2 | 2 | 8 | 2 |
-| 60 | `Lookup/FilterOnIncluding` | 716,337 | +551,441 (334.4%) | 2 | 0 | 5 | 27 | 2 | 2 | 8 | 2 |
-| 61 | `Lookup/DoubleConditional` | 748,773 | +583,877 (354.1%) | 2 | 0 | 5 | 29 | 2 | 2 | 9 | 2 |
-| 62 | `Lookup/MultiColumn` | 748,073 | +583,177 (353.7%) | 2 | 0 | 5 | 27 | 2 | 2 | 9 | 2 |
-| 63 | `Lookup/SharedTable` | 881,081 | +716,185 (434.3%) | 3 | 0 | 5 | 28 | 3 | 3 | 10 | 3 |
-| 64 | `Lookup/DistinctTables` | 1,014,349 | +849,453 (515.1%) | 4 | 0 | 5 | 38 | 4 | 4 | 14 | 4 |
-| 65 | `Lookup/MultiColumnFilterOnIncluding` | 749,489 | +584,593 (354.5%) | 2 | 0 | 5 | 35 | 2 | 2 | 10 | 2 |
-| 66 | `Lookup/RepeatedValueInTable` | 682,990 | +518,094 (314.2%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
-| 67 | `Lookup/ShiftedAColumn` | 781,482 | +616,586 (373.9%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 3 |
-| 68 | `Lookup/ShiftedBColumn` | 683,089 | +518,193 (314.3%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
-| 69 | `Lookup/MultipleAFragments` | 881,165 | +716,269 (434.4%) | 3 | 0 | 5 | 28 | 3 | 3 | 10 | 3 |
-| 70 | `Lookup/WidthThree` | 653,958 | +489,062 (296.6%) | 2 | 0 | 5 | 35 | 2 | 2 | 11 | 2 |
-| 71 | `Lookup/PrecomputedTable` | 651,159 | +486,263 (294.9%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
-| 72 | `Lookup/RepeatedSValues` | 683,106 | +518,210 (314.3%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
-| 73 | `Lookup/EmptySelected` | 683,508 | +518,612 (314.5%) | 2 | 0 | 5 | 21 | 2 | 2 | 8 | 2 |
-| 74 | `RangeCheckCompiler/Basic` | 1,064,091 | +899,195 (545.3%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
-| 75 | `RangeCheckCompiler/SharedBound` | 783,075 | +618,179 (374.9%) | 2 | 0 | 5 | 33 | 2 | 2 | 8 | 3 |
-| 76 | `RangeCheckCompiler/DistinctBounds` | 1,329,988 | +1,165,092 (706.6%) | 3 | 0 | 5 | 43 | 3 | 3 | 12 | 4 |
-| 77 | `RangeCheckCompiler/BoundIsPowerOfTwo` | 1,285,577 | +1,120,681 (679.6%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
-| 78 | `RangeCheckCompiler/BoundIsOne` | 421,749 | +256,853 (155.8%) | 1 | 0 | 5 | 9 | 1 | 1 | 3 | 1 |
-| 79 | `RangeCheckCompiler/MultiModule` | 1,007,782 | +842,886 (511.2%) | 3 | 0 | 5 | 28 | 3 | 3 | 10 | 3 |
-| 80 | `RangeCheckCompiler/LargeBound` | 7,236,804 | +7,071,908 (4288.7%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
-| 81 | `RangeCheckCompiler/NonPowerOfTwoBound` | 873,594 | +708,698 (429.8%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
-| 82 | `RangeCheckCompiler/AllZeros` | 873,582 | +708,686 (429.8%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
+| 0 | `Vanishing/BooleanColumn` | 6,815 | +542 (8.6%) | 1 | 0 | 3 | 5 | 1 | 1 | 1 | 1 |
+| 1 | `Vanishing/Fibonacci` | 9,015 | +2,742 (43.7%) | 1 | 0 | 3 | 5 | 1 | 1 | 3 | 1 |
+| 2 | `Vanishing/GeometricProgression` | 8,614 | +2,341 (37.3%) | 1 | 0 | 3 | 5 | 1 | 1 | 2 | 1 |
+| 3 | `Vanishing/ConditionalCounter` | 8,064 | +1,791 (28.6%) | 1 | 0 | 3 | 5 | 1 | 1 | 3 | 1 |
+| 4 | `Vanishing/PythagoreanTriplet` | 9,444 | +3,171 (50.5%) | 1 | 0 | 3 | 8 | 1 | 1 | 3 | 1 |
+| 5 | `Vanishing/DynamicFibonacci` | 9,487 | +3,214 (51.2%) | 1 | 1 | 3 | 5 | 1 | 1 | 3 | 1 |
+| 6 | `Vanishing/ConstantColumn` | 6,273 | fastest | 1 | 0 | 3 | 3 | 1 | 1 | 1 | 1 |
+| 7 | `Vanishing/ForwardShiftConstant` | 7,932 | +1,659 (26.4%) | 1 | 0 | 3 | 3 | 1 | 1 | 2 | 1 |
+| 8 | `Vanishing/BooleanCube` | 9,929 | +3,656 (58.3%) | 1 | 0 | 3 | 7 | 1 | 1 | 1 | 2 |
+| 9 | `Vanishing/LinearCombination` | 7,707 | +1,434 (22.9%) | 1 | 0 | 3 | 9 | 1 | 1 | 3 | 1 |
+| 10 | `Vanishing/LargeFibonacci` | 9,792 | +3,519 (56.1%) | 1 | 0 | 3 | 5 | 1 | 1 | 3 | 1 |
+| 11 | `Vanishing/MultipleVanishingsSameRatio` | 8,668 | +2,395 (38.2%) | 1 | 0 | 3 | 6 | 1 | 2 | 2 | 1 |
+| 12 | `Vanishing/MixedRatioVanishings` | 10,161 | +3,888 (62.0%) | 1 | 0 | 3 | 8 | 1 | 2 | 2 | 1 |
+| 13 | `Vanishing/MultiModule` | 13,334 | +7,061 (112.6%) | 2 | 0 | 3 | 8 | 2 | 2 | 2 | 2 |
+| 14 | `Vanishing/ManualCancellation` | 7,357 | +1,084 (17.3%) | 1 | 0 | 3 | 5 | 1 | 1 | 2 | 1 |
+| 15 | `Vanishing/PrecomputedSelector` | 6,887 | +614 (9.8%) | 1 | 0 | 3 | 5 | 1 | 1 | 2 | 1 |
+| 16 | `Vanishing/CellLeaf` | 6,298 | +25 (0.4%) | 1 | 0 | 3 | 3 | 1 | 1 | 1 | 1 |
+| 17 | `Vanishing/CoinScaled` | 7,770 | +1,497 (23.9%) | 1 | 0 | 4 | 5 | 1 | 1 | 2 | 1 |
+| 18 | `Vanishing/ThreeStepRecurrence` | 9,966 | +3,693 (58.9%) | 1 | 0 | 3 | 5 | 1 | 1 | 3 | 1 |
+| 19 | `Vanishing/Quartic` | 13,853 | +7,580 (120.8%) | 1 | 0 | 3 | 9 | 1 | 1 | 1 | 4 |
+| 20 | `Vanishing/LeftPadDynamic` | 8,310 | +2,037 (32.5%) | 1 | 1 | 3 | 3 | 1 | 1 | 2 | 1 |
+| 21 | `Vanishing/CubicWithBackShift` | 11,658 | +5,385 (85.8%) | 1 | 0 | 3 | 7 | 1 | 1 | 2 | 2 |
+| 22 | `Vanishing/MixedHighRatio` | 21,453 | +15,180 (242.0%) | 1 | 0 | 3 | 16 | 2 | 2 | 1 | 6 |
+| 23 | `Vanishing/MultiModuleHighRatio` | 20,103 | +13,830 (220.5%) | 2 | 0 | 3 | 14 | 2 | 2 | 2 | 4 |
+| 24 | `Vanishing/SizeThirtyTwoCubic` | 12,260 | +5,987 (95.4%) | 1 | 0 | 3 | 7 | 1 | 1 | 1 | 2 |
+| 25 | `Vanishing/LargeForwardShift` | 9,834 | +3,561 (56.8%) | 1 | 0 | 3 | 3 | 1 | 1 | 2 | 1 |
+| 26 | `Vanishing/BackAndForwardShift` | 9,701 | +3,428 (54.6%) | 1 | 0 | 3 | 7 | 1 | 1 | 3 | 1 |
+| 27 | `Vanishing/DynamicQuadratic` | 7,956 | +1,683 (26.8%) | 1 | 1 | 3 | 5 | 1 | 1 | 1 | 1 |
+| 28 | `Vanishing/QuarticWithBackShift` | 16,196 | +9,923 (158.2%) | 1 | 0 | 3 | 11 | 1 | 1 | 2 | 4 |
+| 29 | `LocalVanishing/SingleColumnFirstRowZero` | 6,436 | +163 (2.6%) | 1 | 0 | 3 | 3 | 1 | 1 | 2 | 1 |
+| 30 | `LocalVanishing/SingleColumnLastRowZero` | 6,436 | +163 (2.6%) | 1 | 0 | 3 | 3 | 1 | 1 | 2 | 1 |
+| 31 | `LocalVanishing/ShiftedColumnFirstRowZero` | 6,436 | +163 (2.6%) | 1 | 0 | 3 | 3 | 1 | 1 | 2 | 1 |
+| 32 | `LocalVanishing/TwoColumnsEqualAtFirstRow` | 6,816 | +543 (8.7%) | 1 | 0 | 3 | 5 | 1 | 1 | 3 | 1 |
+| 33 | `LocalVanishing/MultipleConstraintsSameModule` | 9,309 | +3,036 (48.4%) | 1 | 0 | 3 | 6 | 1 | 2 | 3 | 1 |
+| 34 | `LocalVanishing/SecondRowConstraint` | 6,886 | +613 (9.8%) | 1 | 0 | 3 | 5 | 1 | 1 | 2 | 1 |
+| 35 | `LocalVanishing/CellEquality` | 6,911 | +638 (10.2%) | 1 | 0 | 3 | 5 | 1 | 1 | 2 | 1 |
+| 36 | `LocalVanishing/CoinScaled` | 7,503 | +1,230 (19.6%) | 1 | 0 | 4 | 7 | 1 | 1 | 2 | 1 |
+| 37 | `LocalVanishing/MultipleAnchorsSharedColumn` | 13,103 | +6,830 (108.9%) | 1 | 0 | 3 | 15 | 1 | 3 | 4 | 1 |
+| 38 | `LocalVanishing/ConstantSubtraction` | 6,886 | +613 (9.8%) | 1 | 0 | 3 | 5 | 1 | 1 | 2 | 1 |
+| 39 | `LocalVanishing/WrapAroundShift` | 6,436 | +163 (2.6%) | 1 | 0 | 3 | 3 | 1 | 1 | 2 | 1 |
+| 40 | `LocalVanishing/ProductIsZero` | 9,670 | +3,397 (54.2%) | 1 | 0 | 3 | 5 | 1 | 1 | 3 | 2 |
+| 41 | `LocalVanishing/CellAndCoin` | 7,588 | +1,315 (21.0%) | 1 | 0 | 4 | 7 | 1 | 1 | 2 | 1 |
+| 42 | `LocalVanishing/ThreeColumnLinear` | 6,952 | +679 (10.8%) | 1 | 0 | 3 | 7 | 1 | 1 | 4 | 1 |
+| 43 | `LocalVanishing/MultiAnchorMultiColumn` | 9,688 | +3,415 (54.4%) | 1 | 0 | 3 | 8 | 1 | 2 | 4 | 1 |
+| 44 | `LocalVanishing/CubeAtFirstRow` | 13,853 | +7,580 (120.8%) | 1 | 0 | 3 | 9 | 1 | 1 | 2 | 4 |
+| 45 | `LocalVanishing/MultiModule` | 12,877 | +6,604 (105.3%) | 2 | 0 | 3 | 6 | 2 | 2 | 4 | 2 |
+| 46 | `LogDerivativeSumCompiler/SingleFractionAllOnes` | 7,974 | +1,701 (27.1%) | 1 | 0 | 4 | 7 | 1 | 1 | 3 | 1 |
+| 47 | `LogDerivativeSumCompiler/PartialFilter` | 8,587 | +2,314 (36.9%) | 1 | 0 | 4 | 9 | 1 | 1 | 4 | 1 |
+| 48 | `LogDerivativeSumCompiler/AllZeroFilter` | 8,588 | +2,315 (36.9%) | 1 | 0 | 4 | 9 | 1 | 1 | 4 | 1 |
+| 49 | `LogDerivativeSumCompiler/FilterMasksZeroDenominator` | 8,518 | +2,245 (35.8%) | 1 | 0 | 4 | 9 | 1 | 1 | 5 | 1 |
+| 50 | `LogDerivativeSumCompiler/Packing4Fractions` | 24,451 | +18,178 (289.8%) | 1 | 0 | 4 | 34 | 2 | 2 | 8 | 5 |
+| 51 | `LogDerivativeSumCompiler/MultiModuleBucketing` | 16,113 | +9,840 (156.9%) | 2 | 0 | 4 | 16 | 2 | 2 | 7 | 2 |
+| 52 | `LogDerivativeSumCompiler/ConditionalLookupShape` | 15,659 | +9,386 (149.6%) | 2 | 0 | 4 | 21 | 2 | 2 | 8 | 2 |
+| 53 | `LogDerivativeSumCompiler/ManyFractions` | 34,398 | +28,125 (448.4%) | 1 | 0 | 4 | 61 | 2 | 3 | 13 | 5 |
+| 54 | `LogDerivativeSumCompiler/SizeTwoModule` | 7,034 | +761 (12.1%) | 1 | 0 | 4 | 7 | 1 | 1 | 3 | 1 |
+| 55 | `LogDerivativeSumCompiler/MultipleQueries` | 12,178 | +5,905 (94.1%) | 1 | 0 | 4 | 14 | 1 | 2 | 6 | 1 |
+| 56 | `LogDerivativeSumCompiler/VectorDenominator` | 7,903 | +1,630 (26.0%) | 1 | 0 | 4 | 7 | 1 | 1 | 4 | 1 |
+| 57 | `LogDerivativeSumCompiler/AllFiltersOnesPacked` | 21,449 | +15,176 (241.9%) | 1 | 0 | 4 | 33 | 1 | 1 | 6 | 4 |
+| 58 | `Lookup/SingleColumnNoFilters` | 15,769 | +9,496 (151.4%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
+| 59 | `Lookup/FilterOnIncluded` | 15,520 | +9,247 (147.4%) | 2 | 0 | 5 | 21 | 2 | 2 | 8 | 2 |
+| 60 | `Lookup/FilterOnIncluding` | 17,344 | +11,071 (176.5%) | 2 | 0 | 5 | 27 | 2 | 2 | 8 | 2 |
+| 61 | `Lookup/DoubleConditional` | 17,960 | +11,687 (186.3%) | 2 | 0 | 5 | 29 | 2 | 2 | 9 | 2 |
+| 62 | `Lookup/MultiColumn` | 17,275 | +11,002 (175.4%) | 2 | 0 | 5 | 27 | 2 | 2 | 9 | 2 |
+| 63 | `Lookup/SharedTable` | 22,567 | +16,294 (259.7%) | 3 | 0 | 5 | 28 | 3 | 3 | 10 | 3 |
+| 64 | `Lookup/DistinctTables` | 28,626 | +22,353 (356.3%) | 4 | 0 | 5 | 38 | 4 | 4 | 14 | 4 |
+| 65 | `Lookup/MultiColumnFilterOnIncluding` | 18,849 | +12,576 (200.5%) | 2 | 0 | 5 | 35 | 2 | 2 | 10 | 2 |
+| 66 | `Lookup/RepeatedValueInTable` | 15,769 | +9,496 (151.4%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
+| 67 | `Lookup/ShiftedAColumn` | 19,183 | +12,910 (205.8%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 3 |
+| 68 | `Lookup/ShiftedBColumn` | 15,769 | +9,496 (151.4%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
+| 69 | `Lookup/MultipleAFragments` | 22,567 | +16,294 (259.7%) | 3 | 0 | 5 | 28 | 3 | 3 | 10 | 3 |
+| 70 | `Lookup/WidthThree` | 17,916 | +11,643 (185.6%) | 2 | 0 | 5 | 35 | 2 | 2 | 11 | 2 |
+| 71 | `Lookup/PrecomputedTable` | 15,769 | +9,496 (151.4%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
+| 72 | `Lookup/RepeatedSValues` | 15,769 | +9,496 (151.4%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
+| 73 | `Lookup/EmptySelected` | 16,384 | +10,111 (161.2%) | 2 | 0 | 5 | 21 | 2 | 2 | 8 | 2 |
+| 74 | `RangeCheckCompiler/Basic` | 17,323 | +11,050 (176.2%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
+| 75 | `RangeCheckCompiler/SharedBound` | 20,735 | +14,462 (230.5%) | 2 | 0 | 5 | 33 | 2 | 2 | 8 | 3 |
+| 76 | `RangeCheckCompiler/DistinctBounds` | 29,083 | +22,810 (363.6%) | 3 | 0 | 5 | 43 | 3 | 3 | 12 | 4 |
+| 77 | `RangeCheckCompiler/BoundIsPowerOfTwo` | 17,237 | +10,964 (174.8%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
+| 78 | `RangeCheckCompiler/BoundIsOne` | 8,115 | +1,842 (29.4%) | 1 | 0 | 5 | 9 | 1 | 1 | 3 | 1 |
+| 79 | `RangeCheckCompiler/MultiModule` | 23,387 | +17,114 (272.8%) | 3 | 0 | 5 | 28 | 3 | 3 | 10 | 3 |
+| 80 | `RangeCheckCompiler/LargeBound` | 20,345 | +14,072 (224.3%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
+| 81 | `RangeCheckCompiler/NonPowerOfTwoBound` | 16,460 | +10,187 (162.4%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
+| 82 | `RangeCheckCompiler/AllZeros` | 16,460 | +10,187 (162.4%) | 2 | 0 | 5 | 19 | 2 | 2 | 7 | 2 |
 
 ## Reproduce
 

@@ -1,4 +1,5 @@
 const builtin = @import("builtin");
+const std = @import("std");
 const verifier_ray = @import("verifier_ray");
 const bench_data = @import("vanishing_bench_data");
 const bench_options = @import("vanishing_bench_options");
@@ -23,7 +24,10 @@ pub export fn r5_main() noreturn {
         @compileError("vanishing benchmark guest is currently only wired for the R5 zkVM target");
     }
 
-    vanishing.verify(selected_case.system, selected_case.input) catch exitR5(1);
+    bench_data.keepRuntime(bench_options.case_index, bench_options.invalid);
+    var input = selected_case.input;
+    std.mem.doNotOptimizeAway(&input);
+    vanishing.verify(selected_case.system, input) catch exitR5(1);
     exitR5(0);
 }
 
