@@ -10,11 +10,6 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{
         .preferred_optimize_mode = .ReleaseSmall,
     });
-    // -Din-origin: the converter's input-placement address (the Makefile forwards it as
-    // IN_ORIGIN; it must match the linker's `_input_start`). The build does not consume it —
-    // the guest reads its input via read_input (zkvm_io reads `_input_start`) — so it's accepted and
-    // ignored here rather than threaded through a (dead) guest_options module.
-    _ = b.option([]const u8, "in-origin", "Converter input-placement address; must match the linker's _input_start (not consumed by the build)");
 
     const guest_name = "evm_execution_guest";
     const source = "src/evm_execution_guest.zig";

@@ -11,7 +11,7 @@
 
 # guest-program = gp
 
-.PHONY: fetch test spec-test clean gp-compile gp-linker-script gp-exec gp-debug 
+.PHONY: fetch test spec-test clean gp-linker-script gp-compile gp-exec gp-debug 
 
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
@@ -23,17 +23,8 @@ ZIG_BUILD_FLAGS ?= --cache-dir $(BUILD_CACHE_DIR) --summary all
 # must NOT be passed to build/test targets. Pre-fetching is the dedicated `fetch` target.
 ZIG_FETCH_FLAGS ?=
 
-# Folder of the Makefile containaining the logic for generating a linker scritpt,
-# executing and debugging the guest program.
-EXAMPLES_DIR := $(abspath $(MAKEFILE_DIR)../../arithmetization/src/test/examples)
-
-# Where the ZKC run places the input — forwarded to the examples Makefile as IN_ORIGIN, and it must
-# match the ELF's `_in_start` (build_common's linker script: 0x08800000). Also passed
-# as -Din-origin, which the guest no longer consumes (it reads `_in_start` via read_input).
-IN_ORIGIN ?= 0x08800000
-
-# Hex big-endian input or `@path/to/in_bytes`
-IN_BYTES ?= ""
+# Makefile containaining the logic for generating a linker scritpt, executing and debugging generic programs
+GENERIC_PROGRAM_MAKEFILE := $(abspath $(MAKEFILE_DIR)../../arithmetization/src/test/examples)/Makefile
 
 GUEST_BIN    := evm_execution_guest
 # Committed sample input for the fixture-exec/-debug convenience runs: a real fixture's SSZ framed
@@ -67,8 +58,19 @@ clean:
 # gp-linker-scritpt, gp-exec, gp-debug delegate logic
 # to arithmetization/src/test/examples/Makefile.
 
+# To change the default memory layout / linker script defined in arithmetization/src/test/examples/Makefile
+# ovveride the following variables:
+# STACK_ORIGIN   
+# SP             
+# PROGRAM_ORIGIN 
+# IN_ORIGIN      
+# HEAP_ORIGIN
+
+gp-linker-script:
+	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) linker-script LINKER_SCRIPT=$(MAKEFILE_DIR)../build_common/linker_script.ld
+
 gp-compile: gp-linker-script
-	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS) -Din-origin=$(IN_ORIGIN)
+	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS)
 	@if command -v riscv64-unknown-elf-objdump >/dev/null 2>&1; then \
 		echo "\nDisassembling $(ELF_BIN)"; \
 		LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(ELF_BIN) > $(ELF_BIN).objdump; \
@@ -76,11 +78,8 @@ gp-compile: gp-linker-script
 		echo "\nSkipping objdump: riscv64-unknown-elf-objdump is not on PATH"; \
 	fi
 
-gp-linker-script:
-	$(MAKE) -f $(EXAMPLES_DIR) linker-script LINKER_SCRIPT=$(MAKEFILE_DIR)../build_common/linker_script.ld IN_ORIGIN=$(IN_ORIGIN)
-
 gp-exec: gp-compile
-	$(MAKE) -f $(EXAMPLES_DIR) elf-exec BIN_EXT="$(ELF_BIN)" IN_BYTES="@$(SAMPLE_INPUT)" IN_ORIGIN=$(IN_ORIGIN) ZKC_EXEC_FLAGS=-q
+	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) elf-exec BIN_EXT="$(ELF_BIN)" IN_BYTES="@$(SAMPLE_INPUT)" ZKC_EXEC_FLAGS=-q
 
 gp-debug: gp-compile
-	$(MAKE) -f $(EXAMPLES_DIR) elf-debug BIN_EXT="$(ELF_BIN)" IN_BYTES="@$(SAMPLE_INPUT)" IN_ORIGIN=$(IN_ORIGIN)
+	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) elf-debug BIN_EXT="$(ELF_BIN)" IN_BYTES="@$(SAMPLE_INPUT)"
