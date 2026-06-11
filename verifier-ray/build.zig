@@ -38,6 +38,11 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const pcs_test_vectors_mod = b.addModule("pcs_test_vectors", .{
+        .root_source_file = b.path("testdata/pcs_vectors.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
 
     const exe = b.addExecutable(.{
         .name = "verifier-ray",
@@ -83,6 +88,7 @@ pub fn build(b: *std.Build) void {
                     .{ .name = "verifier_ray", .module = verifier_mod },
                     .{ .name = "test_vectors", .module = test_vectors_mod },
                     .{ .name = "loom_test_vectors", .module = loom_test_vectors_mod },
+                    .{ .name = "pcs_test_vectors", .module = pcs_test_vectors_mod },
                 },
             }),
         });

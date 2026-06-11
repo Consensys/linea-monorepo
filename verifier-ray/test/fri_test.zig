@@ -1,6 +1,7 @@
 const std = @import("std");
 const verifier_ray = @import("verifier_ray");
 const loom_vectors = @import("loom_test_vectors");
+const pcs_vectors = @import("pcs_test_vectors");
 
 const field = verifier_ray.field.koalabear;
 const ext = verifier_ray.field.koalabear_ext;
@@ -579,6 +580,210 @@ test "loom DEEP bridge vector verifies and detects tampering" {
     }
 }
 
+test "PCS integration verifies vectored end-to-end proof" {
+    for (pcs_vectors.pcs_integration_cases) |case| {
+        try std.testing.expect(case.num_rounds <= 4);
+        try std.testing.expect(case.deep_quotient_commitment.len <= 4);
+        try std.testing.expect(case.point_sampling_roots.len <= 4);
+        try std.testing.expect(case.final_poly_ext.len <= 8);
+        try std.testing.expect(case.point_sample_ext_pairs.len <= 4);
+        try std.testing.expect(case.point_sample_siblings.len <= 4);
+        try std.testing.expect(case.fri_layer_siblings.len <= 4);
+        try std.testing.expect(case.air_chunk_slots.len <= 4);
+
+        var values_at_zeta = std.StringHashMap(ext.Ext).init(std.testing.allocator);
+        defer values_at_zeta.deinit();
+        for (case.values_at_zeta) |value| {
+            try values_at_zeta.put(value.name, uintsToExt(value.value));
+        }
+
+        var col_slots = std.StringHashMap(layout_types.Slot).init(std.testing.allocator);
+        defer col_slots.deinit();
+        var air_chunk_slots = std.StringHashMap(layout_types.Slot).init(std.testing.allocator);
+        defer air_chunk_slots.deinit();
+        for (case.air_chunk_slots) |slot| {
+            try air_chunk_slots.put(slot.name, .{
+                .tree_idx = slot.tree_idx,
+                .poly_idx = slot.poly_idx,
+                .rail = .ext,
+            });
+        }
+
+        const layout = layout_types.Layout{
+            .num_trees = @intCast(case.tree_sizes.len),
+            .setup_begin = 0,
+            .setup_end = 0,
+            .air_begin = 0,
+            .air_end = 0,
+            .tree_size = case.tree_sizes,
+            .col_slot = col_slots,
+            .air_chunk_slot = air_chunk_slots,
+        };
+
+        var air_chunk_names: [4][]const u8 = undefined;
+        for (case.air_chunk_slots, 0..) |slot, index| {
+            air_chunk_names[index] = slot.name;
+        }
+        const eval_point_rows = [_][]const ext.Ext{&.{}};
+        const column_name_rows = [_][]const []const []const u8{&.{}};
+        const column_key_rows = [_][]const []const []const u8{&.{}};
+        const air_chunk_rows = [_][]const []const u8{air_chunk_names[0..case.air_chunk_slots.len]};
+        const dq_layout = dq_layout_types.DQLayout{
+            .sizes = case.level_ds,
+            .eval_points = eval_point_rows[0..],
+            .column_names = column_name_rows[0..],
+            .column_keys = column_key_rows[0..],
+            .air_chunks = air_chunk_rows[0..],
+        };
+
+        var point_roots: [4]fri.Digest = undefined;
+        var deep_quotient_roots: [4]fri.Digest = undefined;
+        fillDigests(point_roots[0..case.point_sampling_roots.len], case.point_sampling_roots);
+        fillDigests(deep_quotient_roots[0..case.deep_quotient_commitment.len], case.deep_quotient_commitment);
+
+        var point_sample_siblings: [4]fri.Digest = undefined;
+        var fri_layer_siblings: [4]fri.Digest = undefined;
+        fillDigests(point_sample_siblings[0..case.point_sample_siblings.len], case.point_sample_siblings);
+        fillDigests(fri_layer_siblings[0..case.fri_layer_siblings.len], case.fri_layer_siblings);
+
+        var point_sample_ext_pairs: [4]fri.PairExt = undefined;
+        fillExtPairs(point_sample_ext_pairs[0..case.point_sample_ext_pairs.len], case.point_sample_ext_pairs);
+        var final_poly_ext: [8]ext.Ext = undefined;
+        fillExtValues(final_poly_ext[0..case.final_poly_ext.len], case.final_poly_ext);
+
+        const point_sampling = fri.MerkleProof{
+            .raw_leaf_ext = point_sample_ext_pairs[0..case.point_sample_ext_pairs.len],
+            .path = .{
+                .leaf_idx = case.point_sample_leaf_idx,
+                .siblings = point_sample_siblings[0..case.point_sample_siblings.len],
+            },
+        };
+        const point_sampling_row = [_]fri.MerkleProof{point_sampling};
+        const point_samplings = [_][]const fri.MerkleProof{point_sampling_row[0..]};
+
+        const query_layer = fri.QueryLayer{
+            .rail = .ext,
+            .leaf_p_ext = uintsToExt(case.fri_layer_leaf_p_ext),
+            .leaf_q_ext = uintsToExt(case.fri_layer_leaf_q_ext),
+            .path = .{
+                .leaf_idx = case.fri_layer_leaf_idx,
+                .siblings = fri_layer_siblings[0..case.fri_layer_siblings.len],
+            },
+        };
+        const query_layers = [_]fri.QueryLayer{query_layer};
+        const queries = [_]fri.Query{.{ .layers = query_layers[0..] }};
+        var pow: [4]?fri.ProofOfWork = undefined;
+        for (pow[0..case.num_rounds]) |*slot| {
+            slot.* = null;
+        }
+        const fri_proof = fri.FriProof{
+            .final_rail = .ext,
+            .final_poly_ext = final_poly_ext[0..case.final_poly_ext.len],
+            .queries = queries[0..],
+            .pow = pow[0..case.num_rounds],
+        };
+        const proof = fri.types.Proof{
+            .deep_quotient_commitment = deep_quotient_roots[0..case.deep_quotient_commitment.len],
+            .level_ds = case.level_ds,
+            .fri = fri_proof,
+            .point_samplings = point_samplings[0..],
+        };
+
+        var domain_gens: [4]field.Element = undefined;
+        var domain_gens_inv: [4]field.Element = undefined;
+        for (0..case.num_rounds) |round| {
+            const shift: u5 = @intCast(round);
+            const domain_size = case.n >> shift;
+            domain_gens[round] = try field.rootOfUnityBy(@intCast(domain_size));
+            domain_gens_inv[round] = domain_gens[round].inverse();
+        }
+        const params = fri.Params{
+            .n = case.n,
+            .d = case.d,
+            .num_queries = case.num_queries,
+            .num_rounds = case.num_rounds,
+            .domain_gens = domain_gens[0..case.num_rounds],
+            .domain_gens_inv = domain_gens_inv[0..case.num_rounds],
+            .grinding = 0,
+        };
+
+        var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+        const zeta = try preparePcsTranscript(case, &ts);
+        try fri.pcs.verify(
+            params,
+            layout,
+            dq_layout,
+            point_roots[0..case.point_sampling_roots.len],
+            proof,
+            &values_at_zeta,
+            zeta,
+            &ts,
+        );
+        try expectDigest(try ts.computeChallenge(fri.bridge.deep_alpha_challenge), case.alpha_deep_digest);
+        try expectExt(try ts.computeChallengeExt(fri.bridge.deep_alpha_challenge), uintsToExt(case.alpha_deep));
+        try expectDigest(try ts.computeChallenge("fri_fold_0"), case.fri_alpha_digest);
+        const query_digest = try ts.computeChallenge("fri_query_0");
+        try expectDigest(query_digest, case.query_digest);
+        try std.testing.expectEqual(case.query_position, queryIndexForTest(query_digest, case.n / 2));
+
+        const final_poly_index: usize = @intCast(case.query_position);
+        const original_final_poly = final_poly_ext[final_poly_index];
+        final_poly_ext[final_poly_index] = original_final_poly.add(ext.Ext.one());
+        try expectPcsVerifyError(
+            error.BadDimensions,
+            case,
+            params,
+            layout,
+            dq_layout,
+            point_roots[0..case.point_sampling_roots.len],
+            proof,
+            &values_at_zeta,
+            zeta,
+        );
+        final_poly_ext[final_poly_index] = original_final_poly;
+
+        const original_sample = point_sample_ext_pairs[0][0];
+        point_sample_ext_pairs[0][0] = original_sample.add(ext.Ext.one());
+        try expectPcsVerifyError(
+            error.InvalidMerkleProof,
+            case,
+            params,
+            layout,
+            dq_layout,
+            point_roots[0..case.point_sampling_roots.len],
+            proof,
+            &values_at_zeta,
+            zeta,
+        );
+        point_sample_ext_pairs[0][0] = original_sample;
+
+        try expectPcsVerifyError(
+            error.BridgeMismatch,
+            case,
+            params,
+            layout,
+            dq_layout,
+            point_roots[0..case.point_sampling_roots.len],
+            proof,
+            &values_at_zeta,
+            zeta.add(ext.Ext.one()),
+        );
+
+        _ = values_at_zeta.remove("air1");
+        try expectPcsVerifyError(
+            error.MissingValueAtZeta,
+            case,
+            params,
+            layout,
+            dq_layout,
+            point_roots[0..case.point_sampling_roots.len],
+            proof,
+            &values_at_zeta,
+            zeta,
+        );
+    }
+}
+
 test "fri verifier accepts empty-query shape and rejects missing grinding" {
     const root = zeroDigest();
     const roots = [_]fri.Digest{root};
@@ -1135,6 +1340,21 @@ fn bridgeLayer(layer: loom_vectors.LoomBridgeLayer) fri.QueryLayer {
     };
 }
 
+fn preparePcsTranscript(case: pcs_vectors.PcsIntegrationCase, ts: *fiat_shamir.Transcript) !ext.Ext {
+    var zeta_bindings: [8]field.Element = undefined;
+    try std.testing.expect(case.zeta_bindings.len <= zeta_bindings.len);
+
+    try ts.newChallenge(fri.bridge.final_evaluation_challenge);
+    try ts.newChallenge(fri.bridge.deep_alpha_challenge);
+    fillElems(zeta_bindings[0..case.zeta_bindings.len], case.zeta_bindings);
+    try ts.bindElements(fri.bridge.final_evaluation_challenge, zeta_bindings[0..case.zeta_bindings.len]);
+
+    try expectDigest(try ts.computeChallenge(fri.bridge.final_evaluation_challenge), case.zeta_digest);
+    const zeta = try ts.computeChallengeExt(fri.bridge.final_evaluation_challenge);
+    try expectExt(zeta, uintsToExt(case.zeta));
+    return zeta;
+}
+
 fn expectDeepAlphaBadDimensions(
     dq_layout: dq_layout_types.DQLayout,
     values_at_zeta: *const std.StringHashMap(ext.Ext),
@@ -1144,6 +1364,25 @@ fn expectDeepAlphaBadDimensions(
     try std.testing.expectError(
         error.BadDimensions,
         fri.bridge.deriveDeepAlpha(dq_layout, values_at_zeta, &ts),
+    );
+}
+
+fn expectPcsVerifyError(
+    expected_error: anyerror,
+    case: pcs_vectors.PcsIntegrationCase,
+    params: fri.Params,
+    layout: layout_types.Layout,
+    dq_layout: dq_layout_types.DQLayout,
+    roots: []const fri.Digest,
+    proof: fri.types.Proof,
+    values_at_zeta: *const std.StringHashMap(ext.Ext),
+    zeta: ext.Ext,
+) !void {
+    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    _ = try preparePcsTranscript(case, &ts);
+    try std.testing.expectError(
+        expected_error,
+        fri.pcs.verify(params, layout, dq_layout, roots, proof, values_at_zeta, zeta, &ts),
     );
 }
 

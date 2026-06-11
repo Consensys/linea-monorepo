@@ -32,6 +32,7 @@ pub const fri = struct {
     pub const merkle = @import("fri/merkle.zig");
     pub const verify = @import("fri/verify.zig");
     pub const bridge = @import("fri/bridge.zig");
+    pub const pcs = @import("fri/pcs.zig");
 
     pub const Digest = types.Digest;
     pub const PairBase = types.PairBase;
