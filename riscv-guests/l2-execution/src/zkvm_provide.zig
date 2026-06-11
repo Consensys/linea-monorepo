@@ -1,25 +1,26 @@
 //! `zkvm_*` precompile providers for the ZkC guest.
 //!
-//! Zesu's freestanding build routes every precompile through `extern fn zkvm_*` symbols
-//! (src/crypto/extern_bridge.zig). This module defines all of them, from two sources:
+//! Zesu's freestanding build references every precompile as an `extern fn zkvm_*` symbol. The guest
+//! ships as a *statically-linked* ELF (the zkvm-standards artifact), so there is no later link to
+//! resolve anything: every one of those externs must be DEFINED in the binary. This module defines
+//! all of them, from two sources:
 //!
-//!   • Linea wrappers (`linea_zkvm_accel`, arithmetization/src/wrappers) — keccak today. The wrapper
-//!     body is a custom RISC-V opcode that ZkC arithmetizes at execution time (keccak via
-//!     `.insn r 0x0c`); we re-export it under the C symbol zesu references. The *set of wrappers
-//!     that exist* is what defines what is hardware-accelerated, and grows as ZkC implements more.
-//!   • zesu-zkvm `stdlibs_accel` (imported as `zesu_zkvm_accel`) — every precompile without a
-//!     wrapper yet, via a thin C-ABI shim (ptr+len → slice/array). Pure rv64im code ZkC runs like
-//!     any other; we don't maintain our own crypto. When a precompile gains a wrapper, move its
-//!     line to the wrapper export below and delete its shim further down.
+//!   • Linea accelerator wrappers (`linea_zkvm_accel`) — for the precompiles the prover accelerates
+//!     (keccak today). We re-export each wrapper under the C name zesu references; HOW a wrapper
+//!     accelerates is the wrapper module's own concern. The *set of wrappers that exist* is what is
+//!     accelerated, and grows as the prover implements more.
+//!   • zesu-zkvm `stdlibs_accel` (`zesu_zkvm_accel`) — every precompile without a wrapper yet, via a
+//!     thin C-ABI shim (ptr+len → slice/array). Pure rv64im code; we don't maintain our own crypto.
+//!     When a precompile gains a wrapper, move its line to the wrapper export below and delete its shim.
 //!
-//! Only the freestanding RISC-V guest references these (see evm_execution_guest.zig, pulled in for
-//! `builtin.cpu.arch == .riscv64`); the native host build uses Zesu's `default.zig` (C libs).
+//! Only the freestanding RISC-V guest references these (pulled in by evm_execution_guest.zig for
+//! `builtin.cpu.arch == .riscv64`); the native host build uses Zesu's C-backed crypto instead.
 
-const zesu_accel = @import("zesu_zkvm_accel"); // zesu-zkvm linea/src/runtime/stdlibs_accel.zig
-const linea_accel = @import("linea_zkvm_accel"); // Linea custom-opcode accelerators (arithmetization/src/wrappers)
+const zesu_accel = @import("zesu_zkvm_accel"); // zesu-zkvm's pure-Zig precompile backend (stdlibs_accel)
+const linea_accel = @import("linea_zkvm_accel"); // Linea accelerator wrappers (source paths wired in build.zig)
 
-// The manifest: every `zkvm_*` symbol zesu's extern bridge references, and where it comes from.
-// keccak is the Linea wrapper (custom opcode); the rest are the stdlibs_accel shims defined below.
+// The manifest: every `zkvm_*` symbol zesu references, and where each comes from — keccak from the
+// Linea wrapper, the rest from the stdlibs_accel shims defined below.
 comptime {
     @export(&linea_accel.keccak.zkvm_keccak256, .{ .name = "zkvm_keccak256" });
     @export(&sha256, .{ .name = "zkvm_sha256" });
@@ -45,8 +46,8 @@ comptime {
 const OK: i32 = 0;
 const ERR: i32 = 1;
 
-// Pairing/MSM pair layouts — must byte-match zesu's extern_bridge.zig; passed straight to
-// stdlibs_accel's `anytype` parameters.
+// Pairing/MSM pair layouts — must byte-match the C-ABI struct layout zesu passes to these zkvm_*
+// symbols; forwarded straight to stdlibs_accel's `anytype` parameters.
 const Bn254PairingPair = extern struct { g1: [64]u8, g2: [128]u8 };
 const Bls12G1MsmPair = extern struct { point: [96]u8, scalar: [32]u8 };
 const Bls12G2MsmPair = extern struct { point: [192]u8, scalar: [32]u8 };

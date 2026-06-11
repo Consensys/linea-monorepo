@@ -15,9 +15,10 @@ const GUEST_HEAP_SIZE: usize = 256 * 1024 * 1024;
 // StatelessInput, executes the block, and serializes the SSZ validation result — the same pipeline
 // as zesu's `runner.runStateless` / `zkevm-blockchain-test-runner`.
 //
-// The crypto accelerators (zkvm_*) are intentionally left UNRESOLVED in the freestanding object:
-// zesu's extern_bridge only declares them, and the proving system (Zkc) resolves/intercepts them at
-// link/run time. There is deliberately no in-guest software provider — see build.zig (addObject).
+// The crypto accelerators (zkvm_*) that zesu declares as externs are DEFINED in-guest by
+// zkvm_provide.zig (pulled in below for the riscv64 build), so the statically-linked guest ELF has
+// no unresolved zkvm_* externals. The native host build doesn't reference them — it uses zesu's
+// C-backed crypto instead.
 
 /// Result of running one SSZ-encoded StatelessInput:
 ///   `out`     — the 105-byte SSZ SszStatelessValidationResult
@@ -74,10 +75,9 @@ comptime {
     // std.start — exporting it here too would be a symbol collision.
     if (builtin.cpu.arch == .riscv64) {
         @export(&guestMain, .{ .name = "main" });
-        // Pull in the precompile providers (zkvm_provide.zig): it DEFINES every zkvm_* symbol
-        // zesu's extern bridge references — keccak from the Linea wrapper (custom opcode), the rest
-        // from zesu-zkvm's stdlibs_accel. Freestanding only — the native build uses Zesu's C
-        // backend and never references zkvm_*.
+        // Pull in the precompile providers (zkvm_provide.zig): it DEFINES every zkvm_* symbol zesu
+        // references — keccak from the Linea wrapper, the rest from zesu-zkvm's stdlibs_accel.
+        // Freestanding only — the native build uses Zesu's C backend and never references zkvm_*.
         _ = @import("zkvm_provide.zig");
     }
 }

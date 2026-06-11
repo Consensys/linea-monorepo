@@ -31,13 +31,12 @@ pub fn build(b: *std.Build) void {
     // plumbing live in build_common.installGuestElf; here we wire the guest's root module:
     //   • zesu executor + SSZ modules — the execution logic;
     //   • zesu_zkvm_accel — zesu-zkvm's stdlibs_accel: in-guest software precompiles that
-    //     zkvm_provide.zig exports as the zkvm_* symbols zesu's extern bridge references;
-    //   • linea_zkvm_accel — Linea custom-opcode wrappers (keccak today): a zkvm_* whose body is a
-    //     RISC-V custom instruction the prover arithmetizes at execution — interception is at run time,
-    //     not link time, so the ELF stays fully resolved;
-    //   • linea_zkvm_io — zesu-zkvm's linea/zkvm_io.zig: satisfies the standards `read_input` by reading
-    //     the memory-mapped `_input_start` (the input slot is the proving system's detail, kept out of
-    //     the guest; `_input_start` is supplied by the linker script).
+    //     zkvm_provide.zig exports as the zkvm_* symbols zesu references;
+    //   • linea_zkvm_accel — Linea accelerator wrappers (keccak today): zkvm_* the prover accelerates
+    //     at execution rather than at link time, so the ELF stays fully resolved;
+    //   • linea_zkvm_io — zesu-zkvm's zkvm_io: satisfies the standards `read_input` by reading the
+    //     memory-mapped `_input_start` (the input slot is the proving system's detail, kept out of the
+    //     guest; `_input_start` is supplied by the linker script).
     const zesu_guest = b.dependency("zesu", .{ .target = target, .optimize = optimize });
     const zesu_zkvm = b.dependency("zesu_zkvm", .{});
     const zesu_accel_src = zesu_zkvm.path("linea/src/runtime/stdlibs_accel.zig"); // also imported by the native accel test below
@@ -75,7 +74,7 @@ pub fn build(b: *std.Build) void {
     // Runs the thin wrapper (vanilla zesu stateless execution) on the host against a real
     // execution-spec-tests zkevm SSZ fixture, asserting the serialized validation result matches —
     // the same end-to-end check as zesu's zkevm-blockchain-test-runner. Links zesu's full native
-    // crypto backend (default.zig); linea adds the library search path so it links on macOS. The
+    // crypto backend; linea adds the library search path so it links on macOS. The
     // committed fixture is an empty block (only keccak), but the full backend is linked so the suite
     // can grow to tx-bearing fixtures (ecrecover/curves) without further build changes.
     //
@@ -185,8 +184,8 @@ const ZesuImports = struct {
     ssz_output: *std.Build.Module,
 };
 
-/// Pull zesu's exposed modules by name. Backends are selected inside zesu by target:
-/// freestanding → extern zkvm_* bridge; native → default.zig (full crypto).
+/// Pull zesu's exposed modules by name. Which crypto backend zesu uses is selected inside zesu by
+/// target (freestanding leaves zkvm_* extern; native links real crypto) — that's zesu's concern.
 fn zesuImports(zesu: *std.Build.Dependency) ZesuImports {
     return .{
         .allocator = zesu.module("zesu_allocator"),
@@ -225,10 +224,10 @@ fn resolveNativeCrypto(b: *std.Build, target: std.Build.ResolvedTarget) NativeCr
     };
 }
 
-/// Links the full native crypto backing zesu's default.zig accelerator: secp256k1 (ecrecover),
-/// OpenSSL (P-256), blst (BLS12-381 + KZG), mcl (BN254). No-op for freestanding targets, whose
-/// crypto is the extern zkvm_* bridge. zesu sets the @cImport include path on its accel module, so
-/// here we only need the library search path + the libraries.
+/// Links the full native crypto backing zesu's native accelerator: secp256k1 (ecrecover), OpenSSL
+/// (P-256), blst (BLS12-381 + KZG), mcl (BN254). No-op for freestanding targets, whose crypto is the
+/// in-guest zkvm_* symbols. zesu sets the C include path itself, so here we only add the library
+/// search path + the libraries.
 fn linkNativeZesuCrypto(
     step: *std.Build.Step.Compile,
     target: std.Build.ResolvedTarget,
