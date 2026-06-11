@@ -213,7 +213,7 @@ SEND_OUTPUT="$(
   docker run --rm \
     --user 0:0 \
     --entrypoint sh \
-    --network linea-stack_linea \
+    --network "$(lineth_env_or_default COMPOSE_PROJECT_NAME linea-stack)_linea" \
     -v "$LINETH_ACCOUNTS_DIR:/accounts:ro" \
     -e RECIPIENT="$RECIPIENT" \
     -e L2_MESSAGE_SERVICE="$L2_MESSAGE_SERVICE" \

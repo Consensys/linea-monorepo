@@ -51,7 +51,7 @@ section "sending L2 ETH transfer(s)"
 if ! lineth_run_stream docker run --rm \
   --user 0:0 \
   --entrypoint sh \
-  --network linea-stack_linea \
+  --network "$(lineth_env_or_default COMPOSE_PROJECT_NAME linea-stack)_linea" \
   -v "$LINETH_ACCOUNTS_DIR:/accounts:ro" \
   -e COUNT="${COUNT:-1}" \
   -e VALUE_WEI="${VALUE_WEI:-1}" \

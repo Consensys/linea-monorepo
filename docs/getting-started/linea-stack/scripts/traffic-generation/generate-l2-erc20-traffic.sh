@@ -24,7 +24,7 @@ container_running() {
 }
 
 command="${1:-start}"
-CONTAINER_NAME="${TRAFFIC_CONTAINER_NAME:-linea-l2-erc20-traffic}"
+CONTAINER_NAME="${TRAFFIC_CONTAINER_NAME:-$(lineth_env_or_default LINETH_CONTAINER_PREFIX "")linea-l2-erc20-traffic}"
 
 lineth_banner "ERC20 traffic · start/logs/stop"
 
@@ -149,7 +149,7 @@ container_id="$(docker run -d \
   --name "$CONTAINER_NAME" \
   --user 0:0 \
   --entrypoint sh \
-  --network linea-stack_linea \
+  --network "$(lineth_env_or_default COMPOSE_PROJECT_NAME linea-stack)_linea" \
   -v "$LINETH_ACCOUNTS_DIR:/accounts:ro" \
   -v "$LINETH_DEPLOYMENTS_DIR:/deployments:ro" \
   -e AMOUNT_WEI="${AMOUNT_WEI:-1}" \

@@ -45,11 +45,17 @@ Completed and already integrated on this branch:
 - README was updated to describe the artifact-backed layout, TS role, Web3Signer use, and current boot path.
 
 Current branch/repo status:
-- branch: `feat/linea-stack-quickstart`
+- branch: `feat/dual-l2-bermuda-interop`
 - `L1_MODE=sepolia|local` is implemented on this branch;
 - local-L1 fresh-boot validation has been run successfully through first L1 finality;
 - local mode ignores stale Sepolia RPC/deployer keystore/private-key config and uses the built-in local genesis deployer
-  and local RPC defaults.
+  and local RPC defaults;
+- the quickstart is multi-instance: instance identity (env file via `LINETH_ENV_FILE`, compose project, container
+  prefix, ports, L2 chain id, Docker subnets, artifact dir, L1 owner-vs-attach role, local L1 deployer account) is
+  config-only; `L1_LOCAL_ROLE=attach` plus the `docker-compose.l1-attach.yml` overlay runs an L2-only instance against
+  another instance's local L1 (see `profiles/instance-2.env.example` and the README multi-instance section);
+- dual-instance validation has been run for real: two L2s (chain ids 1337/1338) concurrently finalizing to one shared
+  local L1, each with its own LineaRollup; `./scripts/verify-dual-l2.sh` is the repeatable executable check.
 
 ## Major Design Decisions
 

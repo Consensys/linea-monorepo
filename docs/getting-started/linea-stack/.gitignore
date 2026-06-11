@@ -1,3 +1,7 @@
 # Per-instance generated artifact roots for additional stack instances
 # (the default instance uses artifacts/, which carries its own .gitignore).
 artifacts-*/
+
+# Per-instance runtime env files (copied from profiles/instance-2.env.example);
+# like .env they are local runtime config and must not be committed.
+instances/

@@ -244,6 +244,47 @@ Web3Signer rejects empty keystore passwords. Override with
 Coordinator and Postman both sign through Web3Signer. Postman does not receive
 raw signer private keys in its runtime env.
 
+### Multiple L2 instances on one shared local L1
+
+The quickstart can run as N parameterized instances: one instance owns the
+local L1 (and runs L2-A), every further instance runs **L2-only** and attaches
+to that L1 over the owner's `l1network` Docker network. Each instance deploys
+its own LineaRollup/L2MessageService/TokenBridge set to the same L1, so all
+L2s finalize to one shared chain.
+
+Instance identity is pure configuration — env file, compose project name,
+container-name prefix, host ports, L2 chain ID, Docker subnets, artifact dir,
+and L1 deployer account. `profiles/instance-2.env.example` is a complete
+recipe; an instance 3 only needs another copy with fresh values.
+
+```bash
+# instance 1 — plain local-L1 boot, exactly as above (.env has L1_MODE=local)
+./scripts/start.sh --tail
+
+# instance 2 — L2-only, attached to instance 1's L1
+mkdir -p instances && cp profiles/instance-2.env.example instances/i2.env
+LINETH_ENV_FILE=instances/i2.env ./scripts/start.sh --tail
+
+# every script is instance-selected the same way
+LINETH_ENV_FILE=instances/i2.env ./scripts/status.sh
+LINETH_ENV_FILE=instances/i2.env ./scripts/reset.sh
+```
+
+Attach-role notes:
+
+- instance 2 must boot after instance 1's L1 is up (start.sh checks the shared
+  network and RPC first) and must NOT set `--profile local-l1` anywhere;
+- each instance needs its own prefunded local-genesis dev deployer
+  (`L1_LOCAL_DEPLOYER_PRIVATE_KEY`) so concurrent deploys never share an L1
+  account nonce;
+- resetting the owner instance tears down the L1 under every attached
+  instance; reset attach instances first.
+
+`./scripts/verify-dual-l2.sh` is the executable form of this contract: it
+boots both instances from clean, asserts L2-only attach, zero collisions, two
+distinct LineaRollups on one L1, and concurrent finalization on both, prints
+the evidence, and tears everything down.
+
 ## Boot and logs
 
 Normal boot:
