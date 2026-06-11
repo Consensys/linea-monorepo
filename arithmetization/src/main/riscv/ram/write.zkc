@@ -40,6 +40,8 @@ fn write_8<ram>(address:Address, value:u8) -> () {
             return
         }
         default: {
+            // Case 3 and default case are collapse to reduce the number of instructions. 
+            // Default case cannot happen as offset is the result of % 4.
             var hi:u8
             var lo:u24
             hi::lo = ram[word_idx]
