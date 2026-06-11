@@ -10,14 +10,11 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{
         .preferred_optimize_mode = .ReleaseSmall,
     });
-    const in_origin = b.option([]const u8, "in-origin", "Input memory origin") orelse "0x08800000";
-    const in_origin_value: usize = @intCast(common.parseAddress("in-origin", in_origin));
-    // -Din-origin is the converter's input-placement address (forwarded as IN_BYTES_OFFSET) and
-    // must match the linker's `_in_start`. The guest no longer reads it directly — it gets the
-    // input via read_input (zkvm_io reads `_in_start`), so guest_options stays wired but unconsumed.
-    const guest_options = b.addOptions();
-    guest_options.addOption(usize, "in_origin", in_origin_value);
-    const guest_options_mod = guest_options.createModule();
+    // -Din-origin: the converter's input-placement address (the Makefile forwards it as
+    // IN_ORIGIN; it must match the linker's `_input_start`). The build does not consume it —
+    // the guest reads its input via read_input (zkvm_io reads `_input_start`) — so it's accepted and
+    // ignored here rather than threaded through a (dead) guest_options module.
+    _ = b.option([]const u8, "in-origin", "Converter input-placement address; must match the linker's _input_start (not consumed by the build)");
 
     const guest_name = "evm_execution_guest";
     const source = "src/evm_execution_guest.zig";
@@ -63,7 +60,6 @@ pub fn build(b: *std.Build) void {
     });
     guest_module.code_model = .medium;
     addExecutionImports(guest_module, zesuImports(zesu_guest));
-    guest_module.addImport("guest_options", guest_options_mod);
     guest_module.addImport("zesu_zkvm_accel", zesu_accel_mod);
     guest_module.addImport("linea_zkvm_accel", linea_accel_mod);
     guest_module.addImport("linea_zkvm_io", linea_io_mod);
@@ -98,7 +94,6 @@ pub fn build(b: *std.Build) void {
         .optimize = host_optimize,
     });
     addExecutionImports(guest_mod, native_imports);
-    guest_mod.addImport("guest_options", guest_options_mod);
 
     const test_step = b.step("test", "Run native Zig unit tests for the EVM execution guest");
     const spec_step = b.step("spec-tests", "Run the guest against all EF zkevm stateless fixtures (host)");

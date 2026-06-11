@@ -124,13 +124,17 @@ fn processFile(
     defer arena.deinit();
     const alloc = arena.allocator();
 
+    // A fixture we can't read or parse is a failure, not a silent skip: counting it keeps a
+    // systemic regression (e.g. parseBlocks breaking across the whole corpus) from passing green.
     const text = std.Io.Dir.cwd().readFileAlloc(io, path, alloc, .limited(256 * 1024 * 1024)) catch |err| {
-        std.debug.print("error: cannot read '{s}': {}\n", .{ path, err });
+        std.debug.print("FAIL cannot read '{s}': {}\n", .{ path, err });
+        stats.failed += 1;
         return;
     };
 
     const blocks = zkevm_fixture.parseBlocks(alloc, text) catch |err| {
-        std.debug.print("error: parse failed in '{s}': {s}\n", .{ path, @errorName(err) });
+        std.debug.print("FAIL parse failed in '{s}': {s}\n", .{ path, @errorName(err) });
+        stats.failed += 1;
         return;
     };
     if (blocks.len == 0) return;
