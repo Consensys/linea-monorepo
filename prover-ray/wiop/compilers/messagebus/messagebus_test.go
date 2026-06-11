@@ -384,6 +384,161 @@ func TestCompile_NoMessageBusesIsNoOp(t *testing.T) {
 		"Compile must not append rounds when there are no MessageBus queries")
 }
 
+// TestCompile_DynamicModule_TwoSegmentsBalanced is the completeness counterpart
+// of TestCompile_TwoSegmentsBalanced for dynamic modules: the participating
+// modules' sizes are not declared statically but established at runtime by the
+// first column assignment. The same compiled System is then re-driven across
+// two different runtime sizes to confirm size-agnostic compilation.
+//
+// TODO: unskip once [logderivativesum] supports dynamic modules. The
+// messagebus pass itself is already size-agnostic — it never inspects
+// Module.Size() — but logderivativesum.buildZ currently panics on a dynamic
+// module because it needs the static size to allocate the Z column. Until
+// that lands, the end-to-end path stops at logderivativesum.Compile.
+func TestCompile_DynamicModule_TwoSegmentsBalanced(t *testing.T) {
+	t.Skip("dynamic modules not yet supported by logderivativesum.Compile (panics on m.Size()==0)")
+
+	sys := wiop.NewSystemf("mb-dyn-balanced")
+	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
+
+	modA := sys.NewDynamicModule(sys.Context.Childf("modA"), wiop.PaddingDirectionRight)
+	modB := sys.NewDynamicModule(sys.Context.Childf("modB"), wiop.PaddingDirectionRight)
+	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+
+	sys.NewMessageBusSend(
+		sys.Context.Childf("send-A"),
+		"segA", "ping",
+		wiop.NewTable(colA.View()),
+	)
+	sys.NewMessageBusReceive(
+		sys.Context.Childf("recv-B"),
+		"segB", "ping",
+		wiop.NewTable(colB.View()),
+		mulB.View(),
+	)
+
+	messagebus.Compile(sys)
+	logderivativesum.Compile(sys)
+
+	cases := []struct {
+		name string
+		vals []uint64
+	}{
+		{"size-4", []uint64{10, 20, 30, 40}},
+		{"size-8", []uint64{1, 2, 3, 4, 5, 6, 7, 8}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rt := wiop.NewRuntime(sys)
+			rt.AssignColumn(colA, makeVec(tc.vals...))
+			rt.AssignColumn(colB, makeVec(tc.vals...))
+			ones := make([]uint64, len(tc.vals))
+			for i := range ones {
+				ones[i] = 1
+			}
+			rt.AssignColumn(mulB, makeVec(ones...))
+
+			drive(&rt)
+			require.NoError(t, checkAllVerifierActions(&rt))
+		})
+	}
+}
+
+// TestCompile_DynamicModule_TamperedFails is the soundness counterpart on a
+// dynamic module: a multiplicity that miscounts the senders must be rejected
+// regardless of the runtime size.
+//
+// TODO: unskip once [logderivativesum] supports dynamic modules — see
+// [TestCompile_DynamicModule_TwoSegmentsBalanced] for the rationale.
+func TestCompile_DynamicModule_TamperedFails(t *testing.T) {
+	t.Skip("dynamic modules not yet supported by logderivativesum.Compile (panics on m.Size()==0)")
+
+	sys := wiop.NewSystemf("mb-dyn-tampered")
+	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
+
+	modA := sys.NewDynamicModule(sys.Context.Childf("modA"), wiop.PaddingDirectionRight)
+	modB := sys.NewDynamicModule(sys.Context.Childf("modB"), wiop.PaddingDirectionRight)
+	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+
+	sys.NewMessageBusSend(
+		sys.Context.Childf("send-A"),
+		"segA", "ping",
+		wiop.NewTable(colA.View()),
+	)
+	sys.NewMessageBusReceive(
+		sys.Context.Childf("recv-B"),
+		"segB", "ping",
+		wiop.NewTable(colB.View()),
+		mulB.View(),
+	)
+
+	messagebus.Compile(sys)
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(colB, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(mulB, makeVec(2, 1, 1, 1)) // wrong: row 0 counted twice
+
+	drive(&rt)
+	assert.Error(t, checkAllVerifierActions(&rt),
+		"verifier must reject a multiplicity that miscounts senders on a dynamic module")
+}
+
+// TestCompile_DynamicModule_MultiColumnTuples covers the width-2 α-fold over
+// dynamic modules: (key, value) tuples sent and received with matching
+// multiplicities. Exercises both the Horner fold and the runtime-determined
+// row count simultaneously.
+//
+// TODO: unskip once [logderivativesum] supports dynamic modules — see
+// [TestCompile_DynamicModule_TwoSegmentsBalanced] for the rationale.
+func TestCompile_DynamicModule_MultiColumnTuples(t *testing.T) {
+	t.Skip("dynamic modules not yet supported by logderivativesum.Compile (panics on m.Size()==0)")
+
+	sys := wiop.NewSystemf("mb-dyn-tuples")
+	r0 := sys.NewRound()
+	setupMessageBusCoins(sys)
+
+	modA := sys.NewDynamicModule(sys.Context.Childf("modA"), wiop.PaddingDirectionRight)
+	modB := sys.NewDynamicModule(sys.Context.Childf("modB"), wiop.PaddingDirectionRight)
+	keyA := modA.NewColumn(sys.Context.Childf("kA"), wiop.VisibilityOracle, r0)
+	valA := modA.NewColumn(sys.Context.Childf("vA"), wiop.VisibilityOracle, r0)
+	keyB := modB.NewColumn(sys.Context.Childf("kB"), wiop.VisibilityOracle, r0)
+	valB := modB.NewColumn(sys.Context.Childf("vB"), wiop.VisibilityOracle, r0)
+	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+
+	sys.NewMessageBusSend(
+		sys.Context.Childf("send-A"),
+		"segA", "kv",
+		wiop.NewTable(keyA.View(), valA.View()),
+	)
+	sys.NewMessageBusReceive(
+		sys.Context.Childf("recv-B"),
+		"segB", "kv",
+		wiop.NewTable(keyB.View(), valB.View()),
+		mulB.View(),
+	)
+
+	messagebus.Compile(sys)
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(keyA, makeVec(1, 2, 3, 4))
+	rt.AssignColumn(valA, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(keyB, makeVec(1, 2, 3, 4))
+	rt.AssignColumn(valB, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(mulB, makeVec(1, 1, 1, 1))
+
+	drive(&rt)
+	require.NoError(t, checkAllVerifierActions(&rt))
+}
+
 // TestCompile_WidthMismatchPanics asserts that the compiler rejects two
 // participants on the same handle with different column widths — the
 // alpha-fold is only meaningful when every participant has the same width.
