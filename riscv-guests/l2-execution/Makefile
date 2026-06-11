@@ -36,6 +36,9 @@ SAMPLE_INPUT := $(MAKEFILE_DIR)test/testdata/fixture_input.in.hex
 # from build_common) — the zkvm-standards deliverable. The ZKC exec/debug runs feed it to ELF->JSON.
 ELF_BIN := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN)
 
+# If true, generates an objdump of the generated ELF for debugging purposes
+OBJDUMP        ?= false
+
 # ── Proving-system-agnostic guest lifecycle ─────────────────────────────────
 fetch:
 	$(ZIG) build $(ZIG_BUILD_FLAGS) --fetch
@@ -72,8 +75,10 @@ gp-linker-script:
 gp-compile: gp-linker-script
 	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS)
 	@if command -v riscv64-unknown-elf-objdump >/dev/null 2>&1; then \
-		echo "\nDisassembling $(ELF_BIN)"; \
-		LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(ELF_BIN) > $(ELF_BIN).objdump; \
+		if [ "$(OBJDUMP)" = "true" ]; then \
+			echo "\nDisassembling $(ELF_BIN)"; \
+			LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(ELF_BIN) > $(ELF_BIN).objdump; \
+		fi
 	else \
 		echo "\nSkipping objdump: riscv64-unknown-elf-objdump is not on PATH"; \
 	fi
