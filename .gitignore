@@ -188,7 +188,7 @@ arithmetization/src/test/examples/scripts/output-*/
 
 # Stray host-target binaries that `cargo build` / `rustc` may produce next
 # to the source when invoked without --target riscv64im-unknown-none-elf.
-# Update this list whenever a new .rs guest program is added under 
+# Update this list whenever a new .rs guest program is added under
 # arithmetization/src/test/examples/rust/src/.
 arithmetization/src/test/examples/rust/src/custom_std
 arithmetization/src/test/examples/rust/src/stack_load_test
@@ -199,6 +199,9 @@ arithmetization/src/test/examples/rust/src/blake/blake_from_main
 arithmetization/src/test/examples/rust/src/blake/blake_test_vectors
 arithmetization/src/test/examples/rust/src/blake/blake_with_in_bytes
 arithmetization/src/test/examples/rust/src/blake/blake_with_in_embedded
+
+# generated linker script
+riscv-guests/build_common/linker_script.ld
 
 # RISC-V guest build artifacts and dependency caches are ignored per-directory:
 # see riscv-guests/.gitignore (each guest package has its own zig-out/zig-pkg/.zig-cache).
