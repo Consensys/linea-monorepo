@@ -92,7 +92,7 @@ DEMO_TRAFFIC_ENV="$(lineth_accounts_file demo-traffic.env)"
 [ -s "$ADDR" ] || die "addresses.json missing; deploy-contracts has not completed"
 
 section "ensuring L1 ERC20Example"
-if ! lineth_run_stream docker compose --env-file versions.env --env-file .env --profile stack-partial-prover \
+if ! lineth_run_stream $(lineth_compose_cmd) --profile stack-partial-prover \
   run --rm --no-deps --entrypoint bash deploy-contracts /scripts/internal/ensure-demo-erc20.sh l1; then
   exit 1
 fi

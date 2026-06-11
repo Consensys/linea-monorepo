@@ -15,6 +15,8 @@ ACCOUNTS_DIR="$LINETH_ACCOUNTS_DIR"
 DEPLOYMENTS_DIR="$LINETH_DEPLOYMENTS_DIR"
 CONFIG_DIR="$LINETH_CONFIG_DIR"
 L1_MODE="$(lineth_l1_mode)"
+CONTAINER_PREFIX="$(lineth_env_or_default LINETH_CONTAINER_PREFIX "")"
+EXPECTED_L2_CHAIN_ID="$(lineth_env_or_default L2_CHAIN_ID 1337)"
 
 section() { lineth_section "$*"; }
 
@@ -25,7 +27,7 @@ else
 fi
 
 print_deploy_progress() {
-  deploy_state="$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' deploy-contracts 2>/dev/null || true)"
+  deploy_state="$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' "$(lineth_container deploy-contracts)" 2>/dev/null || true)"
   [ -n "$deploy_state" ] || return 0
 
   case "$deploy_state" in
@@ -46,7 +48,7 @@ print_deploy_progress() {
       ;;
   esac
 
-  docker logs --tail 180 deploy-contracts 2>&1 \
+  docker logs --tail 180 "$(lineth_container deploy-contracts)" 2>&1 \
       | grep -E '\[deploy-contracts\] =====|\[deploy-contracts\] (L1 deployer balance|L1 deployer required minimum|L2_GENESIS|Compiling contracts|L1_NONCE|verify |Forwarding |Captured |Funding |wrote |ERROR:|Done|addresses\.json)|^contract=.* (pending:|deployed:)|insufficient funds|Cannot fund|balance too low' \
     | tail -25 \
     | awk 'length($0) > 260 { $0 = substr($0, 1, 260) "..." } { print }' \
@@ -94,12 +96,12 @@ STATE_MISMATCH=0
 
 section "containers"
 docker ps -a --format 'table {{.Names}}\t{{.Status}}' \
-  | awk 'NR == 1 || /^(l1-node-genesis-generator|l1-el-node|l1-cl-node|account-setup|config-render|postman-config-render|l2-genesis-init|sequencer|l2-node-besu|shomei|deploy-contracts|runtime-config-finalize|coordinator|prover|postman|web3signer|maru|l2-blockscout)[[:space:]]/' \
+  | awk -v prefix="$CONTAINER_PREFIX" 'NR == 1 || $0 ~ ("^" prefix "(l1-node-genesis-generator|l1-el-node|l1-cl-node|account-setup|config-render|postman-config-render|l2-genesis-init|sequencer|l2-node-besu|shomei|deploy-contracts|runtime-config-finalize|coordinator|prover|postman|web3signer|maru|l2-blockscout)[[:space:]]")' \
   | lineth_indent
 
 BOOT_FAILURE=0
 for init_container in account-setup config-render postman-config-render l2-genesis-init deploy-contracts runtime-config-finalize; do
-  init_state="$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' "$init_container" 2>/dev/null || true)"
+  init_state="$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' "$(lineth_container "$init_container")" 2>/dev/null || true)"
   case "$init_state" in
     exited\ 0|running\ 0|created\ 0|"")
       ;;
@@ -108,8 +110,8 @@ for init_container in account-setup config-render postman-config-render l2-genes
         section "boot failure"
       fi
       BOOT_FAILURE=1
-      lineth_error "$init_container $init_state"
-      docker logs --tail 80 "$init_container" 2>&1 \
+      lineth_error "$(lineth_container "$init_container") $init_state"
+      docker logs --tail 80 "$(lineth_container "$init_container")" 2>&1 \
         | grep -E 'ERROR|Error:|error code|insufficient funds|Failed|FATAL|ADDRESS MISMATCH|balance too low|Cannot fund|service .*didn.t complete' \
         | tail -20 \
         | awk 'length($0) > 260 { $0 = substr($0, 1, 260) "..." } { print }' \
@@ -228,7 +230,7 @@ if [ -d "$DEPLOYMENTS_DIR/deploy-logs" ]; then
   L2_DEPLOY_MAX_BLOCK="$(
     for f in "$DEPLOYMENTS_DIR"/deploy-logs/*.log; do
       [ -f "$f" ] || continue
-      awk '/contract=.* deployed:.*chainId=1337/ {
+      awk -v cid="$EXPECTED_L2_CHAIN_ID" '$0 ~ ("contract=.* deployed:.*chainId=" cid "([^0-9]|$)") {
         if (match($0, /blockNumber=[0-9]+/)) {
           v=substr($0, RSTART + 12, RLENGTH - 12)
           if (v > max) max = v
@@ -277,14 +279,14 @@ fi
 latest_blob_tx=""
 latest_finalization_tx=""
 latest_finalization_window=""
-if docker ps -a --format '{{.Names}}' | grep -qx coordinator; then
-  latest_blob_tx="$(docker logs --tail 4000 coordinator 2>&1 \
+if docker ps -a --format '{{.Names}}' | grep -qx "$(lineth_container coordinator)"; then
+  latest_blob_tx="$(docker logs --tail 4000 "$(lineth_container coordinator)" 2>&1 \
     | sed -nE 's/.*blobs submitted:.*transactionHash=(0x[a-fA-F0-9]{64}).*/\1/p' \
     | tail -1 || true)"
-  latest_finalization_tx="$(docker logs --tail 4000 coordinator 2>&1 \
+  latest_finalization_tx="$(docker logs --tail 4000 "$(lineth_container coordinator)" 2>&1 \
     | sed -nE 's/.*submitted aggregation=[^ ]+ transactionHash=(0x[a-fA-F0-9]{64}).*/\1/p' \
     | tail -1 || true)"
-  latest_finalization_window="$(docker logs --tail 4000 coordinator 2>&1 \
+  latest_finalization_window="$(docker logs --tail 4000 "$(lineth_container coordinator)" 2>&1 \
     | sed -nE 's/.*submitted aggregation=([^ ]+) transactionHash=0x[a-fA-F0-9]{64}.*/\1/p' \
     | tail -1 || true)"
 fi
@@ -382,8 +384,8 @@ else
 fi
 
 section "coordinator"
-if docker ps --format '{{.Names}}' | grep -qx coordinator; then
-  docker exec coordinator sh -eu -c '
+if docker ps --format '{{.Names}}' | grep -qx "$(lineth_container coordinator)"; then
+  docker exec "$(lineth_container coordinator)" sh -eu -c '
     if grep -qi ":2549" /proc/net/tcp /proc/net/tcp6 2>/dev/null; then echo "observability 9545: listening"; else echo "observability 9545: not listening"; fi
     if grep -qi ":254A" /proc/net/tcp /proc/net/tcp6 2>/dev/null; then echo "json-rpc 9546: listening"; else echo "json-rpc 9546: not listening"; fi
     for lane in execution compression invalidity aggregation; do
@@ -404,7 +406,7 @@ if docker ps --format '{{.Names}}' | grep -qx coordinator; then
       echo "prover $lane: requests=$requests responses=$responses failed=$failed inprogress=$inprogress"
     done
   ' | lineth_indent
-  docker logs --tail 200 coordinator 2>&1 \
+  docker logs --tail 200 "$(lineth_container coordinator)" 2>&1 \
     | grep -E 'Rollup finalized block updated|execution proof request generated|blob compression proof generated|blobs to submit|blob submission failed|max fee per gas less than block base fee|aggregation proof|submitted|finalized|ERROR|WARN' \
     | tail -25 \
     | awk 'length($0) > 260 { $0 = substr($0, 1, 260) "..." } { print }' \
@@ -414,10 +416,10 @@ else
 fi
 
 section "prover"
-if docker ps --format '{{.Names}}' | grep -qx prover; then
-  docker stats --no-stream --format 'prover resources: mem={{.MemUsage}} cpu={{.CPUPerc}}' prover 2>/dev/null \
+if docker ps --format '{{.Names}}' | grep -qx "$(lineth_container prover)"; then
+  docker stats --no-stream --format 'prover resources: mem={{.MemUsage}} cpu={{.CPUPerc}}' "$(lineth_container prover)" 2>/dev/null \
     | lineth_indent || true
-  docker logs --tail 120 prover 2>&1 \
+  docker logs --tail 120 "$(lineth_container prover)" 2>&1 \
     | grep -E 'ERROR|WARN|Running the|Chain config|IsAllowedCircuitID|proof|request|response|done|completed|failed' \
     | tail -25 \
     | awk 'length($0) > 260 { $0 = substr($0, 1, 260) "..." } { print }' \

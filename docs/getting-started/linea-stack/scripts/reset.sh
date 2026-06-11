@@ -10,7 +10,6 @@ LINETH_LOG_CONTEXT="reset"
 # shellcheck disable=SC1091
 . "$SCRIPT_DIR/lib/runtime.sh"
 
-COMPOSE="docker compose --env-file versions.env --env-file .env --profile stack-partial-prover"
 RESET_LOCAL_L1=false
 FORGET_DEPLOYER=false
 
@@ -44,7 +43,10 @@ done
 
 cd "$STACK_DIR"
 lineth_runtime_init "$STACK_DIR"
-if [ "$(lineth_l1_mode || true)" = "local" ]; then
+COMPOSE="$(lineth_compose_cmd) --profile stack-partial-prover"
+COMPOSE_PROJECT="$(lineth_env_or_default COMPOSE_PROJECT_NAME linea-stack)"
+L1_LOCAL_ROLE="$(lineth_l1_local_role || true)"
+if [ "$(lineth_l1_mode || true)" = "local" ] && [ "$L1_LOCAL_ROLE" != "attach" ]; then
   RESET_LOCAL_L1=true
 fi
 
@@ -54,19 +56,26 @@ lineth_section "docker compose"
 if [ "$RESET_LOCAL_L1" = "true" ]; then
   COMPOSE="$COMPOSE --profile local-l1"
 fi
+# Attach-role instances reference the owner's external L1 network; if the
+# owner is already gone, fall back to a plain compose file so `down` still works.
+if [ "$L1_LOCAL_ROLE" = "attach" ] \
+  && ! docker network inspect "$(lineth_l1_attach_network)" >/dev/null 2>&1; then
+  COMPOSE="docker compose --env-file versions.env --env-file $LINETH_ENV_FILE --profile stack-partial-prover"
+fi
 # shellcheck disable=SC2086
 $COMPOSE down -v --remove-orphans
+# Pre-refactor legacy volumes only ever existed for the single default instance.
 docker volume rm \
   linea-stack-shared-config \
   linea-stack-l2-genesis \
   linea-stack-rendered-config \
   linea-stack-postman-runtime-config >/dev/null 2>&1 || true
 if [ "$RESET_LOCAL_L1" = "true" ]; then
-  docker volume rm linea-stack-local-l1-data >/dev/null 2>&1 || true
+  docker volume rm "${COMPOSE_PROJECT}-local-l1-data" >/dev/null 2>&1 || true
 fi
 
 lineth_section "host artifacts"
-DEPLOYER_KEYSTORE_DIR="$STACK_DIR/artifacts/accounts/deployer-keystore"
+DEPLOYER_KEYSTORE_DIR="$LINETH_ARTIFACTS_DIR/accounts/deployer-keystore"
 PRESERVED_DEPLOYER_DIR=""
 if [ "$FORGET_DEPLOYER" != "true" ] && [ -d "$DEPLOYER_KEYSTORE_DIR" ]; then
   PRESERVED_DEPLOYER_DIR="$(mktemp -d)"
@@ -74,11 +83,11 @@ if [ "$FORGET_DEPLOYER" != "true" ] && [ -d "$DEPLOYER_KEYSTORE_DIR" ]; then
 fi
 
 rm -rf \
-  "$STACK_DIR/artifacts/accounts" \
-  "$STACK_DIR/artifacts/genesis" \
-  "$STACK_DIR/artifacts/config" \
-  "$STACK_DIR/artifacts/deployments" \
-  "$STACK_DIR/artifacts/reports"
+  "$LINETH_ARTIFACTS_DIR/accounts" \
+  "$LINETH_ARTIFACTS_DIR/genesis" \
+  "$LINETH_ARTIFACTS_DIR/config" \
+  "$LINETH_ARTIFACTS_DIR/deployments" \
+  "$LINETH_ARTIFACTS_DIR/reports"
 
 if [ -n "$PRESERVED_DEPLOYER_DIR" ]; then
   mkdir -p "$DEPLOYER_KEYSTORE_DIR"

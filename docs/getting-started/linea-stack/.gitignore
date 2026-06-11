@@ -1,0 +1,3 @@
+# Per-instance generated artifact roots for additional stack instances
+# (the default instance uses artifacts/, which carries its own .gitignore).
+artifacts-*/

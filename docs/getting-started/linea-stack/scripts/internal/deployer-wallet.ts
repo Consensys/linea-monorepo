@@ -45,6 +45,14 @@ export const LOCAL_L1_HOST_RPC_URL = `http://localhost:${DEFAULT_LOCAL_L1_HOST_R
 export const LOCAL_L1_DEPLOYER_PRIVATE_KEY =
   "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 
+// Dev-only override so a second/Nth local-mode instance can deploy from a
+// different prefunded local-genesis dev account on the same shared L1
+// (concurrent instances must not contend on one account's nonce). Ignored in
+// Sepolia mode. See profiles/instance-2.env.example.
+export function localL1DeployerPrivateKey(env: EnvMap): string {
+  return envValue("L1_LOCAL_DEPLOYER_PRIVATE_KEY", env, LOCAL_L1_DEPLOYER_PRIVATE_KEY);
+}
+
 const DEFAULT_DEPLOYER_KEYSTORE_PASSWORD = "linea-local-dev-deployer";
 const DEFAULT_DEPLOYER_KEYSTORE_FILE = "l1-deployer.json";
 const DEFAULT_DEPLOYER_PASSWORD_FILE = "password.txt";
@@ -255,7 +263,7 @@ export async function resolveL1DeployerConfig(
 ): Promise<L1DeployerConfig> {
   const mode = l1Mode(env);
   if (mode === "local") {
-    const wallet = walletFromPrivateKey(LOCAL_L1_DEPLOYER_PRIVATE_KEY, "local L1 deployer private key");
+    const wallet = walletFromPrivateKey(localL1DeployerPrivateKey(env), "local L1 deployer private key");
     return buildResolved({
       mode,
       rpcUrl: context === "host" ? localL1HostRpcUrl(env) : LOCAL_L1_CONTAINER_RPC_URL,
@@ -359,7 +367,9 @@ async function cli() {
     throw new Error("usage: deployer-wallet.ts emit-shell-env --context <host|container>");
   }
   const stackDir = defaultStackDir();
-  const envPath = path.join(stackDir, ".env");
+  // LINETH_ENV_FILE lets a second stack instance keep its own env file next to
+  // the default .env (shell scripts pass it through; defaults to .env).
+  const envPath = process.env.LINETH_ENV_FILE ?? path.join(stackDir, ".env");
   const fileEnv = fs.existsSync(envPath) ? readDotEnvFile(envPath) : {};
   const resolved = await resolveL1DeployerConfig({ ...fileEnv, ...process.env }, context, { stackDir });
   process.stdout.write(emitShellEnv(resolved));

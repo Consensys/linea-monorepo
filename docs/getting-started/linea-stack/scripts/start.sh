@@ -49,13 +49,15 @@ done
 
 ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
 STACK="$ROOT/docs/getting-started/linea-stack"
-COMPOSE="docker compose --env-file versions.env --env-file .env --profile stack-partial-prover"
 lineth_runtime_init "$STACK"
+COMPOSE="$(lineth_compose_cmd) --profile stack-partial-prover"
 L1_MODE="$(lineth_l1_mode)"
 case "$L1_MODE" in
   sepolia|local) ;;
   *) lineth_die "L1_MODE must be one of sepolia, local (got '$L1_MODE')" ;;
 esac
+L1_LOCAL_ROLE="$(lineth_l1_local_role)" \
+  || lineth_die "L1_LOCAL_ROLE must be one of owner, attach (got '$L1_LOCAL_ROLE')"
 
 show_compose_failure() {
   log_file="$1"
@@ -77,6 +79,7 @@ run_ts_preflight() {
     cd "$ROOT/contracts"
     export NODE_PATH="$ROOT/node_modules:$ROOT/contracts/node_modules${NODE_PATH:+:$NODE_PATH}"
     LINETH_STACK_DIR="$STACK" \
+    LINETH_ENV_FILE="$LINETH_ENV_FILE" \
     TS_NODE_TRANSPILE_ONLY=1 \
     TS_NODE_COMPILER_OPTIONS='{"module":"CommonJS","moduleResolution":"Node"}' \
       pnpm -s exec ts-node "$STACK/scripts/internal/quickstart-preflight.ts"
@@ -144,7 +147,7 @@ wait_for_local_l1() {
     done
     if ! lineth_is_uint "$baseline"; then
       lineth_error "local L1 RPC did not return eth_blockNumber at $(lineth_l1_host_rpc_url)"
-      docker logs --tail 80 l1-el-node 2>&1 | lineth_indent || true
+      docker logs --tail 80 "$(lineth_container l1-el-node)" 2>&1 | lineth_indent || true
       exit 1
     fi
 
@@ -160,21 +163,58 @@ wait_for_local_l1() {
     done
 
     lineth_error "local L1 eth_blockNumber did not advance from $baseline"
-    docker logs --tail 80 l1-el-node 2>&1 | lineth_indent || true
-    docker logs --tail 80 l1-cl-node 2>&1 | lineth_indent || true
+    docker logs --tail 80 "$(lineth_container l1-el-node)" 2>&1 | lineth_indent || true
+    docker logs --tail 80 "$(lineth_container l1-cl-node)" 2>&1 | lineth_indent || true
     exit 1
   }
 
-  wait_for_container_health l1-el-node "local L1 execution node"
-  wait_for_container_health l1-cl-node "local L1 consensus node"
+  wait_for_container_health "$(lineth_container l1-el-node)" "local L1 execution node"
+  wait_for_container_health "$(lineth_container l1-cl-node)" "local L1 consensus node"
   wait_for_l1_block_advance
 
   lineth_kv "rpc" "$(lineth_l1_host_rpc_url)"
 }
 
+# Attach role: this instance must NOT start its own L1. Verify the owner
+# instance's shared Docker network exists and its L1 RPC answers with the
+# expected local chain before any Docker work.
+wait_for_attach_l1() {
+  attach_network="$(lineth_l1_attach_network)"
+  lineth_kv "mode" "local L1 (attach)"
+  lineth_kv "network" "$attach_network"
+
+  if ! docker network inspect "$attach_network" >/dev/null 2>&1; then
+    lineth_error "shared L1 Docker network '$attach_network' not found"
+    lineth_info "start the L1-owning instance first (./scripts/start.sh with its env), or set LINETH_L1_ATTACH_NETWORK to the owner's l1network name"
+    exit 1
+  fi
+  lineth_ok "shared L1 network '$attach_network' exists"
+
+  attach_chain_hex=""
+  i=0
+  while [ "$i" -lt 60 ]; do
+    chain_response="$(lineth_rpc_json "$(lineth_l1_host_rpc_url)" eth_chainId '[]')"
+    attach_chain_hex="$(printf '%s\n' "$chain_response" | lineth_json_stdin_string_field result)"
+    if [ -n "$attach_chain_hex" ]; then
+      break
+    fi
+    sleep 1
+    i=$((i + 1))
+  done
+  if [ -z "$attach_chain_hex" ]; then
+    lineth_error "shared local L1 RPC did not answer eth_chainId at $(lineth_l1_host_rpc_url)"
+    lineth_info "HOST_PORT_L1_RPC must point at the L1-owning instance's published L1 RPC port"
+    exit 1
+  fi
+  lineth_ok "shared local L1 reachable (chainId $(lineth_hex_to_dec_small "$attach_chain_hex"))"
+  lineth_kv "rpc" "$(lineth_l1_host_rpc_url)"
+}
+
 cd "$STACK"
 
-if [ "$L1_MODE" = "local" ]; then
+if [ "$L1_MODE" = "local" ] && [ "$L1_LOCAL_ROLE" = "attach" ]; then
+  lineth_banner "start · local services + shared local L1 finality (attach)"
+elif [ "$L1_MODE" = "local" ]; then
   lineth_banner "start · local services + local L1 finality"
 else
   lineth_banner "start · local services + Sepolia finality"
@@ -184,7 +224,9 @@ lineth_section "Check ports"
 lineth_run_stream env LINETH_EMBEDDED=true LINETH_SKIP_BANNER=true "$SCRIPT_DIR/check-ports.sh"
 
 lineth_section "Check L1 network"
-if [ "$L1_MODE" = "local" ]; then
+if [ "$L1_MODE" = "local" ] && [ "$L1_LOCAL_ROLE" = "attach" ]; then
+  wait_for_attach_l1
+elif [ "$L1_MODE" = "local" ]; then
   wait_for_local_l1
 else
   lineth_kv "mode" "Sepolia"

@@ -20,15 +20,15 @@ DEPLOYMENTS_DIR="$LINETH_DEPLOYMENTS_DIR"
 
 latest_log_hash() {
   pattern="$1"
-  docker logs --tail 4000 coordinator 2>&1 \
+  docker logs --tail 4000 "$(lineth_container coordinator)" 2>&1 \
     | sed -nE "$pattern" \
     | tail -1 || true
 }
 
 psql_json() {
   query="$1"
-  if docker ps --format '{{.Names}}' | grep -qx postman-pg; then
-    docker exec postman-pg psql -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-postman}" -At -c "$query" 2>/dev/null || printf '[]'
+  if docker ps --format '{{.Names}}' | grep -qx "$(lineth_container postman-pg)"; then
+    docker exec "$(lineth_container postman-pg)" psql -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-postman}" -At -c "$query" 2>/dev/null || printf '[]'
   else
     printf '[]'
   fi
@@ -125,7 +125,7 @@ addresses_chain_id="$(lineth_json_root_value "$ADDR" l2ChainId || true)"
 latest_blob_tx=""
 latest_finalization_tx=""
 latest_finalization_window=""
-if docker ps -a --format '{{.Names}}' | grep -qx coordinator; then
+if docker ps -a --format '{{.Names}}' | grep -qx "$(lineth_container coordinator)"; then
   latest_blob_tx="$(latest_log_hash 's/.*blobs submitted:.*transactionHash=(0x[a-fA-F0-9]{64}).*/\1/p')"
   latest_finalization_tx="$(latest_log_hash 's/.*submitted aggregation=[^ ]+ transactionHash=(0x[a-fA-F0-9]{64}).*/\1/p')"
   latest_finalization_window="$(latest_log_hash 's/.*submitted aggregation=([^ ]+) transactionHash=0x[a-fA-F0-9]{64}.*/\1/p')"

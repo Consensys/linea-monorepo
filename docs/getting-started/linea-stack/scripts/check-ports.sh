@@ -22,8 +22,9 @@ seen_ports=" "
 
 env_value() {
   key="$1"
-  [ -f .env ] || return 1
-  sed -nE "s/^${key}=([^#[:space:]].*)$/\1/p" .env | tail -1
+  env_file="${LINETH_ENV_FILE:-.env}"
+  [ -f "$env_file" ] || return 1
+  sed -nE "s/^${key}=([^#[:space:]].*)$/\1/p" "$env_file" | tail -1
 }
 
 with_default() {
@@ -103,7 +104,20 @@ case "$l1_mode" in
     ;;
 esac
 
-if [ "$l1_mode" = "local" ]; then
+l1_local_role="$(with_default "${L1_LOCAL_ROLE:-$(env_value L1_LOCAL_ROLE || true)}" owner)"
+case "$l1_local_role" in
+  owner|attach) ;;
+  *)
+    port_row "L1_LOCAL_ROLE=$l1_local_role" "bad" "$LINETH_RED" "L1_LOCAL_ROLE must be one of owner, attach"
+    failures=$((failures + 1))
+    ;;
+esac
+
+if [ "$l1_mode" = "local" ] && [ "$l1_local_role" = "attach" ]; then
+  # Attach role: HOST_PORT_L1_* point at the L1-owning instance's already-bound
+  # ports; this instance binds no L1 ports of its own.
+  port_row "L1 ports" "skip" "$LINETH_GREEN" "attach role reuses the L1 owner's published ports"
+elif [ "$l1_mode" = "local" ]; then
   check_port "Local L1 RPC HTTP" HOST_PORT_L1_RPC 8445
   check_port "Local L1 RPC WebSocket" HOST_PORT_L1_WS 8446
   check_port "Local L1 engine API" HOST_PORT_L1_ENGINE 8551

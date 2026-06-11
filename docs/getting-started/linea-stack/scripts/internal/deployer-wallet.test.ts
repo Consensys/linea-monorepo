@@ -160,6 +160,42 @@ const tests: TestCase[] = [
     },
   },
   {
+    name: "local mode honors L1_LOCAL_DEPLOYER_PRIVATE_KEY override for multi-instance deploys",
+    run: async () => {
+      const stackDir = tmpStackDir();
+      const accountsDir = path.join(stackDir, "artifacts", "accounts");
+      const overrideKey = testPrivateKey("instance-2-local-deployer");
+      const overrideAddress = new Wallet(overrideKey).address;
+
+      const overridden = await resolveL1DeployerConfig(
+        {
+          L1_MODE: "local",
+          L1_LOCAL_DEPLOYER_PRIVATE_KEY: overrideKey,
+        },
+        "container",
+        { stackDir, accountsDir },
+      );
+      const defaulted = await resolveL1DeployerConfig({ L1_MODE: "local" }, "container", { stackDir, accountsDir });
+      const sepolia = await resolveL1DeployerConfig(
+        {
+          L1_MODE: "sepolia",
+          L1_RPC_URL: TEST_RPC_URL,
+          L1_DEPLOYER_PRIVATE_KEY: LEGACY_PRIVATE_KEY,
+          L1_LOCAL_DEPLOYER_PRIVATE_KEY: overrideKey,
+        },
+        "container",
+        { stackDir, accountsDir },
+      );
+
+      assert.equal(overridden.source, "local-genesis");
+      assert.equal(overridden.privateKey, overrideKey);
+      assert.equal(overridden.address, overrideAddress);
+      assert.equal(defaulted.privateKey, LOCAL_L1_DEPLOYER_PRIVATE_KEY);
+      // Sepolia mode must ignore the local-only override.
+      assert.equal(sepolia.privateKey, LEGACY_PRIVATE_KEY);
+    },
+  },
+  {
     name: "local mode host RPC honors HOST_PORT_L1_RPC override",
     run: async () => {
       const stackDir = tmpStackDir();

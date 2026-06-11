@@ -68,7 +68,7 @@ async function printFundingInstructions(params: {
 
 async function main() {
   const stackDir = process.env.LINETH_STACK_DIR ?? process.cwd();
-  const envPath = path.join(stackDir, ".env");
+  const envPath = process.env.LINETH_ENV_FILE ?? path.join(stackDir, ".env");
   const fileEnv = readDotEnvFile(envPath);
   const env = { ...fileEnv, ...process.env };
 

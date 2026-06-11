@@ -192,7 +192,7 @@ require_uint "postman max message id" "$START_MESSAGE_ID"
 
 section "ensuring disposable traffic account"
 TRAFFIC_ACCOUNT_OUTPUT="$(
-  docker compose --env-file versions.env --env-file .env --profile stack-partial-prover \
+  $(lineth_compose_cmd) --profile stack-partial-prover \
     run --rm --no-deps \
     -v "$LINETH_ACCOUNTS_DIR:/traffic-accounts:rw" \
     -e DEMO_TRAFFIC_ENV="/traffic-accounts/demo-traffic.env" \

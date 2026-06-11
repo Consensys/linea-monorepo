@@ -7,8 +7,11 @@ STACK_DIR="$(CDPATH= cd "$SCRIPT_DIR/.." && pwd -P)"
 LINETH_LOG_CONTEXT="bootstrap"
 # shellcheck disable=SC1091
 . "$SCRIPT_DIR/lib/logging.sh"
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/lib/runtime.sh"
+lineth_runtime_init "$STACK_DIR"
 
-COMPOSE="docker compose --env-file versions.env --env-file .env --profile bootstrap"
+COMPOSE="$(lineth_compose_cmd) --profile bootstrap"
 
 cd "$STACK_DIR"
 BUSYBOX_TAG="${BUSYBOX_TAG:-$(sed -n 's/^BUSYBOX_TAG=//p' versions.env | tail -n 1)}"
@@ -20,25 +23,25 @@ fi
 
 lineth_section "Create generated-file folders"
 mkdir -p \
-  "$STACK_DIR/artifacts/accounts/deployer-keystore" \
-  "$STACK_DIR/artifacts/accounts/runtime-keystores" \
-  "$STACK_DIR/artifacts/accounts/web3signer-keys" \
-  "$STACK_DIR/artifacts/genesis" \
-  "$STACK_DIR/artifacts/config/coordinator" \
-  "$STACK_DIR/artifacts/config/maru" \
-  "$STACK_DIR/artifacts/config/sequencer" \
-  "$STACK_DIR/artifacts/config/l2-node-besu" \
-  "$STACK_DIR/artifacts/config/prover" \
-  "$STACK_DIR/artifacts/config/postman" \
-  "$STACK_DIR/artifacts/deployments/deploy-logs" \
-  "$STACK_DIR/artifacts/reports"
+  "$LINETH_ARTIFACTS_DIR/accounts/deployer-keystore" \
+  "$LINETH_ARTIFACTS_DIR/accounts/runtime-keystores" \
+  "$LINETH_ARTIFACTS_DIR/accounts/web3signer-keys" \
+  "$LINETH_ARTIFACTS_DIR/genesis" \
+  "$LINETH_ARTIFACTS_DIR/config/coordinator" \
+  "$LINETH_ARTIFACTS_DIR/config/maru" \
+  "$LINETH_ARTIFACTS_DIR/config/sequencer" \
+  "$LINETH_ARTIFACTS_DIR/config/l2-node-besu" \
+  "$LINETH_ARTIFACTS_DIR/config/prover" \
+  "$LINETH_ARTIFACTS_DIR/config/postman" \
+  "$LINETH_ARTIFACTS_DIR/deployments/deploy-logs" \
+  "$LINETH_ARTIFACTS_DIR/reports"
 
 # Compose parses env_file paths before it can run the renderer. Keep a harmless
 # placeholder so compose config/pull/run work from a clean checkout.
-if [ ! -f "$STACK_DIR/artifacts/config/postman/postman.env" ]; then
-  : > "$STACK_DIR/artifacts/config/postman/postman.env"
+if [ ! -f "$LINETH_ARTIFACTS_DIR/config/postman/postman.env" ]; then
+  : > "$LINETH_ARTIFACTS_DIR/config/postman/postman.env"
 fi
-lineth_ok "generated-file folders ready under $STACK_DIR/artifacts"
+lineth_ok "generated-file folders ready under $LINETH_ARTIFACTS_DIR"
 
 volume_device() {
   docker volume inspect -f '{{ index .Options "device" }}' "$1" 2>/dev/null || true
@@ -111,28 +114,28 @@ migrate_legacy_shared_dir() {
   from_dir="$1"
   [ -d "$from_dir" ] || return 0
 
-  copy_if_present "$from_dir/addresses-precomputed.json" "$STACK_DIR/artifacts/accounts/addresses-precomputed.json"
-  copy_if_present "$from_dir/runtime-keys.env" "$STACK_DIR/artifacts/accounts/runtime-keys.env"
-  copy_if_present "$from_dir/demo-traffic.env" "$STACK_DIR/artifacts/accounts/demo-traffic.env"
-  copy_if_present "$from_dir/runtime-keystores" "$STACK_DIR/artifacts/accounts/runtime-keystores"
-  copy_if_present "$from_dir/web3signer-keys" "$STACK_DIR/artifacts/accounts/web3signer-keys"
+  copy_if_present "$from_dir/addresses-precomputed.json" "$LINETH_ARTIFACTS_DIR/accounts/addresses-precomputed.json"
+  copy_if_present "$from_dir/runtime-keys.env" "$LINETH_ARTIFACTS_DIR/accounts/runtime-keys.env"
+  copy_if_present "$from_dir/demo-traffic.env" "$LINETH_ARTIFACTS_DIR/accounts/demo-traffic.env"
+  copy_if_present "$from_dir/runtime-keystores" "$LINETH_ARTIFACTS_DIR/accounts/runtime-keystores"
+  copy_if_present "$from_dir/web3signer-keys" "$LINETH_ARTIFACTS_DIR/accounts/web3signer-keys"
 
-  copy_if_present "$from_dir/addresses.json" "$STACK_DIR/artifacts/deployments/addresses.json"
-  copy_if_present "$from_dir/deploy-runtime.env" "$STACK_DIR/artifacts/deployments/deploy-runtime.env"
-  copy_if_present "$from_dir/deploy-timing.jsonl" "$STACK_DIR/artifacts/deployments/deploy-timing.jsonl"
-  copy_if_present "$from_dir/deploy-logs" "$STACK_DIR/artifacts/deployments/deploy-logs"
+  copy_if_present "$from_dir/addresses.json" "$LINETH_ARTIFACTS_DIR/deployments/addresses.json"
+  copy_if_present "$from_dir/deploy-runtime.env" "$LINETH_ARTIFACTS_DIR/deployments/deploy-runtime.env"
+  copy_if_present "$from_dir/deploy-timing.jsonl" "$LINETH_ARTIFACTS_DIR/deployments/deploy-timing.jsonl"
+  copy_if_present "$from_dir/deploy-logs" "$LINETH_ARTIFACTS_DIR/deployments/deploy-logs"
 }
 
 migrate_legacy_rendered_dir() {
   from_dir="$1"
   [ -d "$from_dir" ] || return 0
 
-  copy_if_present "$from_dir/coordinator-config.predeploy.toml" "$STACK_DIR/artifacts/config/coordinator/coordinator-config.predeploy.toml"
-  copy_if_present "$from_dir/coordinator-config.toml" "$STACK_DIR/artifacts/config/coordinator/coordinator-config.toml"
-  copy_if_present "$from_dir/maru-config.toml" "$STACK_DIR/artifacts/config/maru/config.toml"
-  copy_if_present "$from_dir/sequencer.config.toml" "$STACK_DIR/artifacts/config/sequencer/sequencer.config.toml"
-  copy_if_present "$from_dir/l2-node-besu.config.toml" "$STACK_DIR/artifacts/config/l2-node-besu/l2-node-besu.config.toml"
-  copy_if_present "$from_dir/prover-config-partial.toml" "$STACK_DIR/artifacts/config/prover/prover-config-partial.toml"
+  copy_if_present "$from_dir/coordinator-config.predeploy.toml" "$LINETH_ARTIFACTS_DIR/config/coordinator/coordinator-config.predeploy.toml"
+  copy_if_present "$from_dir/coordinator-config.toml" "$LINETH_ARTIFACTS_DIR/config/coordinator/coordinator-config.toml"
+  copy_if_present "$from_dir/maru-config.toml" "$LINETH_ARTIFACTS_DIR/config/maru/config.toml"
+  copy_if_present "$from_dir/sequencer.config.toml" "$LINETH_ARTIFACTS_DIR/config/sequencer/sequencer.config.toml"
+  copy_if_present "$from_dir/l2-node-besu.config.toml" "$LINETH_ARTIFACTS_DIR/config/l2-node-besu/l2-node-besu.config.toml"
+  copy_if_present "$from_dir/prover-config-partial.toml" "$LINETH_ARTIFACTS_DIR/config/prover/prover-config-partial.toml"
 }
 
 migrate_legacy_volume_to_temp() {
@@ -152,13 +155,13 @@ migrate_legacy_volume_to_temp() {
 }
 
 lineth_section "Clean old Docker-volume state"
-migrate_legacy_shared_dir "$STACK_DIR/artifacts/shared"
-migrate_legacy_rendered_dir "$STACK_DIR/artifacts/config/rendered"
+migrate_legacy_shared_dir "$LINETH_ARTIFACTS_DIR/shared"
+migrate_legacy_rendered_dir "$LINETH_ARTIFACTS_DIR/config/rendered"
 migrate_legacy_volume_to_temp linea-stack-shared-config migrate_legacy_shared_dir
-migrate_legacy_volume linea-stack-l2-genesis "$STACK_DIR/artifacts/genesis"
+migrate_legacy_volume linea-stack-l2-genesis "$LINETH_ARTIFACTS_DIR/genesis"
 migrate_legacy_volume_to_temp linea-stack-rendered-config migrate_legacy_rendered_dir
 docker volume rm linea-stack-postman-runtime-config >/dev/null 2>&1 || true
-rm -rf "$STACK_DIR/artifacts/shared" "$STACK_DIR/artifacts/config/rendered"
+rm -rf "$LINETH_ARTIFACTS_DIR/shared" "$LINETH_ARTIFACTS_DIR/config/rendered"
 lineth_ok "generated files ready"
 
 lineth_section "Generate runtime wallets and keystores"
@@ -171,7 +174,7 @@ lineth_info "rendering generated Postman env before runtime containers are creat
 # shellcheck disable=SC2086
 COMPOSE_PROGRESS=plain $COMPOSE run --rm --no-deps postman-config-render
 
-POSTMAN_ENV="$STACK_DIR/artifacts/config/postman/postman.env"
+POSTMAN_ENV="$LINETH_ARTIFACTS_DIR/config/postman/postman.env"
 [ -s "$POSTMAN_ENV" ] || lineth_die "$POSTMAN_ENV missing or empty"
 
 if grep -q 'SIGNER_PRIVATE_KEY' "$POSTMAN_ENV"; then

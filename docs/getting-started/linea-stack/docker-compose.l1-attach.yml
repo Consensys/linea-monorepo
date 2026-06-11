@@ -1,0 +1,38 @@
+# =============================================================================
+# Overlay for L2-only stack instances that ATTACH to another instance's local
+# L1 instead of starting their own (L1_MODE=local + L1_LOCAL_ROLE=attach).
+#
+# The quickstart scripts add `-f docker-compose.yml -f docker-compose.l1-attach.yml`
+# automatically when the instance env file sets L1_LOCAL_ROLE=attach. Do not use
+# this overlay for the L1-owning instance or for Sepolia mode.
+#
+# What it does:
+#   - declares the L1 owner's Docker network as an external network
+#     (the owner instance creates it as `<owner-project>_l1network`);
+#   - joins every L1-dialing service to that network so the existing
+#     `http://l1-el-node:8545` container URL keeps resolving via the owner's
+#     l1-el-node service alias on that network.
+#
+# The attach instance never starts l1-* services (the scripts skip the
+# `local-l1` profile in attach role), deploys its OWN LineaRollup/TokenBridge
+# set to the shared L1, and must use a distinct prefunded dev deployer
+# (L1_LOCAL_DEPLOYER_PRIVATE_KEY) so concurrent instances do not contend on
+# one L1 account's nonce. See profiles/instance-2.env.example.
+# =============================================================================
+
+networks:
+  l1attach:
+    external: true
+    name: ${LINETH_L1_ATTACH_NETWORK:-linea-stack_l1network}
+
+services:
+  account-setup:
+    networks: [linea, l1attach]
+  deploy-contracts:
+    networks: [linea, l1attach]
+  coordinator:
+    networks: [linea, l1attach]
+  maru:
+    networks: [linea, l1attach]
+  postman:
+    networks: [linea, l1attach]

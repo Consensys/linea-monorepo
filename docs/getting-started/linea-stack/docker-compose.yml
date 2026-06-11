@@ -31,37 +31,44 @@ networks:
         # URL parser rejects hostnames; the l2-node-besu bootnode reference
         # therefore needs an IP literal. Only the sequencer is pinned — every
         # other service uses Docker DNS via container hostnames.
-        - subnet: 11.11.11.0/24
+        # Each concurrently running stack instance needs a distinct subnet
+        # (Docker rejects overlapping bridge subnets) — see
+        # profiles/instance-2.env.example.
+        - subnet: ${L2_NETWORK_SUBNET:-11.11.11.0/24}
   l1network:
     driver: bridge
     ipam:
       config:
-        - subnet: 10.10.10.0/24
+        - subnet: ${L1_NETWORK_SUBNET:-10.10.10.0/24}
 
+# Named volumes carry the compose project name so multiple stack instances
+# (distinct COMPOSE_PROJECT_NAME values) keep fully isolated state. The default
+# matches this directory's compose project name, so single-instance volume
+# names are unchanged.
 volumes:
   linea-local-dev:
-    name: "linea-stack-local-dev"
+    name: "${COMPOSE_PROJECT_NAME:-linea-stack}-local-dev"
   linea-stack-local-l1-data:
-    name: "linea-stack-local-l1-data"
+    name: "${COMPOSE_PROJECT_NAME:-linea-stack}-local-l1-data"
   linea-logs:
-    name: "linea-stack-logs"
+    name: "${COMPOSE_PROJECT_NAME:-linea-stack}-logs"
   coordinator-pg-data:
   postman-pg-data:
   blockscout-l2-pg-data:
   linea-contracts-pnpm-store:
-    name: "linea-stack-contracts-pnpm-store"
+    name: "${COMPOSE_PROJECT_NAME:-linea-stack}-contracts-pnpm-store"
   linea-contracts-root-node-modules:
-    name: "linea-stack-contracts-root-node-modules"
+    name: "${COMPOSE_PROJECT_NAME:-linea-stack}-contracts-root-node-modules"
   linea-contracts-package-node-modules:
-    name: "linea-stack-contracts-package-node-modules"
+    name: "${COMPOSE_PROJECT_NAME:-linea-stack}-contracts-package-node-modules"
   linea-eslint-config-node-modules:
-    name: "linea-stack-eslint-config-node-modules"
+    name: "${COMPOSE_PROJECT_NAME:-linea-stack}-eslint-config-node-modules"
   linea-contracts-artifacts:
-    name: "linea-stack-contracts-artifacts"
+    name: "${COMPOSE_PROJECT_NAME:-linea-stack}-contracts-artifacts"
   linea-contracts-cache:
-    name: "linea-stack-contracts-cache"
+    name: "${COMPOSE_PROJECT_NAME:-linea-stack}-contracts-cache"
   linea-foundry-home:
-    name: "linea-stack-foundry-home"
+    name: "${COMPOSE_PROJECT_NAME:-linea-stack}-foundry-home"
 
 services:
 
@@ -71,7 +78,7 @@ services:
 
   l1-node-genesis-generator:
     image: ethpandaops/ethereum-genesis-generator:${ETH_GENESIS_GENERATOR_TAG:-5.1.0}
-    container_name: l1-node-genesis-generator
+    container_name: ${LINETH_CONTAINER_PREFIX:-}l1-node-genesis-generator
     profiles: ["local-l1"]
     entrypoint: ["bash", "/scripts/services/generate-local-l1-genesis.sh"]
     volumes:
@@ -84,7 +91,7 @@ services:
     networks: [l1network]
 
   l1-el-node:
-    container_name: l1-el-node
+    container_name: ${LINETH_CONTAINER_PREFIX:-}l1-el-node
     hostname: l1-el-node
     image: consensys/linea-besu-package:${LINEA_BESU_PACKAGE_TAG}
     profiles: ["local-l1"]
@@ -116,10 +123,10 @@ services:
     networks:
       linea: {}
       l1network:
-        ipv4_address: 10.10.10.201
+        ipv4_address: ${L1_EL_IP:-10.10.10.201}
 
   l1-cl-node:
-    container_name: l1-cl-node
+    container_name: ${LINETH_CONTAINER_PREFIX:-}l1-cl-node
     hostname: l1-cl-node
     image: consensys/teku:${TEKU_TAG:-25.11.0-jdk24}
     profiles: ["local-l1"]
@@ -150,7 +157,7 @@ services:
       - "${HOST_PORT_L1_CL_REST:-4003}:4000/tcp"
     networks:
       l1network:
-        ipv4_address: 10.10.10.202
+        ipv4_address: ${L1_CL_IP:-10.10.10.202}
 
   # ============================================================================
   # Init layer — pre-boot account derivation, config rendering, L2 genesis
@@ -174,11 +181,15 @@ services:
     # + precomputed addresses. Use ./scripts/reset.sh for a completely fresh
     # derivation.
     image: node:${NODE_IMAGE_TAG}
-    container_name: account-setup
+    container_name: ${LINETH_CONTAINER_PREFIX:-}account-setup
     profiles: *bootstrap-profiles
     environment:
       L1_MODE: ${L1_MODE:-sepolia}
       L1_RPC_URL: ${L1_RPC_URL:-}
+      # Dev-only override for multi-instance local mode: each instance deploys
+      # from a distinct prefunded local-genesis dev account. Ignored in Sepolia
+      # mode. See profiles/instance-2.env.example.
+      L1_LOCAL_DEPLOYER_PRIVATE_KEY: ${L1_LOCAL_DEPLOYER_PRIVATE_KEY:-}
       L1_DEPLOYER_PRIVATE_KEY: ${L1_DEPLOYER_PRIVATE_KEY:-}
       L1_DEPLOYER_KEYSTORE_PATH: ${L1_DEPLOYER_KEYSTORE_PATH:-}
       L1_DEPLOYER_KEYSTORE_PASSWORD: ${L1_DEPLOYER_KEYSTORE_PASSWORD:-}
@@ -212,7 +223,7 @@ services:
       - ./scripts/internal:/scripts/internal:ro
       - ./scripts/lib:/scripts/lib:ro
       - ./scripts/phases:/scripts/phases:ro
-      - ./artifacts/accounts:/accounts:rw
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/accounts:/accounts:rw
     entrypoint: ["sh", "/scripts/phases/01-generate-accounts.sh"]
     networks: [linea]
 
@@ -220,7 +231,7 @@ services:
     # Seeds pinned Foundry binaries into a Docker volume consumed by
     # deploy-contracts. This avoids live foundryup/curl during contract deploy.
     image: ghcr.io/foundry-rs/foundry:${FOUNDRY_TAG}
-    container_name: foundry-tools
+    container_name: ${LINETH_CONTAINER_PREFIX:-}foundry-tools
     profiles: *default-profiles
     user: "0:0"
     environment:
@@ -232,7 +243,7 @@ services:
 
   l2-genesis-init:
     image: busybox:${BUSYBOX_TAG}
-    container_name: l2-genesis-init
+    container_name: ${LINETH_CONTAINER_PREFIX:-}l2-genesis-init
     profiles: *default-profiles
     environment:
       L2_CHAIN_ID: ${L2_CHAIN_ID:-1337}
@@ -250,8 +261,8 @@ services:
       - ./scripts/phases:/scripts/phases:ro
       - ./scripts/services:/scripts/services:ro
       - ./config/genesis:/templates:ro
-      - ./artifacts/genesis:/initialization:rw
-      - ./artifacts/accounts:/accounts:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/genesis:/initialization:rw
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/accounts:/accounts:ro
 
   config-render:
     # Renders 5 service config templates (coordinator, maru, sequencer,
@@ -274,7 +285,7 @@ services:
     # NOT idempotent — re-renders every boot so .env / precomputed JSON changes
     # always propagate to /rendered/.
     image: busybox:${BUSYBOX_TAG}
-    container_name: config-render
+    container_name: ${LINETH_CONTAINER_PREFIX:-}config-render
     profiles: *default-profiles
     environment:
       L1_MODE: ${L1_MODE:-sepolia}
@@ -301,12 +312,12 @@ services:
       - ./config/services/sequencer/sequencer.config.toml.template:/templates/sequencer.config.toml.template:ro
       - ./config/services/l2-node-besu/l2-node-besu.config.toml.template:/templates/l2-node-besu.config.toml.template:ro
       - ./config/services/prover/prover-config-partial.toml.template:/templates/prover-config-partial.toml.template:ro
-      - ./artifacts/accounts:/accounts:ro
-      - ./artifacts/config:/rendered:rw
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/accounts:/accounts:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/config:/rendered:rw
 
   sequencer:
     image: consensys/linea-besu-package:${LINEA_BESU_PACKAGE_TAG}
-    container_name: sequencer
+    container_name: ${LINETH_CONTAINER_PREFIX:-}sequencer
     hostname: sequencer
     profiles: *default-profiles
     depends_on:
@@ -333,13 +344,13 @@ services:
     volumes:
       # Rendered TOML from config-render: __L2_MESSAGE_SERVICE_ADDRESS__ filled
       # in from /accounts/addresses-precomputed.json.
-      - ./artifacts/config/sequencer:/rendered:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/config/sequencer:/rendered:ro
       - ./config/services/sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
       - ./config/services/sequencer/key:/var/lib/besu/key:ro
       - ./config/services/sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/services/sequencer/tls-files:/var/lib/besu/tls-files:ro
       - ./config/services/coordinator/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
-      - ./artifacts/genesis:/initialization:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/genesis:/initialization:ro
     ports:
       # Sequencer RPC is internal-only by convention. Not user-facing.
       # Use l2-node-besu (HOST_PORT_L2_RPC) for end-user RPC.
@@ -348,11 +359,11 @@ services:
       linea:
         # Pinned IP — the l2-node-besu bootnode enode URL references this.
         # Must match the IP literal in the --bootnodes flag below.
-        ipv4_address: 11.11.11.101
+        ipv4_address: ${L2_SEQUENCER_IP:-11.11.11.101}
 
   maru:
     image: consensys/maru:${MARU_TAG}
-    container_name: maru
+    container_name: ${LINETH_CONTAINER_PREFIX:-}maru
     hostname: maru
     profiles: *default-profiles
     depends_on:
@@ -370,17 +381,17 @@ services:
     volumes:
       # Rendered TOML from config-render: ${L1_RPC_URL} substituted at boot
       # (Phase 2 will add ${LINEA_ROLLUP_ADDRESS}).
-      - ./artifacts/config/maru:/rendered:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/config/maru:/rendered:ro
       - ./config/services/maru/log4j.xml:/opt/consensys/maru/configs/log4j.xml:ro
       - ./config/services/maru/private-key:/tmp/maru-db/private-key:ro
-      - ./artifacts/genesis:/initialization:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/genesis:/initialization:ro
     ports:
       - "${HOST_PORT_MARU:-8080}:8080"
     networks: [linea]
 
   l2-node-besu:
     image: consensys/linea-besu-package:${LINEA_BESU_PACKAGE_TAG}
-    container_name: l2-node-besu
+    container_name: ${LINETH_CONTAINER_PREFIX:-}l2-node-besu
     hostname: l2-node-besu
     profiles: *default-profiles
     depends_on:
@@ -414,15 +425,15 @@ services:
       # in the `networks.linea.ipv4_address` block — Besu's enode URL parser
       # rejects hostnames.
       # See config/DEV-KEYS-INVENTORY.md for the regeneration checklist.
-      - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
+      - --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@${L2_SEQUENCER_IP:-11.11.11.101}:30303
     volumes:
       # Rendered TOML from config-render: __L2_MESSAGE_SERVICE_ADDRESS__ filled
       # in from /accounts/addresses-precomputed.json.
-      - ./artifacts/config/l2-node-besu:/rendered:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/config/l2-node-besu:/rendered:ro
       - ./config/services/sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
       - ./config/services/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/services/coordinator/traces-limits-v5.toml:/var/lib/besu/traces-limits.toml:ro
-      - ./artifacts/genesis:/initialization:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/genesis:/initialization:ro
       - linea-local-dev:/data
     ports:
       - "${HOST_PORT_L2_RPC:-8745}:8545"
@@ -432,7 +443,7 @@ services:
 
   shomei:
     image: consensys/linea-shomei:${LINEA_SHOMEI_TAG}
-    container_name: shomei
+    container_name: ${LINETH_CONTAINER_PREFIX:-}shomei
     hostname: shomei
     profiles: *default-profiles
     depends_on:
@@ -468,7 +479,7 @@ services:
 
   web3signer:
     image: consensys/web3signer:${WEB3SIGNER_TAG}
-    container_name: web3signer
+    container_name: ${LINETH_CONTAINER_PREFIX:-}web3signer
     hostname: web3signer
     profiles: *default-profiles
     # Web3signer runs in mTLS mode (--tls-known-clients-file enables client
@@ -491,7 +502,7 @@ services:
       - eth1
       - --chain-id=1   # only used for proxying eth_sendTransaction; we don't proxy
     volumes:
-      - ./artifacts/accounts:/accounts:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/accounts:/accounts:ro
       - ./config/web3signer/tls-files/:/tls-files/:ro
     ports:
       - "${HOST_PORT_WEB3SIGNER:-9000}:9000"
@@ -503,7 +514,7 @@ services:
 
   coordinator-pg:
     image: postgres:${POSTGRES_TAG}
-    container_name: coordinator-pg
+    container_name: ${LINETH_CONTAINER_PREFIX:-}coordinator-pg
     profiles: *default-profiles
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -527,7 +538,7 @@ services:
 
   postman-pg:
     image: postgres:${POSTGRES_TAG}
-    container_name: postman-pg
+    container_name: ${LINETH_CONTAINER_PREFIX:-}postman-pg
     profiles: *default-profiles
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -547,7 +558,7 @@ services:
 
   blockscout-l2-pg:
     image: postgres:${POSTGRES_TAG}
-    container_name: blockscout-l2-pg
+    container_name: ${LINETH_CONTAINER_PREFIX:-}blockscout-l2-pg
     profiles: *default-profiles
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -571,7 +582,7 @@ services:
 
   deploy-contracts:
     image: node:${NODE_IMAGE_TAG}
-    container_name: deploy-contracts
+    container_name: ${LINETH_CONTAINER_PREFIX:-}deploy-contracts
     profiles: *default-profiles
     depends_on:
       sequencer:
@@ -590,6 +601,8 @@ services:
     environment:
       L1_MODE: ${L1_MODE:-sepolia}
       L1_RPC_URL: ${L1_RPC_URL:-}
+      # Dev-only multi-instance override; see account-setup note above.
+      L1_LOCAL_DEPLOYER_PRIVATE_KEY: ${L1_LOCAL_DEPLOYER_PRIVATE_KEY:-}
       L1_DEPLOYER_PRIVATE_KEY: ${L1_DEPLOYER_PRIVATE_KEY:-}
       L1_DEPLOYER_KEYSTORE_PATH: ${L1_DEPLOYER_KEYSTORE_PATH:-}
       L1_DEPLOYER_KEYSTORE_PASSWORD: ${L1_DEPLOYER_KEYSTORE_PASSWORD:-}
@@ -643,9 +656,9 @@ services:
       # 8 nonces) and serializes the 3 parallel deploys. See
       # scripts/internal/deployBridgedTokenAndTokenBridgeV1_1.ts header for details.
       - ./scripts/internal/deployBridgedTokenAndTokenBridgeV1_1.ts:/workspace/contracts/local-deployments-artifacts/deployBridgedTokenAndTokenBridgeV1_1.ts:ro
-      - ./artifacts/accounts:/accounts:ro
-      - ./artifacts/deployments:/deployments:rw
-      - ./artifacts/genesis:/generated-genesis:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/accounts:/accounts:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/deployments:/deployments:rw
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/genesis:/generated-genesis:ro
     # Keep secrets out of process args. deploy-contracts.sh reads L1_RPC_URL,
     # L2_RPC_URL, and ADDRESSES_OUTPUT_PATH from the environment above.
     entrypoint: ["bash", "/scripts/phases/04-deploy-contracts.sh"]
@@ -657,7 +670,7 @@ services:
 
   postman-config-render:
     image: busybox:${BUSYBOX_TAG}
-    container_name: postman-config-render
+    container_name: ${LINETH_CONTAINER_PREFIX:-}postman-config-render
     profiles: *bootstrap-profiles
     environment:
       L1_MODE: ${L1_MODE:-sepolia}
@@ -665,8 +678,8 @@ services:
     entrypoint: ["sh", "/scripts/services/render-postman-config.sh"]
     volumes:
       - ./scripts/services:/scripts/services:ro
-      - ./artifacts/accounts:/accounts:ro
-      - ./artifacts/config/postman:/postman-runtime:rw
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/accounts:/accounts:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/config/postman:/postman-runtime:rw
     networks: [linea]
 
   # ============================================================================
@@ -675,7 +688,7 @@ services:
 
   runtime-config-finalize:
     image: busybox:${BUSYBOX_TAG}
-    container_name: runtime-config-finalize
+    container_name: ${LINETH_CONTAINER_PREFIX:-}runtime-config-finalize
     profiles: *default-profiles
     depends_on:
       deploy-contracts:
@@ -686,8 +699,8 @@ services:
     volumes:
       - ./scripts/phases:/scripts/phases:ro
       - ./scripts/services:/scripts/services:ro
-      - ./artifacts/deployments:/deployments:ro
-      - ./artifacts/config/coordinator:/rendered:rw
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/deployments:/deployments:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/config/coordinator:/rendered:rw
     networks: [linea]
 
   # ============================================================================
@@ -696,7 +709,7 @@ services:
 
   coordinator:
     image: consensys/linea-coordinator:${LINEA_COORDINATOR_TAG}
-    container_name: coordinator
+    container_name: ${LINETH_CONTAINER_PREFIX:-}coordinator
     hostname: coordinator
     profiles: *default-profiles
     depends_on:
@@ -723,7 +736,7 @@ services:
     volumes:
       - ./scripts/init:/scripts/init:ro
       # Final TOML from runtime-config-finalize.
-      - ./artifacts/config/coordinator:/rendered:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/config/coordinator:/rendered:ro
       - ./config/services/coordinator/traces-limits-v5.toml:/opt/consensys/linea/coordinator/config/traces-limits-v5.toml:ro
       - ./config/services/coordinator/smart-contract-errors.toml:/opt/consensys/linea/coordinator/config/smart-contract-errors.toml:ro
       - ./config/services/coordinator/gas-price-cap-time-of-day-multipliers.toml:/opt/consensys/linea/coordinator/config/gas-price-cap-time-of-day-multipliers.toml:ro
@@ -737,7 +750,7 @@ services:
 
   postman:
     image: consensys/linea-postman:${LINEA_POSTMAN_TAG}
-    container_name: postman
+    container_name: ${LINETH_CONTAINER_PREFIX:-}postman
     hostname: postman
     profiles: *default-profiles
     restart: on-failure
@@ -752,7 +765,7 @@ services:
         condition: service_started
     env_file:
       - ./config/services/postman/postman.env
-      - path: ./artifacts/config/postman/postman.env
+      - path: ${LINETH_ARTIFACTS_DIR:-./artifacts}/config/postman/postman.env
         required: false
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postman-pg:5432/postman
@@ -764,7 +777,7 @@ services:
 
   prover:
     image: consensys/linea-prover:${LINEA_PROVER_TAG}
-    container_name: prover
+    container_name: ${LINETH_CONTAINER_PREFIX:-}prover
     hostname: prover
     platform: linux/amd64
     profiles: *default-profiles
@@ -784,7 +797,7 @@ services:
     volumes:
       # Rendered TOML from config-render (replaces the static
       # ./config/services/prover/prover-config-partial.toml bind-mount).
-      - ./artifacts/config/prover:/rendered:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/config/prover:/rendered:ro
       # KZG SRS assets (required even in dev mode — the binary checks for
       # the directory at startup). Sourced from the monorepo's prover/
       # tree, same path the upstream compose-spec-l2-services.yml uses.
@@ -799,7 +812,7 @@ services:
 
   l2-blockscout:
     image: blockscout/blockscout:${BLOCKSCOUT_TAG}
-    container_name: l2-blockscout
+    container_name: ${LINETH_CONTAINER_PREFIX:-}l2-blockscout
     hostname: l2-blockscout
     profiles: *default-profiles
     depends_on:
@@ -819,14 +832,14 @@ services:
       CHAIN_SPEC_PATH: /app/genesis-init/genesis-besu.json
     volumes:
       - ./scripts/init:/scripts/init:ro
-      - ./artifacts/genesis:/app/genesis-init:ro
+      - ${LINETH_ARTIFACTS_DIR:-./artifacts}/genesis:/app/genesis-init:ro
     ports:
       - "${HOST_PORT_L2_BLOCKSCOUT:-4000}:4000"
     networks: [linea]
 
   l2-blockscout-frontend:
     image: ${BLOCKSCOUT_FRONTEND_IMAGE}
-    container_name: l2-blockscout-frontend
+    container_name: ${LINETH_CONTAINER_PREFIX:-}l2-blockscout-frontend
     hostname: l2-blockscout-frontend
     profiles: *default-profiles
     depends_on:

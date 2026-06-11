@@ -48,7 +48,7 @@ case "$L2_GAS_PRICE_WEI" in
 esac
 
 section "ensuring L2 ERC20Example"
-if ! lineth_run_stream docker compose --env-file versions.env --env-file .env --profile stack-partial-prover \
+if ! lineth_run_stream $(lineth_compose_cmd) --profile stack-partial-prover \
   run --rm --no-deps --entrypoint bash deploy-contracts /scripts/internal/ensure-demo-erc20.sh l2; then
   exit 1
 fi
@@ -57,7 +57,7 @@ echo "$ERC20" | grep -qE '^0x[a-fA-F0-9]{40}$' || die "L2 ERC20Example missing f
 
 section "ensuring disposable traffic account"
 TRAFFIC_ACCOUNT_OUTPUT="$(
-  docker compose --env-file versions.env --env-file .env --profile stack-partial-prover \
+  $(lineth_compose_cmd) --profile stack-partial-prover \
     run --rm --no-deps \
     -v "$LINETH_ACCOUNTS_DIR:/traffic-accounts:rw" \
     -e DEMO_TRAFFIC_ENV="/traffic-accounts/demo-traffic.env" \

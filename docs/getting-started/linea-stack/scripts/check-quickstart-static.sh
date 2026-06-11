@@ -111,8 +111,8 @@ check_generated_genesis_is_volume_scoped() {
   compose="$STACK/docker-compose.yml"
   deploy_contracts="$STACK/scripts/phases/04-deploy-contracts.sh"
 
-  if grep -q './artifacts/genesis:/initialization:rw' "$compose" \
-    && grep -q './artifacts/genesis:/generated-genesis:ro' "$compose" \
+  if grep -q '${LINETH_ARTIFACTS_DIR:-./artifacts}/genesis:/initialization:rw' "$compose" \
+    && grep -q '${LINETH_ARTIFACTS_DIR:-./artifacts}/genesis:/generated-genesis:ro' "$compose" \
     && ! grep -q 'linea-l2-genesis:' "$compose"; then
     pass "generated L2 genesis is host-backed under artifacts/genesis"
   else
@@ -120,7 +120,7 @@ check_generated_genesis_is_volume_scoped() {
   fi
 
   if grep -q './config/genesis:/templates:ro' "$compose" \
-    && grep -q './artifacts/genesis:/initialization:rw' "$compose"; then
+    && grep -q '${LINETH_ARTIFACTS_DIR:-./artifacts}/genesis:/initialization:rw' "$compose"; then
     pass "l2-genesis-init reads templates from repo and writes generated genesis to volume"
   else
     fail "l2-genesis-init must separate read-only templates from generated genesis output"
@@ -135,7 +135,7 @@ check_generated_genesis_is_volume_scoped() {
     pass "services do not bind-mount generated genesis files from the repo tree"
   fi
 
-  if grep -q './artifacts/genesis:/generated-genesis:ro' "$compose" \
+  if grep -q '${LINETH_ARTIFACTS_DIR:-./artifacts}/genesis:/generated-genesis:ro' "$compose" \
     && grep -q '/generated-genesis/fork-timestamp.txt' "$deploy_contracts"; then
     pass "deploy-contracts reads fork timestamp from generated genesis artifacts"
   else
@@ -676,8 +676,8 @@ check_postman_key_model() {
     && grep -q "L1_SIGNER_TYPE='web3signer'" "$render_postman_env" \
     && grep -q "L1_RPC_URL='%s'" "$render_postman_env" \
     && grep -q 'postman-config-render:' "$compose" \
-    && grep -q './artifacts/config/postman:/postman-runtime:rw' "$compose" \
-    && grep -q './artifacts/config/postman/postman.env' "$compose"; then
+    && grep -q '${LINETH_ARTIFACTS_DIR:-./artifacts}/config/postman:/postman-runtime:rw' "$compose" \
+    && grep -q '${LINETH_ARTIFACTS_DIR:-./artifacts}/config/postman/postman.env' "$compose"; then
     pass "postman-config-render renders L1 RPC and generated L1 Web3Signer config into host artifacts"
   else
     fail "postman-config-render must render L1 RPC and L1 Web3Signer config into artifacts/config/postman/postman.env"
@@ -687,8 +687,8 @@ check_postman_key_model() {
     && grep -q 'l2PostmanPubkey' "$render_postman_env" \
     && grep -q "L2_SIGNER_TYPE='web3signer'" "$render_postman_env" \
     && grep -q 'postman-config-render:' "$compose" \
-    && grep -q './artifacts/config/postman:/postman-runtime:rw' "$compose" \
-    && grep -q './artifacts/config/postman/postman.env' "$compose"; then
+    && grep -q '${LINETH_ARTIFACTS_DIR:-./artifacts}/config/postman:/postman-runtime:rw' "$compose" \
+    && grep -q '${LINETH_ARTIFACTS_DIR:-./artifacts}/config/postman/postman.env' "$compose"; then
     pass "postman-config-render renders generated L2 Web3Signer config into host artifacts"
   else
     fail "postman-config-render must render L2 Web3Signer config into artifacts/config/postman/postman.env"
@@ -738,9 +738,9 @@ check_postman_key_model() {
 
   if grep -q 'bootstrap-artifacts.sh' "$STACK/scripts/start.sh" \
     && grep -q 'postman-config-render' "$bootstrap_artifacts" \
-    && grep -q 'artifacts/config/postman/postman.env' "$bootstrap_artifacts" \
-    && grep -q 'artifacts/accounts/runtime-keystores' "$bootstrap_artifacts" \
-    && grep -q 'artifacts/deployments/deploy-logs' "$bootstrap_artifacts" \
+    && grep -q 'ARTIFACTS_DIR/config/postman/postman.env' "$bootstrap_artifacts" \
+    && grep -q 'ARTIFACTS_DIR/accounts/runtime-keystores' "$bootstrap_artifacts" \
+    && grep -q 'ARTIFACTS_DIR/deployments/deploy-logs' "$bootstrap_artifacts" \
     && ! grep -q 'linea-postman-runtime-config' "$compose"; then
     pass "start.sh bootstraps generated Postman env before compose up"
   else
@@ -1009,7 +1009,7 @@ check_reuse_guardrails() {
   fi
 
   if grep -q 'boot failure' "$status_script" \
-    && grep -q 'lineth_error "$init_container $init_state"' "$status_script" \
+    && grep -q 'lineth_error "$(lineth_container "$init_container") $init_state"' "$status_script" \
     && grep -q 'insufficient funds' "$status_script"; then
     pass "status.sh surfaces failed init containers with actionable log tails"
   else
@@ -1192,7 +1192,7 @@ check_smoke_and_traffic_scripts() {
   if grep -q 'local L1 mode ignores stale Sepolia deployer private key' "$STACK/scripts/internal/sepolia-policy.test.ts" \
     && grep -q 'local mode ignores Sepolia deployer artifact and stale config' "$STACK/scripts/internal/deployer-wallet.test.ts" \
     && grep -q 'source: "local-genesis"' "$STACK/scripts/internal/deployer-wallet.ts" \
-    && grep -q 'printf.*0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' "$STACK/scripts/lib/runtime.sh" \
+    && grep -q "local_default_key='0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'" "$STACK/scripts/lib/runtime.sh" \
     && ! grep -q 'envValue("L1_DEPLOYER_PRIVATE_KEY", env, LOCAL_L1_DEPLOYER_PRIVATE_KEY)' "$STACK/scripts/internal/sepolia-policy.ts" \
     && ! grep -q 'L1_DEPLOYER_PRIVATE_KEY="${L1_DEPLOYER_PRIVATE_KEY:-$LOCAL_L1_DEPLOYER_PRIVATE_KEY}"' "$STACK/scripts/phases/04-deploy-contracts.sh" \
     && ! grep -q 'L1_DEPLOYER_PRIVATE_KEY="${L1_DEPLOYER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"' "$STACK/scripts/internal/ensure-demo-erc20.sh"; then

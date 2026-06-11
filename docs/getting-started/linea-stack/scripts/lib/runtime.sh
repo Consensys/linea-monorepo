@@ -12,13 +12,28 @@ lineth_runtime_init() {
   while [ "$dir" != "/" ]; do
     if [ -f "$dir/docker-compose.yml" ] && [ -f "$dir/versions.env" ]; then
       LINETH_STACK_DIR="$dir"
-      LINETH_ARTIFACTS_DIR="$LINETH_STACK_DIR/artifacts"
+      # Per-instance env file. Defaults to the classic .env; a second stack
+      # instance points this at its own file (e.g. instances/i2.env). Relative
+      # paths resolve from the stack dir.
+      LINETH_ENV_FILE="${LINETH_ENV_FILE:-$LINETH_STACK_DIR/.env}"
+      case "$LINETH_ENV_FILE" in
+        /*) ;;
+        *) LINETH_ENV_FILE="$LINETH_STACK_DIR/$LINETH_ENV_FILE" ;;
+      esac
+      export LINETH_STACK_DIR LINETH_ENV_FILE
+      # Per-instance artifact root (compose interpolates the same variable for
+      # its bind mounts). Defaults to ./artifacts as before.
+      artifacts_dir="$(lineth_env_or_default LINETH_ARTIFACTS_DIR "$LINETH_STACK_DIR/artifacts")"
+      case "$artifacts_dir" in
+        /*) LINETH_ARTIFACTS_DIR="$artifacts_dir" ;;
+        *) LINETH_ARTIFACTS_DIR="$LINETH_STACK_DIR/${artifacts_dir#./}" ;;
+      esac
       LINETH_ACCOUNTS_DIR="$LINETH_ARTIFACTS_DIR/accounts"
       LINETH_GENESIS_DIR="$LINETH_ARTIFACTS_DIR/genesis"
       LINETH_CONFIG_DIR="$LINETH_ARTIFACTS_DIR/config"
       LINETH_DEPLOYMENTS_DIR="$LINETH_ARTIFACTS_DIR/deployments"
       LINETH_REPORTS_DIR="$LINETH_ARTIFACTS_DIR/reports"
-      export LINETH_STACK_DIR LINETH_ARTIFACTS_DIR LINETH_ACCOUNTS_DIR LINETH_GENESIS_DIR
+      export LINETH_ARTIFACTS_DIR LINETH_ACCOUNTS_DIR LINETH_GENESIS_DIR
       export LINETH_CONFIG_DIR LINETH_DEPLOYMENTS_DIR LINETH_REPORTS_DIR
       return 0
     fi
@@ -43,7 +58,7 @@ lineth_valid_env_key() {
 lineth_env_value() {
   key="$1"
   lineth_valid_env_key "$key" || return 1
-  env_file="${LINETH_STACK_DIR:-.}/.env"
+  env_file="${LINETH_ENV_FILE:-${LINETH_STACK_DIR:-.}/.env}"
   [ -f "$env_file" ] || return 1
   sed -nE "s/^${key}=([^#[:space:]].*)$/\1/p" "$env_file" | tail -1
 }
@@ -82,6 +97,46 @@ lineth_l1_mode() {
   esac
 }
 
+# Local-L1 instance role. "owner" (default) starts and owns the local L1;
+# "attach" runs L2-only and anchors to an owner instance's L1 over the shared
+# Docker network. Only meaningful when L1_MODE=local.
+lineth_l1_local_role() {
+  role="$(lineth_env_or_default L1_LOCAL_ROLE owner)"
+  case "$role" in
+    owner|attach)
+      printf '%s' "$role"
+      ;;
+    *)
+      printf '%s' "$role"
+      return 1
+      ;;
+  esac
+}
+
+# Docker network an attach-role instance joins to reach the owner's L1.
+# Default matches the owner's compose-created network: <owner-project>_l1network.
+lineth_l1_attach_network() {
+  lineth_env_or_default LINETH_L1_ATTACH_NETWORK "linea-stack_l1network"
+}
+
+# Per-instance container name prefix (compose renders container_name with the
+# same variable). Empty for the default single-instance path.
+lineth_container() {
+  printf '%s%s' "$(lineth_env_or_default LINETH_CONTAINER_PREFIX "")" "$1"
+}
+
+# Canonical docker compose invocation for this instance: instance env file plus
+# the external-L1 attach overlay when this instance runs in attach role.
+# Callers append `--profile <name>` and the subcommand. Paths are relative to
+# the stack dir except LINETH_ENV_FILE, which runtime-init absolutizes.
+lineth_compose_cmd() {
+  cmd="docker compose --env-file versions.env --env-file ${LINETH_ENV_FILE:-.env}"
+  if [ "$(lineth_l1_mode || true)" = "local" ] && [ "$(lineth_l1_local_role || true)" = "attach" ]; then
+    cmd="$cmd -f docker-compose.yml -f docker-compose.l1-attach.yml"
+  fi
+  printf '%s' "$cmd"
+}
+
 lineth_l1_host_rpc_url() {
   mode="$(lineth_l1_mode || true)"
   if [ "$mode" = "local" ]; then
@@ -103,12 +158,22 @@ lineth_l1_container_rpc_url() {
 lineth_l1_deployer_shell_env() {
   mode="$(lineth_l1_mode || true)"
   if [ "$mode" = "local" ]; then
-    printf "L1_MODE='local'\n"
-    printf "L1_RPC_URL='http://localhost:%s'\n" "$(lineth_host_port HOST_PORT_L1_RPC 8445)"
-    printf "L1_DEPLOYER_ADDRESS='0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'\n"
-    printf "L1_DEPLOYER_SOURCE='local-genesis'\n"
-    printf "L1_DEPLOYER_PRIVATE_KEY='0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'\n"
-    return 0
+    local_default_key='0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+    local_key="$(lineth_env_or_default L1_LOCAL_DEPLOYER_PRIVATE_KEY "$local_default_key")"
+    local_addr="$(lineth_env_or_default L1_LOCAL_DEPLOYER_ADDRESS "")"
+    if [ "$local_key" = "$local_default_key" ] && [ -z "$local_addr" ]; then
+      local_addr='0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'
+    fi
+    if [ -n "$local_addr" ]; then
+      printf "L1_MODE='local'\n"
+      printf "L1_RPC_URL='http://localhost:%s'\n" "$(lineth_host_port HOST_PORT_L1_RPC 8445)"
+      printf "L1_DEPLOYER_ADDRESS='%s'\n" "$local_addr"
+      printf "L1_DEPLOYER_SOURCE='local-genesis'\n"
+      printf "L1_DEPLOYER_PRIVATE_KEY='%s'\n" "$local_key"
+      return 0
+    fi
+    # L1_LOCAL_DEPLOYER_PRIVATE_KEY overridden without a companion
+    # L1_LOCAL_DEPLOYER_ADDRESS: derive the address via ts-node below.
   fi
 
   root="$(git -C "$LINETH_STACK_DIR" rev-parse --show-toplevel 2>/dev/null || true)"
@@ -117,11 +182,17 @@ lineth_l1_deployer_shell_env() {
       cd "$root/contracts"
       export NODE_PATH="$root/node_modules:$root/contracts/node_modules${NODE_PATH:+:$NODE_PATH}"
       export LINETH_STACK_DIR
+      export LINETH_ENV_FILE
       TS_NODE_TRANSPILE_ONLY=1 \
       TS_NODE_COMPILER_OPTIONS='{"module":"CommonJS","moduleResolution":"Node"}' \
         pnpm -s exec ts-node "$LINETH_STACK_DIR/scripts/internal/deployer-wallet.ts" emit-shell-env --context host
     )
     return $?
+  fi
+
+  if [ "$mode" = "local" ]; then
+    printf 'host ts-node is required to derive the address for an overridden L1_LOCAL_DEPLOYER_PRIVATE_KEY; run pnpm install or set L1_LOCAL_DEPLOYER_ADDRESS alongside it\n' >&2
+    return 1
   fi
 
   legacy_key="$(lineth_env_or_default L1_DEPLOYER_PRIVATE_KEY "")"

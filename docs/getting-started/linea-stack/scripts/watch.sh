@@ -4,14 +4,14 @@ set -eu
 
 SCRIPT_DIR="$(CDPATH= cd "$(dirname "$0")" && pwd -P)"
 STACK_DIR="$(CDPATH= cd "$SCRIPT_DIR/.." && pwd -P)"
-ACCOUNTS_ARTIFACTS_DIR="$STACK_DIR/artifacts/accounts"
-DEPLOYMENTS_ARTIFACTS_DIR="$STACK_DIR/artifacts/deployments"
 LINETH_LOG_CONTEXT="watch"
 # shellcheck disable=SC1091
 . "$SCRIPT_DIR/lib/logging.sh"
 # shellcheck disable=SC1091
 . "$SCRIPT_DIR/lib/runtime.sh"
 lineth_runtime_init "$SCRIPT_DIR"
+ACCOUNTS_ARTIFACTS_DIR="$LINETH_ACCOUNTS_DIR"
+DEPLOYMENTS_ARTIFACTS_DIR="$LINETH_DEPLOYMENTS_DIR"
 
 WATCH_INTERVAL_SECONDS="${WATCH_INTERVAL_SECONDS:-10}"
 WATCH_TIMEOUT_SECONDS="${WATCH_TIMEOUT_SECONDS:-1800}"
@@ -68,7 +68,7 @@ is_uint() {
 }
 
 container_state() {
-  name="$1"
+  name="$(lineth_container "$1")"
   state="$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' "$name" 2>/dev/null || true)"
   if [ -n "$state" ]; then
     printf '%s\n' "$state"
@@ -95,26 +95,26 @@ shared_file_status() {
 }
 
 latest_finalized_block() {
-  docker logs --since "$WATCH_SINCE" coordinator 2>&1 \
+  docker logs --since "$WATCH_SINCE" "$(lineth_container coordinator)" 2>&1 \
     | sed -nE 's/.*finalization update: previousFinalizedBlock=[0-9]+ newFinalizedBlock=FinalizationUpdate\(blockNumber=([0-9]+),.*/\1/p' \
     | tail -1
 }
 
 latest_finalization_tx() {
-  docker logs --since "$WATCH_SINCE" coordinator 2>&1 \
+  docker logs --since "$WATCH_SINCE" "$(lineth_container coordinator)" 2>&1 \
     | sed -nE 's/.*submitted aggregation=\[([0-9]+)\.\.([0-9]+)\][^ ]* transactionHash=(0x[a-fA-F0-9]{64}).*/range=[\1..\2] tx=\3/p' \
     | tail -1
 }
 
 latest_blob_tx() {
-  docker logs --since "$WATCH_SINCE" coordinator 2>&1 \
+  docker logs --since "$WATCH_SINCE" "$(lineth_container coordinator)" 2>&1 \
     | sed -nE 's/.*blobs submitted: blobs=\[\[([0-9]+)\.\.([0-9]+)\][^ ]* transactionHash=(0x[a-fA-F0-9]{64}).*/range=[\1..\2] tx=\3/p' \
     | tail -1
 }
 
 account_setup_progress_lines() {
-  if docker inspect account-setup >/dev/null 2>&1; then
-    docker logs --tail 120 account-setup 2>&1 \
+  if docker inspect "$(lineth_container account-setup)" >/dev/null 2>&1; then
+    docker logs --tail 120 "$(lineth_container account-setup)" 2>&1 \
       | grep -E '\[account-setup\] (Preparing Node/ethers account setup runtime|Installing minimal workspace dependencies for TypeScript account setup|Using |Reused encrypted keystore|Wrote encrypted keystore|L1 deployer:|L1 deployer balance:|L1 deployer required minimum:|L1 safe listener start block|Wrote /accounts/addresses-precomputed.json|Pre-computed|Done)' \
       | awk 'length($0) > 220 { $0 = substr($0, 1, 220) "..." } { print }' \
       | tail -8
@@ -135,14 +135,14 @@ deployed_links_lines() {
 }
 
 deploy_addresses_ready() {
-  docker inspect deploy-contracts >/dev/null 2>&1 || return 1
-  docker logs --tail 500 deploy-contracts 2>&1 \
+  docker inspect "$(lineth_container deploy-contracts)" >/dev/null 2>&1 || return 1
+  docker logs --tail 500 "$(lineth_container deploy-contracts)" 2>&1 \
     | grep -Eq '\[deploy-contracts\] ===== Aggregate addresses|wrote /deployments/addresses.json'
 }
 
 deploy_progress_lines() {
-  if docker inspect deploy-contracts >/dev/null 2>&1; then
-    docker logs --tail 500 deploy-contracts 2>&1 \
+  if docker inspect "$(lineth_container deploy-contracts)" >/dev/null 2>&1; then
+    docker logs --tail 500 "$(lineth_container deploy-contracts)" 2>&1 \
       | tr '\r' '\n' \
       | awk '
           function emit(kind, value) {
@@ -373,7 +373,7 @@ deploy_summary() {
       ;;
     "exited "*)
       lineth_error "deploy-contracts $state"
-      docker logs --tail 80 deploy-contracts 2>&1 \
+      docker logs --tail 80 "$(lineth_container deploy-contracts)" 2>&1 \
         | grep -E 'ERROR|Error:|error code|insufficient funds|Failed|FATAL|ADDRESS MISMATCH|balance too low|Cannot fund' \
         | tail -12 \
         | awk 'length($0) > 260 { $0 = substr($0, 1, 260) "..." } { print }' \
@@ -415,7 +415,7 @@ deploy_summary() {
 }
 
 pipeline_events() {
-  docker logs --since "$WATCH_SINCE" coordinator 2>&1 \
+  docker logs --since "$WATCH_SINCE" "$(lineth_container coordinator)" 2>&1 \
     | sed -nE '
         s/^time=([^ ]+) .*message=Started :\).*/\1 coordinator ready/p
         s/^time=([^ ]+) .*message=new batch: batch=\[([0-9]+)\.\.([0-9]+)\].*/\1 batch             [\2..\3]/p
@@ -433,7 +433,7 @@ pipeline_events() {
 }
 
 pipeline_timeline() {
-  if ! docker inspect coordinator >/dev/null 2>&1; then
+  if ! docker inspect "$(lineth_container coordinator)" >/dev/null 2>&1; then
     lineth_warn "coordinator container not found"
     return
   fi
@@ -460,7 +460,7 @@ pipeline_timeline() {
 }
 
 retry_summary() {
-  if ! docker inspect coordinator >/dev/null 2>&1; then
+  if ! docker inspect "$(lineth_container coordinator)" >/dev/null 2>&1; then
     lineth_info "coordinator not created yet"
     return
   fi
@@ -482,7 +482,7 @@ retry_summary() {
 }
 
 retry_noise_line() {
-  if ! docker inspect coordinator >/dev/null 2>&1; then
+  if ! docker inspect "$(lineth_container coordinator)" >/dev/null 2>&1; then
     return 0
   fi
   case "$(container_state coordinator)" in
@@ -490,7 +490,7 @@ retry_noise_line() {
     *) return 0 ;;
   esac
 
-  retry_logs="$(docker logs --since "$WATCH_SINCE" coordinator 2>&1 || true)"
+  retry_logs="$(docker logs --since "$WATCH_SINCE" "$(lineth_container coordinator)" 2>&1 || true)"
   root_mismatch_count="$(printf '%s\n' "$retry_logs" | grep -c 'StartingRootHashDoesNotMatch' || true)"
   already_known_count="$(printf '%s\n' "$retry_logs" | grep -c 'already known' || true)"
   nonce_low_count="$(printf '%s\n' "$retry_logs" | grep -c 'nonce too low' || true)"
@@ -569,7 +569,7 @@ snapshot() {
   case "$deploy_state" in
     exited\ 0) ;;
     exited\ *)
-      lineth_error "deploy failed; fund/fix the reported issue, then reset with: docker compose --env-file versions.env --env-file .env --profile stack-partial-prover down -v --remove-orphans"
+      lineth_error "deploy failed; fund/fix the reported issue, then reset with: $(lineth_compose_cmd) --profile stack-partial-prover down -v --remove-orphans"
       return 0
       ;;
     running\ *)
@@ -619,8 +619,8 @@ elapsed_label() {
 }
 
 last_deploy_phase() {
-  if docker inspect deploy-contracts >/dev/null 2>&1; then
-    docker logs --since "$WATCH_SINCE" deploy-contracts 2>&1 \
+  if docker inspect "$(lineth_container deploy-contracts)" >/dev/null 2>&1; then
+    docker logs --since "$WATCH_SINCE" "$(lineth_container deploy-contracts)" 2>&1 \
       | tr '\r' '\n' \
       | sed -nE 's/.*\[deploy-contracts\] ===== ([^=].*[^[:space:]]) =====.*/\1/p' \
       | tail -1
@@ -628,8 +628,8 @@ last_deploy_phase() {
 }
 
 last_deploy_contract() {
-  if docker inspect deploy-contracts >/dev/null 2>&1; then
-    docker logs --since "$WATCH_SINCE" deploy-contracts 2>&1 \
+  if docker inspect "$(lineth_container deploy-contracts)" >/dev/null 2>&1; then
+    docker logs --since "$WATCH_SINCE" "$(lineth_container deploy-contracts)" 2>&1 \
       | tr '\r' '\n' \
       | sed -nE 's/^contract=([^ ]+) deployed: address=(0x[a-fA-F0-9]{40}).*blockNumber=([0-9]+).*/\1 block=\3 address=\2/p' \
       | tail -1
@@ -764,7 +764,7 @@ progress_section_for_phase() {
 }
 
 failure_tail() {
-  name="$1"
+  name="$(lineth_container "$1")"
   docker logs --tail 100 "$name" 2>&1 \
     | grep -E 'ERROR|Error:|error code|insufficient funds|Failed|FATAL|ADDRESS MISMATCH|balance too low|Cannot fund|max fee per gas less than block base fee' \
     | tail -12 \
