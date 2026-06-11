@@ -218,6 +218,9 @@ linker-script:
 		'    _program_end = ORIGIN(PROGRAM) + LENGTH(PROGRAM);' \
 		'    _in_start = ORIGIN(IN);' \
 		'    _in_end = ORIGIN(IN) + LENGTH(IN);' \
+		'    /* aliases */' \
+		'    _in_start = ORIGIN(IN);' \
+		'    _in_end = ORIGIN(IN) + LENGTH(IN);' \
 		'' \
 		'    /* heap grows upward from this address by program convention */' \
 		'    _heap_start = $(HEAP_ORIGIN);' \
