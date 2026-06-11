@@ -12,6 +12,9 @@ pub fn build(b: *std.Build) void {
     });
     const input_offset = b.option([]const u8, "input-offset", "Input memory origin") orelse "0x08800000";
     const input_offset_value: usize = @intCast(common.parseAddress("input-offset", input_offset));
+    // -Dinput-offset is the converter's input-placement address (forwarded as IN_BYTES_OFFSET) and
+    // must match the linker's `_input_start`. The guest no longer reads it directly — it gets the
+    // input via read_input (zkvm_io reads `_input_start`), so guest_options stays wired but unconsumed.
     const guest_options = b.addOptions();
     guest_options.addOption(usize, "input_offset", input_offset_value);
     const guest_options_mod = guest_options.createModule();
@@ -19,82 +22,54 @@ pub fn build(b: *std.Build) void {
     const guest_name = "evm_execution_guest";
     const source = "src/evm_execution_guest.zig";
 
-    // ── Guest relocatable object ──────────────────────────────────────────────
-    // Built the same way zesu builds zesu.rv64im.o: a relocatable rv64im object with all execution
-    // logic compiled in, but the zkvm-standards crypto accelerators (zkvm_*) left as UNRESOLVED
-    // extern references. zesu's freestanding accel backend (extern_bridge.zig) only DECLARES zkvm_*;
-    // the proving system (Zkc) is the consumer that resolves/intercepts them. So there is no in-guest
-    // software provider, no final link, and no entry/linker script here — the prover toolchain links
-    // this object, supplies zkvm_* (and _start), and runs it.
-    // NOTE: this object is NOT a runnable ELF on its own; it cannot execute until the prover links it.
+    // ── Guest: statically-linked rv64im ELF ───────────────────────────────────
+    // The zkvm-standards riscv-target deliverable is "ELF, statically linked" (RV64I+M+Zicclsm, LP64
+    // soft-float): https://github.com/eth-act/zkvm-standards/blob/main/standards/riscv-target/target.md
+    // So the default build links a self-contained ELF the ZkC interpreter loads (via ELF→JSON). There
+    // is no relocatable `.o`: a `.o` is not statically linked, and the interpreter loads a finished ELF
+    // rather than performing a final link. The shared entry stub + memory layout + compiler_rt/GC
+    // plumbing live in build_common.installGuestElf; here we wire the guest's root module:
+    //   • zesu executor + SSZ modules — the execution logic;
+    //   • zesu_zkvm_accel — zesu-zkvm's stdlibs_accel: in-guest software precompiles that
+    //     zkvm_provide.zig exports as the zkvm_* symbols zesu's extern bridge references;
+    //   • linea_zkvm_accel — Linea custom-opcode wrappers (keccak today): a zkvm_* whose body is a
+    //     RISC-V custom instruction the prover arithmetizes at execution — interception is at run time,
+    //     not link time, so the ELF stays fully resolved;
+    //   • linea_zkvm_io — zesu-zkvm's linea/zkvm_io.zig: satisfies the standards `read_input` by reading
+    //     the memory-mapped `_input_start` (the input slot is the proving system's detail, kept out of
+    //     the guest; `_input_start` is supplied by the linker script).
     const zesu_guest = b.dependency("zesu", .{ .target = target, .optimize = optimize });
-    const obj = b.addObject(.{
-        .name = guest_name,
-        .root_module = b.createModule(.{
-            .root_source_file = b.path(source),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
-    obj.root_module.code_model = .medium;
-    addExecutionImports(obj.root_module, zesuImports(zesu_guest));
-    obj.root_module.addImport("guest_options", guest_options_mod);
-    // Delegate the in-guest precompile implementations to zesu-zkvm's stdlibs_accel (consumed by
-    // zkvm_provide.zig's `.native` arms). It is std-only, so it builds for freestanding rv64im.
     const zesu_zkvm = b.dependency("zesu_zkvm", .{});
-    const zesu_accel_src = zesu_zkvm.path("linea/src/runtime/stdlibs_accel.zig");
+    const zesu_accel_src = zesu_zkvm.path("linea/src/runtime/stdlibs_accel.zig"); // also imported by the native accel test below
     const zesu_accel_mod = b.createModule(.{
         .root_source_file = zesu_accel_src,
         .target = target,
         .optimize = optimize,
     });
-    obj.root_module.addImport("zesu_zkvm_accel", zesu_accel_mod);
-    // Linea zkVM wrappers (custom-opcode accelerators, sibling path in the monorepo). zkvm_provide.zig
-    // @exports the zkvm_* symbols these define (currently keccak); the set of wrappers is what's
-    // intercepted via opcode. riscv only — the wrappers emit RISC-V custom instructions, so they're
-    // imported on the guest object.
-    const linea_accel_src = b.path("../../arithmetization/src/wrappers/root.zig");
     const linea_accel_mod = b.createModule(.{
-        .root_source_file = linea_accel_src,
+        .root_source_file = b.path("../../arithmetization/src/wrappers/root.zig"),
         .target = target,
         .optimize = optimize,
     });
-    obj.root_module.addImport("linea_zkvm_accel", linea_accel_mod);
-    common.clearFreestandingNativeLinkage(b, obj.root_module);
-    const install_obj = b.addInstallFile(obj.getEmittedBin(), b.fmt("lib/{s}.o", .{guest_name}));
-    b.getInstallStep().dependOn(&install_obj.step);
-
-    // ── Runnable ZkC ELF (opt-in: `zig build elf`) ────────────────────────────
-    // The object above is relocatable: the prover supplies _start and does the final link. For a
-    // standalone run in the ZkC interpreter we instead need a fully-linked ELF. Same root module and
-    // imports as the object, plus the three things a final link needs:
-    //   • start.s          — entry _start: set sp from the linker script, call main.
-    //   • linker_script.ld — the shared rv64im memory layout (program @0, stack, input @0x08800000).
-    //   • Zig compiler_rt  — Zig links its own soft-float __udivti3 / mem* (the GNU libgcc multilib is
-    //                        double-float and won't link against this soft-float object).
-    // Build with `zig build elf` (→ zig-out/bin/), then convert+run via arithmetization/src/test/
-    // examples (`make elf-exec BIN_EXT=… IN_BYTES=…`).
-    // NOTE: linker_script.ld's IN origin assumes the default -Dinput-offset (0x08800000); a custom
-    // offset would need a matching linker script.
-    const elf_step = b.step("elf", "Link the guest into a runnable ZkC ELF (entry _start + linker script)");
-    const exe = b.addExecutable(.{
-        .name = guest_name,
-        .root_module = b.createModule(.{
-            .root_source_file = b.path(source),
-            .target = target,
-            .optimize = optimize,
-        }),
+    const linea_io_mod = b.createModule(.{
+        .root_source_file = zesu_zkvm.path("linea/src/zkvm_io.zig"),
+        .target = target,
+        .optimize = optimize,
     });
-    exe.root_module.code_model = .medium;
-    addExecutionImports(exe.root_module, zesuImports(zesu_guest));
-    exe.root_module.addImport("guest_options", guest_options_mod);
-    exe.root_module.addImport("zesu_zkvm_accel", zesu_accel_mod);
-    exe.root_module.addImport("linea_zkvm_accel", linea_accel_mod);
-    common.clearFreestandingNativeLinkage(b, exe.root_module);
-    exe.root_module.addAssemblyFile(b.path("src/start.s"));
-    exe.setLinkerScript(b.path("linker_script.ld"));
-    exe.link_gc_sections = true;
-    elf_step.dependOn(&b.addInstallArtifact(exe, .{}).step);
+
+    const guest_module = b.createModule(.{
+        .root_source_file = b.path(source),
+        .target = target,
+        .optimize = optimize,
+    });
+    guest_module.code_model = .medium;
+    addExecutionImports(guest_module, zesuImports(zesu_guest));
+    guest_module.addImport("guest_options", guest_options_mod);
+    guest_module.addImport("zesu_zkvm_accel", zesu_accel_mod);
+    guest_module.addImport("linea_zkvm_accel", linea_accel_mod);
+    guest_module.addImport("linea_zkvm_io", linea_io_mod);
+    common.clearFreestandingNativeLinkage(b, guest_module);
+    common.installGuestElf(b, guest_module, guest_name);
 
     // ── Native test ───────────────────────────────────────────────────────────
     // Runs the thin wrapper (vanilla zesu stateless execution) on the host against a real
@@ -134,7 +109,7 @@ pub fn build(b: *std.Build) void {
     // the dependency only — no fixtures, no native crypto libs.
     const accel_tests = b.addTest(.{
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/stdlibs_accel_test.zig"),
+            .root_source_file = b.path("test/stdlibs_accel_test.zig"),
             .target = native_target,
             .optimize = host_optimize,
         }),
@@ -152,7 +127,7 @@ pub fn build(b: *std.Build) void {
     const fixture_rel = "blockchain_tests/for_amsterdam/amsterdam/eip7928_block_level_access_lists/block_access_lists/bal_empty_block_no_coinbase.json";
     if (b.lazyDependency("execution_spec_tests_zkevm", .{})) |fixtures_dep| {
         const fixtures_mod = b.createModule(.{
-            .root_source_file = b.path("src/evm_execution_fixtures.zig"),
+            .root_source_file = b.path("test/evm_execution_fixtures.zig"),
             .target = native_target,
             .optimize = host_optimize,
         });
@@ -163,7 +138,7 @@ pub fn build(b: *std.Build) void {
 
         const tests = b.addTest(.{
             .root_module = b.createModule(.{
-                .root_source_file = b.path("src/evm_execution_guest_test.zig"),
+                .root_source_file = b.path("test/evm_execution_guest_test.zig"),
                 .target = native_target,
                 .optimize = host_optimize,
             }),
@@ -183,7 +158,7 @@ pub fn build(b: *std.Build) void {
         const spec_runner_exe = b.addExecutable(.{
             .name = "evm-execution-spec-runner",
             .root_module = b.createModule(.{
-                .root_source_file = b.path("src/evm_spec_runner.zig"),
+                .root_source_file = b.path("test/evm_spec_runner.zig"),
                 .target = native_target,
                 .optimize = host_optimize,
             }),

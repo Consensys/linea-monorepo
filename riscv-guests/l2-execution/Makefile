@@ -4,9 +4,10 @@
 # Makefile fans `compile`/`test`/`spec-test`/`fetch`/`clean` out to this file for every guest;
 # guest-specific targets (the ZKC exec/debug below) live here, not in the orchestrator.
 #
-# Scope split: building + host-testing is proving-system-AGNOSTIC and lives here. Running inside the
-# Lineth/ZKC proving system (memory layout, ELF->JSON, zkc) is owned by
-# arithmetization/src/test/examples/Makefile; exec/debug only build the guest and hand it over.
+# Scope split: building + host-testing is proving-system-AGNOSTIC and lives here (`compile` links the
+# statically-linked rv64im ELF — the zkvm-standards artifact — via build_common). Only the ZKC run
+# itself (ELF->JSON via elf_to_json_gen, then zkc) is owned by
+# arithmetization/src/test/examples/Makefile; exec/debug build that ELF and hand it over.
 
 .PHONY: fetch compile test spec-test exec debug fixture-exec fixture-debug clean
 
@@ -24,21 +25,23 @@ ZIG_FETCH_FLAGS ?=
 # delegate here so those recipes are never duplicated.
 EXAMPLES_DIR := $(abspath $(MAKEFILE_DIR)../../arithmetization/src/test/examples)
 
-# Input memory offset baked into the guest at compile time (-Dinput-offset). Proving-system-
-# influenced (must match where the prover loads the input), so a plain build option with a default.
-# For ZKC runs it is forwarded to the examples Makefile as IN_BYTES_OFFSET.
+# Where the ZKC run places the input — forwarded to the examples Makefile as IN_BYTES_OFFSET, and it
+# must match the ELF's `_input_start` (build_common's linker script: 0x08800000). Also passed as
+# -Dinput-offset, which the guest no longer consumes (it reads `_input_start` via read_input).
 INPUT_OFFSET ?= 0x08800000
 
-# Optional input bytes for a ZKC run (0x-prefixed, big-endian; see elf_to_json_gen).
+# Optional input bytes for a ZKC run (0x-prefixed; the converter byte-reverses it — see elf_to_json_gen).
 IN_BYTES ?= ""
 
 GUEST_BIN    := evm_execution_guest
-FIXTURE_JSON := $(MAKEFILE_DIR)fixtures/contract_creation_then_ecrecover.json
+# Committed sample input for the fixture-exec/-debug convenience runs: a real fixture's SSZ framed
+# [u64 LE len][SSZ] and pre-reversed for the converter (see "running the guest program in zkc.md",
+# which also regenerates it). Lives under test/testdata/ with the other host-only data.
+SAMPLE_INPUT := $(MAKEFILE_DIR)test/testdata/fixture_input.in.hex
 
-# Guest artifact: a relocatable rv64im object (zkvm_* unresolved, no _start), same shape as
-# zesu.rv64im.o. NOT a linked ELF, so the ZKC exec/debug wrappers cannot run until the prover
-# toolchain links it (supplies the entry point and resolves zkvm_*).
-BIN := $(MAKEFILE_DIR)zig-out/lib/$(GUEST_BIN).o
+# Guest artifact: the statically-linked rv64im ELF `compile` produces (entry _start + memory layout
+# from build_common) — the zkvm-standards deliverable. The ZKC exec/debug runs feed it to ELF->JSON.
+ELF_BIN := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN)
 
 # ── Proving-system-agnostic guest lifecycle ─────────────────────────────────
 fetch:
@@ -47,8 +50,8 @@ fetch:
 compile:
 	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS) -Dinput-offset=$(INPUT_OFFSET)
 	@if command -v riscv64-unknown-elf-objdump >/dev/null 2>&1; then \
-		echo "\nDisassembling $(BIN)"; \
-		LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(BIN) > $(BIN).objdump; \
+		echo "\nDisassembling $(ELF_BIN)"; \
+		LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(ELF_BIN) > $(ELF_BIN).objdump; \
 	else \
 		echo "\nSkipping objdump: riscv64-unknown-elf-objdump is not on PATH"; \
 	fi
@@ -68,18 +71,18 @@ clean:
 	rm -rf $(BUILD_CACHE_DIR)
 
 # ── Lineth/ZKC runs: delegated to arithmetization/src/test/examples ──────────
-# Build the guest, then hand the artifact to the ZKC layer (single source of truth for memory
-# layout + ELF->JSON + zkc). Requires `zkc` and `go` on PATH. Blocked until the guest links to a
-# full ELF (see BIN note) — elf_to_json_gen needs PT_LOAD segments, which a .o does not have.
+# Build the ELF, then hand it to the ZKC layer (single source of truth for ELF->JSON + zkc). Requires
+# `zkc` and `go` on PATH. elf_to_json_gen needs the PT_LOAD segments + entry point a linked ELF has.
 exec: compile
-	$(MAKE) -C $(EXAMPLES_DIR) elf-exec BIN_EXT="$(BIN)" IN_BYTES="$(IN_BYTES)" IN_BYTES_OFFSET=$(INPUT_OFFSET)
+	$(MAKE) -C $(EXAMPLES_DIR) elf-exec BIN_EXT="$(ELF_BIN)" IN_BYTES="$(IN_BYTES)" IN_BYTES_OFFSET=$(INPUT_OFFSET)
 
 debug: compile
-	$(MAKE) -C $(EXAMPLES_DIR) elf-debug BIN_EXT="$(BIN)" IN_BYTES="$(IN_BYTES)" IN_BYTES_OFFSET=$(INPUT_OFFSET)
+	$(MAKE) -C $(EXAMPLES_DIR) elf-debug BIN_EXT="$(ELF_BIN)" IN_BYTES="$(IN_BYTES)" IN_BYTES_OFFSET=$(INPUT_OFFSET)
 
-# Guest-owned test input: extract the SSZ payload from the committed fixture and run it.
+# Guest-owned sample run: feed the committed, pre-framed sample input through ZkC (no IN_BYTES
+# needed). The converter byte-reverses the 0x-hex back into [u64 LE len][SSZ] at _input_start.
 fixture-exec:
-	$(MAKE) -f $(MAKEFILE_DIR)Makefile exec IN_BYTES="$$(sed -n 's/.*"payload": "\(0x[0-9a-fA-F]*\)".*/\1/p' "$(FIXTURE_JSON)")"
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile exec IN_BYTES=@$(SAMPLE_INPUT)
 
 fixture-debug:
-	$(MAKE) -f $(MAKEFILE_DIR)Makefile debug IN_BYTES="$$(sed -n 's/.*"payload": "\(0x[0-9a-fA-F]*\)".*/\1/p' "$(FIXTURE_JSON)")"
+	$(MAKE) -f $(MAKEFILE_DIR)Makefile debug IN_BYTES=@$(SAMPLE_INPUT)

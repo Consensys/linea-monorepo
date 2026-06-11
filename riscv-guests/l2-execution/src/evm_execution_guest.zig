@@ -1,13 +1,11 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const guest_options = @import("guest_options");
 const executor = @import("zesu_executor");
 const ssz_decode = @import("zesu_ssz_decode");
 const ssz_output = @import("zesu_ssz_output");
 const zesu_allocator = @import("zesu_allocator");
 
-const GUEST_INPUT_OFFSET: usize = guest_options.input_offset;
 const GUEST_HEAP_OFFSET: usize = 0x50000000;
 const GUEST_HEAP_SIZE: usize = 256 * 1024 * 1024;
 
@@ -47,17 +45,22 @@ pub fn runStateless(allocator: std.mem.Allocator, ssz_input: []const u8) !Result
     return .{ .out = out, .success = success };
 }
 
-/// zkVM guest entry. The host maps the input at GUEST_INPUT_OFFSET as
-/// [u64 big-endian length][SSZ StatelessInput bytes]; we execute it and exit 0 on
-/// successful_validation, 1 otherwise.
+/// zkVM guest entry. Reads the SSZ StatelessInput via the zkvm-standards `read_input` — the same ABI
+/// Zesu uses — then executes it and exits 0 on successful_validation, 1 otherwise. WHERE the input
+/// lives is the proving system's concern, NOT the guest's: for Linea, `read_input` is satisfied by
+/// zesu-zkvm's `linea/src/zkvm_io.zig` (imported as `linea_zkvm_io`), which reads the memory-mapped
+/// `_input_start` (framed `[u64 LE len][SSZ]`). The guest never names a memory slot.
 fn guestMain() callconv(.c) noreturn {
+    const zkvm_io = @import("linea_zkvm_io");
+
     const heap = @as([*]u8, @ptrFromInt(GUEST_HEAP_OFFSET))[0..GUEST_HEAP_SIZE];
     var fba = std.heap.FixedBufferAllocator.init(heap);
     const allocator = fba.allocator();
 
-    const base = @as([*]const u8, @ptrFromInt(GUEST_INPUT_OFFSET));
-    const len: usize = @intCast(std.mem.readInt(u64, base[0..8], .big));
-    const ssz_input = base[8..][0..len];
+    var buf_ptr: [*]const u8 = undefined;
+    var buf_size: usize = undefined;
+    zkvm_io.read_input(&buf_ptr, &buf_size);
+    const ssz_input = buf_ptr[0..buf_size];
 
     const result = runStateless(allocator, ssz_input) catch exit(1);
     exit(if (result.success) 0 else 1);

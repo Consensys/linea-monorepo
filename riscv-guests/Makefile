@@ -13,10 +13,10 @@
 GUESTS ?= l2-execution
 ZIG    ?= zig
 
-# Sources to format: the shared build helper plus each guest's build.zig and hand-written src/ —
-# NOT the whole guest dir, which would walk generated .zig under .zig-cache/ and zig-out/. Mirrors
-# the CI `zig fmt --check` invocation (riscv-guests-host-tests.yml) and scales with GUESTS.
-FMT_PATHS := build_common/build.zig $(foreach g,$(GUESTS),$(g)/build.zig $(g)/src)
+# Sources to format: the shared build helper plus each guest's build.zig and hand-written src/ +
+# test/ — NOT the whole guest dir, which would walk generated .zig under .zig-cache/ and zig-out/.
+# Mirrors the CI `zig fmt --check` invocation (riscv-guests-host-tests.yml) and scales with GUESTS.
+FMT_PATHS := build_common/build.zig $(foreach g,$(GUESTS),$(g)/build.zig $(g)/src $(g)/test)
 
 .PHONY: compile test fetch clean fmt fmt-check help
 
@@ -38,7 +38,7 @@ fmt-check:
 help:
 	@echo "riscv-guests — builds every guest in GUESTS=\"$(GUESTS)\""
 	@echo ""
-	@echo "  make compile     # build each guest's relocatable rv64im object"
+	@echo "  make compile     # build each guest's statically-linked rv64im ELF"
 	@echo "  make test        # run each guest's native host tests"
 	@echo "  make fetch       # pre-fetch each guest's Zig dependencies"
 	@echo "  make clean       # remove each guest's zig-out/ and .zig-cache/"
