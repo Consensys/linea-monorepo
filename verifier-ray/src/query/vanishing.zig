@@ -7,6 +7,7 @@ pub const Error = error{
     InvalidModuleSize,
     InvalidClaimCount,
     QuotientIdentityMismatch,
+    LagrangeSelectorInDomain,
 };
 
 pub const ModuleSize = union(enum) {
@@ -41,6 +42,11 @@ pub const ExprNode = union(enum) {
     coin_value: usize,
     constant: field.Element,
     op: ExprOp,
+    /// A Lagrange selector leaf, 1 at the carried row position and 0 elsewhere
+    /// on the module domain. It is never a witness claim: the verifier
+    /// evaluates its low-degree extension L_position(r) at the eval coin from
+    /// the module size (see evalLagrangeSelector).
+    lagrange_selector: usize,
 };
 
 pub const Vanishing = struct {
@@ -121,13 +127,23 @@ fn verifyModule(
     }
     if (static_n == 0 and !validModuleSize(dynamic_n)) return error.InvalidModuleSize;
 
+    // Resolve the comptime/dynamic size distinction once, here. Everything below
+    // works with a plain runtime n and the canonical n-th root of unity omega.
+    // For static modules omega folds to a comptime constant (the size is
+    // validated above); for dynamic modules it is derived from the runtime size.
+    const n = if (static_n != 0) static_n else dynamic_n;
+    const omega = if (static_n != 0)
+        comptime (field.rootOfUnityBy(static_n) catch unreachable)
+    else
+        field.rootOfUnityBy(dynamic_n) catch return error.InvalidModuleSize;
+
     // Let r be the evaluation coin and H the module domain of size n.
     // The prover computes the domain annihilator Z_H(r) = r^n - 1.
-    const r_pow_n = powModuleSize(eval_coin, static_n, dynamic_n);
-    const annihilator = r_pow_n.sub(ext.Ext.one());
+    const annihilator = powModuleSize(eval_coin, static_n, dynamic_n).sub(ext.Ext.one());
 
+    const ctx = EvalCtx{ .coin = eval_coin, .annihilator = annihilator, .n = n, .omega = omega };
     inline for (module.buckets) |bucket| {
-        try verifyBucket(module, bucket, static_n, dynamic_n, input, merge_coin, eval_coin, r_pow_n, annihilator);
+        try verifyBucket(module, bucket, static_n, dynamic_n, input, merge_coin, ctx);
     }
 }
 
@@ -148,10 +164,10 @@ fn verifyBucket(
     dynamic_n: usize,
     input: CheckInput,
     merge_coin: ext.Ext,
-    eval_coin: ext.Ext,
-    r_pow_n: ext.Ext,
-    annihilator: ext.Ext,
+    ctx: EvalCtx,
 ) Error!void {
+    // r^n = Z_H(r) + 1, recovered from the annihilator carried in ctx.
+    const r_pow_n = ctx.annihilator.add(ext.Ext.one());
     var quotient = ext.Ext.zero();
     var r_pow_kn = ext.Ext.one();
     for (0..bucket.ratio) |i| {
@@ -165,26 +181,48 @@ fn verifyBucket(
     var coin_power = ext.Ext.one();
     inline for (bucket.vanishings) |v| {
         // Aggregate the vanished numerators with the merge coin alpha:
-        // P_agg(r) = sum_i alpha^i * P_i(r) * C_i(r).
-        const value = evalExpr(module, v.expression, input);
-        const cancellation = try cancellationAtPoint(v.cancelled_positions, static_n, dynamic_n, eval_coin);
+        // P_agg(r) = sum_i alpha^i * P_i(r) * C_i(r). The cancellation factor
+        // keeps its comptime root computation, so it takes static_n/dynamic_n
+        // directly rather than the resolved ctx.
+        const value = try evalExpr(module, v.expression, ctx, input);
+        const cancellation = try cancellationAtPoint(v.cancelled_positions, static_n, dynamic_n, ctx.coin);
         aggregate = aggregate.add(coin_power.mul(value.mul(cancellation)));
         coin_power = coin_power.mul(merge_coin);
     }
 
     // PLONK quotient identity checked by prover-ray/global.Verifier.Check:
     // P_agg(r) = Z_H(r) * Q(r) = (r^n - 1) * Q(r).
-    if (!aggregate.eql(annihilator.mul(quotient))) return error.QuotientIdentityMismatch;
+    if (!aggregate.eql(ctx.annihilator.mul(quotient))) return error.QuotientIdentityMismatch;
 }
 
-fn evalExpr(comptime module: Module, comptime expr_index: usize, input: CheckInput) ext.Ext {
+// EvalCtx carries the per-module evaluation context that is shared, unchanged,
+// by every node of an expression: the module size n, the canonical n-th root of
+// unity omega, the eval coin r, and the domain annihilator r^n - 1. The
+// comptime/dynamic size distinction is already resolved in verifyModule, so n
+// and omega are plain runtime values here. Only lagrange_selector leaves read
+// the context; the other node kinds ignore it and merely forward it down the
+// recursion. Bundling it keeps evalExpr/evalOp from threading unused scalars.
+const EvalCtx = struct {
+    coin: ext.Ext,
+    annihilator: ext.Ext,
+    n: usize,
+    omega: field.Element,
+};
+
+fn evalExpr(
+    comptime module: Module,
+    comptime expr_index: usize,
+    ctx: EvalCtx,
+    input: CheckInput,
+) Error!ext.Ext {
     const node = module.expressions[expr_index];
     return switch (node) {
         .column_claim => |claim_index| input.witness_claims[module.witness_claim_offset + claim_index],
         .cell_value => |ref| scalarToExt(input.ctx.rounds[ref.round].cells[ref.index]),
         .coin_value => |coin_index| input.ctx.all_coins[coin_index],
         .constant => |value| ext.Ext.lift(value),
-        .op => |op| evalOp(module, op, input),
+        .op => |op| try evalOp(module, op, ctx, input),
+        .lagrange_selector => |position| try evalLagrangeSelector(position, ctx),
     };
 }
 
@@ -195,18 +233,49 @@ fn scalarToExt(value: protocol.Scalar) ext.Ext {
     };
 }
 
-fn evalOp(comptime module: Module, comptime op: ExprOp, input: CheckInput) ext.Ext {
-    const a = evalExpr(module, op.operands[0], input);
+fn evalOp(
+    comptime module: Module,
+    comptime op: ExprOp,
+    ctx: EvalCtx,
+    input: CheckInput,
+) Error!ext.Ext {
+    const a = try evalExpr(module, op.operands[0], ctx, input);
     return switch (op.operator) {
-        .add => a.add(evalExpr(module, op.operands[1], input)),
-        .mul => a.mul(evalExpr(module, op.operands[1], input)),
-        .sub => a.sub(evalExpr(module, op.operands[1], input)),
-        .div => a.div(evalExpr(module, op.operands[1], input)),
+        .add => a.add(try evalExpr(module, op.operands[1], ctx, input)),
+        .mul => a.mul(try evalExpr(module, op.operands[1], ctx, input)),
+        .sub => a.sub(try evalExpr(module, op.operands[1], ctx, input)),
+        .div => a.div(try evalExpr(module, op.operands[1], ctx, input)),
         .double => a.add(a),
         .square => a.square(),
         .negate => a.neg(),
         .inverse => a.inverse(),
     };
+}
+
+// evalLagrangeSelector evaluates the low-degree extension of a Lagrange
+// selector at the eval coin r:
+//
+//     L_position(r) = omega^position * (r^n - 1) / (n * (r - omega^position)),
+//
+// where omega is the canonical n-th root of unity and n is the module size,
+// both resolved in verifyModule and carried in ctx. The (r^n - 1) factor is the
+// domain annihilator, also precomputed in ctx. This mirrors prover-ray
+// wiop.LagrangeSelector.EvaluateOutOfDomain, the reference used by
+// global.Verifier.
+fn evalLagrangeSelector(position: usize, ctx: EvalCtx) Error!ext.Ext {
+    const omega_pos = ctx.omega.pow(@as(u64, @intCast(position)));
+
+    // numerator = omega^position * (r^n - 1).
+    const numerator = ctx.annihilator.mulByBase(omega_pos);
+
+    // denominator = n * (r - omega^position). The field defines 1/0 = 0, so an
+    // in-domain eval coin (r == omega^position) would silently yield 0; reject
+    // it explicitly to match the Go evaluator's out-of-domain contract.
+    const r_minus_omega = ctx.coin.sub(ext.Ext.lift(omega_pos));
+    if (r_minus_omega.isZero()) return error.LagrangeSelectorInDomain;
+    const denominator = r_minus_omega.mulByBase(field.Element.init(@as(u64, ctx.n)));
+
+    return numerator.div(denominator);
 }
 
 fn cancellationAtPoint(

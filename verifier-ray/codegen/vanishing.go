@@ -75,6 +75,10 @@ type ExprNode struct {
 	Constant         field.Element
 	Operator         Operator
 	Operands         []int
+	// SelectorPosition is the row at which an ExprLagrangeSelector leaf is 1.
+	// Together with the enclosing module size (already carried by the module)
+	// it determines L_p(r) = ω^p·(r^n−1)/(n·(r−ω^p)) at the eval coin.
+	SelectorPosition int
 }
 
 type ExprKind int
@@ -85,6 +89,7 @@ const (
 	ExprCoinValue
 	ExprConstant
 	ExprOp
+	ExprLagrangeSelector
 )
 
 type ScalarRef struct {
@@ -256,6 +261,13 @@ func appendExpr(module *VanishingModule, views map[viewKey]int, routing CoinRout
 				SourceName: e.Context.Label,
 			},
 		})
+		return len(module.Expressions) - 1, nil
+	case *wiop.LagrangeSelector:
+		// A Lagrange selector is not a committed column, so it is never exported
+		// as a witness claim. The verifier evaluates its low-degree extension
+		// L_Position(r) directly at the eval coin from the (already exported)
+		// module size, mirroring [wiop.LagrangeSelector.EvaluateOutOfDomain].
+		module.Expressions = append(module.Expressions, ExprNode{Kind: ExprLagrangeSelector, SelectorPosition: e.Position})
 		return len(module.Expressions) - 1, nil
 	default:
 		return 0, &UnsupportedExpressionError{Type: fmt.Sprintf("%T", expr)}
