@@ -2,7 +2,7 @@
 
 The `Makefile` in this folder has commands to compile and run RISC-V test programs written in assembly, Zig or Rust against the Linea zkVM.
 Programs are compiled for the  `riscv64im_zicclsm-unknown-none-elf` architecture. The resulting ELF is converted to JSON, and passed to `zkc` as an input.
-The output ELF is also disassembled, producing an explorable `<name>.objdump` file.
+The output ELF is also optinally disassembled, producing an explorable `<name>.objdump` file.
 
 The executable, the JSON and the disassembled file live in `asm/bin/` for assembly, `zig/zig-out/bin/` for Zig, and `rust/target/riscv64im-unknown-none-elf/release/` for Rust.
 
@@ -13,7 +13,7 @@ The executable, the JSON and the disassembled file live in `asm/bin/` for assemb
 - `cargo (>= 1.88.0)` — for Rust programs
 - nightly `rustc (>= rustc 1.88.0)` — for Rust programs
 - `go (>= 1.26.1)` — to convert ELF to JSON
-- `go-corset, zkc (>= 1.2.12)` — to execute/debug the JSON
+- `zkc` — to execute/debug the JSON (`make install-zkc` from the arithmetization Makefile)
 
 ACT4 tests can be built either with Docker or directly on the host.
 
@@ -35,7 +35,7 @@ For macOS host builds, also install:
 - Xcode Command Line Tools or equivalent compiler tools
 - native `z3`/`libz3` — used by UDB while validating ACT4 configs
 
-To install Sail for ACT4 host builds, from `linea-monorepo/`:
+To install Sail for ACT4 host builds, from `lineth-monorepo/`:
 
 ```bash
 make -C arithmetization install-sail
@@ -76,7 +76,7 @@ make TEST=<src_optional_subfolder>/<name>.<ext>
 and from anywhere using `-f`:
 
 ```bash
-make -f /path/to/linea-monorepo/arithmetization/src/test/examples/Makefile TEST=<src_optional_subfolder>/<name>.<ext>
+make -f /path/to/lineth-monorepo/arithmetization/src/test/examples/Makefile TEST=<src_optional_subfolder>/<name>.<ext>
 ```
 
 **Note:** The extension `<ext>` must be `.s`, `.zig`, or `.rs`. Source files are by default expected in the corresponding `asm/src/`, `zig/src/`, or `rust/src/` directory or in subfolders.
@@ -87,7 +87,7 @@ Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 
 ```bash
 riscv-test() {
-    local makefile="path/to/linea-monorepo/arithmetization/src/test/examples/Makefile"
+    local makefile="path/to/lineth-monorepo/arithmetization/src/test/examples/Makefile"
     case "$1" in
         elf-exec|elf-to-json|install-zkc|clean-all|linker-script|vector-exec|keccak-rust-build|keccak-rust-json|keccak-rust-exec|blake-rust-build|blake-rust-json|blake-rust-exec|act4-build|act4-exec)
             # targets that do NOT require TEST argument
@@ -112,6 +112,8 @@ riscv-test <name>.<ext>
 riscv-test <name>.<ext> IN_BYTES="0xAABB"
 # Compile and execute with input bytes from a file
 riscv-test <name>.<ext> IN_BYTES="@path/to/in_bytes"
+# Compile, execute and generate an objdump
+riscv-test <name>.<ext> OBJDUMP=true
 # Compile and debug
 riscv-test debug <name>.<ext>
 # Compile and debug with input bytes
@@ -211,6 +213,7 @@ riscv-test compile <name>.<ext> VERIFY_ELF=true
 | `PROGRAM_OFFSET`             | `0x00000000`                                                   | Program address used by this Makefile's generated linker script (up to 128 MiB)                                                               |
 | `IN_BYTES_OFFSET`            | `0x08800000`                                                   | Memory address where input bytes are written (up to 1 GiB)                                                                                    |
 | `SP`                         | `0x08800000`                                                   | Top of the stack region, stack grows downward from this address (8 MiB)                                                                       |
+| `OBJDUMP`                    | `false`                                                        | Set to `true` to generate an objdump file for each compiled ELF                                                                               |
 | `VERIFY_ELF`                 | `false`                                                        | Set to `true` to verify offsets, entry point and sp match the ELF ones                                                                        |
 | `ACT4_BUILD_MODE`            | `host`                                                         | Build ACT4 ELFs with `host` or `docker`                                                                                                       |
 | `ACT4_REF`                   | `9798a554ce4139f472c9ccd3a18c9061d0f7024d`                     | `riscv-arch-test` tag or commit used to build ACT4 ELFs                                                                                       |
@@ -274,12 +277,12 @@ https://github.com/riscv/riscv-arch-test/tree/act4/tests/rv64i/M
 ```
 
 ACT4 uses the configuration in `act4/config/linea-rv64im-zicclsm/`.
-`make act4-build` clones `riscv-arch-test` next to `linea-monorepo` if needed, checks out `ACT4_REF`, rebuilds ELFs either with Docker or on the host, and generates one JSON input per ELF.
+`make act4-build` clones `riscv-arch-test` next to `lineth-monorepo` if needed, checks out `ACT4_REF`, rebuilds ELFs either with Docker or on the host, and generates one JSON input per ELF.
 The folder structure is the following:
 
 ```text
 parent/
-├── linea-monorepo/
+├── lineth-monorepo/
 │   └── arithmetization/src/test/examples/
 │       └── act4/
 │           ├── config/linea-rv64im-zicclsm/    # Linea ACT4 config
@@ -292,7 +295,7 @@ parent/
 └── riscv-arch-test/                            # ACT4 framework checkout
 ```
 
-From `linea-monorepo/arithmetization/src/test/examples`:
+From `lineth-monorepo/arithmetization/src/test/examples`:
 
 ```bash
 make act4-exec                         # build on the host and run

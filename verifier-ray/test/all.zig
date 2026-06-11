@@ -4,6 +4,6 @@ comptime {
     _ = @import("golden_test.zig");
     _ = @import("layout_test.zig");
     _ = @import("transcript_test.zig");
-    _ = @import("vortex_test.zig");
-    _ = @import("generated_stub_test.zig");
+    _ = @import("vanishing_test.zig");
+    _ = @import("verifier_test.zig");
 }

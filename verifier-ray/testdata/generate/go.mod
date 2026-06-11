@@ -4,7 +4,8 @@ go 1.25.7
 
 require (
 	github.com/consensys/gnark-crypto v0.20.2-0.20260521181528-f8db9b5b907d
-	github.com/consensys/linea-monorepo/prover-ray v0.0.0-20260521063207-ab0f753372c8
+	github.com/consensys/linea-monorepo/prover-ray v0.0.0-20260604100845-588fd53a8c0f
+	github.com/consensys/linea-monorepo/verifier-ray/codegen v0.0.0
 )
 
 require (
