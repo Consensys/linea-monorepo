@@ -30,7 +30,7 @@ GUEST_BIN    := evm_execution_guest
 # Committed sample input for the fixture-exec/-debug convenience runs: a real fixture's SSZ framed
 # [u64 LE len][SSZ] and pre-reversed for the converter (see "running the guest program in zkc.md",
 # which also regenerates it). Lives under test/testdata/ with the other host-only data.
-SAMPLE_INPUT := $(MAKEFILE_DIR)test/testdata/fixture_input.in.hex
+SAMPLE_INPUT ?= $(MAKEFILE_DIR)test/testdata/fixture_input.in.hex
 
 # Guest artifact: the statically-linked rv64im ELF `compile` produces (entry _start + memory layout
 # from build_common) — the zkvm-standards deliverable. The ZKC exec/debug runs feed it to ELF->JSON.
