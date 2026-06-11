@@ -13,8 +13,8 @@ include "../utils/constants.zkc"
 // 6. Write the word back to RAM at the calculated word index word_idx
 
 fn write_8<ram>(address:Address, value:u8) -> () {
-    var word_idx:Address = address >> 2
-    var offset:Address = address & 3
+    var word_idx:Address = address / 4
+    var offset:Address = address % 4
     switch offset {
         case 0: {
             var hi:u24
@@ -51,10 +51,10 @@ fn write_8<ram>(address:Address, value:u8) -> () {
 
 fn write_16<ram>(address:Address, value:u16) -> () {
     var word_idx:Address
-    var offset:Address = address & 3
+    var offset:Address = address % 4
     switch offset {
         case 0: {
-            word_idx = address >> 2
+            word_idx = address / 4
             var hi:u16
             var lo:u16
             hi::lo = ram[word_idx]
@@ -62,7 +62,7 @@ fn write_16<ram>(address:Address, value:u16) -> () {
             return
         }
         case 2: {
-            word_idx = address >> 2
+            word_idx = address / 4
             var hi:u16
             var lo:u16
             hi::lo = ram[word_idx]
@@ -81,8 +81,8 @@ fn write_16<ram>(address:Address, value:u16) -> () {
 }
 
 fn write_32<ram>(address:Address, value:u32) -> () {
-    var word_idx:Address = address >> 2
-    var offset:Address = address & 3
+    var word_idx:Address = address / 4
+    var offset:Address = address % 4
     if offset == 0 {
         ram[word_idx] = value
     } else {
@@ -95,8 +95,8 @@ fn write_32<ram>(address:Address, value:u32) -> () {
 }
 
 fn write_64<ram>(address:Address, value:u64) -> () {
-    var word_idx:Address = address >> 2
-    var offset:Address = address & 3
+    var word_idx:Address = address / 4
+    var offset:Address = address % 4
     if offset == 0 {
         var lo:u32
         var hi:u32

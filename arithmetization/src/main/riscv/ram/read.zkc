@@ -12,14 +12,14 @@ include "../utils/constants.zkc"
 // 5. Return the byte(s) value(s) via a mask operation
 
 fn read_8<ram>(address:Address) -> (value:u8) {
-    var word_idx:Address = address >> 2
-    var offset:Address = address & 3
+    var word_idx:Address = address / 4
+    var offset:Address = address % 4
     value = ((ram[word_idx] >> (offset * 8)) & 0xFF) as u8
 }
 
 fn read_16<ram>(address:Address) -> (value:u16) {
-    var word_idx:Address = address >> 2
-    var offset:Address = address & 3
+    var word_idx:Address = address / 4
+    var offset:Address = address % 4
     switch offset {
         case 0: {
             value = (ram[word_idx] & 0xFFFF) as u16
@@ -41,8 +41,8 @@ fn read_16<ram>(address:Address) -> (value:u16) {
 }
 
 fn read_32<ram>(address:Address) -> (value:u32) {
-    var word_idx:Address = address >> 2
-    var offset:Address = address & 3
+    var word_idx:Address = address / 4
+    var offset:Address = address % 4
     switch offset {
         case 0: {
             value = ram[word_idx]
@@ -64,8 +64,8 @@ fn read_32<ram>(address:Address) -> (value:u32) {
 }
 
 fn read_64<ram>(address:Address) -> (value:u64) {
-    var word_idx:Address = address >> 2
-    var offset:Address = address & 3
+    var word_idx:Address = address / 4
+    var offset:Address = address % 4
     if offset == 0 {
         value = ram[word_idx + 1]::ram[word_idx]
     } else {
