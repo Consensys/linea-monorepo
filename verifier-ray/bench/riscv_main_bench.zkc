@@ -26,6 +26,12 @@ include "../../arithmetization/src/main/riscv/utils/register_utils.zkc"
 include "../../arithmetization/src/main/riscv/memory.zkc"
 
 pub output cycle_count(address:u1) -> (cycles:u64)
+pub output transcript_start_cycle(address:u1) -> (cycles:u64)
+pub output transcript_end_cycle(address:u1) -> (cycles:u64)
+pub output vanishing_end_cycle(address:u1) -> (cycles:u64)
+
+const ECALL_INSTRUCTION:Instruction = 0x00000073
+const BENCH_MARK_SYSCALL:u64 = 4242
 
 fn main<registers, ram, state_row0, state_row1, state_row2, state_row3, state_row4, b0, b1, b2, b3, b4, c, d, padded_input_block>() {
     var instruction:Instruction
@@ -49,7 +55,24 @@ fn main<registers, ram, state_row0, state_row1, state_row2, state_row3, state_ro
     while pc != MAX_UINT_64 {
         instruction = read_32(pc) as Instruction
         clock_cycle = clock_cycle + 1
-        pc = interpreter(instruction, pc)
+        if instruction == ECALL_INSTRUCTION {
+            if registers[17] == BENCH_MARK_SYSCALL {
+                if registers[10] == 1 {
+                    transcript_start_cycle[0] = clock_cycle
+                }
+                if registers[10] == 2 {
+                    transcript_end_cycle[0] = clock_cycle
+                }
+                if registers[10] == 3 {
+                    vanishing_end_cycle[0] = clock_cycle
+                }
+                pc = pc + 4
+            } else {
+                pc = interpreter(instruction, pc)
+            }
+        } else {
+            pc = interpreter(instruction, pc)
+        }
     }
 
     cycle_count[0] = clock_cycle

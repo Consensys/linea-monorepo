@@ -4,6 +4,7 @@ const verifier_ray = @import("verifier_ray");
 const bench_data = @import("vanishing_bench_data");
 const bench_options = @import("vanishing_bench_options");
 
+const protocol = verifier_ray.protocol;
 const vanishing = verifier_ray.query.vanishing;
 
 const is_r5_zkvm = builtin.target.cpu.arch == .riscv64 and builtin.target.os.tag == .freestanding;
@@ -27,8 +28,36 @@ pub export fn r5_main() noreturn {
     bench_data.keepRuntime(bench_options.case_index, bench_options.invalid);
     var input = selected_case.input;
     std.mem.doNotOptimizeAway(&input);
-    vanishing.verify(selected_case.system, input) catch exitR5(1);
+
+    markR5(1);
+    var all_coins = protocol.replay(selected_case.spec, input.ctx.rounds) catch exitR5(1);
+    std.mem.doNotOptimizeAway(&all_coins);
+
+    markR5(2);
+    var replayed_input = vanishing.CheckInput{
+        .ctx = .{
+            .all_coins = &all_coins,
+            .rounds = input.ctx.rounds,
+        },
+        .witness_claims = input.witness_claims,
+        .quotient_claims = input.quotient_claims,
+        .module_sizes = input.module_sizes,
+    };
+    std.mem.doNotOptimizeAway(&replayed_input);
+    vanishing.verify(selected_case.system, replayed_input) catch exitR5(1);
+
+    markR5(3);
     exitR5(0);
+}
+
+fn markR5(comptime phase: u64) void {
+    asm volatile (
+        \\mv a0, %[phase]
+        \\li a7, 4242
+        \\ecall
+        :
+        : [phase] "r" (phase),
+        : .{ .a0 = true, .a7 = true, .memory = true });
 }
 
 fn exitR5(code: u8) noreturn {

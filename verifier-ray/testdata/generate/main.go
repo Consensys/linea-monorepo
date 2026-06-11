@@ -845,6 +845,13 @@ func writeVanishingBenchFixtures(cases []vanishingFixtureCase, systems []codegen
 	var out bytes.Buffer
 	writeVanishingBenchHeader(&out, len(cases))
 	for i := range cases {
+		if err := codegen.WriteSpecZigWithOptions(&out, systems[i].Routing, codegen.SpecZigOptions{
+			ProtocolImport: "protocol",
+			ConstName:      fmt.Sprintf("system_%d_spec", i),
+			EmitHeader:     false,
+		}); err != nil {
+			return err
+		}
 		if err := codegen.WriteVanishingSystemZigWithOptions(&out, i, systems[i], codegen.VanishingZigOptions{
 			FieldImport:     "field",
 			VanishingImport: "vanishing",
@@ -883,6 +890,7 @@ func writeVanishingBenchHeader(out *bytes.Buffer, count int) {
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "pub const BenchCase = struct {")
 	fmt.Fprintln(out, "    name: []const u8,")
+	fmt.Fprintln(out, "    spec: protocol.Spec,")
 	fmt.Fprintln(out, "    system: vanishing.System,")
 	fmt.Fprintln(out, "    input: vanishing.CheckInput,")
 	fmt.Fprintln(out, "};")
@@ -959,7 +967,16 @@ func writeVanishingBenchProof(out *bytes.Buffer, prefix string, proof vanishingP
 	fmt.Fprintf(out, "    std.mem.doNotOptimizeAway(&%s_witness_claims);\n", prefix)
 	fmt.Fprintf(out, "    std.mem.doNotOptimizeAway(&%s_quotient_claims);\n", prefix)
 	fmt.Fprintf(out, "    std.mem.doNotOptimizeAway(&%s_module_sizes);\n", prefix)
-	fmt.Fprintf(out, "    std.mem.doNotOptimizeAway(&%s_all_coins);\n", prefix)
+	for roundIdx, round := range proof.rounds {
+		for columnIdx, column := range round.columns {
+			switch {
+			case column.publicBaseValues != nil:
+				fmt.Fprintf(out, "    std.mem.doNotOptimizeAway(&%s_round_%d_column_%d_base);\n", prefix, roundIdx, columnIdx)
+			case column.publicExtValues != nil:
+				fmt.Fprintf(out, "    std.mem.doNotOptimizeAway(&%s_round_%d_column_%d_ext);\n", prefix, roundIdx, columnIdx)
+			}
+		}
+	}
 	for roundIdx := range proof.rounds {
 		fmt.Fprintf(out, "    std.mem.doNotOptimizeAway(&%s_round_%d_cells);\n", prefix, roundIdx)
 	}
@@ -971,14 +988,14 @@ func writeVanishingBenchRoundData(out *bytes.Buffer, prefix string, roundIdx int
 	for columnIdx, column := range round.columns {
 		switch {
 		case column.publicBaseValues != nil:
-			fmt.Fprintf(out, "const %s_round_%d_column_%d_base = [_]field.Element{\n", prefix, roundIdx, columnIdx)
+			fmt.Fprintf(out, "var %s_round_%d_column_%d_base = [_]field.Element{\n", prefix, roundIdx, columnIdx)
 			for _, value := range column.publicBaseValues {
 				fmt.Fprintf(out, "    %s,\n", fieldValueLiteral(value))
 			}
 			fmt.Fprintln(out, "};")
 			fmt.Fprintln(out)
 		case column.publicExtValues != nil:
-			fmt.Fprintf(out, "const %s_round_%d_column_%d_ext = [_]ext.Ext{\n", prefix, roundIdx, columnIdx)
+			fmt.Fprintf(out, "var %s_round_%d_column_%d_ext = [_]ext.Ext{\n", prefix, roundIdx, columnIdx)
 			for _, value := range column.publicExtValues {
 				fmt.Fprintf(out, "    %s,\n", extValueLiteral(value))
 			}
@@ -1045,7 +1062,7 @@ func writeVanishingBenchCaseSwitch(out *bytes.Buffer, cases []vanishingFixtureCa
 	fmt.Fprintln(out, "pub fn get(comptime index: usize) BenchCase {")
 	fmt.Fprintln(out, "    return switch (index) {")
 	for i, tc := range cases {
-		fmt.Fprintf(out, "        %d => .{ .name = \"%s\", .system = system_%d, .input = bench_case_%d_input },\n", i, zigString(tc.name), i, i)
+		fmt.Fprintf(out, "        %d => .{ .name = \"%s\", .spec = system_%d_spec, .system = system_%d, .input = bench_case_%d_input },\n", i, zigString(tc.name), i, i, i)
 	}
 	fmt.Fprintln(out, "        else => @compileError(\"unknown vanishing benchmark case index\"),")
 	fmt.Fprintln(out, "    };")
@@ -1057,7 +1074,7 @@ func writeVanishingBenchCaseSwitch(out *bytes.Buffer, cases []vanishingFixtureCa
 		if tc.invalid == nil {
 			continue
 		}
-		fmt.Fprintf(out, "        %d => .{ .name = \"%s\", .system = system_%d, .input = bench_case_%d_invalid_input },\n", i, zigString(tc.name), i, i)
+		fmt.Fprintf(out, "        %d => .{ .name = \"%s\", .spec = system_%d_spec, .system = system_%d, .input = bench_case_%d_invalid_input },\n", i, zigString(tc.name), i, i, i)
 	}
 	fmt.Fprintln(out, "        else => @compileError(\"vanishing benchmark case does not have an invalid input\"),")
 	fmt.Fprintln(out, "    };")
