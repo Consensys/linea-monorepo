@@ -14,7 +14,7 @@ include "../utils/constants.zkc"
 fn read_8<ram>(address:Address) -> (value:u8) {
     var word_idx:Address = address / 4
     var offset:Address = address % 4
-    var trash: u24
+    var trash:u24
     trash::value = ram[word_idx] >> (offset * 8)
 }
 
@@ -23,13 +23,13 @@ fn read_16<ram>(address:Address) -> (value:u16) {
     var offset:Address = address % 4
     switch offset {
         case 3: {
-            var trash: u48
+            var trash:u48
             // Concatenate highest byte of (word_idx) and lowest byte of (word_idx + 1)
             trash::value = (ram[word_idx + 1]::ram[word_idx]) >> 24
             return
         }
         default: {
-            var trash: u16
+            var trash:u16
             trash::value = ram[word_idx] >> (offset * 8)
             return
         }
@@ -47,7 +47,7 @@ fn read_32<ram>(address:Address) -> (value:u32) {
         default: {
             // Case 1, 2, 3 are collapse to reduce the number of instructions. 
             // Default case cannot happen as offset is the result of % 4.
-            var trash: u32
+            var trash:u32
             trash::value = (ram[word_idx + 1]::ram[word_idx]) >> (offset * 8)
             return
         }
