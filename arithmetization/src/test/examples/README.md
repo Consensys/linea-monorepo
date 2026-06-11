@@ -159,6 +159,8 @@ riscv-test blake/blake_with_in_bytes.rs IN_BYTES="0x239900d4ed8623b95a92f1dba88a
 riscv-test linker-script IN_ORIGIN=0x08800008
 # Verify ELF entry point, origins, lengths, stack and heap symbols match default ones
 riscv-test verify-elf <name>.<ext>
+# Verify ELF offsets, entry point and sp match the custom ones
+riscv-test verify-elf <name>.<ext> PROGRAM_OFFSET=0x10000000 IN_BYTES_OFFSET=0x18800000 SP=0x187fffff
 # Compile and verify ELF entry point, origins, lengths, stack and heap symbols match a custom stack
 riscv-test compile <name>.<ext> SP=0x01000000 VERIFY_ELF=true
 # Compile and verify generated ELF entry point, origins, lengths, stack and heap symbols match default ones
