@@ -53,7 +53,7 @@ BIN  := $(MAKEFILE_DIR)$(if $(filter .s,$(EXT)),asm/bin/,$(if $(filter .zig,$(EX
 JSON := $(BIN).json
 # Note: in the future the JSON file will be removed and main.zkc will receive directly the ELF file
 
-# Inputs and offsets for the program
+# Hex big-endian input or `@path/to/in_bytes`
 IN_BYTES        ?= ""
 
 # Support function to evaluate expressions and format them as hex
