@@ -1,0 +1,222 @@
+package codegen
+
+import (
+	"testing"
+
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/commitment"
+	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fri"
+)
+
+func newTestParams(t *testing.T, n, d, numQueries int, opts ...fri.Option) fri.Params {
+	t.Helper()
+	p, err := fri.NewParams(n, d, numQueries,
+		commitment.DefaultLeafHasher, commitment.DefaultNodeHasher, opts...)
+	if err != nil {
+		t.Fatalf("fri.NewParams: %v", err)
+	}
+	return p
+}
+
+// TestBuildFRIParamsNumRounds verifies that NumRounds = log2(D).
+func TestBuildFRIParamsNumRounds(t *testing.T) {
+	for _, tc := range []struct {
+		n, d, want int
+	}{
+		{16, 4, 2},
+		{32, 8, 3},
+		{16, 2, 1},
+		{8, 2, 1},
+	} {
+		p := newTestParams(t, tc.n, tc.d, 4)
+		got, err := BuildFRIParams(p)
+		if err != nil {
+			t.Fatalf("N=%d D=%d: BuildFRIParams error = %v", tc.n, tc.d, err)
+		}
+		if got.NumRounds != tc.want {
+			t.Errorf("N=%d D=%d: NumRounds = %d, want %d", tc.n, tc.d, got.NumRounds, tc.want)
+		}
+		if len(got.DomainGens) != tc.want+1 {
+			t.Errorf("N=%d D=%d: len(DomainGens) = %d, want %d", tc.n, tc.d, len(got.DomainGens), tc.want+1)
+		}
+	}
+}
+
+// TestBuildFRIParamsGenInvAreInverse verifies that DomainGens[j] * DomainGensInv[j] = 1
+// in the Koalabear field for every fold round.
+func TestBuildFRIParamsGenInvAreInverse(t *testing.T) {
+	p := newTestParams(t, 32, 8, 4)
+	out, err := BuildFRIParams(p)
+	if err != nil {
+		t.Fatalf("BuildFRIParams: %v", err)
+	}
+	var one koalabear.Element
+	one.SetOne()
+	for j := range out.DomainGens {
+		var gen, inv, product koalabear.Element
+		gen.SetUint64(out.DomainGens[j])
+		inv.SetUint64(out.DomainGensInv[j])
+		product.Mul(&gen, &inv)
+		if product != one {
+			t.Errorf("round %d: gen * inv != 1 (gen=%d inv=%d product=%v)", j, out.DomainGens[j], out.DomainGensInv[j], product)
+		}
+	}
+}
+
+// TestBuildFRIParamsHalvingProperty verifies that DomainGens[j+1] = DomainGens[j]^2,
+// i.e. squaring the round-j generator produces the round-(j+1) generator.
+func TestBuildFRIParamsHalvingProperty(t *testing.T) {
+	p := newTestParams(t, 32, 8, 4)
+	out, err := BuildFRIParams(p)
+	if err != nil {
+		t.Fatalf("BuildFRIParams: %v", err)
+	}
+	for j := 0; j < out.NumRounds; j++ {
+		var gen, squared koalabear.Element
+		gen.SetUint64(out.DomainGens[j])
+		squared.Square(&gen)
+		want := squared.Uint64()
+		if out.DomainGens[j+1] != want {
+			t.Errorf("round %d: DomainGens[%d] = %d, want %d (= DomainGens[%d]^2)", j+1, j+1, out.DomainGens[j+1], want, j)
+		}
+	}
+}
+
+// TestBuildFRIParamsGrinding verifies that the grinding bit count is preserved.
+func TestBuildFRIParamsGrinding(t *testing.T) {
+	p := newTestParams(t, 16, 4, 4, fri.WithGrinding(8))
+	out, err := BuildFRIParams(p)
+	if err != nil {
+		t.Fatalf("BuildFRIParams: %v", err)
+	}
+	if out.Grinding != 8 {
+		t.Errorf("Grinding = %d, want 8", out.Grinding)
+	}
+}
+
+// TestBuildLayoutRejectsTreeSizeMismatch checks that BuildLayout rejects a
+// TreeSizes slice that does not match NumTrees.
+func TestBuildLayoutRejectsTreeSizeMismatch(t *testing.T) {
+	_, err := BuildLayout(LayoutConfig{
+		NumTrees:  3,
+		TreeSizes: []int{128, 64}, // length 2 != NumTrees 3
+	})
+	if err == nil {
+		t.Fatal("BuildLayout: expected error for TreeSizes length mismatch, got nil")
+	}
+}
+
+// TestBuildLayoutRejectsOutOfRangeColSlot checks that BuildLayout rejects a
+// column slot whose TreeIdx is >= NumTrees.
+func TestBuildLayoutRejectsOutOfRangeColSlot(t *testing.T) {
+	_, err := BuildLayout(LayoutConfig{
+		NumTrees:  2,
+		TreeSizes: []int{64, 32},
+		ColSlots: map[string]Slot{
+			"col": {TreeIdx: 2, PolyIdx: 0, Rail: RailBase}, // TreeIdx 2 >= NumTrees 2
+		},
+	})
+	if err == nil {
+		t.Fatal("BuildLayout: expected error for out-of-range ColSlot tree_idx, got nil")
+	}
+}
+
+// TestBuildLayoutRejectsOutOfRangeAirChunkSlot checks that BuildLayout rejects
+// an air-chunk slot whose TreeIdx is >= NumTrees.
+func TestBuildLayoutRejectsOutOfRangeAirChunkSlot(t *testing.T) {
+	_, err := BuildLayout(LayoutConfig{
+		NumTrees:  2,
+		TreeSizes: []int{64, 32},
+		AirChunkSlots: map[string]Slot{
+			"air": {TreeIdx: 5, PolyIdx: 0, Rail: RailExt},
+		},
+	})
+	if err == nil {
+		t.Fatal("BuildLayout: expected error for out-of-range AirChunkSlot tree_idx, got nil")
+	}
+}
+
+// TestBuildLayoutAcceptsValidConfig checks that a well-formed config builds
+// without error and round-trips its data.
+func TestBuildLayoutAcceptsValidConfig(t *testing.T) {
+	cfg := LayoutConfig{
+		NumTrees:   2,
+		SetupBegin: 0, SetupEnd: 1,
+		TraceBegin: []int{1}, TraceEnd: []int{2},
+		AirBegin: 2, AirEnd: 3,
+		TreeSizes: []int{64, 32},
+		ColSlots: map[string]Slot{
+			"col0": {TreeIdx: 0, PolyIdx: 0, Rail: RailBase},
+			"col1": {TreeIdx: 1, PolyIdx: 0, Rail: RailExt},
+		},
+		AirChunkSlots: map[string]Slot{
+			"air0": {TreeIdx: 0, PolyIdx: 1, Rail: RailBase},
+		},
+	}
+	got, err := BuildLayout(cfg)
+	if err != nil {
+		t.Fatalf("BuildLayout: unexpected error: %v", err)
+	}
+	if got.NumTrees != 2 {
+		t.Errorf("NumTrees = %d, want 2", got.NumTrees)
+	}
+	if len(got.TreeSizes) != 2 || got.TreeSizes[0] != 64 || got.TreeSizes[1] != 32 {
+		t.Errorf("TreeSizes = %v, want [64 32]", got.TreeSizes)
+	}
+	if slot, ok := got.ColSlots["col1"]; !ok || slot.Rail != RailExt {
+		t.Errorf("ColSlots[col1] = %+v, want Rail=RailExt", slot)
+	}
+}
+
+// TestBuildDQLayoutRejectsNonPowerOfTwoSize checks that BuildDQLayout rejects
+// a level whose domain size is not a positive power of two.
+func TestBuildDQLayoutRejectsNonPowerOfTwoSize(t *testing.T) {
+	_, err := BuildDQLayout([]DQLevel{{Size: 6}})
+	if err == nil {
+		t.Fatal("BuildDQLayout: expected error for size=6, got nil")
+	}
+}
+
+// TestBuildDQLayoutRejectsShiftsGroupsMismatch checks that BuildDQLayout
+// rejects a level where Shifts and ColGroups have different lengths.
+func TestBuildDQLayoutRejectsShiftsGroupsMismatch(t *testing.T) {
+	_, err := BuildDQLayout([]DQLevel{{
+		Size:      16,
+		Shifts:    []int{0, 1},
+		ColGroups: [][]ColRef{{}}, // length 1 != len(Shifts) 2
+	}})
+	if err == nil {
+		t.Fatal("BuildDQLayout: expected error for Shifts/ColGroups length mismatch, got nil")
+	}
+}
+
+// TestBuildDQLayoutAcceptsValidLevels checks a well-formed input round-trips.
+func TestBuildDQLayoutAcceptsValidLevels(t *testing.T) {
+	levels := []DQLevel{
+		{
+			Size:      16,
+			Shifts:    []int{0, 1},
+			ColGroups: [][]ColRef{{{"col0", "key0"}}, {{"col1", "key1"}}},
+			AirChunks: []string{"air0"},
+		},
+		{
+			Size:      8,
+			Shifts:    []int{2},
+			ColGroups: [][]ColRef{{{"col2", "key2"}}},
+			AirChunks: nil,
+		},
+	}
+	got, err := BuildDQLayout(levels)
+	if err != nil {
+		t.Fatalf("BuildDQLayout: unexpected error: %v", err)
+	}
+	if len(got.Levels) != 2 {
+		t.Fatalf("len(Levels) = %d, want 2", len(got.Levels))
+	}
+	if got.Levels[0].Size != 16 || got.Levels[1].Size != 8 {
+		t.Errorf("Level sizes = [%d, %d], want [16, 8]", got.Levels[0].Size, got.Levels[1].Size)
+	}
+	if got.Levels[0].ColGroups[1][0].Name != "col1" {
+		t.Errorf("ColGroups[1][0].Name = %q, want %q", got.Levels[0].ColGroups[1][0].Name, "col1")
+	}
+}
