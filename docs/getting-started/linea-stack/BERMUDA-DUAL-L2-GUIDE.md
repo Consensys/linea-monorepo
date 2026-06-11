@@ -15,21 +15,47 @@ Package: `docs/getting-started/linea-stack`
   stack), ~30 GB disk
 - Apple Silicon is fine in dev-proof mode (default here)
 
-## Run it
+## Get the code
 
 ```bash
+git clone https://github.com/LFDT-Lineth/lineth-monorepo.git
+cd lineth-monorepo
+git checkout feat/dual-l2-bermuda-interop
 cd docs/getting-started/linea-stack
+```
 
-# Instance 1 — owns the local L1 + L2-A. Plain local-L1 mode.
+Everything below runs from this `docs/getting-started/linea-stack` directory.
+
+## Start instance 1 — owns the local L1 + L2-A
+
+```bash
+# Instance 1's config: local L1 + dev prover. That's the whole .env.
 printf 'L1_MODE=local\nPROVER_DEV_OVERRIDE=true\n' > .env
-./scripts/start.sh --tail
-# wait for "first L1 finalization observed"
 
-# Instance 2 — L2-only, attaches to instance 1's L1.
+# Boot it. First run pulls images and deploys contracts — give it a few minutes.
+./scripts/start.sh --tail
+```
+
+Wait until it prints `first L1 finalization observed`, then leave it running.
+
+## Start instance 2 — L2-B only, attaches to instance 1's L1
+
+Open a second terminal, in the same `docs/getting-started/linea-stack` directory:
+
+```bash
+# Instance 2's config is ready-made — copy it as-is, no edits needed.
 mkdir -p instances
 cp profiles/instance-2.env.example instances/i2.env
+
+# LINETH_ENV_FILE is what tells every script to act on instance 2 (not 1).
 LINETH_ENV_FILE=instances/i2.env ./scripts/start.sh --tail
 ```
+
+Wait for `first L1 finalization observed` again. You now have two L2s on one L1.
+
+The `.env` (instance 1) and `instances/i2.env` (instance 2) are the only config.
+Instance 1 = local L1 owner; instance 2 just points at it — that's the only real
+difference between them.
 
 Status / reset per instance:
 
