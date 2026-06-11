@@ -1,7 +1,7 @@
 /* Linea zkVM memory layout — kept in sync with arithmetization/src/test/examples (PR #3332).
  *   STACK   0x00000000   8 MiB    grows down from _stack_start (= SP = 0x00800000) toward _stack_end
  *   PROGRAM 0x00800000  128 MiB   code + rodata + data + bss
- *   IN      0x08800000    1 GiB   memory-mapped input (_in_start; aliased _input_start for zkvm_io)
+ *   IN      0x08800000    1 GiB   memory-mapped input
  *   HEAP    0x48800000      ∞     grows up from _heap_start (a symbol, not a bounded region)
  */
 ENTRY(_start)
@@ -41,9 +41,6 @@ SECTIONS {
     _program_end = ORIGIN(PROGRAM) + LENGTH(PROGRAM);
     _in_start = ORIGIN(IN);
     _in_end = ORIGIN(IN) + LENGTH(IN);
-
-    /* zesu-zkvm's zkvm_io.zig reads the input via `_input_start` — alias of _in_start. */
-    _input_start = ORIGIN(IN);
 
     /* heap grows upward from here by program convention (no bounded region). */
     _heap_start = ORIGIN(IN) + LENGTH(IN);

@@ -52,7 +52,7 @@ pub fn runStateless(allocator: std.mem.Allocator, ssz_input: []const u8) !Result
 /// Zesu uses — then executes it and exits 0 on successful_validation, 1 otherwise. WHERE the input
 /// lives is the proving system's concern, NOT the guest's: for Linea, `read_input` is satisfied by
 /// zesu-zkvm's `linea/src/zkvm_io.zig` (imported as `linea_zkvm_io`), which reads the memory-mapped
-/// `_input_start` (framed `[u64 LE len][SSZ]`). The guest never names a memory slot.
+/// `_in_start` (framed `[u64 LE len][SSZ]`). The guest never names a memory slot.
 fn guestMain() callconv(.c) noreturn {
     const zkvm_io = @import("linea_zkvm_io");
 

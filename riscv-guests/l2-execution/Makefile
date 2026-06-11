@@ -26,8 +26,8 @@ ZIG_FETCH_FLAGS ?=
 EXAMPLES_DIR := $(abspath $(MAKEFILE_DIR)../../arithmetization/src/test/examples)
 
 # Where the ZKC run places the input — forwarded to the examples Makefile as IN_ORIGIN, and it must
-# match the ELF's `_input_start`/`_in_start` (build_common's linker script: 0x08800000). Also passed
-# as -Dinput-offset, which the guest no longer consumes (it reads `_input_start` via read_input).
+# match the ELF's `_in_start` (build_common's linker script: 0x08800000). Also passed
+# as -Dinput-offset, which the guest no longer consumes (it reads `_in_start` via read_input).
 INPUT_OFFSET ?= 0x08800000
 
 # Optional input bytes for a ZKC run (0x-prefixed; the converter byte-reverses it — see elf_to_json_gen).
@@ -80,7 +80,7 @@ debug: compile
 	$(MAKE) -C $(EXAMPLES_DIR) elf-debug BIN_EXT="$(ELF_BIN)" IN_BYTES="$(IN_BYTES)" IN_ORIGIN=$(INPUT_OFFSET)
 
 # Guest-owned sample run: feed the committed, pre-framed sample input through ZkC (no IN_BYTES
-# needed). The converter byte-reverses the 0x-hex back into [u64 LE len][SSZ] at _input_start.
+# needed). The converter byte-reverses the 0x-hex back into [u64 LE len][SSZ] at _in_start.
 fixture-exec:
 	$(MAKE) -f $(MAKEFILE_DIR)Makefile exec IN_BYTES=@$(SAMPLE_INPUT)
 

@@ -13,8 +13,8 @@ pub fn build(b: *std.Build) void {
     const input_offset = b.option([]const u8, "input-offset", "Input memory origin") orelse "0x08800000";
     const input_offset_value: usize = @intCast(common.parseAddress("input-offset", input_offset));
     // -Dinput-offset is the converter's input-placement address (forwarded as IN_BYTES_OFFSET) and
-    // must match the linker's `_input_start`. The guest no longer reads it directly — it gets the
-    // input via read_input (zkvm_io reads `_input_start`), so guest_options stays wired but unconsumed.
+    // must match the linker's `_in_start`. The guest no longer reads it directly — it gets the
+    // input via read_input (zkvm_io reads `_in_start`), so guest_options stays wired but unconsumed.
     const guest_options = b.addOptions();
     guest_options.addOption(usize, "input_offset", input_offset_value);
     const guest_options_mod = guest_options.createModule();
@@ -35,8 +35,8 @@ pub fn build(b: *std.Build) void {
     //   • linea_zkvm_accel — Linea accelerator wrappers (keccak today): zkvm_* the prover accelerates
     //     at execution rather than at link time, so the ELF stays fully resolved;
     //   • linea_zkvm_io — zesu-zkvm's zkvm_io: satisfies the standards `read_input` by reading the
-    //     memory-mapped `_input_start` (the input slot is the proving system's detail, kept out of the
-    //     guest; `_input_start` is supplied by the linker script).
+    //     memory-mapped `_in_start` (the input slot is the proving system's detail, kept out of the
+    //     guest; `_in_start` is supplied by the linker script).
     const zesu_guest = b.dependency("zesu", .{ .target = target, .optimize = optimize });
     const zesu_zkvm = b.dependency("zesu_zkvm", .{});
     const zesu_accel_src = zesu_zkvm.path("linea/src/runtime/stdlibs_accel.zig"); // also imported by the native accel test below
