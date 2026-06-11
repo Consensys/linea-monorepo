@@ -6,7 +6,9 @@ const ssz_decode = @import("zesu_ssz_decode");
 const ssz_output = @import("zesu_ssz_output");
 const zesu_allocator = @import("zesu_allocator");
 
-const GUEST_HEAP_OFFSET: usize = 0x50000000;
+// Heap base from the linker script (canonical Linea layout: `_heap_start` = 0x48800000, grows up).
+// Only referenced from the riscv64 guest entry below, so the native build never needs the symbol.
+extern var _heap_start: u8;
 const GUEST_HEAP_SIZE: usize = 256 * 1024 * 1024;
 
 // This guest is a thin wrapper over zesu's vanilla stateless execution: it decodes an SSZ-encoded
@@ -53,7 +55,7 @@ pub fn runStateless(allocator: std.mem.Allocator, ssz_input: []const u8) !Result
 fn guestMain() callconv(.c) noreturn {
     const zkvm_io = @import("linea_zkvm_io");
 
-    const heap = @as([*]u8, @ptrFromInt(GUEST_HEAP_OFFSET))[0..GUEST_HEAP_SIZE];
+    const heap = @as([*]u8, @ptrCast(&_heap_start))[0..GUEST_HEAP_SIZE];
     var fba = std.heap.FixedBufferAllocator.init(heap);
     const allocator = fba.allocator();
 

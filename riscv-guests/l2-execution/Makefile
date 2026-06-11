@@ -25,9 +25,9 @@ ZIG_FETCH_FLAGS ?=
 # delegate here so those recipes are never duplicated.
 EXAMPLES_DIR := $(abspath $(MAKEFILE_DIR)../../arithmetization/src/test/examples)
 
-# Where the ZKC run places the input — forwarded to the examples Makefile as IN_BYTES_OFFSET, and it
-# must match the ELF's `_input_start` (build_common's linker script: 0x08800000). Also passed as
-# -Dinput-offset, which the guest no longer consumes (it reads `_input_start` via read_input).
+# Where the ZKC run places the input — forwarded to the examples Makefile as IN_ORIGIN, and it must
+# match the ELF's `_input_start`/`_in_start` (build_common's linker script: 0x08800000). Also passed
+# as -Dinput-offset, which the guest no longer consumes (it reads `_input_start` via read_input).
 INPUT_OFFSET ?= 0x08800000
 
 # Optional input bytes for a ZKC run (0x-prefixed; the converter byte-reverses it — see elf_to_json_gen).
@@ -74,10 +74,10 @@ clean:
 # Build the ELF, then hand it to the ZKC layer (single source of truth for ELF->JSON + zkc). Requires
 # `zkc` and `go` on PATH. elf_to_json_gen needs the PT_LOAD segments + entry point a linked ELF has.
 exec: compile
-	$(MAKE) -C $(EXAMPLES_DIR) elf-exec BIN_EXT="$(ELF_BIN)" IN_BYTES="$(IN_BYTES)" IN_BYTES_OFFSET=$(INPUT_OFFSET)
+	$(MAKE) -C $(EXAMPLES_DIR) elf-exec BIN_EXT="$(ELF_BIN)" IN_BYTES="$(IN_BYTES)" IN_ORIGIN=$(INPUT_OFFSET)
 
 debug: compile
-	$(MAKE) -C $(EXAMPLES_DIR) elf-debug BIN_EXT="$(ELF_BIN)" IN_BYTES="$(IN_BYTES)" IN_BYTES_OFFSET=$(INPUT_OFFSET)
+	$(MAKE) -C $(EXAMPLES_DIR) elf-debug BIN_EXT="$(ELF_BIN)" IN_BYTES="$(IN_BYTES)" IN_ORIGIN=$(INPUT_OFFSET)
 
 # Guest-owned sample run: feed the committed, pre-framed sample input through ZkC (no IN_BYTES
 # needed). The converter byte-reverses the 0x-hex back into [u64 LE len][SSZ] at _input_start.
