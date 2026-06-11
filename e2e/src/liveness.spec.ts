@@ -1,10 +1,9 @@
-import { serialize } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
+import { serialize } from "@lfdt-lineth/shared-utils";
 
 import { awaitUntil, execDockerCommand } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
-import { LineaSequencerUptimeFeedAbi } from "./generated";
 
 const context = createTestContext();
 
@@ -83,9 +82,7 @@ describe("Liveness test suite", () => {
               address: livenessContract.address,
               fromBlock: targetBlockNumber,
               toBlock: targetBlockNumber,
-              events: LineaSequencerUptimeFeedAbi.filter(
-                (value) => value.type === "event" && value.name === "AnswerUpdated",
-              ),
+              events: livenessContract.abi.filter((value) => value.type === "event" && value.name === "AnswerUpdated"),
             });
           } catch (e) {
             return null;

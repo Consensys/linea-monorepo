@@ -1,6 +1,6 @@
-# Linea Monorepo Documentation
+# Lineth Monorepo Documentation
 
-> Comprehensive technical documentation for the Linea zkEVM rollup stack.
+> Comprehensive technical documentation for the Lineth zkEVM rollup stack.
 
 > **See also:** [All Mermaid Diagrams](./diagrams/README.md) — Index of all architecture and flow diagrams
 
@@ -18,11 +18,11 @@
 ## Repository Structure
 
 ```
-linea-monorepo/
+lineth-monorepo/
 ├── Kotlin/Java (Gradle)
 │   ├── coordinator/          # Orchestration service
 │   ├── jvm-libs/             # Shared JVM libraries
-│   ├── besu-plugins/         # Besu plugin extensions
+│   ├── linea-besu/plugins/         # Besu plugin extensions
 │   ├── tracer/               # EVM trace generation
 │   ├── transaction-exclusion-api/
 │   └── testing-tools/
@@ -35,12 +35,13 @@ linea-monorepo/
 │   └── contracts/token-generation-event/  # Token generation event contracts
 │
 ├── TypeScript
-│   ├── sdk/                  # Developer SDK (viem/ethers)
+│   ├── ts-libs/sdk/          # Developer SDK (viem/ethers)
 │   ├── postman/              # Message relay service
 │   ├── e2e/                  # End-to-end tests
 │   ├── ts-libs/              # Shared TS libraries
-│   ├── operations/           # CLI operational tools
-│   └── native-yield-operations/
+│   └── operations/
+│       ├── cli/   # CLI operational tools
+│       └── native-yield/
 │
 ├── Rust
 │   └── corset/               # Constraint compiler
@@ -109,7 +110,7 @@ linea-monorepo/
 ## Quick Start
 
 ```bash
-# Prerequisites: Node.js >= 24.14.1 (see `.nvmrc`), Docker v24+, pnpm v10+, Make, JDK 21
+# Prerequisites: Node.js >= 24.14.1 (see `.nvmrc`), Docker v24+, pnpm v10+, Make, JDK 25
 
 # 1. Install dependencies
 make pnpm-install

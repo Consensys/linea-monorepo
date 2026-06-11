@@ -1,4 +1,4 @@
-import { type ILogger } from "@consensys/linea-shared-utils";
+import { type ILogger } from "@lfdt-lineth/shared-utils";
 import {
   EventSubscriber,
   EntitySubscriberInterface,
@@ -78,7 +78,11 @@ export class MessageStatusSubscriber implements EntitySubscriberInterface<Messag
         direction: messageDirection,
       });
     } catch (error) {
-      this.logger.error("Failed to update metrics:", error);
+      this.logger.error("Failed to update metrics on insert.", {
+        status: messageStatus,
+        direction: messageDirection,
+        error,
+      });
     }
   }
 
@@ -96,7 +100,11 @@ export class MessageStatusSubscriber implements EntitySubscriberInterface<Messag
         });
       }
     } catch (error) {
-      this.logger.error("Failed to update metrics:", error);
+      this.logger.error("Failed to update metrics on remove.", {
+        status: messageStatus,
+        direction: messageDirection,
+        error,
+      });
     }
   }
 
@@ -118,7 +126,12 @@ export class MessageStatusSubscriber implements EntitySubscriberInterface<Messag
         this.messageMetricsUpdater.incrementMessageCount(nextMessageAttributes);
       }
     } catch (error) {
-      this.logger.error("Metrics swap failed:", error);
+      this.logger.error("Metrics swap failed.", {
+        fromStatus: previousMessageAttributes.status,
+        toStatus: nextMessageAttributes.status,
+        direction: previousMessageAttributes.direction,
+        error,
+      });
     }
   }
 }

@@ -17,23 +17,24 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | INITIAL_L2_STATE_ROOT_HASH   | true      | bytes | Initial State Root Hash (shared base) |
 | INITIAL_L2_BLOCK_NUMBER   | true      | uint256 | Initial L2 Block Number (shared base) |
 | L2_GENESIS_TIMESTAMP | true | uint256 | Genesis timestamp (shared base) |
-| L1_SECURITY_COUNCIL  | true      | address | L1 Security Council Address |
-| LINEA_ROLLUP_OPERATORS     | true      | address | L1 Operators Addresses (comma-delimited if multiple) |
+| L1_SECURITY_COUNCIL  | registry\|env | address | L1 Security Council Address. Read from registry on stable networks; env var used as fallback. |
+| LINEA_ROLLUP_OPERATORS     | registry\|env | address | L1 Operators Addresses (comma-delimited if multiple). Read from registry on stable networks; env var used as fallback. |
 | LINEA_ROLLUP_RATE_LIMIT_PERIOD     | true  | uint256   | L1 Rate Limit Period |
 | LINEA_ROLLUP_RATE_LIMIT_AMOUNT     | true  | uint256   | L1 Rate Limit Amount |
-| PLONKVERIFIER_ADDRESS | true | address | PlonkVerifier contract address (set automatically when deploying Verifier in same chain) |
-| YIELD_MANAGER_ADDRESS | true | address | Yield Manager contract address |
+| VERIFIER_ADDRESS | registry\|env | address | PlonkVerifier contract address. Read from registry on stable networks; env var used as fallback (set automatically when deploying Verifier in same chain). |
+| YIELD_MANAGER_ADDRESS | registry\|env | address | Yield Manager contract address. Read from registry on stable networks; env var used as fallback. |
+| LINEA_ROLLUP_ADDRESS_FILTER | registry\|env | address | AddressFilter contract address. Read from registry on stable networks; env var used as fallback. |
 
 <br />
 
 Base command:
 ```shell
-npx hardhat deploy --network sepolia --tags LineaRollup
+pnpm exec hardhat deploy --network sepolia --tags LineaRollup
 ```
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> INITIAL_L2_STATE_ROOT_HASH=<bytes> INITIAL_L2_BLOCK_NUMBER=<value> L2_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> LINEA_ROLLUP_OPERATORS=<address> LINEA_ROLLUP_RATE_LIMIT_PERIOD=<value> LINEA_ROLLUP_RATE_LIMIT_AMOUNT=<value> YIELD_MANAGER_ADDRESS=<address> npx hardhat deploy --network sepolia --tags LineaRollup
+VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> INITIAL_L2_STATE_ROOT_HASH=<bytes> INITIAL_L2_BLOCK_NUMBER=<value> L2_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> LINEA_ROLLUP_OPERATORS=<address> LINEA_ROLLUP_RATE_LIMIT_PERIOD=<value> LINEA_ROLLUP_RATE_LIMIT_AMOUNT=<value> YIELD_MANAGER_ADDRESS=<address> pnpm exec hardhat deploy --network sepolia --tags LineaRollup
 ```
 
 (make sure to replace `<value>` `<key>` `<bytes>` `<address>` with actual values).
@@ -49,26 +50,26 @@ Deploys a new LineaRollup implementation and generates encoded upgrade calldata 
 | Parameter name | Required | Input value | Description |
 |---|---|---|---|
 | \**DEPLOYER_PRIVATE_KEY* | true | key | Network-specific private key |
-| L1_SECURITY_COUNCIL | true | address | Security Council address |
-| LINEA_ROLLUP_ADDRESS | true | address | Existing LineaRollup proxy address |
+| L1_SECURITY_COUNCIL | registry\|env | address | Security Council address. Read from registry on stable networks; env var used as fallback. |
+| LINEA_ROLLUP_ADDRESS | registry\|env | address | Existing LineaRollup proxy address. Read from registry on stable networks; env var used as fallback. |
 
 ```shell
-npx hardhat deploy --network sepolia --tags LineaRollupWithReinitialization
+pnpm exec hardhat deploy --network sepolia --tags LineaRollupWithReinitialization
 ```
 
 <br />
 
 ### LineaRollupV8WithReinitialization
 
-Deploys LineaRollup from audited artifacts and generates encoded upgrade calldata with `reinitializeV8`.
+Deploys a new LineaRollup implementation and generates encoded `upgradeAndCall` calldata for `reinitializeLineaRollupV9`. Submit the printed calldata through the Security Council Safe targeting the ProxyAdmin.
 
 | Parameter name | Required | Input value | Description |
 |---|---|---|---|
 | \**DEPLOYER_PRIVATE_KEY* | true | key | Network-specific private key |
-| L1_SECURITY_COUNCIL | true | address | Security Council address |
-| LINEA_ROLLUP_ADDRESS | true | address | Existing LineaRollup proxy address |
-| NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS | true | address | Automation service address |
+| LINEA_ROLLUP_ADDRESS | registry\|env | address | Existing LineaRollup proxy address. Read from registry on stable networks; env var used as fallback. |
+| LINEA_ROLLUP_FORCED_TRANSACTION_FEE_IN_WEI | true | uint256 | Forced transaction fee in wei (must be > 0) |
+| LINEA_ROLLUP_ADDRESS_FILTER | registry\|env | address | AddressFilter contract address. Read from registry if present; env var used as fallback. |
 
 ```shell
-npx hardhat deploy --network sepolia --tags LineaRollupV8WithReinitialization
+pnpm exec hardhat deploy --network sepolia --tags LineaRollupV8WithReinitialization
 ```

@@ -6,7 +6,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 data class TracesToml(
-  val expectedTracesApiVersion: String,
   val endpoints: List<URL>? = null,
   val requestLimitPerEndpoint: UInt = UInt.MAX_VALUE,
   val requestTimeout: Duration? = null,
@@ -46,7 +45,9 @@ data class TracesToml(
 
   private fun reifiedWithCommonDefaults(config: ClientApiConfigToml?): TracesConfig.ClientApiConfig {
     return TracesConfig.ClientApiConfig(
-      endpoints = (config?.endpoints ?: endpoints)!!,
+      endpoints = requireNotNull(config?.endpoints ?: endpoints) {
+        "endpoints must be set either in the specific config or in the common traces config"
+      },
       requestLimitPerEndpoint = config?.requestLimitPerEndpoint ?: requestLimitPerEndpoint,
       requestTimeout = config?.requestTimeout ?: requestTimeout,
       requestRetries = config?.requestRetries?.asDomain ?: requestRetries.asDomain,
@@ -60,7 +61,9 @@ data class TracesToml(
         null
       } else {
         TracesConfig.ClientApiConfig(
-          endpoints = endpoints!!,
+          endpoints = requireNotNull(endpoints) {
+            "traces.endpoints must be set when counters and conflation specific endpoints are not configured"
+          },
           requestLimitPerEndpoint = requestLimitPerEndpoint,
           requestTimeout = requestTimeout,
           requestRetries = requestRetries.asDomain,
@@ -68,31 +71,10 @@ data class TracesToml(
       }
 
     return TracesConfig(
-      expectedTracesApiVersion = expectedTracesApiVersion,
       common = common,
       counters = if (common == null) reifiedWithCommonDefaults(this.counters) else null,
       conflation = if (common == null) reifiedWithCommonDefaults(this.conflation) else null,
       ignoreTracesGeneratorErrors = ignoreTracesGeneratorErrors,
-      /*
-      switchBlockNumberInclusive = switchBlockNumberInclusive,
-      new = new?.let { newTracesConfig ->
-        TracesConfig(
-          expectedTracesApiVersion = newTracesConfig.expectedTracesApiVersion,
-          counters = TracesConfig.ClientApiConfig(
-            endpoints = newTracesConfig.counters.endpoints,
-            requestLimitPerEndpoint = newTracesConfig.counters.requestLimitPerEndpoint,
-            requestRetries = newTracesConfig.counters.requestRetries.asDomain
-          ),
-          conflation = TracesConfig.ClientApiConfig(
-            endpoints = newTracesConfig.conflation.endpoints,
-            requestLimitPerEndpoint = newTracesConfig.conflation.requestLimitPerEndpoint,
-            requestRetries = newTracesConfig.conflation.requestRetries.asDomain
-          ),
-          switchBlockNumberInclusive = null,
-          new = null
-        )
-      }
-       */
     )
   }
 }

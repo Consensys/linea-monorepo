@@ -1,0 +1,212 @@
+package rangecheck_test
+
+import (
+	"testing"
+
+	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
+	"github.com/consensys/linea-monorepo/prover-ray/wiop"
+	"github.com/consensys/linea-monorepo/prover-ray/wiop/compilers/logderivativesum"
+	"github.com/consensys/linea-monorepo/prover-ray/wiop/compilers/lookuptologderivsum"
+	"github.com/consensys/linea-monorepo/prover-ray/wiop/compilers/rangecheck"
+	"github.com/consensys/linea-monorepo/prover-ray/wiop/wioptest"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// runRound executes every prover action registered on the runtime's current
+// round.
+func runRound(rt *wiop.Runtime) {
+	for _, a := range rt.CurrentRound().ProverActions {
+		a.Run(*rt)
+	}
+}
+
+// checkAllVerifierActions evaluates every verifier action across every round
+// of the runtime. Returns the first non-nil error or nil if everything
+// passes.
+func checkAllVerifierActions(rt *wiop.Runtime) error {
+	for _, r := range rt.System.Rounds {
+		for _, va := range r.VerifierActions {
+			if err := va.Check(*rt); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// driveRangeCheckProtocol mirrors the canonical "assign-witness → run →
+// advance" loop for the rangecheck → lookuptologderivsum → logderivativesum
+// pipeline. After all three compile steps the round layout is the same as
+// the lookup tests': r0 hosts the witness columns and M; r1 hosts the α/γ
+// coins; r2 hosts the Z columns and the LogDerivativeSum result.
+func driveRangeCheckProtocol(rt *wiop.Runtime) {
+	runRound(rt)
+	rt.AdvanceRound()
+	rt.AdvanceRound()
+	runRound(rt)
+}
+
+// TestCompile_WioptestCompleteness runs every scenario from
+// [wioptest.RangeCheckCompilerScenarios] through the full
+// rangecheck → lookuptologderivsum → logderivativesum pipeline. The
+// verifier must accept.
+func TestCompile_WioptestCompleteness(t *testing.T) {
+	for _, build := range wioptest.RangeCheckCompilerScenarios() {
+		sc := build()
+		t.Run(sc.Name, func(t *testing.T) {
+			rangecheck.Compile(sc.Sys)
+			lookuptologderivsum.Compile(sc.Sys)
+			logderivativesum.Compile(sc.Sys)
+			rt := wiop.NewRuntime(sc.Sys)
+			sc.AssignWitness(&rt)
+			driveRangeCheckProtocol(&rt)
+			require.NoError(t, checkAllVerifierActions(&rt),
+				"compiled verifier must accept an honest witness")
+		})
+	}
+}
+
+// TestCompile_WioptestSoundnessPanics runs every scenario from
+// [wioptest.RangeCheckSoundnessScenarios]. An out-of-range value reaches the
+// downstream M-assignment prover action with no matching row, which panics.
+func TestCompile_WioptestSoundnessPanics(t *testing.T) {
+	for _, build := range wioptest.RangeCheckSoundnessScenarios() {
+		sc := build()
+		t.Run(sc.Name, func(t *testing.T) {
+			rangecheck.Compile(sc.Sys)
+			lookuptologderivsum.Compile(sc.Sys)
+			logderivativesum.Compile(sc.Sys)
+			rt := wiop.NewRuntime(sc.Sys)
+			sc.AssignWitness(&rt)
+			assert.Panics(t, func() { runRound(&rt) },
+				"out-of-range value must cause the downstream M-assignment to panic")
+		})
+	}
+}
+
+// newRC builds a minimal system with one sized module and one RangeCheck.
+func newRC(t *testing.T, b int) (sys *wiop.System, col *wiop.Column, rc *wiop.RangeCheck) {
+	t.Helper()
+	sys = wiop.NewSystemf("rc-test")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 8, wiop.PaddingDirectionNone)
+	col = mod.NewColumn(sys.Context.Childf("col"), wiop.VisibilityOracle, r0)
+	rc = mod.NewRangeCheck(sys.Context.Childf("rc"), col, b)
+	return
+}
+
+func makeVec(vals ...uint64) *wiop.ConcreteVector {
+	elems := make([]field.Element, len(vals))
+	for i, v := range vals {
+		elems[i].SetUint64(v)
+	}
+	return &wiop.ConcreteVector{Plain: field.VecFromBase(elems)}
+}
+
+// ---- Structural tests ----
+
+func TestCompile_CreatesInclusion(t *testing.T) {
+	sys, _, rc := newRC(t, 8)
+	rangecheck.Compile(sys)
+
+	assert.True(t, rc.IsReduced(), "RangeCheck must be marked reduced after Compile")
+	require.Len(t, sys.TableRelations, 1)
+}
+
+func TestCompile_SharedRangeColumn(t *testing.T) {
+	sys := wiop.NewSystemf("rc-shared")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 8, wiop.PaddingDirectionNone)
+	colA := mod.NewColumn(sys.Context.Childf("colA"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("colB"), wiop.VisibilityOracle, r0)
+	mod.NewRangeCheck(sys.Context.Childf("rcA"), colA, 4)
+	mod.NewRangeCheck(sys.Context.Childf("rcB"), colB, 4)
+	modulesBeforeCompile := len(sys.Modules) // 1
+
+	rangecheck.Compile(sys)
+
+	// One range module for B=4 shared across both RangeChecks.
+	assert.Len(t, sys.Modules, modulesBeforeCompile+1)
+	require.Len(t, sys.TableRelations, 2)
+}
+
+func TestCompile_DistinctBoundsDistinctModules(t *testing.T) {
+	sys := wiop.NewSystemf("rc-distinct")
+	r0 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 8, wiop.PaddingDirectionNone)
+	colA := mod.NewColumn(sys.Context.Childf("colA"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("colB"), wiop.VisibilityOracle, r0)
+	mod.NewRangeCheck(sys.Context.Childf("rcA"), colA, 4)
+	mod.NewRangeCheck(sys.Context.Childf("rcB"), colB, 8)
+	modulesBeforeCompile := len(sys.Modules)
+
+	rangecheck.Compile(sys)
+
+	// Two distinct bounds → two distinct range modules.
+	assert.Len(t, sys.Modules, modulesBeforeCompile+2)
+	require.Len(t, sys.TableRelations, 2)
+}
+
+func TestCompile_Idempotent(t *testing.T) {
+	sys, _, _ := newRC(t, 4)
+	rangecheck.Compile(sys)
+	relationsAfterFirst := len(sys.TableRelations)
+	modulesAfterFirst := len(sys.Modules)
+
+	rangecheck.Compile(sys)
+
+	assert.Len(t, sys.TableRelations, relationsAfterFirst,
+		"second Compile must not add new relations")
+	assert.Len(t, sys.Modules, modulesAfterFirst,
+		"second Compile must not add new modules")
+}
+
+func TestCompile_NoRangeChecks(t *testing.T) {
+	sys := wiop.NewSystemf("rc-none")
+	sys.NewRound()
+	sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
+
+	rangecheck.Compile(sys) // must not panic
+
+	assert.Empty(t, sys.TableRelations)
+}
+
+// ---- Soundness tests ----
+
+func TestCompile_Completeness(t *testing.T) {
+	sys, col, _ := newRC(t, 8)
+	rangecheck.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(col, makeVec(0, 1, 2, 3, 4, 5, 6, 7))
+
+	require.Len(t, sys.TableRelations, 1)
+	require.NoError(t, sys.TableRelations[0].Check(rt),
+		"all values in [0,8) must be accepted by the compiled Inclusion")
+}
+
+func TestCompile_Soundness_ValueAtBound(t *testing.T) {
+	sys, col, _ := newRC(t, 4)
+	rangecheck.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	// Value 4 == B is out of the range [0, 4).
+	rt.AssignColumn(col, makeVec(0, 1, 2, 4, 0, 0, 0, 0))
+
+	require.Len(t, sys.TableRelations, 1)
+	assert.Error(t, sys.TableRelations[0].Check(rt),
+		"value at bound must be rejected by the compiled Inclusion")
+}
+
+func TestCompile_Soundness_ValueAboveBound(t *testing.T) {
+	sys, col, _ := newRC(t, 4)
+	rangecheck.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(col, makeVec(0, 1, 2, 7, 0, 0, 0, 0)) // 7 >= 4
+
+	require.Len(t, sys.TableRelations, 1)
+	assert.Error(t, sys.TableRelations[0].Check(rt),
+		"value above bound must be rejected by the compiled Inclusion")
+}

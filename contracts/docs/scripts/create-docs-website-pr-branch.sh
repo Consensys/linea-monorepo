@@ -7,7 +7,7 @@
 
 ### ASSUMPTIONS
 # - Requires permissions to create a branch on docs.linea.build repo
-# - Must execute this script from within linea-monorepo (can be anywhere)
+# - Must execute this script from within lineth-monorepo (can be anywhere)
 # - Hardhat must be installed in the local project, Foundry must be installed globally
 
 ### CONSTANTS
@@ -48,7 +48,7 @@ if [ -z "$(pnpm -F contracts list hardhat)" ]; then
 fi
 
 # Docgen
-npx hardhat docgen
+pnpm exec hardhat docgen
 
 # Git clone docs website repo and create a new branch
 cd $MONOREPO_ROOT_PATH

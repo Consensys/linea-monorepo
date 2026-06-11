@@ -26,26 +26,34 @@ type System struct {
 	// TableRelations holds all [TableRelation] queries registered with this
 	// system via [System.NewPermutation] and [System.NewInclusion], in
 	// declaration order.
-	TableRelations []*TableRelation
+	TableRelations []*LookupQuery
 	// LogDerivativeSums holds all [LogDerivativeSum] queries registered with
 	// this system via [System.NewLogDerivativeSum], in declaration order.
 	LogDerivativeSums []*LogDerivativeSum
 	// scratchArena backs the [PlanningContext] used by [Materialize]. It is
 	// nil until Materialize is called.
 	scratchArena *arena.VectorArena
+	// Annotation is some user-defined information that can be attached to the
+	// System.
+	Annotations Annotations
 }
 
 // NewSystemf constructs an empty System. It creates a root [ContextFrame]
 // using the formatted name as its label, then initialises the PrecomputedRound.
 // msg and args follow [fmt.Sprintf] conventions.
+//
+// The system is initialized with one round
 func NewSystemf(msg string, args ...any) *System {
 	ctx := NewRootFramef(msg, args...)
 	sys := &System{
 		Context:          ctx,
 		PrecomputedRound: &PrecomputedRound{Round: Round{system: nil}},
 	}
+
 	// Wire the back-reference after the System pointer is stable.
 	sys.PrecomputedRound.system = sys
+	sys.Annotations = make(Annotations)
+
 	return sys
 }
 
@@ -96,5 +104,22 @@ func (sys *System) NewModule(ctx *ContextFrame, pd PaddingDirection) *Module {
 func (sys *System) NewSizedModule(ctx *ContextFrame, size int, pd PaddingDirection) *Module {
 	m := sys.NewModule(ctx, pd)
 	m.SetSize(size)
+	return m
+}
+
+// NewDynamicModule creates a module whose domain size is provided per-Runtime
+// via [WithModuleSize] rather than fixed once via [Module.SetSize]. The same
+// System can therefore be reused across proving sessions that differ in trace
+// length.
+//
+// Panics if ctx is nil or if pd is [PaddingDirectionNone] (dynamic modules
+// require a padding direction so that shorter columns can be padded to the
+// module's runtime size).
+func (sys *System) NewDynamicModule(ctx *ContextFrame, pd PaddingDirection) *Module {
+	if pd == PaddingDirectionNone {
+		panic("wiop: NewDynamicModule: dynamic modules require a padding direction (PaddingDirectionLeft or PaddingDirectionRight)")
+	}
+	m := sys.NewModule(ctx, pd)
+	m.isDynamic = true
 	return m
 }

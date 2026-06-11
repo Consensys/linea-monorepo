@@ -6,7 +6,7 @@
  *
  * Usage:
  *   export ETHEREUM_SEPOLIA_RPC_URL="https://sepolia.infura.io/v3/YOUR_KEY"
- *   npx ts-node tests/live.test.ts
+ *   pnpm exec ts-node tests/live.test.ts
  *
  * These tests will be skipped if the environment variable is not set.
  */
@@ -26,7 +26,7 @@ import {
   RPC_ENV_VARS,
   CHAIN_IDS,
   KNOWN_NAMESPACES,
-} from "@consensys/linea-contract-integrity-verifier";
+} from "@lfdt-lineth/contract-integrity-verifier";
 import { ViemAdapter } from "../src/index";
 
 // ============================================================================

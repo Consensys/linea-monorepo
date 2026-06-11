@@ -1,4 +1,4 @@
-import { IApplication, ILogger, IMetricsService, WinstonLogger } from "@consensys/linea-shared-utils";
+import { IApplication, ILogger, IMetricsService, WinstonLogger } from "@lfdt-lineth/shared-utils";
 import { DataSource } from "typeorm";
 
 import { PostmanConfig, PostmanOptions } from "./config/config";
@@ -54,12 +54,15 @@ export class PostmanApp {
 
     await this.messageMetricsUpdater.initialize();
     this.db.subscribers.push(
-      new MessageStatusSubscriber(this.messageMetricsUpdater, new WinstonLogger(MessageStatusSubscriber.name)),
+      new MessageStatusSubscriber(
+        this.messageMetricsUpdater,
+        new WinstonLogger(MessageStatusSubscriber.name, this.config.loggerOptions),
+      ),
     );
     this.api = createPostmanApi(
       this.config.apiConfig.port,
       this.postmanMetricsService,
-      new WinstonLogger("ExpressApiApplication"),
+      new WinstonLogger("ExpressApiApplication", this.config.loggerOptions),
     );
 
     this.services.l1ToL2App?.start();

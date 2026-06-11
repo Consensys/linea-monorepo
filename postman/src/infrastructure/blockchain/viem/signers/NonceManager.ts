@@ -1,4 +1,4 @@
-import { ILogger } from "@consensys/linea-shared-utils";
+import { ILogger } from "@lfdt-lineth/shared-utils";
 
 import { ITransactionCountProvider } from "../../../../core/clients/blockchain/IProvider";
 import { IDbNonceProvider } from "../../../../core/services/IDbNonceProvider";
@@ -33,6 +33,7 @@ export class NonceManager implements INonceManager {
     this.nextNonce = dbMaxNonce !== null ? Math.max(onChainNonce, dbMaxNonce + 1) : onChainNonce;
 
     this.logger.info("NonceManager initialized.", {
+      signerAddress: this.signerAddress,
       startNonce: this.nextNonce,
       onChainNonce,
       dbMaxNonce,

@@ -203,7 +203,7 @@ Before the postman can be run and tested locally, we must build the monorepo dep
 ```bash
 NATIVE_LIBS_RELEASE_TAG=blob-libs-v1.2.0 pnpm run -F linea-native-libs build && \
 pnpm run -F linea-shared-utils build && \
-pnpm run -F "./sdk/*" build
+pnpm run -F "./ts-libs/sdk/*" build
 ```
 
 From the postman folder run the following commands:
@@ -213,7 +213,7 @@ From the postman folder run the following commands:
 cp .env.sample .env
 
 # Run the postman
-npx ts-node src/main.ts
+pnpm exec ts-node src/main.ts
 ```
 
 ### Building

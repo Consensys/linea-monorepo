@@ -518,17 +518,17 @@ Standard Hardhat artifacts lack `immutableReferences`, preventing definitive byt
 
 ```bash
 # Auto-find build-info
-npx ts-node tools/enrich-hardhat-artifact.ts \
+pnpm exec ts-node tools/enrich-hardhat-artifact.ts \
   artifacts/contracts/MyContract.sol/MyContract.json
 
 # Specify build-info explicitly
-npx ts-node tools/enrich-hardhat-artifact.ts \
+pnpm exec ts-node tools/enrich-hardhat-artifact.ts \
   MyContract.json \
   enriched/MyContract.json \
   --build-info artifacts/build-info/abc123.json
 
 # For multi-contract files, specify the contract path
-npx ts-node tools/enrich-hardhat-artifact.ts \
+pnpm exec ts-node tools/enrich-hardhat-artifact.ts \
   MyContract.json \
   --contract contracts/MyContract.sol:MyContract
 ```
@@ -738,10 +738,10 @@ struct ProviderData {
 
 ```bash
 # Generate schema from Solidity files
-npx generate-schema-viem Storage.sol -o schema.json
+pnpx generate-schema-viem Storage.sol -o schema.json
 
 # Multiple files (for inheritance)
-npx generate-schema-viem Base.sol Extension.sol -o schema.json --verbose
+pnpx generate-schema-viem Base.sol Extension.sol -o schema.json --verbose
 ```
 
 ## Dynamic Configuration
@@ -885,15 +885,15 @@ Each adapter package has two entry points:
 
 | Entry Point | Purpose | Browser-safe |
 |-------------|---------|--------------|
-| `@consensys/.../index` | Adapter class (e.g., `ViemAdapter`) | ✓ Yes |
-| `@consensys/.../tools` | Schema generation, crypto utilities | ✗ No (Node.js only) |
+| `@lfdt-lineth/.../index` | Adapter class (e.g., `ViemAdapter`) | ✓ Yes |
+| `@lfdt-lineth/.../tools` | Schema generation, crypto utilities | ✗ No (Node.js only) |
 
 ```typescript
 // Browser usage (safe)
-import { ViemAdapter } from "@consensys/linea-contract-integrity-verifier-viem";
+import { ViemAdapter } from "@lfdt-lineth/contract-integrity-verifier-viem";
 
 // Node.js CLI/script usage
-import { generateSchema, createCryptoAdapter } from "@consensys/linea-contract-integrity-verifier-viem/tools";
+import { generateSchema, createCryptoAdapter } from "@lfdt-lineth/contract-integrity-verifier-viem/tools";
 ```
 
 ### Static Export

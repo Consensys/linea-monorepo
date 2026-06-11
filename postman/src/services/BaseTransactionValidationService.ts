@@ -1,4 +1,4 @@
-import { ILogger } from "@consensys/linea-shared-utils";
+import { ILogger } from "@lfdt-lineth/shared-utils";
 
 import { PROFIT_MARGIN_MULTIPLIER } from "../core/constants";
 import { Message } from "../core/entities/Message";
@@ -48,12 +48,21 @@ export abstract class BaseTransactionValidationService implements ITransactionVa
     maxFeePerGas: bigint,
     evaluation: TransactionEvaluation,
   ): void {
-    this.logger.debug(
-      `Estimated gas fees for message claiming. messageHash=${messageHash} gasLimit=${gasLimit} maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`,
-    );
-    this.logger.debug(
-      `Transaction evaluation results. messageHash=${messageHash} hasZeroFee=${evaluation.hasZeroFee} isUnderPriced=${evaluation.isUnderPriced} isRateLimitExceeded=${evaluation.isRateLimitExceeded} isForSponsorship=${evaluation.isForSponsorship} estimatedGasLimit=${evaluation.estimatedGasLimit} threshold=${evaluation.threshold}`,
-    );
+    this.logger.debug("Estimated gas fees for message claiming.", {
+      messageHash,
+      gasLimit: gasLimit.toString(),
+      maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
+      maxFeePerGas: maxFeePerGas.toString(),
+    });
+    this.logger.debug("Transaction evaluation results.", {
+      messageHash,
+      hasZeroFee: evaluation.hasZeroFee,
+      isUnderPriced: evaluation.isUnderPriced,
+      isRateLimitExceeded: evaluation.isRateLimitExceeded,
+      isForSponsorship: evaluation.isForSponsorship,
+      estimatedGasLimit: evaluation.estimatedGasLimit?.toString(),
+      threshold: evaluation.threshold,
+    });
   }
 
   protected computeIsUnderPricedByMaxFee(gasLimit: bigint, messageFee: bigint, maxFeePerGas: bigint): boolean {

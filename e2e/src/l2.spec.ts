@@ -1,5 +1,5 @@
-import { etherToWei } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
+import { etherToWei } from "@lfdt-lineth/shared-utils";
 import { randomBytes } from "crypto";
 import { encodeFunctionData, serializeTransaction, toHex } from "viem";
 
@@ -64,7 +64,7 @@ describe("Layer 2 test suite", () => {
     const walletClient = context.l2WalletClient({ account });
     const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
 
-    const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
+    const { gasPrice } = await l2PublicClient.estimateFeesPerGas({ type: "legacy" });
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
     const { hash, receipt } = await sendTransactionWithGasPriceRetry(l2PublicClient, (fees?: GasPriceFeeOverrides) =>
@@ -121,7 +121,7 @@ describe("Layer 2 test suite", () => {
     const l2PublicClient = context.l2PublicClient();
     const walletClient = context.l2WalletClient({ account });
     const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
-    const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
+    const { gasPrice } = await l2PublicClient.estimateFeesPerGas({ type: "legacy" });
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
     const { hash, receipt } = await sendTransactionWithGasPriceRetry(l2PublicClient, (fees?: GasPriceFeeOverrides) =>
@@ -147,7 +147,7 @@ describe("Layer 2 test suite", () => {
     const l2PublicClient = context.l2PublicClient();
     const walletClient = context.l2WalletClient({ account });
     const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
-    const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
+    const { gasPrice } = await l2PublicClient.estimateFeesPerGas({ type: "legacy" });
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
     const accessList = [

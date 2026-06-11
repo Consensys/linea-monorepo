@@ -24,6 +24,7 @@ import (
 	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -32,9 +33,11 @@ type Circuit struct {
 	AggregationPublicInput      [2]frontend.Variable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
 	ExecutionPublicInput        []frontend.Variable  `gnark:",public"`
 	DataAvailabilityPublicInput []frontend.Variable  `gnark:",public"`
+	InvalidityPublicInput       []frontend.Variable  `gnark:",public"`
 
 	DataAvailabilityFPIQ []blobdecompression.FunctionalPublicInputQSnark
 	ExecutionFPIQ        []execution.FunctionalPublicInputQSnark
+	InvalidityFPI        []invalidity.FunctionalPublicInputsGnark // to connected invalidityFPI to the aggregationFPI
 
 	public_input.AggregationFPIQSnark
 
@@ -91,14 +94,14 @@ func (c *Circuit) Define(api frontend.API) error {
 	nbBatchesSums := rDA.PartialSumsF(func(i int) frontend.Variable { return api.Mul(rDA.InRange[i], c.DataAvailabilityFPIQ[i].NbBatches) })
 	nbExecution := nbBatchesSums[len(nbBatchesSums)-1] // implicit: CHECK_NB_EXEC
 
-	// These two checks prevents constructing a proof where no execution or no
-	// compression proofs are provided. This is to prevent corner cases from
+	// These two checks prevent the construction of a proof without execution or
+	// compression proofs. This is to prevent corner cases from
 	// arising.
 	api.AssertIsDifferent(c.NbDataAvailability, 0)
 	api.AssertIsDifferent(nbExecution, 0)
 
 	if c.MaxNbCircuits > 0 { // CHECK_CIRCUIT_LIMIT
-		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDataAvailability), c.MaxNbCircuits)
+		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDataAvailability, c.NbInvalidity), c.MaxNbCircuits)
 	}
 
 	batchHashes := make([]frontend.Variable, len(c.ExecutionPublicInput))
@@ -232,17 +235,19 @@ func (c *Circuit) Define(api frontend.API) error {
 			return errors.New("number of L2 messages must be the same for all executions")
 		}
 
+		// Do not read data from unconstrained execution padding.
+		l2MessagesLength := api.Mul(pi.L2MessageHashes.Length, rExecution.InRange[i])
 		// "transpose" the L2 messages by byte for Concat -> Merkle
 		for j := range l2MessagesByByte { // perf-TODO probably better to change all 32bytes into four uint64s instead.
 			for k := range pi.L2MessageHashes.Values {
 				l2MessagesByByte[j][i].Values[k] = pi.L2MessageHashes.Values[k][j]
 			}
-			l2MessagesByByte[j][i].Length = pi.L2MessageHashes.Length
+			l2MessagesByByte[j][i].Length = l2MessagesLength
 		}
 	}
 
 	merkleLeavesConcat := internal.Var32Slice{Values: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle*merkleNbLeaves)}
-	for i := 0; i < 32; i++ {
+	for i := range 32 {
 		ithBytes := internal.Concat(api, len(merkleLeavesConcat.Values), l2MessagesByByte[i]...)
 		for j := range merkleLeavesConcat.Values {
 			merkleLeavesConcat.Values[j][i] = ithBytes.Values[j]
@@ -272,6 +277,9 @@ func (c *Circuit) Define(api frontend.API) error {
 		pi.L2MsgMerkleTreeRoots[i] = MerkleRootSnark(&hshK, merkleLeavesConcat.Values[i*merkleNbLeaves:(i+1)*merkleNbLeaves])
 	}
 
+	// check invalidity proofs against the finalStateRootHash and FinalBlockNumber in the aggregation.
+	pi.FinalFtxNumber, pi.FinalFtxRollingHash = c.checkInvalidityProofs(api, c.InitialStateRootHash, c.LastFinalizedBlockNumber, c.LastFinalizedBlockTimestamp)
+
 	twoPow8 := big.NewInt(256)
 	// "open" aggregation public input
 	aggregationPIBytes := pi.Sum(api, &hshK)
@@ -279,6 +287,107 @@ func (c *Circuit) Define(api frontend.API) error {
 	api.AssertIsEqual(c.AggregationPublicInput[1], compress.ReadNum(api, aggregationPIBytes[16:], twoPow8))
 
 	return hshK.Finalize()
+}
+
+// checkInvalidityProofs verifies invalidity proofs against the parent final state root hash and block number.
+// It returns the final FTX number and rolling hash after processing all invalidity proofs.
+//
+// The FTX (Forced Transaction) number and rolling hash evolve as follows:
+//   - Starting values are taken from LastFinalizedFtxNumber and LastFinalizedFtxRollingHash
+//   - For each invalidity proof i (where i < NbInvalidity):
+//   - TxNumber must be consecutive: TxNumber[i] == prevFtxNumber + 1
+//   - RollingHash is computed as: MiMC(prevRollingHash, TxHash[0], TxHash[1], ExpectedBlockNumber, FromAddress)
+//   - After processing, finalFtxNumber and finalFtxRollingHash are updated to the proof's values
+//
+// Padding behavior (for indices i >= NbInvalidity):
+//   - Constraints are multiplied by InRange[i]=0, so they become 0==0 (always satisfied)
+//   - api.Select keeps the previous values when InRange[i]=0, so padding entries don't update the result
+//   - This allows the circuit to handle variable numbers of invalidity proofs up to MaxNbInvalidity
+//
+// Example with NbInvalidity=2, MaxNbInvalidity=3 (starting from LastFinalizedFtxNumber=5, LastFinalizedFtxRollingHash=H0):
+//
+//	Proof 0 (in range):  TxNumber=6, RollingHash=MiMC(H0, ...) -> finalFtxNumber=6, finalFtxRollingHash=H1
+//	Proof 1 (in range):  TxNumber=7, RollingHash=MiMC(H1, ...) -> finalFtxNumber=7, finalFtxRollingHash=H2
+//	Proof 2 (padding):   InRange=0, constraints skipped        -> finalFtxNumber=7, finalFtxRollingHash=H2 (unchanged)
+//
+// publicInput is set to zero for padding entries.
+// it also checks that state root hash and blocknumber are from the parent aggregation.
+func (c *Circuit) checkInvalidityProofs(
+	api frontend.API,
+	parentFinalState [2]frontend.Variable,
+	parentFinalBlockNumber frontend.Variable,
+	parentBlockTimestamp frontend.Variable,
+) (finalFtxNumber, finalFtxRollingHash frontend.Variable) {
+
+	maxNbInvalidity := len(c.InvalidityFPI)
+	// generate the range struct to help work with variable-length arrays in circuits.
+	rInvalidity := internal.NewRange(api, c.NbInvalidity, maxNbInvalidity)
+
+	finalFtxNumber = c.AggregationFPIQSnark.LastFinalizedFtxNumber
+	finalFtxRollingHash = c.AggregationFPIQSnark.LastFinalizedFtxRollingHash
+
+	// lookup table for variable indexing into the filtered addresses list
+	addrTable := internal.SliceToTable(api, c.FilteredAddressesFPISnark.Addresses)
+	ctr := frontend.Variable(0)
+
+	internal.AssertIsLessIf(api, rInvalidity.InRange[0], parentBlockTimestamp, c.InvalidityFPI[0].SimulatedBlockTimestamp)
+
+	for i, invalidityFPI := range c.InvalidityFPI {
+
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.StateRootHash[0], parentFinalState[0])
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.StateRootHash[1], parentFinalState[1])
+
+		// CHECK_CHAIN_ID, CHECK_BASE_FEE, CHECK_COINBASE, CHECK_SVC_ADDR
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.ChainID, c.ChainConfigurationFPISnark.ChainID)
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.BaseFee, c.ChainConfigurationFPISnark.BaseFee)
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.CoinBase, c.ChainConfigurationFPISnark.CoinBase)
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.L2MessageServiceAddr, c.ChainConfigurationFPISnark.L2MessageServiceAddress)
+
+		//  CHECK_SIMULATED_BLOCK_TIME
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.SimulatedBlockTimestamp, c.InvalidityFPI[0].SimulatedBlockTimestamp)
+
+		// CHECK_SIMULATED_BLOCK_NUMBER
+		internal.AssertEqualIf(api, rInvalidity.InRange[i],
+			invalidityFPI.SimulatedBlockNumber, api.Add(parentFinalBlockNumber, 1))
+
+		// InRange[i] != 0 => SimulatedBlockNumber <= ExpectedBlockNumber
+		internal.AssertIsLessIf(api, rInvalidity.InRange[i], invalidityFPI.SimulatedBlockNumber, api.Add(invalidityFPI.DeadLineBlockNumber, 1))
+		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api)))
+
+		// constraints over Ftx Number and Rolling Hash
+		expr := api.Mul(rInvalidity.InRange[i], api.Sub(invalidityFPI.TxNumber, api.Add(finalFtxNumber, 1)))
+		api.AssertIsEqual(expr, 0)
+
+		// expected FtxRollingHash
+		ftxRollingHash := invalidity.UpdateFtxRollingHashGnark(api, invalidity.FtxRollingHashInputs{
+			PrevFtxRollingHash:  finalFtxRollingHash,
+			TxHash0:             invalidityFPI.TxHash[0],
+			TxHash1:             invalidityFPI.TxHash[1],
+			ExpectedBlockHeight: invalidityFPI.DeadLineBlockNumber,
+			FromAddress:         invalidityFPI.FromAddress,
+		})
+		api.AssertIsEqual(api.Mul(rInvalidity.InRange[i], api.Sub(ftxRollingHash, invalidityFPI.FtxRollingHash)), 0)
+
+		// update finalFtxRollingHash and finalFtxNumber
+		finalFtxRollingHash = api.Select(rInvalidity.InRange[i], invalidityFPI.FtxRollingHash, finalFtxRollingHash)
+		finalFtxNumber = api.Select(rInvalidity.InRange[i], invalidityFPI.TxNumber, finalFtxNumber)
+
+		// check From address against the next filtered address, advance ctr if active
+		fromActive := api.Mul(invalidityFPI.FromIsFiltered, rInvalidity.InRange[i])
+		internal.AssertEqualIf(api, fromActive, addrTable.Lookup(ctr)[0], invalidityFPI.FromAddress)
+
+		// check To address against the next filtered address, advance ctr if active
+		toActive := api.Mul(invalidityFPI.ToIsFiltered, rInvalidity.InRange[i])
+		internal.AssertEqualIf(api, toActive, addrTable.Lookup(ctr)[0], invalidityFPI.ToAddress)
+
+		// only one of fromActive or toActive can be 1
+		ctr = api.Add(ctr, api.Add(fromActive, toActive))
+	}
+
+	// ensure all filtered addresses were consumed
+	api.AssertIsEqual(ctr, c.FilteredAddressesFPISnark.NbAddresses)
+
+	return finalFtxNumber, finalFtxRollingHash
 }
 
 func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]frontend.Variable) [32]frontend.Variable {
@@ -342,6 +451,7 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 	return config.PublicInput{
 		MaxNbDataAvailability: len(c.Circuit.DataAvailabilityFPIQ),
 		MaxNbExecution:        len(c.Circuit.ExecutionFPIQ),
+		MaxNbInvalidity:       len(c.Circuit.InvalidityFPI),
 		ExecutionMaxNbMsg:     executionNbMsg,
 		L2MsgMerkleDepth:      c.Circuit.L2MessageMerkleDepth,
 		L2MsgMaxNbMerkle:      c.Circuit.L2MessageMaxNbMerkle,
@@ -354,8 +464,10 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 	res := Circuit{
 		DataAvailabilityPublicInput: make([]frontend.Variable, cfg.MaxNbDataAvailability),
 		ExecutionPublicInput:        make([]frontend.Variable, cfg.MaxNbExecution),
+		InvalidityPublicInput:       make([]frontend.Variable, cfg.MaxNbInvalidity),
 		DataAvailabilityFPIQ:        make([]blobdecompression.FunctionalPublicInputQSnark, cfg.MaxNbDataAvailability),
 		ExecutionFPIQ:               make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
+		InvalidityFPI:               make([]invalidity.FunctionalPublicInputsGnark, cfg.MaxNbInvalidity),
 		L2MessageMerkleDepth:        cfg.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:        cfg.L2MsgMaxNbMerkle,
 		MaxNbCircuits:               cfg.MaxNbCircuits,
@@ -364,6 +476,9 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 	for i := range res.ExecutionFPIQ {
 		res.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]frontend.Variable, cfg.ExecutionMaxNbMsg)
 	}
+
+	// Allocate FilteredAddresses slice with max capacity
+	res.FilteredAddressesFPISnark.Addresses = make([]frontend.Variable, cfg.MaxNbInvalidity)
 
 	return res
 }
@@ -380,9 +495,10 @@ func newKeccakCompiler(c config.PublicInput) keccak.StrictHasherCompiler {
 		res.WithStrictHashLengths(64) // 2 tree nodes
 	}
 
-	// aggregation PI opening
-	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)
-	res.WithStrictHashLengths(416) // 416 (13 × 32 bytes)
+	// aggregation PI opening - order must match the order of hash calls in AggregationFPISnark.Sum
+	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)          // L2 merkle tree roots (called first in Sum)
+	res.WithFlexibleHashLengths(32 * c.MaxNbInvalidity)           // filtered addresses (called second in Sum)
+	res.WithStrictHashLengths(public_input.NbAggregationFPI * 32) // final aggregation hash (called last in Sum)
 	return res
 }
 
@@ -408,7 +524,8 @@ func (b builder) Compile() (constraint.ConstraintSystem, error) {
 	return cs, nil
 }
 
-// GetMaxNbCircuitsSum computes MaxNbDA + MaxNbExecution from the compiled constraint system
+// GetMaxNbCircuitsSum computes MaxNbDA + MaxNbExecution + MaxNbInvalidity from the compiled constraint system.
+// Subtracts 3 to exclude AggregationPublicInput (2) + IsAllowedCircuitID (1).
 // TODO replace with something cleaner, using the config
 func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
 	return cs.GetNbPublicVariables() - 3
@@ -419,12 +536,16 @@ type InnerCircuitType uint8
 const (
 	Execution     InnerCircuitType = 0
 	Decompression InnerCircuitType = 1
+	Invalidity    InnerCircuitType = 2 //  all the invalidity subcircuits have the same set of functional public inputs, so we can use the same index for all of them
 )
 
 func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitType) []int {
-	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 2)
-	return utils.RightPad(
-		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDataAvailability)
+	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 3)
+	return append(append(
+		utils.RightPad(indexes[Execution], cfg.MaxNbExecution),               // Pad Execution indexes
+		utils.RightPad(indexes[Decompression], cfg.MaxNbDataAvailability)..., // Pad Data Availability indexes
+	),
+		utils.RightPad(indexes[Invalidity], cfg.MaxNbInvalidity)...) // Pad Invalidity indexes
 
 }
 
@@ -434,7 +555,7 @@ func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitTyp
 // koalabear modulus.
 func isActuallyKoalaHash(api frontend.API, hash [2]frontend.Variable) frontend.Variable {
 
-	// The cmpRes is computed by adding the result of Cmp for each (allegedly)
+	// The cmpRes is computed by adding the result of Cmp for each (alleged)
 	// koalabear element. If the limbs are koalabear, the result of cmp will
 	// be -1. Thus, at the end of the function cmpRes would be equal to 0 and
 	// to some positive value if any of the cmpRes is NOT -1. Thus, it is
@@ -442,7 +563,7 @@ func isActuallyKoalaHash(api frontend.API, hash [2]frontend.Variable) frontend.V
 	cmpRes := frontend.Variable(8)
 
 	for i := range hash {
-		// The decomposition is done by splitting in bits, and then recombining
+		// The decomposition is done by splitting into bits, and then recombining
 		// them in 4 uint32s.
 		bitsOfHalf := api.ToBinary(hash[i], 128)
 		for k := range 4 {

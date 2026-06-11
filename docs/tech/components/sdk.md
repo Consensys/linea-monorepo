@@ -15,21 +15,21 @@ The Linea SDK enables developers to:
 ## Package Structure
 
 ```
-sdk/
-├── sdk-core/           # @consensys/linea-sdk-core
+ts-libs/sdk/
+├── sdk-core/           # @lfdt-lineth/sdk-core
 │   │                   # Shared types, utilities, constants
 │   └── src/
 │       ├── types/
 │       ├── utils/
 │       └── constants/
 │
-├── sdk-viem/           # @consensys/linea-sdk-viem
+├── sdk-viem/           # @lfdt-lineth/sdk-viem
 │   │                   # Viem-based implementation
 │   └── src/
 │       ├── actions/
 │       └── decorators/
 │
-└── sdk-ethers/         # @consensys/linea-sdk
+└── sdk-ethers/         # @lfdt-lineth/sdk
                         # Ethers.js v6 implementation
 ```
 
@@ -42,9 +42,9 @@ sdk/
 │  ┌──────────────────────────────────────────────────────────────────┐  │
 │  │                       User Application                           │  │
 │  │                                                                  │  │
-│  │  import { LineaSDK } from "@consensys/linea-sdk"                 │  │
+│  │  import { LineaSDK } from "@lfdt-lineth/sdk"                 │  │
 │  │  // OR                                                           │  │
-│  │  import { publicActionsL1 } from "@consensys/linea-sdk-viem"     │  │
+│  │  import { publicActionsL1 } from "@lfdt-lineth/sdk-viem"     │  │
 │  │                                                                  │  │
 │  └──────────────────────────────┬───────────────────────────────────┘  │
 │                                 │                                      │
@@ -98,11 +98,11 @@ Each SDK package has its own detailed documentation:
 
 | Package | Install | Documentation |
 |---------|---------|---------------|
-| **sdk-viem** (recommended) | `npm install @consensys/linea-sdk-viem viem` | [README](../../../sdk/sdk-viem/README.md) |
-| **sdk-ethers** | `npm install @consensys/linea-sdk` | [README](../../../sdk/sdk-ethers/README.md) |
-| **sdk-core** | `npm install @consensys/linea-sdk-core` | Types & utilities only |
+| **sdk-viem** (recommended) | `npm install @lfdt-lineth/sdk-viem viem` | [README](../../../ts-libs/sdk/sdk-viem/README.md) |
+| **sdk-ethers** | `npm install @lfdt-lineth/sdk` | [README](../../../ts-libs/sdk/sdk-ethers/README.md) |
+| **sdk-core** | `npm install @lfdt-lineth/sdk-core` | Types & utilities only |
 
-> **Note:** `viem@>=2.22.0` is a required peer dependency for `@consensys/linea-sdk-viem`.
+> **Note:** `viem@>=2.22.0` is a required peer dependency for `@lfdt-lineth/sdk-viem`.
 
 ### Quick Comparison
 
@@ -247,7 +247,7 @@ const sepoliaAddresses = {
 ## Development
 
 ```bash
-cd sdk
+cd ts-libs/sdk
 pnpm install && pnpm run build && pnpm run test
 ```
 

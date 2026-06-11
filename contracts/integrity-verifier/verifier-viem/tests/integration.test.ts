@@ -4,7 +4,7 @@
  * Tests the full verification flow using the ViemAdapter with mock RPC responses.
  * Uses real viem for crypto operations, mocks only network calls.
  *
- * Run with: npx ts-node tests/integration.test.ts
+ * Run with: pnpm exec ts-node tests/integration.test.ts
  */
 
 import { resolve } from "path";
@@ -30,8 +30,8 @@ import {
   decodeSlotValue,
   parseMarkdownConfig,
   Verifier,
-} from "@consensys/linea-contract-integrity-verifier";
-import type { Web3Adapter, AbiElement } from "@consensys/linea-contract-integrity-verifier";
+} from "@lfdt-lineth/contract-integrity-verifier";
+import type { Web3Adapter, AbiElement } from "@lfdt-lineth/contract-integrity-verifier";
 import { readFileSync } from "fs";
 
 // ============================================================================

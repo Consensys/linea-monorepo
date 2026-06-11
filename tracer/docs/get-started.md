@@ -2,10 +2,10 @@
 
 ### Development setup
 
-#### Step 1: Install Java 21
+#### Step 1: Install Java 25
 
 ```
-brew install openjdk@21
+brew install openjdk@25
 ```
 
 #### Step 2: Install the Go toolchain
@@ -25,13 +25,11 @@ echo "net.git-fetch-with-cli=true" >> .cargo/config.toml
 cargo install --git ssh://git@github.com/Consensys/corset --locked --force
 ```
 
-#### Step 5: Update constraints [submodule](https://github.com/Consensys/linea-constraints)
+#### Step 5: Constraints
 
-```shell
-git submodule update --init --recursive
-```
+The constraint system lives in-tree at [`tracer-constraints/`](../../tracer-constraints/) (previously the `Consensys/linea-constraints` submodule, now merged into this monorepo). No additional setup is required — it is checked out alongside the rest of the monorepo.
 
-Note: Windows user may have to run 'git config core.protectNTFS false' command within the linea-constraints folder to bypass CON.* file names being reserved.
+Note: Windows users may need to run `git config core.protectNTFS false` within the `tracer-constraints/` folder to bypass CON.* file names being reserved.
 
 #### Step 6: Install [pre-commit](https://pre-commit.com/)
 
@@ -115,7 +113,7 @@ which would capture a replay of block #1300923 and store it in `arithmetization/
 - Go to `Settings | Build, Execution, Deployment | Compiler | Annotation Processors` and tick the following
   checkbox:
 
-  ![idea_enable_annotation_processing_setting.png](images/idea_enable_annotation_processing_setting.png)
+  ![idea_enable_annotation_processing_setting.png](../images/idea_enable_annotation_processing_setting.png)
 
 ______________________________________________________________________
 
@@ -143,7 +141,7 @@ ______________________________________________________________________
 
   - Go to `Settings | Editor | Code Style | Java | <hamburger menu> | Import Scheme | Checkstyle configuration`:
 
-    ![idea_checkstyle_reformat.png](images/idea_checkstyle_reformat.png)
+    ![idea_checkstyle_reformat.png](../images/idea_checkstyle_reformat.png)
 
     and select `<project_root>/config/checkstyle.xml`.
 
@@ -168,7 +166,7 @@ be easily disabled in IntelliJ:
    
    - Go to `Run | Edit Configurations`
    
-   ![idea_disable_corset_expansion.png](images/idea_disable_corset_expansion.png)
+   ![idea_disable_corset_expansion.png](../images/idea_disable_corset_expansion.png)
 
    and add `CORSET_FLAGS=` under `Environment Variables`.  This turns
    off all expansion modes, including field arithmetic.

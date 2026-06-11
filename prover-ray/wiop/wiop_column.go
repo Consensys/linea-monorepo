@@ -27,12 +27,16 @@ type Module struct {
 	// Vanishings is the ordered list of vanishing constraints registered on
 	// this module via [Module.NewVanishing] and [Module.NewVanishingManual].
 	Vanishings []*Vanishing
-	// LocalOpenings holds all [LocalOpening] queries registered with this
-	// system via [System.NewLocalOpening], in declaration order.
-	LocalOpenings []*LocalOpening
+	// RangeChecks holds all [RangeCheck] queries registered on this module
+	// via [Module.NewRangeCheck], in declaration order.
+	RangeChecks []*RangeCheck
 	// size is zero when the module has not yet been sized. Use [Module.Size]
 	// and [Module.SetSize] rather than accessing this field directly.
 	size int
+	// isDynamic indicates that this module's domain size is supplied per-Runtime
+	// via [WithModuleSize] instead of being fixed once via [Module.SetSize].
+	// Dynamic modules always report IsSized() == false from the static API.
+	isDynamic bool
 	// index is the position of this module in [System.Modules]. Set once at
 	// registration time by [System.NewModule] and used to construct column IDs.
 	index int
@@ -45,18 +49,40 @@ type Module struct {
 // Module.
 func (m *Module) System() *System { return m.system }
 
+// IsDynamic reports whether this module's domain size is supplied per-Runtime
+// via [WithModuleSize] rather than fixed statically via [Module.SetSize].
+func (m *Module) IsDynamic() bool { return m.isDynamic }
+
 // Size returns the declared domain size of the module. Returns 0 if the module
-// has not yet been sized.
+// has not yet been sized. For dynamic modules this always returns 0; use
+// [Module.RuntimeSize] to obtain the size for a specific Runtime.
 func (m *Module) Size() int { return m.size }
 
 // IsSized reports whether a domain size has been fixed for this module.
+// Dynamic modules always return false here; they are sized per-Runtime.
 func (m *Module) IsSized() bool { return m.size > 0 }
+
+// RuntimeSize returns the effective domain size for the given Runtime.
+// For static modules it delegates to [Module.Size] (panics if not yet sized).
+// For dynamic modules it reads the size registered via [WithModuleSize]
+// (panics if no size was provided for this Runtime).
+func (m *Module) RuntimeSize(rt Runtime) int {
+	if !m.isDynamic {
+		return m.Size()
+	}
+	return rt.dynamicModuleSize(m)
+}
 
 // SetSize fixes the domain size of the module. It may be called at any point
 // after construction but only once; subsequent calls panic.
 //
-// Panics if size is not positive or if the module is already sized.
+// Panics if size is not positive, if the module is already sized, or if the
+// module is dynamic (dynamic modules are sized via [WithModuleSize] on each
+// [Runtime]).
 func (m *Module) SetSize(size int) {
+	if m.isDynamic {
+		panic(fmt.Sprintf("wiop: module %q is dynamic; set its size via WithModuleSize on each Runtime", m.Context.Path()))
+	}
 	if size <= 0 {
 		panic(fmt.Sprintf("wiop: Module.SetSize requires a positive size, got %d", size))
 	}
@@ -128,6 +154,12 @@ func (m *Module) NewPrecomputedColumn(ctx *ContextFrame, vis Visibility, assignm
 	if ctx == nil {
 		panic("wiop: Module.NewPrecomputedColumn requires a non-nil ContextFrame")
 	}
+	if m.isDynamic {
+		panic(fmt.Sprintf(
+			"wiop: module %q is dynamic; precomputed columns require a statically-sized module",
+			m.Context.Path(),
+		))
+	}
 	if m.system == nil {
 		panic(fmt.Sprintf(
 			"wiop: module %q has no owning System; cannot declare a precomputed column",
@@ -136,6 +168,9 @@ func (m *Module) NewPrecomputedColumn(ctx *ContextFrame, vis Visibility, assignm
 	}
 	if ctx.ID != 0 {
 		panic(fmt.Sprintf("wiop: ContextFrame %q is already registered (id=%d)", ctx.Path(), ctx.ID))
+	}
+	if assignment.promise != nil {
+		panic("wiop: Module.NewPrecomputedColumn requires a non-promised assignment")
 	}
 	ctx.ID = newColumnID(m.index, len(m.Columns))
 	pr := m.system.PrecomputedRound
@@ -147,6 +182,7 @@ func (m *Module) NewPrecomputedColumn(ctx *ContextFrame, vis Visibility, assignm
 		Module:      m,
 		round:       &pr.Round,
 	}
+	assignment.promise = col.View()
 	m.Columns = append(m.Columns, col)
 	pr.addPrecomputedColumn(col, assignment)
 	return col
@@ -186,11 +222,18 @@ func (c *Column) Round() *Round { return c.round }
 // Degree returns the polynomial degree of the column over its domain, which
 // is Size() - 1. Panics if the owning module has not been sized yet.
 func (c *Column) Degree() int {
+	if c.Module.IsDynamic() {
+		panic(fmt.Sprintf("wiop: Degree() called on dynamic-sized column %q", c.Context.Path()))
+	}
 	if !c.Module.IsSized() {
 		panic(fmt.Sprintf("wiop: Degree() called on unsized column %q", c.Context.Path()))
 	}
 	return c.Module.Size() - 1
 }
+
+// DegreeFactor implements [Expression]. Returns 1: a column's degree is
+// 1 * (n - 1) where n is the module size.
+func (c *Column) DegreeFactor() int { return 1 }
 
 // ColumnView is a column derived from a parent [Column] by applying a
 // cyclic shift of ShiftingOffset positions. For a positive offset, the i-th
@@ -250,8 +293,20 @@ func (cv *ColumnView) IsMultiValued() bool { return true }
 func (cv *ColumnView) IsSized() bool { return cv.Column.Module.IsSized() }
 
 // Size implements [Expression]. Returns the domain size of the owning module.
-// Returns 0 if the module has not been sized yet.
-func (cv *ColumnView) Size() int { return cv.Column.Module.Size() }
+//
+// Panics if the owning module is dynamic (its size is per-Runtime; use the
+// module's RuntimeSize instead) or has not yet been sized. Check IsSized()
+// first.
+func (cv *ColumnView) Size() int {
+	m := cv.Column.Module
+	if m.IsDynamic() {
+		panic(fmt.Sprintf("wiop: Size() called on dynamic-sized column view of %q", cv.Column.Context.Path()))
+	}
+	if !m.IsSized() {
+		panic(fmt.Sprintf("wiop: Size() called on unsized column view of %q", cv.Column.Context.Path()))
+	}
+	return m.Size()
+}
 
 // Degree implements [Expression]. Returns Size() - 1. Panics if the owning
 // module has not been sized yet.
@@ -262,33 +317,37 @@ func (cv *ColumnView) Degree() int {
 	return cv.Column.Module.Size() - 1
 }
 
+// DegreeFactor implements [Expression]. Returns 1: a column view's degree is
+// 1 * (n - 1) where n is the module size.
+func (cv *ColumnView) DegreeFactor() int { return 1 }
+
 // EvaluateVector implements [Expression]. Returns a full-sized concrete vector
 // (length == module size) where logical row i holds the column value at
 // physical row (i + ShiftingOffset) mod n, accounting for the module's padding.
 func (cv *ColumnView) EvaluateVector(rt Runtime) ConcreteVector {
 	concrete := rt.GetColumnAssignment(cv.Column)
 	m := cv.Column.Module
-	n := m.Size()
+	n := m.RuntimeSize(rt)
 
 	var result field.Vec
 	if cv.Column.IsExtension {
 		dst := make([]field.Ext, n)
 		for i := range n {
 			phys := ((i+cv.ShiftingOffset)%n + n) % n
-			dst[i] = concrete.ElementAt(m, phys).Ext
+			dst[i] = concrete.ElementAtN(m.Padding, n, phys).Ext
 		}
 		result = field.VecFromExt(dst)
 	} else {
 		dst := make([]field.Element, n)
 		for i := range n {
 			phys := ((i+cv.ShiftingOffset)%n + n) % n
-			dst[i] = concrete.ElementAt(m, phys).AsBase()
+			dst[i] = concrete.ElementAtN(m.Padding, n, phys).AsBase()
 		}
 		result = field.VecFromBase(dst)
 	}
 
 	return ConcreteVector{
-		Plain:   []field.Vec{result},
+		Plain:   result,
 		Padding: concrete.Padding,
 		promise: cv,
 	}
@@ -340,6 +399,10 @@ func (cp *ColumnPosition) IsExtension() bool { return cp.Column.IsExtension }
 // degree-0 constant.
 func (cp *ColumnPosition) Degree() int { return 0 }
 
+// DegreeFactor implements [Expression]. Always returns 0: a column position is
+// a scalar constant.
+func (cp *ColumnPosition) DegreeFactor() int { return 0 }
+
 // Round returns the round of the parent column.
 func (cp *ColumnPosition) Round() *Round { return cp.Column.round }
 
@@ -373,6 +436,52 @@ func (cp *ColumnPosition) EvaluateVector(_ Runtime) ConcreteVector {
 // EvaluateSingle implements [Expression]. Returns the value of the parent
 // column at Position in the given runtime.
 func (cp *ColumnPosition) EvaluateSingle(rt Runtime) ConcreteField {
-	elem := rt.GetColumnAssignment(cp.Column).ElementAt(cp.Column.Module, cp.Position)
+	m := cp.Column.Module
+	elem := rt.GetColumnAssignment(cp.Column).ElementAtN(m.Padding, m.RuntimeSize(rt), cp.Position)
 	return ConcreteField{Value: elem, promise: cp}
+}
+
+// Open creates a "local opening" of this column position: a prover-supplied
+// scalar [Cell] (the result) pinned, by a constraint, to equal the column's
+// value at this position — Result == Column[Position].
+//
+// An opening is not a standalone query type. It is realised as:
+//
+//   - a lazily-assigned result [Cell] (see [Round.NewLazyCell]) living in the
+//     same round as the column; at prove time it resolves to Column[Position]
+//     by reading the runtime column assignment. Its extension flag inherits
+//     from the column.
+//   - a scalar [Vanishing] Result − Column[Position], registered on the
+//     column's module. Because the expression is scalar (a single
+//     [ColumnPosition] leaf plus the result [Cell]), it is discharged by the
+//     local-vanishing compiler, which lifts it to a domain-wide identity via a
+//     Lagrange indicator at Position. This is what soundly binds the opening
+//     into the proof (and gives it a gnark path) — the cell value alone is not
+//     trusted.
+//
+// The returned [Cell] is the opening value; read it back with
+// [Runtime.GetCellValue]. The prover does not need to assign it explicitly.
+//
+// Panics if ctx or the receiver is nil.
+func (cp *ColumnPosition) Open(ctx *ContextFrame) *Cell {
+	if cp == nil {
+		panic("wiop: ColumnPosition.Open requires a non-nil ColumnPosition")
+	}
+	if ctx == nil {
+		panic("wiop: ColumnPosition.Open requires a non-nil ContextFrame")
+	}
+
+	col := cp.Column
+	result := col.Round().NewLazyCell(
+		ctx.Childf("result"),
+		col.IsExtension,
+		func(rt Runtime) field.Gen {
+			m := col.Module
+			return rt.GetColumnAssignment(col).
+				ElementAtN(m.Padding, m.RuntimeSize(rt), cp.Position)
+		},
+	)
+
+	col.Module.NewVanishing(ctx, Sub(result, cp))
+	return result
 }

@@ -116,9 +116,9 @@ Fans out to a set of per-component test workflows in parallel. Each receives a b
 
 After all component jobs finish, a `jacoco-report` job aggregates JVM coverage data (`coordinator` + `linea-sequencer` + `staterecovery` + `transaction-exclusion-api`) and uploads to Codecov under the `kotlin` flag.
 
-When the postman job runs, `postman-testing.yml` uploads Jest LCOV for `ts-libs/linea-native-libs/`, `postman/`, and `sdk/sdk-viem/` (artifact `ts-coverage-*` for forks). Staging uses a non-hidden `ci-ts-coverage/` directory because `upload-artifact@v4` excludes hidden paths by default.
+When the postman job runs, `postman-testing.yml` uploads Jest LCOV for `ts-libs/linea-native-libs/`, `postman/`, and `ts-libs/sdk/sdk-viem/` (artifact `ts-coverage-*` for forks). Staging uses a non-hidden `ci-ts-coverage/` directory because `upload-artifact@v4` excludes hidden paths by default.
 
-The native-yield and lido jobs upload LCOV for `ts-libs/linea-shared-utils/` plus their service packages (`native-yield-automation-service`, `lido-governance-monitor`) with matching artifacts for forks. The standalone `sdk-testing` workflow uploads `sdk-core`, `sdk-viem`, and `sdk-ethers` LCOV and an `sdk-ts-coverage-*` artifact. Tracer unit tests (`reusable-tracer-unit-tests.yml`, via `tracer-gradle-tests.yml` / release workflow) upload Jacoco XML under the `tracer` flag (separate from merged JVM `kotlin`). [`.github/workflows/codecov-external-pr.yml`](.github/workflows/codecov-external-pr.yml) listens for `main` and `sdk-testing` completion to re-upload fork PR coverage.
+The native-yield and lido jobs upload LCOV for `ts-libs/linea-shared-utils/` plus their service packages (`native-yield-automation-service`, `lido-governance-monitor`) with matching artifacts for forks. The standalone `sdk-testing` workflow uploads `sdk-core`, `sdk-viem`, and `sdk-ethers` LCOV and an `sdk-ts-coverage-*` artifact. Tracer unit tests (`reusable-tracer-unit-tests.yml`, via `tracer-gradle-tests.yml` / release workflow) upload Jacoco XML under the `tracer` flag (separate from merged JVM `kotlin`). [`.github/workflows/codecov-external-pr.yml`](../.github/workflows/codecov-external-pr.yml) listens for `main` and `sdk-testing` completion to re-upload fork PR coverage.
 
 ---
 
@@ -146,7 +146,7 @@ Builds Docker images for all changed components. Also builds the `linea-besu-pac
 
 ### 8. `run-e2e-tests` (reuse-run-e2e-tests.yml)
 
-Starts the full local Linea stack (L1 + L2 + coordinator + prover + postman + ...) using the images from step 7 and runs the protocol E2E test suite. Dumps logs on completion.
+Starts the full local Lineth stack (L1 + L2 + coordinator + prover + postman + ...) using the images from step 7 and runs the protocol E2E test suite. Dumps logs on completion.
 
 When `has-changes-requiring-e2e-testing == 'false'`, this job still runs but passes immediately - this keeps required status checks green on every PR.
 
