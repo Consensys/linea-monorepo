@@ -9,7 +9,7 @@
 # itself (ELF->JSON via elf_to_json_gen, then zkc) is owned by
 # arithmetization/src/test/examples/Makefile; exec/debug build that ELF and hand it over.
 
-.PHONY: fetch compile test spec-test exec debug fixture-exec fixture-debug clean
+.PHONY: fetch compile test spec-test exec debug linker-script fixture-exec fixture-debug clean
 
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
@@ -78,6 +78,10 @@ exec: compile
 
 debug: compile
 	$(MAKE) -C $(EXAMPLES_DIR) elf-debug BIN_EXT="$(ELF_BIN)" IN_BYTES="$(IN_BYTES)" IN_ORIGIN=$(IN_ORIGIN)
+
+# Generates linker script with default values
+linker-script:
+	$(MAKE) -C $(EXAMPLES_DIR) linker-script LINKER_SCRIPT=$(MAKEFILE_DIR)../build_common/linker_script.ld
 
 # Guest-owned sample run: feed the committed, pre-framed sample input through ZkC (no IN_BYTES
 # needed). The converter byte-reverses the 0x-hex back into [u64 LE len][SSZ] at _in_start.
