@@ -70,7 +70,8 @@ gp-linker-script:
 	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) linker-script LINKER_SCRIPT=$(MAKEFILE_DIR)../build_common/linker_script.ld
 
 gp-compile: gp-linker-script
-	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS)
+# TODO: -Din-origin likely can be removed
+	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS) -Din-origin=0x08800000
 	@if command -v riscv64-unknown-elf-objdump >/dev/null 2>&1; then \
 		echo "\nDisassembling $(ELF_BIN)"; \
 		LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(ELF_BIN) > $(ELF_BIN).objdump; \
