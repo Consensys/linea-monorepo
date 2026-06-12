@@ -43,7 +43,7 @@ OBJDUMP        ?= false
 fetch:
 	$(ZIG) build $(ZIG_BUILD_FLAGS) --fetch
 
-test:
+test: gp-linker-script
 	$(ZIG) build test $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS)
 
 # Run the guest against the full EF zkevm stateless fixture set on the host. Fixtures come from the
