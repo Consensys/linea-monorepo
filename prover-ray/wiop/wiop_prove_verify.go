@@ -25,9 +25,6 @@ import (
 // oracle values stand in for their commitments). In a production proof an oracle
 // column is sent only as its commitment, never in full; the pipeline should
 // ultimately guarantee that no VisibilityOracle column survives compilation.
-//
-// The fields are unexported for now; they can be promoted once a serialized
-// proof format is needed.
 type Proof struct {
 	Columns map[ObjectID]*ConcreteVector
 	Cells   map[ObjectID]field.Gen
