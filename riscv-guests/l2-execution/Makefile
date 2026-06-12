@@ -86,5 +86,5 @@ gp-compile: gp-linker-script
 gp-exec: gp-compile
 	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) elf-exec BIN_EXT="$(GP_BIN)" IN_BYTES="@$(GP_INPUT)" ZKC_EXEC_FLAGS=-q
 
-gp-debug:
+gp-debug: gp-compile
 	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) elf-debug BIN_EXT="$(GP_BIN)" IN_BYTES="@$(GP_INPUT)"
