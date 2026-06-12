@@ -175,6 +175,8 @@ func buildZ(
 		recurrence := wiop.Sub(
 			zNum,
 			wiop.Mul(
+				// Shift(-1) is load-bearing for the dynamic n=1 corner case: it puts row 0 in NewVanishing's
+				// CancelledPositions, so when RuntimeSize == 1 the only row is cancelled and Check is vacuous.
 				wiop.Sub(zView, zView.Shift(-1)),
 				zDen,
 			),
@@ -191,6 +193,8 @@ func buildZ(
 	// case work — for static modules it resolves to the compile-time size
 	// just like the original m.Size()-1 form.
 	zInit := zCol.At(0).Open(ctx.Childf("z-init-b%d-k%d", bIdx, kIdx))
+	// For dynamic RuntimeSize == 1, At(-1) resolves to row 0 — zFinal and zInit alias the same cell, and
+	// the LDS verifier's initial-condition check carries the whole identity by itself.
 	zFinal := zCol.At(-1).Open(ctx.Childf("z-final-b%d-k%d", bIdx, kIdx))
 
 	return zEntry{
