@@ -13,7 +13,7 @@
         "endBlockHash":                          "0x0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "endBlockNumber":                        1000503,
         "endBlockTimestamp":                     1763000123,
-        "L2L1MessagesHash":                      "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "l2L1MessagesHash":                      "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentL1L2BridgeRollingHash":           "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentL1L2BridgeRollingHashMessageNumber": 0,
         "endL1L2BridgeRollingHash":              "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -26,9 +26,9 @@
         "txFromsHash":                           "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
     },
 
-    "_comment_chainConfig": "Linea proof-range chain configuration. Forms three of the four preimage inputs of publicInputs.dynamicChainConfigHash (§2.1); the fourth input (baseFee) is sourced from the first NewPayloadRequest.executionPayload.baseFeePerGas and asserted equal across every payload in the range. chainId deliberately duplicates the chain id inside each vanilla StatelessInput; the guest rejects the proof if any decoded inner chain id differs from this range-level value. dynamicChainConfigHash = keccak256(uint256_be(chainId) || coinbase || l2MessageServiceContract || uint256_be(baseFee)). A change in any of these four values is a finalization boundary.",
+    "_comment_chainConfig": "Linea proof-range chain configuration. Forms three of the four preimage inputs of publicInputs.dynamicChainConfigHash (§2.1); the fourth input (baseFee) is sourced from the first NewPayloadRequest.executionPayload.baseFeePerGas and asserted equal across every payload in the range. chainId deliberately duplicates the chain id inside each vanilla StatelessInput; the guest rejects the proof if any decoded inner chain id differs from this range-level value. dynamicChainConfigHash = keccak256(uint256_be(chainId) || coinbase || l2MessageServiceAddress || uint256_be(baseFee)). A change in any of these four values is a finalization boundary.",
     "chainConfig": {
-        "l2MessageServiceContract": "0x508Ca82Df566dCD1B0019D2DEdF7e3D6f7Ad6ddE",
+        "l2MessageServiceAddress": "0x508Ca82Df566dCD1B0019D2DEdF7e3D6f7Ad6ddE",
         "coinbase":                 "0x0000000000000000000000000000000000000000",
         "chainId":                  59144
     },
@@ -133,9 +133,9 @@
             "rollupExtension": {
                 "forcedTransactions": [
                     {
-                        "_comment": "Per-FTX metadata (§6.5). `ftxNumber`, `deadlineBlockNumber`, and `signedTxRlp` are the canonical fields. `fromAddress` is recovered from `signedTxRlp` inside the guest and is not witnessed separately. `acceptance` is one of the five ForcedTransactionAcceptance variants: INCLUDED, BAD_NONCE, BAD_BALANCE, FILTERED_ADDRESS_FROM, FILTERED_ADDRESS_TO. For Invalid sub-cases (BAD_NONCE / BAD_BALANCE) the guest reads the sender's account via the EVM state interface at this payload's parent state root; the witness pool must include the MPT path.",
-                        "ftxNumber":           17,
-                        "deadlineBlockNumber": 1000600,
+                        "_comment": "Per-FTX metadata (§6.5). `number`, `deadline`, and `signedTxRlp` are the canonical fields. `fromAddress` is recovered from `signedTxRlp` inside the guest and is not witnessed separately. `acceptance` is one of the five ForcedTransactionAcceptance variants: INCLUDED, BAD_NONCE, BAD_BALANCE, FILTERED_ADDRESS_FROM, FILTERED_ADDRESS_TO. For Invalid sub-cases (BAD_NONCE / BAD_BALANCE) the guest reads the sender's account via the EVM state interface at this payload's parent state root; the witness pool must include the MPT path.",
+                        "number":              17,
+                        "deadline":            1000600,
                         "signedTxRlp":         "0x02f86b...",
                         "acceptance":          "INCLUDED"
                     }
