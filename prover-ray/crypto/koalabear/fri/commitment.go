@@ -1,4 +1,4 @@
-package commitment
+package fri
 
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
@@ -7,8 +7,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/hash"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/merkle"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/parallel"
-	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poly"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/reedsolomon"
+	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 )
 
 const (
@@ -27,8 +27,8 @@ type LeafHasher interface {
 // leaves. Leaf i absorbs values at i and i+PairOffset for every base and
 // extension polynomial.
 type LeafSource struct {
-	Base       []poly.Polynomial
-	Ext        []poly.ExtPolynomial
+	Base       [][]field.Element
+	Ext        [][]field.Ext
 	PairOffset int
 }
 
@@ -105,39 +105,22 @@ type PairBase = [2]koalabear.Element // used to store the pairs {f_k(w^i), f_k(-
 type PairExt = [2]ext.E6             // used to store the pairs {f_k(w^i), f_k(-w^i)}
 
 func NewRSCommit(N uint64, rate uint64, leafHasher LeafHasher, nodehasher NodeHasher) RSCommit {
-	return NewRSCommitWithDomainCache(N, rate, leafHasher, nodehasher, nil)
+	return NewRSCommitWithDomainCache(N, rate, leafHasher, nodehasher)
 }
 
 // NewRSCommitWithDomainCache constructs an RSCommit using cache for the
 // Reed-Solomon encoder domain.
 func NewRSCommitWithDomainCache(
 	N uint64,
-	rate uint64,
+	inverseRate uint64,
 	leafHasher LeafHasher,
 	nodehasher NodeHasher,
-	cache *poly.DomainCache,
 ) RSCommit {
-	rsEncoder := reedsolomon.NewEncoderWithDomainCache(rate*N, cache)
+	rsEncoder := reedsolomon.NewEncoder(inverseRate*N, int(N))
 	return RSCommit{
 		Encoder:    rsEncoder,
 		LeafHasher: leafHasher,
 		NodeHasher: nodehasher,
-	}
-}
-
-// CommitConfig configures RSCommit.Commit.
-type CommitConfig struct {
-	DomainCache *poly.DomainCache
-}
-
-// CommitOption configures RSCommit.Commit.
-type CommitOption func(c *CommitConfig) error
-
-// WithDomainCache reuses cache for input-polynomial FFT domains.
-func WithDomainCache(cache *poly.DomainCache) CommitOption {
-	return func(c *CommitConfig) error {
-		c.DomainCache = cache
-		return nil
 	}
 }
 
@@ -198,20 +181,9 @@ func (Poseidon2NodeHasher) HashNodes(dst, left, right []hash.Digest) {
 // are assumed to be in Lagrange form and may have different sizes. Each leaf
 // hash absorbs all base pairs followed by all extension pairs.
 func (rs *RSCommit) Commit(
-	basePolys []poly.Polynomial,
-	extPolys []poly.ExtPolynomial,
-	opts ...CommitOption,
+	basePolys [][]field.Element,
+	extPolys [][]field.Ext,
 ) (WMerkleTree, error) {
-	var config CommitConfig
-	for _, opt := range opts {
-		if err := opt(&config); err != nil {
-			return WMerkleTree{}, err
-		}
-	}
-	domainCache := config.DomainCache
-	if domainCache == nil {
-		domainCache = &poly.DomainCache{}
-	}
 
 	// 1- encode every polynomial on its rail. Each Encode is independent
 	//    (disjoint input/output slices, shared read-only domain). Each outer
@@ -220,19 +192,19 @@ func (rs *RSCommit) Commit(
 	fftOuter := max(len(basePolys), len(extPolys))
 	fftOpt := fft.WithNbTasks(parallel.NbTasksPerJob(fftOuter))
 
-	encodedBase := make([]poly.Polynomial, len(basePolys))
+	encodedBase := make([][]field.Element, len(basePolys))
 	parallel.Execute(len(basePolys), func(start, end int) {
 		for i := start; i < end; i++ {
 			pol := basePolys[i]
-			encodedBase[i] = rs.Encoder.Encode(pol, domainCache.Get(uint64(len(pol))), fftOpt)
+			encodedBase[i] = rs.Encoder.Encode(pol, fftOpt)
 		}
 	})
 
-	encodedExt := make([]poly.ExtPolynomial, len(extPolys))
+	encodedExt := make([][]field.Ext, len(extPolys))
 	parallel.Execute(len(extPolys), func(start, end int) {
 		for i := start; i < end; i++ {
 			pol := extPolys[i]
-			encodedExt[i] = rs.Encoder.EncodeExt(pol, domainCache.Get(uint64(len(pol))), fftOpt)
+			encodedExt[i] = rs.Encoder.EncodeExt(pol, fftOpt)
 		}
 	})
 

@@ -1,4 +1,4 @@
-package commitment
+package fri
 
 import (
 	"testing"
@@ -7,15 +7,15 @@ import (
 	ext "github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/hash"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/merkle"
-	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poly"
+	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 )
 
 func TestRSCommitDualRailProof(t *testing.T) {
-	basePolys := []poly.Polynomial{
+	basePolys := [][]field.Element{
 		{baseElement(1), baseElement(2), baseElement(3), baseElement(4)},
 		{baseElement(5), baseElement(6), baseElement(7), baseElement(8)},
 	}
-	extPolys := []poly.ExtPolynomial{
+	extPolys := [][]field.Ext{
 		{
 			extElement(1, 2, 3, 4),
 			extElement(5, 6, 7, 8),
@@ -52,11 +52,11 @@ func TestRSCommitDualRailProof(t *testing.T) {
 }
 
 func TestWMerkleTreeOpenProof(t *testing.T) {
-	basePolys := []poly.Polynomial{
+	basePolys := [][]field.Element{
 		{baseElement(1), baseElement(2), baseElement(3), baseElement(4)},
 		{baseElement(5), baseElement(6), baseElement(7), baseElement(8)},
 	}
-	extPolys := []poly.ExtPolynomial{
+	extPolys := [][]field.Ext{
 		{
 			extElement(1, 2, 3, 4),
 			extElement(5, 6, 7, 8),
@@ -84,32 +84,12 @@ func TestWMerkleTreeOpenProof(t *testing.T) {
 	}
 }
 
-func TestRSCommitWithDomainCache(t *testing.T) {
-	basePolys := []poly.Polynomial{
-		{baseElement(1), baseElement(2), baseElement(3), baseElement(4)},
-		{baseElement(5), baseElement(6), baseElement(7), baseElement(8)},
-	}
-
-	var cache poly.DomainCache
-	committer := NewRSCommitWithDomainCache(4, 2, DefaultLeafHasher, DefaultNodeHasher, &cache)
-	tree, err := committer.Commit(basePolys, nil, WithDomainCache(&cache))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := tree.NumLeaves(); got != 4 {
-		t.Fatalf("NumLeaves = %d, want 4", got)
-	}
-	if got := cache.Get(4); got != cache.Get(4) {
-		t.Fatalf("DomainCache did not reuse input domain: %p vs %p", got, cache.Get(4))
-	}
-}
-
 func TestRSCommitBatchLeafHasherMatchesScalarRoot(t *testing.T) {
-	basePolys := []poly.Polynomial{
+	basePolys := [][]field.Element{
 		{baseElement(1), baseElement(2), baseElement(3), baseElement(4)},
 		{baseElement(5), baseElement(6), baseElement(7), baseElement(8)},
 	}
-	extPolys := []poly.ExtPolynomial{
+	extPolys := [][]field.Ext{
 		{
 			extElement(1, 2, 3, 4),
 			extElement(5, 6, 7, 8),
@@ -216,7 +196,7 @@ func TestPoseidon2BatchNodeHasherMatchesScalarHash(t *testing.T) {
 }
 
 func TestRSCommitEmptyRails(t *testing.T) {
-	basePolys := []poly.Polynomial{
+	basePolys := [][]field.Element{
 		{baseElement(1), baseElement(2), baseElement(3), baseElement(4)},
 	}
 	committer := NewRSCommit(4, 2, DefaultLeafHasher, DefaultNodeHasher)
@@ -228,7 +208,7 @@ func TestRSCommitEmptyRails(t *testing.T) {
 		t.Fatalf("base-only tree ext rail width = %d, want 0", got)
 	}
 
-	extPolys := []poly.ExtPolynomial{
+	extPolys := [][]field.Ext{
 		{
 			extElement(1, 2, 3, 4),
 			extElement(5, 6, 7, 8),
@@ -258,18 +238,18 @@ func (h scalarOnlyLeafHasher) HashLeaf(base []PairBase, ext []PairExt) hash.Dige
 
 func testLeafSource(nLeaves, nbBase, nbExt int) LeafSource {
 	src := LeafSource{
-		Base:       make([]poly.Polynomial, nbBase),
-		Ext:        make([]poly.ExtPolynomial, nbExt),
+		Base:       make([][]field.Element, nbBase),
+		Ext:        make([][]field.Ext, nbExt),
 		PairOffset: nLeaves,
 	}
 	for j := range src.Base {
-		src.Base[j] = make(poly.Polynomial, 2*nLeaves)
+		src.Base[j] = make([]field.Element, 2*nLeaves)
 		for i := range src.Base[j] {
 			src.Base[j][i] = baseElement(uint64(1000*(j+1) + i + 1))
 		}
 	}
 	for j := range src.Ext {
-		src.Ext[j] = make(poly.ExtPolynomial, 2*nLeaves)
+		src.Ext[j] = make([]field.Ext, 2*nLeaves)
 		for i := range src.Ext[j] {
 			v := uint64(10000*(j+1) + 10*(i+1))
 			src.Ext[j][i] = extElement(v+1, v+2, v+3, v+4)
@@ -315,20 +295,20 @@ func extElement(a0, a1, b0, b1 uint64, b2 ...uint64) ext.E6 {
 	return e
 }
 
-func rawLeafFromPolys(committer RSCommit, basePolys []poly.Polynomial, extPolys []poly.ExtPolynomial, leafIdx int) ([]PairBase, []PairExt) {
-	var cache poly.DomainCache
+func rawLeafFromPolys(committer RSCommit, basePolys [][]field.Element, extPolys [][]field.Ext, leafIdx int) ([]PairBase, []PairExt) {
+
 	halfN := int(committer.Encoder.Domain.Cardinality >> 1)
 
 	baseLeaf := make([]PairBase, len(basePolys))
 	for j, p := range basePolys {
-		encoded := committer.Encoder.Encode(p, cache.Get(uint64(len(p))))
+		encoded := committer.Encoder.Encode(p)
 		baseLeaf[j][0].Set(&encoded[leafIdx])
 		baseLeaf[j][1].Set(&encoded[leafIdx+halfN])
 	}
 
 	extLeaf := make([]PairExt, len(extPolys))
 	for j, p := range extPolys {
-		encoded := committer.Encoder.EncodeExt(p, cache.Get(uint64(len(p))))
+		encoded := committer.Encoder.EncodeExt(p)
 		extLeaf[j][0].Set(&encoded[leafIdx])
 		extLeaf[j][1].Set(&encoded[leafIdx+halfN])
 	}

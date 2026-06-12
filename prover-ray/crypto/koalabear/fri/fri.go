@@ -6,14 +6,11 @@ import (
 	"sort"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
-	ext "github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/commitment"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamirrefactor"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/hash"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/merkle"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/parallel"
-	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poly"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 )
@@ -25,14 +22,14 @@ const foldParallelThreshold = 1 << 12
 // Params holds the FRI configuration and precomputed per-level data.
 // Build once with NewParams; reuse across many Prove/Verify calls.
 type Params struct {
-	N          int // 2^n: size of the evaluation domain
-	D          int // 2^m: degree of the purported polynomial
+	N          int // 2^n: the dimension of the code
+	D          int // 2^m: the size of the plaintext polynomial
 	NumQueries int // number of independent queries (controls soundness error ≈ (1-δ)^Q)
-	LeafHasher commitment.LeafHasher
-	NodeHasher commitment.NodeHasher
+	LeafHasher LeafHasher
+	NodeHasher NodeHasher
 
 	numRounds    int // numRounds = m
-	invTwo       koalabear.Element
+	invTwo       field.Element
 	domains      []*fft.Domain // domains[j] has cardinality N/2^j, generator ωⱼ
 	domainsLight []domainLight // domainLight stores only the cardinality and the domain generator
 	grinding     int           // grinding bits for PoW, on the alpha
@@ -68,8 +65,8 @@ func WithGrinding(nbBits int) Option {
 // NewParams constructs and validates a Params, precomputing r+1 domains and inv(2).
 func NewParams(
 	N, D, numQueries int,
-	lh commitment.LeafHasher,
-	nh commitment.NodeHasher,
+	lh LeafHasher,
+	nh NodeHasher,
 	opts ...Option,
 ) (Params, error) {
 	if N <= 0 || N&(N-1) != 0 {
@@ -94,7 +91,7 @@ func NewParams(
 
 	numRounds := log2(D) // r = m = log₂(D)
 
-	var two, invTwo koalabear.Element
+	var two, invTwo field.Element
 	two.SetUint64(2)
 	invTwo.Inverse(&two)
 
@@ -130,7 +127,7 @@ func NewParams(
 
 type domainLight struct {
 	cardinality uint64
-	generator   koalabear.Element
+	generator   field.Element
 }
 
 // QueryLayer holds the two opened values and a single Merkle proof for one
@@ -138,10 +135,10 @@ type domainLight struct {
 // LeafP = layer[base], LeafQ = layer[base + Nⱼ/2] where base = s % (Nⱼ/2).
 type QueryLayer struct {
 	Field     field.Kind
-	LeafPBase koalabear.Element // populated when Field == field.KindBase
-	LeafQBase koalabear.Element
-	LeafPExt  ext.E6 // populated when Field == field.KindExt
-	LeafQExt  ext.E6
+	LeafPBase field.Element // populated when Field == field.KindBase
+	LeafQBase field.Element
+	LeafPExt  field.Ext // populated when Field == field.KindExt
+	LeafQExt  field.Ext
 	Path      merkle.Proof // authenticates the pair; depth = log₂(Nⱼ/2)
 }
 
@@ -158,8 +155,8 @@ type Query struct {
 // must be populated; callers must fold any extra same-degree polynomials before
 // invoking FRI.
 type LevelEvals struct {
-	Base []koalabear.Element
-	Ext  []ext.E6
+	Base []field.Element
+	Ext  []field.Ext
 }
 
 // Field returns the populated rail. Invalid mixed/empty values are rejected by
@@ -213,48 +210,46 @@ type Proof struct {
 	// Running-polynomial FRI path
 	FRIRoots      []hash.Digest // Merkle roots for running poly T_1..T_{r-1}
 	FinalField    field.Kind
-	FinalPolyBase []koalabear.Element                       // populated when FinalField == field.KindBase
-	FinalPolyExt  []ext.E6                                  // populated when FinalField == field.KindExt
+	FinalPolyBase []field.Element                           // populated when FinalField == field.KindBase
+	FinalPolyExt  []field.Ext                               // populated when FinalField == field.KindExt
 	FRIQueries    []Query                                   // len = NumQueries
 	PoW           map[string]fiatshamirrefactor.ProofOfWork // proof of work in case grinding has nbBits > 0
 }
 
 // FullDomainGenerator returns the generator of the full evaluation domain (layer 0, size N).
-func (p Params) FullDomainGenerator() koalabear.Element {
+func (p Params) FullDomainGenerator() field.Element {
 	return p.domains[0].Generator
 }
 
 // Encode converts a polynomial from Lagrange form (size D) to its evaluation
 // on the full domain of size N. The result is a₀, ready to pass to Prove.
-func (p Params) Encode(poly []koalabear.Element) ([]koalabear.Element, error) {
+func (p Params) Encode(poly []field.Element) ([]field.Element, error) {
 	if len(poly) != p.D {
 		return nil, fmt.Errorf("fri: Encode: polynomial length %d != D=%d", len(poly), p.D)
 	}
-	enc := reedsolomon.NewEncoder(uint64(p.N))
-	domainD := fft.NewDomain(uint64(p.D))
-	return enc.Encode(poly, domainD), nil
+	enc := reedsolomon.NewEncoder(uint64(p.N), len(poly))
+	return enc.Encode(poly), nil
 }
 
 // EncodeExt is the extension-field counterpart of Encode.
-func (p Params) EncodeExt(poly []ext.E6) ([]ext.E6, error) {
+func (p Params) EncodeExt(poly []field.Ext) ([]field.Ext, error) {
 	if len(poly) != p.D {
 		return nil, fmt.Errorf("fri: EncodeExt: polynomial length %d != D=%d", len(poly), p.D)
 	}
-	enc := reedsolomon.NewEncoder(uint64(p.N))
-	domainD := fft.NewDomain(uint64(p.D))
-	return enc.EncodeExt(poly, domainD), nil
+	enc := reedsolomon.NewEncoder(uint64(p.N), len(poly))
+	return enc.EncodeExt(poly), nil
 }
 
 // BuildLevelTree builds the paired-leaf Merkle tree expected by FRI for a
 // level polynomial: tree of len(layer)/2 leaves where
 // leaf k = LeafHasher(encode(layer[k]) || encode(layer[k + len(layer)/2])).
-func (p Params) BuildLevelTree(layer []koalabear.Element) (*merkle.Tree, error) {
+func (p Params) BuildLevelTree(layer []field.Element) (*merkle.Tree, error) {
 	return buildTreeBase(layer, p.LeafHasher, p.NodeHasher)
 }
 
 // BuildLevelTreeExt builds the paired-leaf Merkle tree expected by FRI for an
 // extension-field level polynomial.
-func (p Params) BuildLevelTreeExt(layer []ext.E6) (*merkle.Tree, error) {
+func (p Params) BuildLevelTreeExt(layer []field.Ext) (*merkle.Tree, error) {
 	return buildTreeExt(layer, p.LeafHasher, p.NodeHasher)
 }
 
@@ -368,7 +363,7 @@ func registerChallenges(p Params, numExtraLevels int, ts *fiatshamirrefactor.Tra
 
 func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamirrefactor.Transcript) (Proof, []int, error) {
 	// ── Gamma computation (all level roots, including level 0, bound upfront) ─
-	gammas := make([]koalabear.Element, plan.numLevels)
+	gammas := make([]field.Element, plan.numLevels)
 	if plan.numLevels > 1 {
 		for l := 0; l < plan.numLevels; l++ {
 			root := levels[l].Tree.Root()
@@ -380,7 +375,7 @@ func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamirrefactor.
 		if err != nil {
 			return Proof{}, nil, fmt.Errorf("fri: Prove: compute gamma: %w", err)
 		}
-		var gamma koalabear.Element
+		var gamma field.Element
 		gamma.Set(&challenge[0])
 		gammas[1].Set(&gamma)
 		for l := 2; l < plan.numLevels; l++ {
@@ -391,12 +386,12 @@ func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamirrefactor.
 	// ── Commit phase ─────────────────────────────────────────────────────────
 
 	// running is the current evaluation vector; copy levels[0].Evals.Base so we own it.
-	running := make([]koalabear.Element, p.N)
+	running := make([]field.Element, p.N)
 	copy(running, levels[0].Evals.Base)
 
-	layers := make([][]koalabear.Element, p.numRounds+1)
+	layers := make([][]field.Element, p.numRounds+1)
 	friTrees := make([]*merkle.Tree, p.numRounds)
-	alphas := make([]koalabear.Element, p.numRounds)
+	alphas := make([]field.Element, p.numRounds)
 
 	var prf Proof
 	if p.numRounds > 1 {
@@ -410,7 +405,7 @@ func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamirrefactor.
 				gamma := gammas[l]
 				// Mix γ^l * levels[l].Evals into running (pointwise).
 				for k, v := range levels[l].Evals.Base {
-					var term koalabear.Element
+					var term field.Element
 					term.Mul(&v, &gamma)
 					running[k].Add(&running[k], &term)
 				}
@@ -516,7 +511,7 @@ func proveBase(p Params, levels []Level, plan provePlan, ts *fiatshamirrefactor.
 
 func proveExt(p Params, levels []Level, plan provePlan, ts *fiatshamirrefactor.Transcript) (Proof, []int, error) {
 	// ── Gamma computation (all level roots, including level 0, bound upfront) ─
-	gammas := make([]ext.E6, plan.numLevels)
+	gammas := make([]field.Ext, plan.numLevels)
 	if plan.numLevels > 1 {
 		for l := 0; l < plan.numLevels; l++ {
 			root := levels[l].Tree.Root()
@@ -535,12 +530,12 @@ func proveExt(p Params, levels []Level, plan provePlan, ts *fiatshamirrefactor.T
 		}
 	}
 
-	running := make([]ext.E6, p.N)
+	running := make([]field.Ext, p.N)
 	copy(running, levels[0].Evals.Ext)
 
-	layers := make([][]ext.E6, p.numRounds+1)
+	layers := make([][]field.Ext, p.numRounds+1)
 	friTrees := make([]*merkle.Tree, p.numRounds)
-	alphas := make([]ext.E6, p.numRounds)
+	alphas := make([]field.Ext, p.numRounds)
 
 	var prf Proof
 	if p.numRounds > 1 {
@@ -552,7 +547,7 @@ func proveExt(p Params, levels []Level, plan provePlan, ts *fiatshamirrefactor.T
 			if l, ok := plan.levelAtRound[j]; ok {
 				gamma := gammas[l]
 				for k, v := range levels[l].Evals.Ext {
-					var term ext.E6
+					var term field.Ext
 					term.Mul(&v, &gamma)
 					running[k].Add(&running[k], &term)
 				}
@@ -765,7 +760,7 @@ func verifyBase(
 	numExtraLevels := numLevels - 1
 
 	// ── Replay commit phase ───────────────────────────────────────────────────
-	gammas := make([]koalabear.Element, numLevels)
+	gammas := make([]field.Element, numLevels)
 	if numExtraLevels > 0 {
 		for l := 0; l < numLevels; l++ {
 			root := levelRoots[l]
@@ -777,7 +772,7 @@ func verifyBase(
 		if err != nil {
 			return fmt.Errorf("fri: Verify: compute gamma: %w", err)
 		}
-		var gamma koalabear.Element
+		var gamma field.Element
 		gamma.Set(&challenge[0])
 		gammas[1].Set(&gamma)
 		for l := 2; l < numLevels; l++ {
@@ -785,7 +780,7 @@ func verifyBase(
 		}
 	}
 
-	alphas := make([]koalabear.Element, p.numRounds)
+	alphas := make([]field.Element, p.numRounds)
 	for j := 0; j < p.numRounds; j++ {
 		name := foldName(j)
 		root := roots[j]
@@ -845,7 +840,7 @@ func verifyExt(
 	numLevels := len(levelRoots)
 	numExtraLevels := numLevels - 1
 
-	gammas := make([]ext.E6, numLevels)
+	gammas := make([]field.Ext, numLevels)
 	if numExtraLevels > 0 {
 		for l := 0; l < numLevels; l++ {
 			root := levelRoots[l]
@@ -864,7 +859,7 @@ func verifyExt(
 		}
 	}
 
-	alphas := make([]ext.E6, p.numRounds)
+	alphas := make([]field.Ext, p.numRounds)
 	for j := 0; j < p.numRounds; j++ {
 		name := foldName(j)
 		root := roots[j]
@@ -922,7 +917,7 @@ func computeProverFoldChallenge(
 	ts *fiatshamirrefactor.Transcript,
 	name string,
 	grinding int,
-) ([8]koalabear.Element, error) {
+) ([8]field.Element, error) {
 	if grinding == 0 {
 		return ts.ComputeChallenge(name)
 	}
@@ -934,17 +929,17 @@ func computeVerifierFoldChallenge(
 	name string,
 	grinding int,
 	proofsOfWork map[string]fiatshamirrefactor.ProofOfWork,
-) ([8]koalabear.Element, error) {
+) ([8]field.Element, error) {
 	if grinding == 0 {
 		return ts.ComputeChallenge(name)
 	}
 
 	pow, ok := proofsOfWork[name]
 	if !ok {
-		return [8]koalabear.Element{}, fmt.Errorf("missing proof of work for %s", name)
+		return [8]field.Element{}, fmt.Errorf("missing proof of work for %s", name)
 	}
 	if err := ts.SetProofOfWork(name, pow); err != nil {
-		return [8]koalabear.Element{}, err
+		return [8]field.Element{}, err
 	}
 	return ts.ComputeChallenge(name, fiatshamirrefactor.WithGrinding(grinding))
 }
@@ -977,9 +972,9 @@ func log2(n int) int {
 // buildTreeBase builds a Merkle tree of Nⱼ/2 leaves where
 // leaf k = LeafHasher(layer[k] || layer[k + Nⱼ/2]).
 func buildTreeBase(
-	layer []koalabear.Element,
-	lh commitment.LeafHasher,
-	nh commitment.NodeHasher,
+	layer []field.Element,
+	lh LeafHasher,
+	nh NodeHasher,
 ) (*merkle.Tree, error) {
 	half := len(layer) / 2
 	tree, err := merkle.New(half, nh)
@@ -987,23 +982,23 @@ func buildTreeBase(
 		return nil, err
 	}
 	leaves := make([]hash.Digest, half)
-	commitment.HashLeavesParallel(lh, leaves, commitment.LeafSource{
-		Base:       []poly.Polynomial{layer},
+	HashLeavesParallel(lh, leaves, LeafSource{
+		Base:       [][]field.Element{layer},
 		PairOffset: half,
 	})
 	return tree, tree.Build(leaves)
 }
 
 // buildTreeExt is the extension-field counterpart of buildTreeBase.
-func buildTreeExt(layer []ext.E6, lh commitment.LeafHasher, nh commitment.NodeHasher) (*merkle.Tree, error) {
+func buildTreeExt(layer []field.Ext, lh LeafHasher, nh NodeHasher) (*merkle.Tree, error) {
 	half := len(layer) / 2
 	tree, err := merkle.New(half, nh)
 	if err != nil {
 		return nil, err
 	}
 	leaves := make([]hash.Digest, half)
-	commitment.HashLeavesParallel(lh, leaves, commitment.LeafSource{
-		Ext:        []poly.ExtPolynomial{layer},
+	HashLeavesParallel(lh, leaves, LeafSource{
+		Ext:        [][]field.Ext{layer},
 		PairOffset: half,
 	})
 	return tree, tree.Build(leaves)
@@ -1015,16 +1010,17 @@ func buildTreeExt(layer []ext.E6, lh commitment.LeafHasher, nh commitment.NodeHa
 // parallel chunk seeds xInv with GeneratorInv^chunkStart so chunks run
 // independently.
 func foldLayerBase(
-	layer []koalabear.Element,
-	alpha koalabear.Element,
+	layer []field.Element,
+	alpha field.Element,
 	domain *fft.Domain,
-	invTwo koalabear.Element,
-) []koalabear.Element {
+	invTwo field.Element,
+) []field.Element {
 	half := len(layer) / 2
-	next := make([]koalabear.Element, half)
+	next := make([]field.Element, half)
 	parallel.ExecuteWithThreshold(half, foldParallelThreshold, func(start, end int) {
-		xInv := poly.PowUint64(domain.GeneratorInv, uint64(start))
-		var sum, diff koalabear.Element
+		var xInv field.Element
+		field.ExpToInt(&xInv, domain.GeneratorInv, start)
+		var sum, diff field.Element
 		for i := start; i < end; i++ {
 			p, q := layer[i], layer[i+half]
 
@@ -1045,15 +1041,16 @@ func foldLayerBase(
 
 // foldLayerExt is the extension-field counterpart of foldLayerBase; domain
 // factors stay in the base field and are multiplied via MulByElement.
-func foldLayerExt(layer []ext.E6, alpha ext.E6, domain *fft.Domain, invTwo koalabear.Element) []ext.E6 {
+func foldLayerExt(layer []field.Ext, alpha field.Ext, domain *fft.Domain, invTwo field.Element) []field.Ext {
 	half := len(layer) / 2
-	next := make([]ext.E6, half)
+	next := make([]field.Ext, half)
 	parallel.ExecuteWithThreshold(half, foldParallelThreshold, func(start, end int) {
-		xInv := poly.PowUint64(domain.GeneratorInv, uint64(start))
+		var xInv field.Element
+		field.ExpToInt(&xInv, domain.GeneratorInv, start)
 		for i := start; i < end; i++ {
 			p, q := layer[i], layer[i+half]
 
-			var sum, diff ext.E6
+			var sum, diff field.Ext
 			sum.Add(&p, &q)
 			sum.MulByElement(&sum, &invTwo)
 
@@ -1069,15 +1066,15 @@ func foldLayerExt(layer []ext.E6, alpha ext.E6, domain *fft.Domain, invTwo koala
 	return next
 }
 
-func transcriptBasePoly(poly []koalabear.Element) []koalabear.Element {
-	res := make([]koalabear.Element, 0, 2+len(poly))
+func transcriptBasePoly(poly []field.Element) []field.Element {
+	res := make([]field.Element, 0, 2+len(poly))
 	res = append(res, hash.NewElement(0x42415345), hash.NewElement(uint64(len(poly)))) // "BASE"
 	res = append(res, poly...)
 	return res
 }
 
-func transcriptExtPoly(poly []ext.E6) []koalabear.Element {
-	res := make([]koalabear.Element, 0, 2+hash.ExtDegree*len(poly))
+func transcriptExtPoly(poly []field.Ext) []field.Element {
+	res := make([]field.Element, 0, 2+hash.ExtDegree*len(poly))
 	res = append(res, hash.NewElement(0x45585450), hash.NewElement(uint64(len(poly)))) // "EXTP"
 	for _, v := range poly {
 		res = hash.AppendExtElements(res, v)
@@ -1095,7 +1092,7 @@ func queryIndex(challenge hash.Digest, modulus int) int {
 
 // openQueryBase builds the Merkle opening data for query index s across all r
 // base folding levels.
-func openQueryBase(s int, layers [][]koalabear.Element, trees []*merkle.Tree, numRounds int) (Query, error) {
+func openQueryBase(s int, layers [][]field.Element, trees []*merkle.Tree, numRounds int) (Query, error) {
 	q := Query{Layers: make([]QueryLayer, numRounds)}
 	for j := 0; j < numRounds; j++ {
 		Nj := len(layers[j])
@@ -1118,7 +1115,7 @@ func openQueryBase(s int, layers [][]koalabear.Element, trees []*merkle.Tree, nu
 
 // openQueryExt builds the Merkle opening data for query index s across all r
 // extension folding levels.
-func openQueryExt(s int, layers [][]ext.E6, trees []*merkle.Tree, numRounds int) (Query, error) {
+func openQueryExt(s int, layers [][]field.Ext, trees []*merkle.Tree, numRounds int) (Query, error) {
 	q := Query{Layers: make([]QueryLayer, numRounds)}
 	for j := 0; j < numRounds; j++ {
 		Nj := len(layers[j])
@@ -1151,10 +1148,10 @@ func checkQuery(s int, fq Query,
 	levelQueriesForQuery []QueryLayer,
 	levelRoots []hash.Digest,
 	levelAtRound map[int]int,
-	gammas []koalabear.Element,
+	gammas []field.Element,
 	roots []hash.Digest,
-	finalPoly []koalabear.Element,
-	alphas []koalabear.Element,
+	finalPoly []field.Element,
+	alphas []field.Element,
 	p Params) error {
 
 	// Verify Merkle proofs for all level polynomial openings.
@@ -1162,7 +1159,7 @@ func checkQuery(s int, fq Query,
 		if ld.Field != field.KindBase {
 			return fmt.Errorf("level %d: expected base query layer, got %s", lIdx+1, ld.Field)
 		}
-		pair := []commitment.PairBase{{ld.LeafPBase, ld.LeafQBase}}
+		pair := []PairBase{{ld.LeafPBase, ld.LeafQBase}}
 		leaf := p.LeafHasher.HashLeaf(pair, nil)
 		if !merkle.Verify(levelRoots[lIdx], ld.Path, leaf, p.NodeHasher) {
 			return fmt.Errorf("level %d: Merkle proof invalid", lIdx+1)
@@ -1178,14 +1175,14 @@ func checkQuery(s int, fq Query,
 			return fmt.Errorf("round %d: expected base query layer, got %s", j, layer.Field)
 		}
 
-		pair := []commitment.PairBase{{layer.LeafPBase, layer.LeafQBase}}
+		pair := []PairBase{{layer.LeafPBase, layer.LeafQBase}}
 		leaf := p.LeafHasher.HashLeaf(pair, nil)
 		if !merkle.Verify(roots[j], layer.Path, leaf, p.NodeHasher) {
 			return fmt.Errorf("round %d: Merkle proof invalid (base=%d)", j, base)
 		}
 
 		// Fold: expected = (LeafP+LeafQ)/2 + α*(LeafP-LeafQ)/(2·ωⱼ^base).
-		var xInv, sum, diff, expected koalabear.Element
+		var xInv, sum, diff, expected field.Element
 		xInv.Exp(p.domainsLight[j].generator, big.NewInt(int64(Nj-base)))
 		sum.Add(&layer.LeafPBase, &layer.LeafQBase)
 		sum.Mul(&sum, &p.invTwo)
@@ -1201,19 +1198,19 @@ func checkQuery(s int, fq Query,
 			isLeafP := base < Nj1/2
 
 			// expectedNext = fold output + level contributions at round j+1 (if any).
-			var expectedNext koalabear.Element
+			var expectedNext field.Element
 			expectedNext.Set(&expected)
 
 			if li, ok := levelAtRound[j+1]; ok {
 				gamma := gammas[li]
 				ld := levelQueriesForQuery[li-1]
-				var leafVal koalabear.Element
+				var leafVal field.Element
 				if isLeafP {
 					leafVal.Set(&ld.LeafPBase)
 				} else {
 					leafVal.Set(&ld.LeafQBase)
 				}
-				var term koalabear.Element
+				var term field.Element
 				term.Mul(&leafVal, &gamma)
 				expectedNext.Add(&expectedNext, &term)
 			}
@@ -1242,17 +1239,17 @@ func checkQueryExt(s int, fq Query,
 	levelQueriesForQuery []QueryLayer,
 	levelRoots []hash.Digest,
 	levelAtRound map[int]int,
-	gammas []ext.E6,
+	gammas []field.Ext,
 	roots []hash.Digest,
-	finalPoly []ext.E6,
-	alphas []ext.E6,
+	finalPoly []field.Ext,
+	alphas []field.Ext,
 	p Params) error {
 
 	for lIdx, ld := range levelQueriesForQuery {
 		if ld.Field != field.KindExt {
 			return fmt.Errorf("level %d: expected ext query layer, got %s", lIdx+1, ld.Field)
 		}
-		pair := []commitment.PairExt{{ld.LeafPExt, ld.LeafQExt}}
+		pair := []PairExt{{ld.LeafPExt, ld.LeafQExt}}
 		leaf := p.LeafHasher.HashLeaf(nil, pair)
 		if !merkle.Verify(levelRoots[lIdx], ld.Path, leaf, p.NodeHasher) {
 			return fmt.Errorf("level %d: Merkle proof invalid", lIdx+1)
@@ -1267,16 +1264,16 @@ func checkQueryExt(s int, fq Query,
 			return fmt.Errorf("round %d: expected ext query layer, got %s", j, layer.Field)
 		}
 
-		pair := []commitment.PairExt{{layer.LeafPExt, layer.LeafQExt}}
+		pair := []PairExt{{layer.LeafPExt, layer.LeafQExt}}
 		leaf := p.LeafHasher.HashLeaf(nil, pair)
 		if !merkle.Verify(roots[j], layer.Path, leaf, p.NodeHasher) {
 			return fmt.Errorf("round %d: Merkle proof invalid (base=%d)", j, base)
 		}
 
-		var xInv koalabear.Element
+		var xInv field.Element
 		xInv.Exp(p.domainsLight[j].generator, big.NewInt(int64(Nj-base)))
 
-		var sum, diff, expected ext.E6
+		var sum, diff, expected field.Ext
 		sum.Add(&layer.LeafPExt, &layer.LeafQExt)
 		sum.MulByElement(&sum, &p.invTwo)
 		diff.Sub(&layer.LeafPExt, &layer.LeafQExt)
@@ -1290,19 +1287,19 @@ func checkQueryExt(s int, fq Query,
 			nextLayer := fq.Layers[j+1]
 			isLeafP := base < Nj1/2
 
-			var expectedNext ext.E6
+			var expectedNext field.Ext
 			expectedNext.Set(&expected)
 
 			if li, ok := levelAtRound[j+1]; ok {
 				gamma := gammas[li]
 				ld := levelQueriesForQuery[li-1]
-				var leafVal ext.E6
+				var leafVal field.Ext
 				if isLeafP {
 					leafVal.Set(&ld.LeafPExt)
 				} else {
 					leafVal.Set(&ld.LeafQExt)
 				}
-				var term ext.E6
+				var term field.Ext
 				term.Mul(&leafVal, &gamma)
 				expectedNext.Add(&expectedNext, &term)
 			}
