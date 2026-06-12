@@ -94,7 +94,7 @@ const linker_script_source = @embedFile("linker_script.ld");
 /// cleared, `code_model` set). On top of that this helper adds the pieces a final link needs:
 ///   • the entry stub (start.s: set sp from the linker script, then call main),
 ///   • the rv64im memory layout (linker_script.ld: stack @0, program @0x00800000, input @0x08800000,
-///     heap @0x48800000 — kept in sync with arithmetization/src/test/examples per PR #3332),
+///     heap @0x48800000 — kept in sync with arithmetization/src/test per PR #3332),
 ///   • dead-section GC, so the linked ELF drops unreferenced code.
 /// Zig links its own soft-float compiler_rt (`__udivti3` / `mem*`) automatically.
 ///

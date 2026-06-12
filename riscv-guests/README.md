@@ -86,7 +86,7 @@ The shared setup lives in [`.github/actions/setup-riscv-guests`](../.github/acti
 
 ## ZKC Interpreter Integration
 
-Running a guest in the ZKC interpreter goes ELF → JSON → `zkc`. `make compile` produces the statically-linked ELF (entry stub + rv64im memory layout from `build_common`'s `installGuestElf`, shared by all guests); the ELF→JSON conversion + `zkc` invocation are owned by [`arithmetization/src/test/examples/Makefile`](../arithmetization/src/test/examples/Makefile) (single source of truth). A guest's `exec`/`debug` build the ELF and **delegate** the run there:
+Running a guest in the ZKC interpreter goes ELF → JSON → `zkc`. `make compile` produces the statically-linked ELF (entry stub + rv64im memory layout from `build_common`'s `installGuestElf`, shared by all guests); the ELF→JSON conversion + `zkc` invocation are owned by [`arithmetization/src/test/Makefile`](../arithmetization/src/test/Makefile) (single source of truth). A guest's `exec`/`debug` build the ELF and **delegate** the run there:
 
 ```bash
 make -C l2-execution exec  ZIG=/path/to/zig IN_BYTES=0x...

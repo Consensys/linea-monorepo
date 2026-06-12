@@ -44,7 +44,7 @@ make -C arithmetization install-sail
 Then build the ACT4 ELFs on the host:
 
 ```bash
-cd arithmetization/src/test/examples
+cd arithmetization/src/test
 make act4-build
 ```
 
@@ -76,7 +76,7 @@ make TEST=<src_optional_subfolder>/<name>.<ext>
 and from anywhere using `-f`:
 
 ```bash
-make -f /path/to/lineth-monorepo/arithmetization/src/test/examples/Makefile TEST=<src_optional_subfolder>/<name>.<ext>
+make -f /path/to/lineth-monorepo/arithmetization/src/test/Makefile TEST=<src_optional_subfolder>/<name>.<ext>
 ```
 
 **Note:** The extension `<ext>` must be `.s`, `.zig`, or `.rs`. Source files are by default expected in the corresponding `asm/src/`, `zig/src/`, or `rust/src/` directory or in subfolders.
@@ -87,7 +87,7 @@ Useful shell function (add to `~/.zshrc` or `~/.bashrc`):
 
 ```bash
 riscv-test() {
-    local makefile="path/to/lineth-monorepo/arithmetization/src/test/examples/Makefile"
+    local makefile="path/to/lineth-monorepo/arithmetization/src/test/Makefile"
     case "$1" in
         elf-exec|elf-debug|elf-to-json|install-zkc|clean-all|linker-script|vector-exec|keccak-rust-build|keccak-rust-json|keccak-rust-exec|blake-rust-build|blake-rust-json|blake-rust-exec|act4-build|act4-exec)
             # targets that do NOT require TEST argument
@@ -288,7 +288,7 @@ The folder structure is the following:
 ```text
 parent/
 ├── lineth-monorepo/
-│   └── arithmetization/src/test/examples/
+│   └── arithmetization/src/test/
 │       └── act4/
 │           ├── config/linea-rv64im-zicclsm/    # Linea ACT4 config
 │           └── bin/
@@ -300,7 +300,7 @@ parent/
 └── riscv-arch-test/                            # ACT4 framework checkout
 ```
 
-From `lineth-monorepo/arithmetization/src/test/examples`:
+From `lineth-monorepo/arithmetization/src/test`:
 
 ```bash
 make act4-exec                         # build on the host and run
