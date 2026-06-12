@@ -4,7 +4,7 @@ This document explains how verifier-ray measures the RISC-V cost of the vanishin
 
 ## Technique
 
-The benchmark builds a tiny R5 guest from `bench/vanishing_main.zig`. That guest imports one generated vanishing fixture, marks the selected proof-value arrays as runtime data, replays the transcript with `protocol.replayWithStats`, calls `vanishing.verify`, and exits with code `0` on success or `1` on verifier rejection. `protocol.replayWithStats` uses the same replay implementation as `protocol.replay`, but also returns the number of Poseidon2 Merkle-Damgard compression calls made while generating transcript coins.
+The benchmark builds a tiny R5 guest from `bench/vanishing_main.zig`. That guest imports one generated vanishing fixture, reads selected proof-value arrays from mutable fixture data, replays the transcript with `protocol.replayWithStats`, calls `vanishing.verify`, and exits with code `0` on success or `1` on verifier rejection. `protocol.replayWithStats` uses the same replay implementation as `protocol.replay`, but also returns the number of Poseidon2 Merkle-Damgard compression calls made while generating transcript coins.
 
 The build path is:
 
@@ -22,7 +22,7 @@ Zig benchmark guest
 
 The ordinary vanishing test fixture in `testdata/generated/vanishing.zig` is shaped for unit tests. It stores proof values as raw `u32` limbs and the tests convert them into `protocol.RoundMessage`, `field.Element`, and `ext.Ext` values using allocator-backed helpers.
 
-The benchmark fixture in `bench/generated/vanishing.zig` is shaped for measurement. It emits typed `vanishing.CheckInput` data directly, so the guest does not spend measured RISC-V cycles parsing proof bytes, allocating arrays, or converting raw limbs into field elements. The generated protocol spec and vanishing system metadata remain compile-time data; selected proof-value arrays are emitted as mutable fixture data and touched with `std.mem.doNotOptimizeAway` before replay/verification to keep ReleaseSmall from constant-folding an honest proof into a direct success exit.
+The benchmark fixture in `bench/generated/vanishing.zig` is shaped for measurement. It emits typed `vanishing.CheckInput` data directly, so the guest does not spend measured RISC-V cycles parsing proof bytes, allocating arrays, or converting raw limbs into field elements. The generated protocol spec and vanishing system metadata remain compile-time data; selected proof-value arrays are emitted as mutable fixture data, which keeps ReleaseSmall from treating proof values as compile-time constants.
 
 ## Measurement Scope
 

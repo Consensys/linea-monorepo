@@ -1,5 +1,4 @@
 const builtin = @import("builtin");
-const std = @import("std");
 const verifier_ray = @import("verifier_ray");
 const bench_data = @import("vanishing_bench_data");
 const bench_options = @import("vanishing_bench_options");
@@ -25,18 +24,14 @@ pub export fn r5_main() noreturn {
         @compileError("vanishing benchmark guest is currently only wired for the R5 zkVM target");
     }
 
-    bench_data.keepRuntime(bench_options.case_index, bench_options.invalid);
-    var input = selected_case.input;
-    std.mem.doNotOptimizeAway(&input);
+    const input = selected_case.input;
 
     markR5(1);
-    var replay_stats = protocol.replayWithStats(selected_case.spec, input.ctx.rounds) catch exitR5(1);
+    const replay_stats = protocol.replayWithStats(selected_case.spec, input.ctx.rounds) catch exitR5(1);
     var all_coins = replay_stats.coins;
-    std.mem.doNotOptimizeAway(&all_coins);
-    std.mem.doNotOptimizeAway(&replay_stats.compression_count);
 
     markR5Value(2, replay_stats.compression_count);
-    var replayed_input = vanishing.CheckInput{
+    const replayed_input = vanishing.CheckInput{
         .ctx = .{
             .all_coins = &all_coins,
             .rounds = input.ctx.rounds,
@@ -45,7 +40,6 @@ pub export fn r5_main() noreturn {
         .quotient_claims = input.quotient_claims,
         .module_sizes = input.module_sizes,
     };
-    std.mem.doNotOptimizeAway(&replayed_input);
     vanishing.verify(selected_case.system, replayed_input) catch exitR5(1);
 
     markR5(3);
