@@ -28,11 +28,11 @@ func defaultVanishingZigOptions() VanishingZigOptions {
 // WriteVanishingScenariosZig writes generated Zig source that contains the
 // vanishing.System values for the supplied cases. It emits data only; Zig owns
 // the evaluator and quotient identity implementation.
-func WriteVanishingScenariosZig(w io.Writer, cases []NamedVanishingSystem) error {
+func WriteVanishingScenariosZig(w io.Writer, cases []VanishingSystem) error {
 	return WriteVanishingScenariosZigWithOptions(w, cases, defaultVanishingZigOptions())
 }
 
-func WriteVanishingScenariosZigWithOptions(w io.Writer, cases []NamedVanishingSystem, opts VanishingZigOptions) error {
+func WriteVanishingScenariosZigWithOptions(w io.Writer, cases []VanishingSystem, opts VanishingZigOptions) error {
 	data := vanishingTemplateData{
 		Options: opts,
 		Cases:   make([]vanishingTemplateCase, len(cases)),
@@ -43,11 +43,11 @@ func WriteVanishingScenariosZigWithOptions(w io.Writer, cases []NamedVanishingSy
 	return executeVanishingTemplate(w, data)
 }
 
-func WriteVanishingSystemZig(w io.Writer, index int, system NamedVanishingSystem) error {
+func WriteVanishingSystemZig(w io.Writer, index int, system VanishingSystem) error {
 	return WriteVanishingSystemZigWithOptions(w, index, system, defaultVanishingZigOptions())
 }
 
-func WriteVanishingSystemZigWithOptions(w io.Writer, index int, system NamedVanishingSystem, opts VanishingZigOptions) error {
+func WriteVanishingSystemZigWithOptions(w io.Writer, index int, system VanishingSystem, opts VanishingZigOptions) error {
 	data := vanishingTemplateData{
 		Options: opts,
 		Cases:   []vanishingTemplateCase{newVanishingTemplateCase(index, system)},
@@ -100,14 +100,14 @@ type vanishingTemplateBucket struct {
 	Bucket      VanishingBucket
 }
 
-func newVanishingTemplateCase(index int, tc NamedVanishingSystem) vanishingTemplateCase {
+func newVanishingTemplateCase(index int, tc VanishingSystem) vanishingTemplateCase {
 	out := vanishingTemplateCase{
 		Index:   index,
-		Name:    tc.Name,
-		System:  tc.System,
-		Modules: make([]vanishingTemplateModule, len(tc.System.Modules)),
+		Name:    tc.SourceName,
+		System:  tc,
+		Modules: make([]vanishingTemplateModule, len(tc.Modules)),
 	}
-	for moduleIndex, module := range tc.System.Modules {
+	for moduleIndex, module := range tc.Modules {
 		moduleView := vanishingTemplateModule{
 			Index:   moduleIndex,
 			Module:  module,

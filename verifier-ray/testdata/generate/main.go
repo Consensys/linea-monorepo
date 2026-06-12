@@ -41,7 +41,7 @@ func main() {
 	writePoseidonCases(&out)
 	writeFiatShamirCases(&out)
 	writeRuntimeTraceCases(&out)
-	vanishingCases, vanishingSystems, err := buildVanishingFixtureCases()
+	fixtureCases, compiledSystems, err := buildFixtureCases()
 	if err != nil {
 		panic(err)
 	}
@@ -56,7 +56,7 @@ func main() {
 	if err := os.WriteFile(outputPath, data, 0o644); err != nil {
 		panic(err)
 	}
-	if err := writeVanishingFixtures(vanishingCases, vanishingSystems); err != nil {
+	if err := writeCompiledFixtures(fixtureCases, compiledSystems); err != nil {
 		panic(err)
 	}
 }
@@ -581,7 +581,7 @@ type vanishingProofView struct {
 	moduleSizes    []int
 }
 
-type vanishingAssign func(rt *wiop.Runtime)
+type scenarioAssign func(rt *wiop.Runtime)
 
 func compileFullPipeline(sys *wiop.System) {
 	rangecheck.Compile(sys)
@@ -591,11 +591,11 @@ func compileFullPipeline(sys *wiop.System) {
 	global.Compile(sys)
 }
 
-func buildVanishingFixtureCases() ([]vanishingFixtureCase, []codegen.NamedVanishingSystem, error) {
+func buildFixtureCases() ([]vanishingFixtureCase, []codegen.CompiledSystem, error) {
 	var cases []vanishingFixtureCase
-	var systems []codegen.NamedVanishingSystem
+	var systems []codegen.CompiledSystem
 
-	add := func(source, name string, sys *wiop.System, honest vanishingAssign, invalid vanishingAssign) error {
+	add := func(source, name string, sys *wiop.System, honest scenarioAssign, invalid scenarioAssign) error {
 		compileFullPipeline(sys)
 		routing, err := codegen.BuildCoinRouting(sys)
 		if err != nil {
@@ -608,6 +608,10 @@ func buildVanishingFixtureCases() ([]vanishingFixtureCase, []codegen.NamedVanish
 		if len(vanishingSystem.Modules) == 0 {
 			return nil
 		}
+		logDeriv, err := codegen.BuildLogDerivSystem(sys)
+		if err != nil {
+			return fmt.Errorf("build logderiv system %s/%s: %w", source, name, err)
+		}
 
 		prefixedName := source + "/" + name
 		honestProof := buildVanishingProofView(sys, honest)
@@ -617,7 +621,7 @@ func buildVanishingFixtureCases() ([]vanishingFixtureCase, []codegen.NamedVanish
 			invalidProof = &proof
 		}
 		cases = append(cases, vanishingFixtureCase{name: prefixedName, honest: honestProof, invalid: invalidProof})
-		systems = append(systems, codegen.NamedVanishingSystem{Name: prefixedName, System: vanishingSystem, Routing: routing})
+		systems = append(systems, codegen.CompiledSystem{Name: prefixedName, Routing: routing, Vanishing: vanishingSystem, LogDeriv: logDeriv})
 		return nil
 	}
 
@@ -720,10 +724,10 @@ func buildDynamicLagrangeSelectorBoundarySystem() (*wiop.System, *wiop.Column) {
 	return sys, col
 }
 
-func buildVanishingProofView(sys *wiop.System, assign vanishingAssign) vanishingProofView {
+func buildVanishingProofView(sys *wiop.System, assign scenarioAssign) vanishingProofView {
 	rt := wiop.NewRuntime(sys)
 	assign(&rt)
-	runVanishingProver(&rt)
+	runProver(&rt)
 
 	verifiers := globalVerifiers(sys)
 
@@ -753,7 +757,7 @@ func buildVanishingProofView(sys *wiop.System, assign vanishingAssign) vanishing
 	}
 }
 
-func runVanishingProver(rt *wiop.Runtime) {
+func runProver(rt *wiop.Runtime) {
 	for _, action := range rt.CurrentRound().ProverActions {
 		action.Run(*rt)
 	}
@@ -822,9 +826,9 @@ func runtimeTraceRoundFromRuntime(rt wiop.Runtime, round *wiop.Round) runtimeTra
 	return trace
 }
 
-func writeVanishingFixtures(cases []vanishingFixtureCase, systems []codegen.NamedVanishingSystem) error {
+func writeCompiledFixtures(cases []vanishingFixtureCase, systems []codegen.CompiledSystem) error {
 	var out bytes.Buffer
-	writeVanishingHeader(&out)
+	writeFixtureHeader(&out)
 	for i := range cases {
 		if err := codegen.WriteSpecZigWithOptions(&out, systems[i].Routing, codegen.SpecZigOptions{
 			ProtocolImport: "verifier_ray.protocol",
@@ -833,15 +837,20 @@ func writeVanishingFixtures(cases []vanishingFixtureCase, systems []codegen.Name
 		}); err != nil {
 			return err
 		}
-		if err := codegen.WriteVanishingSystemZigWithOptions(&out, i, systems[i], codegen.VanishingZigOptions{
+		if err := codegen.WriteVanishingSystemZigWithOptions(&out, i, systems[i].Vanishing, codegen.VanishingZigOptions{
 			FieldImport:     "verifier_ray.field.koalabear",
 			VanishingImport: "verifier_ray.query.vanishing",
 		}); err != nil {
 			return err
 		}
-		writeVanishingScenario(&out, i, cases[i])
+		if err := codegen.WriteLogDerivSystemZigWithOptions(&out, i, systems[i].LogDeriv, codegen.LogDerivZigOptions{
+			EmitImport: false,
+		}); err != nil {
+			return err
+		}
+		writeFixtureScenario(&out, i, cases[i])
 	}
-	writeVanishingScenarioList(&out, len(cases))
+	writeFixtureScenarioList(&out, len(cases))
 
 	data := out.Bytes()
 	zigfmt, err := runZigFmt(data)
@@ -851,27 +860,29 @@ func writeVanishingFixtures(cases []vanishingFixtureCase, systems []codegen.Name
 	return os.WriteFile(filepath.Join("..", "generated", "vanishing.zig"), data, 0o644)
 }
 
-func writeVanishingHeader(out *bytes.Buffer) {
+func writeFixtureHeader(out *bytes.Buffer) {
 	fmt.Fprintln(out, "// Code generated by verifier-ray/testdata/generate; DO NOT EDIT.")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "const verifier_ray = @import(\"verifier_ray\");")
 	fmt.Fprintln(out, "const field = verifier_ray.field.koalabear;")
 	fmt.Fprintln(out, "const protocol = verifier_ray.protocol;")
 	fmt.Fprintln(out, "const vanishing = verifier_ray.query.vanishing;")
+	fmt.Fprintln(out, "const logderivativesum = verifier_ray.query.logderivativesum;")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "pub const RuntimeTraceColumn = union(enum) { oracle: []const [8]u32, public_base: []const u32, public_ext: []const [6]u32 };")
 	fmt.Fprintln(out, "pub const RuntimeTraceCell = union(enum) { base: u32, ext: [6]u32 };")
 	fmt.Fprintln(out, "pub const RuntimeTraceRound = struct { columns: []const RuntimeTraceColumn, cells: []const RuntimeTraceCell };")
 	fmt.Fprintln(out, "pub const VanishingProofView = struct { rounds: []const RuntimeTraceRound, witness_claims: []const [6]u32, quotient_claims: []const [6]u32, module_sizes: []const usize };")
-	fmt.Fprintln(out, "pub const VanishingScenario = struct { name: []const u8, spec: protocol.Spec, system: vanishing.System, honest: VanishingProofView, invalid: ?VanishingProofView = null };")
+	fmt.Fprintln(out, "pub const Scenario = struct { name: []const u8, spec: protocol.Spec, system: vanishing.System, logderiv: logderivativesum.System = .{}, honest: VanishingProofView, invalid: ?VanishingProofView = null };")
 	fmt.Fprintln(out)
 }
 
-func writeVanishingScenario(out *bytes.Buffer, idx int, tc vanishingFixtureCase) {
-	fmt.Fprintf(out, "const vanishing_scenario_%d = VanishingScenario{\n", idx)
+func writeFixtureScenario(out *bytes.Buffer, idx int, tc vanishingFixtureCase) {
+	fmt.Fprintf(out, "const scenario_%d = Scenario{\n", idx)
 	fmt.Fprintf(out, "    .name = \"%s\",\n", zigString(tc.name))
 	fmt.Fprintf(out, "    .spec = system_%d_spec,\n", idx)
 	fmt.Fprintf(out, "    .system = system_%d,\n", idx)
+	fmt.Fprintf(out, "    .logderiv = system_%d_logderiv,\n", idx)
 	fmt.Fprintln(out, "    .honest =")
 	writeVanishingProofView(out, tc.honest, "        ")
 	if tc.invalid != nil {
@@ -882,10 +893,10 @@ func writeVanishingScenario(out *bytes.Buffer, idx int, tc vanishingFixtureCase)
 	fmt.Fprintln(out)
 }
 
-func writeVanishingScenarioList(out *bytes.Buffer, count int) {
-	fmt.Fprintln(out, "pub const scenarios = [_]VanishingScenario{")
+func writeFixtureScenarioList(out *bytes.Buffer, count int) {
+	fmt.Fprintln(out, "pub const scenarios = [_]Scenario{")
 	for i := range count {
-		fmt.Fprintf(out, "    vanishing_scenario_%d,\n", i)
+		fmt.Fprintf(out, "    scenario_%d,\n", i)
 	}
 	fmt.Fprintln(out, "};")
 }
