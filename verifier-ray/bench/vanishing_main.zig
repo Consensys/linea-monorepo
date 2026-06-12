@@ -30,10 +30,12 @@ pub export fn r5_main() noreturn {
     std.mem.doNotOptimizeAway(&input);
 
     markR5(1);
-    var all_coins = protocol.replay(selected_case.spec, input.ctx.rounds) catch exitR5(1);
+    var replay_stats = protocol.replayWithStats(selected_case.spec, input.ctx.rounds) catch exitR5(1);
+    var all_coins = replay_stats.coins;
     std.mem.doNotOptimizeAway(&all_coins);
+    std.mem.doNotOptimizeAway(&replay_stats.compression_count);
 
-    markR5(2);
+    markR5Value(2, replay_stats.compression_count);
     var replayed_input = vanishing.CheckInput{
         .ctx = .{
             .all_coins = &all_coins,
@@ -51,13 +53,19 @@ pub export fn r5_main() noreturn {
 }
 
 fn markR5(comptime phase: u64) void {
+    markR5Value(phase, 0);
+}
+
+fn markR5Value(comptime phase: u64, value: usize) void {
     asm volatile (
         \\mv a0, %[phase]
+        \\mv a1, %[value]
         \\li a7, 4242
         \\ecall
         :
         : [phase] "r" (phase),
-        : .{ .a0 = true, .a7 = true, .memory = true });
+          [value] "r" (value),
+        : .{ .a0 = true, .a1 = true, .a7 = true, .memory = true });
 }
 
 fn exitR5(code: u8) noreturn {

@@ -4,7 +4,7 @@ This document explains how verifier-ray measures the RISC-V cost of the vanishin
 
 ## Technique
 
-The benchmark builds a tiny R5 guest from `bench/vanishing_main.zig`. That guest imports one generated vanishing fixture, marks the selected proof-value arrays as runtime data, replays the transcript with `protocol.replay`, calls `vanishing.verify`, and exits with code `0` on success or `1` on verifier rejection.
+The benchmark builds a tiny R5 guest from `bench/vanishing_main.zig`. That guest imports one generated vanishing fixture, marks the selected proof-value arrays as runtime data, replays the transcript with `protocol.replayWithStats`, calls `vanishing.verify`, and exits with code `0` on success or `1` on verifier rejection. `protocol.replayWithStats` uses the same replay implementation as `protocol.replay`, but also returns the number of Poseidon2 Merkle-Damgard compression calls made while generating transcript coins.
 
 The build path is:
 
@@ -28,9 +28,11 @@ The benchmark fixture in `bench/generated/vanishing.zig` is shaped for measureme
 
 The reported value is an instruction-count proxy for verifier cost in the R5 environment. It includes the benchmark guest entry path, reads from embedded fixture data, transcript coin replay, `vanishing.verify`, and the guest exit path.
 
-The zkc runner recognizes benchmark marker syscalls emitted by the guest and records three checkpoints: transcript start, transcript end, and vanishing end. The generated markdown derives:
+The zkc runner recognizes benchmark marker syscalls emitted by the guest and records three checkpoints: transcript start, transcript end, and vanishing end. The transcript-end marker also carries the Poseidon2 compression count in register `a1`, which the runner exposes as `poseidon2_compression_count`. The generated markdown derives:
 
 - `Transcript replay cycles`: instructions between transcript-start and transcript-end markers.
+- `Poseidon2 compressions in transcript`: the number of calls to `poseidon2.compress` made by the transcript hasher while replaying coins.
+- `Transcript cycles / Poseidon2 compression`: `Transcript replay cycles` divided by that compression count. This is an aggregate transcript-replay average, not an isolated microbenchmark of only `poseidon2.compress`; it also includes the small runtime counter bookkeeping used to publish the count.
 - `Vanishing verify cycles`: instructions between transcript-end and vanishing-end markers.
 - `Benchmark overhead / markers`: the remaining instructions, including entry setup, marker ecalls, and exit.
 

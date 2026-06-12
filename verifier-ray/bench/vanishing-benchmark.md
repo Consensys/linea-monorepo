@@ -10,10 +10,12 @@ This measures the RISC-V instruction count for the typed vanishing benchmark gue
 
 | Metric | Value |
 | --- | ---: |
-| RISC-V cycles | 165,714 |
-| Transcript replay cycles | 159,406 |
-| Vanishing verify cycles | 5,771 |
-| Benchmark overhead / markers | 537 |
+| RISC-V cycles | 166,036 |
+| Transcript replay cycles | 159,725 |
+| Poseidon2 compressions in transcript | 5 |
+| Transcript cycles / Poseidon2 compression | 31945.00 |
+| Vanishing verify cycles | 5,773 |
+| Benchmark overhead / markers | 538 |
 | Case index | 6 |
 | Case name | `Vanishing/ConstantColumn` |
 | Modules | 1 |
@@ -25,14 +27,14 @@ This measures the RISC-V instruction count for the typed vanishing benchmark gue
 | Witness claims | 1 |
 | Quotient claims | 1 |
 | Zig release mode | `small` |
-| R5 ELF size | 13,096 bytes |
-| zkc JSON size | 16,938 bytes |
+| R5 ELF size | 13,184 bytes |
+| zkc JSON size | 17,114 bytes |
 
 ## Environment
 
 | Tool | Value |
 | --- | --- |
-| Git commit | `c5a060775` |
+| Git commit | `df0c1d24c` |
 | Zig | `0.16.0` |
 | zkc | `mod	github.com/consensys/go-corset	v1.2.18-0.20260521022840-414e7b73971e` |
 | zkc main | `bench/riscv_main_bench.zkc` |

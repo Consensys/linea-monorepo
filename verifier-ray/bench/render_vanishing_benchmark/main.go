@@ -25,12 +25,13 @@ type metadata struct {
 }
 
 type benchmarkResult struct {
-	caseIndex        int
-	meta             metadata
-	cycles           uint64
-	transcriptCycles uint64
-	vanishingCycles  uint64
-	otherCycles      uint64
+	caseIndex                 int
+	meta                      metadata
+	cycles                    uint64
+	transcriptCycles          uint64
+	vanishingCycles           uint64
+	otherCycles               uint64
+	poseidon2CompressionCount uint64
 }
 
 func main() {
@@ -122,6 +123,8 @@ func main() {
 	fmt.Fprintln(&out, "| --- | ---: |")
 	fmt.Fprintf(&out, "| RISC-V cycles | %s |\n", formatThousands(resultCycles.cycles))
 	fmt.Fprintf(&out, "| Transcript replay cycles | %s |\n", formatThousands(resultCycles.transcriptCycles))
+	fmt.Fprintf(&out, "| Poseidon2 compressions in transcript | %s |\n", formatThousands(resultCycles.poseidon2CompressionCount))
+	fmt.Fprintf(&out, "| Transcript cycles / Poseidon2 compression | %s |\n", formatCyclesPerCompression(resultCycles.transcriptCycles, resultCycles.poseidon2CompressionCount))
 	fmt.Fprintf(&out, "| Vanishing verify cycles | %s |\n", formatThousands(resultCycles.vanishingCycles))
 	fmt.Fprintf(&out, "| Benchmark overhead / markers | %s |\n", formatThousands(resultCycles.otherCycles))
 	fmt.Fprintf(&out, "| Case index | %d |\n", *caseIndex)
@@ -196,6 +199,10 @@ func parseBenchmarkCycles(log string) (benchmarkResult, error) {
 	if err != nil {
 		return benchmarkResult{}, err
 	}
+	poseidon2CompressionCount, err := parseOutput(log, "poseidon2_compression_count")
+	if err != nil {
+		return benchmarkResult{}, err
+	}
 	if transcriptStart >= transcriptEnd {
 		return benchmarkResult{}, fmt.Errorf("invalid benchmark phase markers: transcript_start_cycle=%d transcript_end_cycle=%d", transcriptStart, transcriptEnd)
 	}
@@ -212,10 +219,11 @@ func parseBenchmarkCycles(log string) (benchmarkResult, error) {
 	otherCycles := cycles - measuredPhaseCycles
 
 	return benchmarkResult{
-		cycles:           cycles,
-		transcriptCycles: transcriptCycles,
-		vanishingCycles:  vanishingCycles,
-		otherCycles:      otherCycles,
+		cycles:                    cycles,
+		transcriptCycles:          transcriptCycles,
+		vanishingCycles:           vanishingCycles,
+		otherCycles:               otherCycles,
+		poseidon2CompressionCount: poseidon2CompressionCount,
 	}, nil
 }
 
@@ -435,16 +443,18 @@ func renderComparisonReport(outPath, logDir, caseSpec, releaseMode, zkcMain stri
 	fmt.Fprintln(&out)
 	fmt.Fprintln(&out, "## Results")
 	fmt.Fprintln(&out)
-	fmt.Fprintln(&out, "| Case | Scenario | RISC-V cycles | Transcript | Vanishing | Other | vs fastest | Modules | Dynamic | Rounds | Expressions | Buckets | Vanishings | Witness | Quotient |")
-	fmt.Fprintln(&out, "| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+	fmt.Fprintln(&out, "| Case | Scenario | RISC-V cycles | Transcript | Poseidon2 comps | Transcript / comp | Vanishing | Other | vs fastest | Modules | Dynamic | Rounds | Expressions | Buckets | Vanishings | Witness | Quotient |")
+	fmt.Fprintln(&out, "| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
 	for _, result := range results {
 		fmt.Fprintf(
 			&out,
-			"| %d | `%s` | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n",
+			"| %d | `%s` | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n",
 			result.caseIndex,
 			markdownCell(result.meta.name),
 			formatThousands(result.cycles),
 			formatThousands(result.transcriptCycles),
+			formatThousands(result.poseidon2CompressionCount),
+			formatCyclesPerCompression(result.transcriptCycles, result.poseidon2CompressionCount),
 			formatThousands(result.vanishingCycles),
 			formatThousands(result.otherCycles),
 			formatCycleDelta(result.cycles, minResult.cycles),
@@ -534,6 +544,13 @@ func formatThousands[T ~uint64](value T) string {
 		b.WriteString(s[i : i+3])
 	}
 	return b.String()
+}
+
+func formatCyclesPerCompression(cycles uint64, compressionCount uint64) string {
+	if compressionCount == 0 {
+		return "n/a"
+	}
+	return fmt.Sprintf("%.2f", float64(cycles)/float64(compressionCount))
 }
 
 func formatCycleDelta(cycles, baseline uint64) string {
