@@ -16,7 +16,7 @@
 //   - one or more "running-sum" extension columns Z, each absorbing up to
 //     packingArity fractions whose vector-valued sides live on the same module;
 //   - a vanishing recurrence per Z column linking it to its source fractions;
-//   - LocalOpenings of Z[0] (initial condition) and Z[n-1] (column endpoint);
+//   - openings of Z[0] (initial condition) and Z[n-1] (column endpoint);
 //   - a verifier action that checks the initial condition for every Z column
 //     and that the sum of endpoints matches the query's claimed Result cell.
 //
@@ -44,7 +44,7 @@ import (
 const packingArity = 3
 
 // Compile reduces every [wiop.LogDerivativeSum] query in sys to a Z-column
-// recurrence plus endpoint LocalOpenings, and registers prover/verifier
+// recurrence plus endpoint openings, and registers prover/verifier
 // actions that tie the resulting artefacts back to the query's Result cell.
 // Already-reduced queries are skipped.
 func Compile(sys *wiop.System) {
@@ -129,23 +129,24 @@ func fractionModule(f wiop.Fraction) *wiop.Module {
 // zEntry collects the per-Z artefacts shared by the prover and verifier
 // actions: the Z column, the symbolic packed numerator/denominator, the raw
 // triples (filter, num, den) used by the prover for filter-aware row skipping,
-// and the endpoint LocalOpenings.
+// and the endpoint openings.
 type zEntry struct {
 	zCol   *wiop.Column
 	zNum   wiop.Expression
 	zDen   wiop.Expression
 	packed []wiop.Fraction // raw fractions used by the prover for filter-aware evaluation
-	zInit  *wiop.LocalOpening
-	zFinal *wiop.LocalOpening
+	zInit  *wiop.Cell      // lazily-assigned opening of Z[0]
+	zFinal *wiop.Cell      // lazily-assigned opening of Z[n-1]
 }
 
 // buildZ allocates one Z column for a packed fraction group, registers the
-// recurrence Vanishing, and opens the two endpoints. The module's size does
-// not need to be known at compile time: the endpoint LocalOpening is
-// addressed via [ColumnPosition]'s negative-row convention (Position = −1
-// ⇒ last row), and Vanishing's cancelled-positions logic gracefully handles
-// a runtime size of 1 by automatically skipping row 0 (the only row of a
-// one-row module), so the recurrence Vanishing is registered unconditionally.
+// recurrence Vanishing, and opens the two endpoints (as lazy [wiop.Cell]s
+// returned by [ColumnPosition.Open]). The module's size does not need to be
+// known at compile time: the endpoint opening at Z[last] is addressed via
+// [ColumnPosition]'s negative-row convention (Position = −1 ⇒ last row),
+// and Vanishing's cancelled-positions logic gracefully handles a runtime
+// size of 1 by automatically skipping row 0 (the only row of a one-row
+// module), so the recurrence Vanishing is registered unconditionally.
 func buildZ(
 	m *wiop.Module,
 	packed []wiop.Fraction,
@@ -188,14 +189,20 @@ func buildZ(
 	}
 
 	// Endpoint openings: Z[0] for the initial condition, Z[last] for the
-	// running-sum total. The negative-row form on Z[last] resolves to
-	// RuntimeSize-1 per-Runtime, which is what makes the dynamic-module
-	// case work — for static modules it resolves to the compile-time size
-	// just like the original m.Size()-1 form.
+	// running-sum total. For static modules we resolve the endpoint to a
+	// concrete row index up front so the downstream localvanishing pass —
+	// which lowers each opening's binding Vanishing via a [LagrangeSelector]
+	// that currently requires a non-negative position — sees only positive
+	// positions. Dynamic modules keep the negative-row form (Position = −1
+	// resolved to RuntimeSize−1 per-Runtime by [ColumnPosition.resolvedRow]).
 	zInit := zCol.At(0).Open(ctx.Childf("z-init-b%d-k%d", bIdx, kIdx))
+	endpointPos := -1
+	if !m.IsDynamic() {
+		endpointPos = m.Size() - 1
+	}
 	// For dynamic RuntimeSize == 1, At(-1) resolves to row 0 — zFinal and zInit alias the same cell, and
 	// the LDS verifier's initial-condition check carries the whole identity by itself.
-	zFinal := zCol.At(-1).Open(ctx.Childf("z-final-b%d-k%d", bIdx, kIdx))
+	zFinal := zCol.At(endpointPos).Open(ctx.Childf("z-final-b%d-k%d", bIdx, kIdx))
 
 	return zEntry{
 		zCol:   zCol,
@@ -258,10 +265,9 @@ func (a *proverAction) Run(rt wiop.Runtime) {
 
 		rt.AssignColumn(e.zCol, &wiop.ConcreteVector{Plain: field.VecFromExt(z)})
 
-		// SelfAssign reads Z[0] and Z[n-1] from the runtime, so the column
-		// must already be assigned at this point.
-		e.zInit.SelfAssign(rt)
-		e.zFinal.SelfAssign(rt)
+		// zInit and zFinal are lazy openings of Z[0] and Z[n-1]; they resolve
+		// from this column assignment on first read (or at round advance), so
+		// no explicit assignment is needed here.
 
 		total.Add(&total, &z[n-1])
 	}
@@ -395,8 +401,8 @@ func (a *verifierAction) Check(rt wiop.Runtime) error {
 	var sum field.Ext
 
 	for i, e := range a.entries {
-		zInit := genToExt(rt.GetCellValue(e.zInit.Result))
-		zFinal := genToExt(rt.GetCellValue(e.zFinal.Result))
+		zInit := genToExt(rt.GetCellValue(e.zInit))
+		zFinal := genToExt(rt.GetCellValue(e.zFinal))
 
 		num0 := genToExt(evaluateRowZero(rt, e.zNum))
 		den0 := genToExt(evaluateRowZero(rt, e.zDen))

@@ -3,6 +3,7 @@ package wiop
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/sirupsen/logrus"
 )
 
@@ -160,6 +161,21 @@ func (r *Round) NewCell(ctx *ContextFrame, isExtension bool) *Cell {
 		round:             r,
 	}
 	r.Cells = append(r.Cells, c)
+	return c
+}
+
+// NewLazyCell declares a scalar cell whose value is computed on demand by
+// assigner rather than written by the prover. The cell is resolved the first
+// time it is read or, at the latest, when its round is advanced; see
+// [Cell.Assigner]. assigner must only depend on data available in this round.
+//
+// Panics if ctx or assigner is nil.
+func (r *Round) NewLazyCell(ctx *ContextFrame, isExtension bool, assigner func(Runtime) field.Gen) *Cell {
+	if assigner == nil {
+		panic("wiop: Round.NewLazyCell requires a non-nil assigner")
+	}
+	c := r.NewCell(ctx, isExtension)
+	c.Assigner = assigner
 	return c
 }
 
