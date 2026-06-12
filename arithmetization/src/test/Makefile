@@ -14,7 +14,7 @@
 
 # Directory of this Makefile (used for relative paths)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../../..)
+ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../..)
 
 # Paths to go main (to turn BIN into JSON), zkc main (to execute/debug the json) and linker script
 ELF_TO_JSON_GEN := $(MAKEFILE_DIR)scripts/elf_to_json_gen/main.go
