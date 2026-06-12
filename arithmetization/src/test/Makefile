@@ -476,6 +476,7 @@ act4-build:
 		ensure_act4_repo; \
 		echo "building ACT4 ELFs in $$work_dir on host"; \
 		export PATH="$(ACT4_RISCV_DIR)/bin:$$PATH"; \
+		(cd "$(ACT4_REPO)" && mise install) || exit $$?; \
 		$(MAKE) --jobs $(ACT4_JOBS) --keep-going -C "$(ACT4_REPO)" \
 			CONFIG_FILES="$(ACT4_CONFIG)" \
 			WORKDIR="$$work_dir" \
