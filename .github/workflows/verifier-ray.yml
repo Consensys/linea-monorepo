@@ -72,7 +72,7 @@ jobs:
       - name: Install go-corset and zkc
         run: |
           go install github.com/consensys/go-corset/cmd/go-corset@${GO_CORSET_VERSION}
-          go install github.com/consensys/go-corset/cmd/zkc@${GO_CORSET_REF_FOR_ZKC}
+          go install github.com/LFDT-Lineth/zkc/cmd/zkc@${GO_CORSET_REF_FOR_ZKC}
           go-corset --version
           go version -m "$(which zkc)"
 
