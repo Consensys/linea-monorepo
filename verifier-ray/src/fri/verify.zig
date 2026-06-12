@@ -1,14 +1,9 @@
-const std = @import("std");
-
-const fiat_shamir = @import("../crypto/fiat_shamir.zig");
 const field = @import("../field/koalabear.zig");
 const ext = @import("../field/koalabear_ext.zig");
 const leaf_hash = @import("leaf_hash.zig");
 const merkle = @import("merkle.zig");
 const types = @import("types.zig");
 
-const tag_final_poly_base = field.Element.init(0x42415345); // "BASE"
-const tag_final_poly_ext = field.Element.init(0x45585450); // "EXTP"
 const max_fri_rounds = field.max_order_root;
 const max_fri_levels = field.max_order_root;
 
@@ -22,26 +17,39 @@ pub const FriError = error{
     Unsupported,
 };
 
+pub const FriChallenges = struct {
+    /// Single batching challenge `fri_gamma` when extra FRI levels exist.
+    /// Level l consumes gamma^l, matching prover-ray's multi-level FRI.
+    gamma: ?ext.Ext = null,
+    /// Fold challenges `fri_fold_j`, one per folding round. Base-rail proofs
+    /// consume the first limb; extension-rail proofs consume the full value.
+    fold_alphas: []const ext.Ext,
+    /// Query positions already reduced modulo params.n / 2.
+    query_positions: []const u32,
+};
+
 pub fn friVerify(
     params: types.Params,
     level_roots: []const types.Digest,
     level_ds: []const u32,
     proof: types.FriProof,
-    ts: *fiat_shamir.Transcript,
+    challenges: FriChallenges,
 ) FriError!void {
     try checkDimensions(params, level_roots, level_ds, proof);
-    const challenges = try bindCommitPhase(params, level_roots, level_ds, proof, ts);
-    try verifyQueries(params, level_roots, level_ds, proof, ts, challenges);
+    const resolved = try resolveChallenges(params, level_roots, challenges);
+    try verifyQueries(params, level_roots, level_ds, proof, challenges.query_positions, resolved);
 }
 
-const CommitChallenges = struct {
+const ResolvedChallenges = struct {
     alphas: [max_fri_rounds]ext.Ext,
-    gammas: [max_fri_levels]ext.Ext,
+    gammas_base: [max_fri_levels]field.Element,
+    gammas_ext: [max_fri_levels]ext.Ext,
 
-    fn empty() CommitChallenges {
+    fn empty() ResolvedChallenges {
         return .{
             .alphas = [_]ext.Ext{ext.Ext.zero()} ** max_fri_rounds,
-            .gammas = [_]ext.Ext{ext.Ext.zero()} ** max_fri_levels,
+            .gammas_base = [_]field.Element{field.Element.zero()} ** max_fri_levels,
+            .gammas_ext = [_]ext.Ext{ext.Ext.zero()} ** max_fri_levels,
         };
     }
 };
@@ -89,95 +97,38 @@ fn checkDimensions(
     }
 }
 
-fn bindCommitPhase(
+fn resolveChallenges(
     params: types.Params,
     level_roots: []const types.Digest,
-    level_ds: []const u32,
-    proof: types.FriProof,
-    ts: *fiat_shamir.Transcript,
-) FriError!CommitChallenges {
-    var challenges = CommitChallenges.empty();
+    challenges: FriChallenges,
+) FriError!ResolvedChallenges {
+    const round_count: usize = @intCast(params.num_rounds);
+    const query_count: usize = @intCast(params.num_queries);
+    if (challenges.fold_alphas.len != round_count) return FriError.BadDimensions;
+    if (challenges.query_positions.len != query_count) return FriError.BadDimensions;
 
-    var round: u32 = 0;
-    while (round < params.num_rounds) : (round += 1) {
-        for (level_ds[1..], 1..) |level_d, level_index| {
-            const intro = try introducedRound(level_ds[0], level_d, params.num_rounds);
-            if (intro != 0 and intro == round) {
-                var gamma_name_buf: [48]u8 = undefined;
-                const gamma_name = std.fmt.bufPrint(&gamma_name_buf, "fri_level_{d}_gamma", .{level_index}) catch {
-                    return FriError.BadDimensions;
-                };
-                ts.newChallenge(gamma_name) catch return FriError.BadDimensions;
-                ts.bindDigest(gamma_name, level_roots[level_index]) catch return FriError.BadDimensions;
-                challenges.gammas[level_index] = ts.computeChallengeExt(gamma_name) catch |err| switch (err) {
-                    error.InvalidProofOfWork => return FriError.InvalidProofOfWork,
-                    else => return FriError.BadDimensions,
-                };
-            }
-        }
-
-        var fold_name_buf: [32]u8 = undefined;
-        const fold_name = std.fmt.bufPrint(&fold_name_buf, "fri_fold_{d}", .{round}) catch {
-            return FriError.BadDimensions;
-        };
-        const round_index: usize = @intCast(round);
-        const round_root = if (round == 0) level_roots[0] else proof.fri_roots[round_index - 1];
-
-        ts.newChallenge(fold_name) catch return FriError.BadDimensions;
-        ts.bindDigest(fold_name, round_root) catch return FriError.BadDimensions;
-
-        if (params.grinding != 0) {
-            const pow = proof.pow[round_index] orelse return FriError.MissingProofOfWork;
-            if (pow.nb_bits != params.grinding) return FriError.InvalidProofOfWork;
-            ts.setProofOfWork(fold_name, pow) catch return FriError.InvalidProofOfWork;
-        } else if (proof.pow[round_index]) |pow| {
-            if (pow.nb_bits != 0) return FriError.InvalidProofOfWork;
-            ts.setProofOfWork(fold_name, pow) catch return FriError.InvalidProofOfWork;
-        }
-
-        challenges.alphas[round_index] = ts.computeChallengeExt(fold_name) catch |err| switch (err) {
-            error.InvalidProofOfWork => return FriError.InvalidProofOfWork,
-            else => return FriError.BadDimensions,
-        };
+    for (challenges.query_positions) |position| {
+        if (position >= params.n / 2) return FriError.BadDimensions;
     }
 
-    if (params.num_queries != 0) {
-        var query_index_value: u32 = 0;
-        while (query_index_value < params.num_queries) : (query_index_value += 1) {
-            var query_name_buf: [32]u8 = undefined;
-            const query_name = std.fmt.bufPrint(&query_name_buf, "fri_query_{d}", .{query_index_value}) catch {
-                return FriError.BadDimensions;
-            };
-            ts.newChallenge(query_name) catch return FriError.BadDimensions;
+    var resolved = ResolvedChallenges.empty();
+    @memcpy(resolved.alphas[0..round_count], challenges.fold_alphas);
+
+    if (level_roots.len > 1) {
+        const gamma = challenges.gamma orelse return FriError.BadDimensions;
+        const gamma_base = gamma.B0.a0;
+        resolved.gammas_base[1] = gamma_base;
+        resolved.gammas_ext[1] = gamma;
+        var level_index: usize = 2;
+        while (level_index < level_roots.len) : (level_index += 1) {
+            resolved.gammas_base[level_index] = resolved.gammas_base[level_index - 1].mul(gamma_base);
+            resolved.gammas_ext[level_index] = resolved.gammas_ext[level_index - 1].mul(gamma);
         }
-        try bindFinalPoly(ts, proof);
+    } else if (challenges.gamma != null) {
+        return FriError.BadDimensions;
     }
 
-    return challenges;
-}
-
-fn bindFinalPoly(ts: *fiat_shamir.Transcript, proof: types.FriProof) FriError!void {
-    switch (proof.final_rail) {
-        .base => {
-            const header = [_]field.Element{
-                tag_final_poly_base,
-                field.Element.init(proof.final_poly_base.len),
-            };
-            ts.bindElements("fri_query_0", header[0..]) catch return FriError.BadDimensions;
-            ts.bindElements("fri_query_0", proof.final_poly_base) catch return FriError.BadDimensions;
-        },
-        .ext => {
-            const header = [_]field.Element{
-                tag_final_poly_ext,
-                field.Element.init(proof.final_poly_ext.len),
-            };
-            ts.bindElements("fri_query_0", header[0..]) catch return FriError.BadDimensions;
-            for (proof.final_poly_ext) |value| {
-                var limbs = extLimbs(value);
-                ts.bindElements("fri_query_0", limbs[0..]) catch return FriError.BadDimensions;
-            }
-        },
-    }
+    return resolved;
 }
 
 fn verifyQueries(
@@ -185,27 +136,13 @@ fn verifyQueries(
     level_roots: []const types.Digest,
     level_ds: []const u32,
     proof: types.FriProof,
-    ts: *fiat_shamir.Transcript,
-    challenges: CommitChallenges,
+    query_positions: []const u32,
+    challenges: ResolvedChallenges,
 ) FriError!void {
     var query_index_value: u32 = 0;
     while (query_index_value < params.num_queries) : (query_index_value += 1) {
-        var query_name_buf: [32]u8 = undefined;
-        const query_name = std.fmt.bufPrint(&query_name_buf, "fri_query_{d}", .{query_index_value}) catch {
-            return FriError.BadDimensions;
-        };
-        const challenge = ts.computeChallenge(query_name) catch return FriError.BadDimensions;
-        const position = queryIndex(challenge, params.n / 2);
-
-        if (query_index_value + 1 < params.num_queries) {
-            var next_name_buf: [32]u8 = undefined;
-            const next_name = std.fmt.bufPrint(&next_name_buf, "fri_query_{d}", .{query_index_value + 1}) catch {
-                return FriError.BadDimensions;
-            };
-            ts.bindDigest(next_name, challenge) catch return FriError.BadDimensions;
-        }
-
         const proof_query_index: usize = @intCast(query_index_value);
+        const position = query_positions[proof_query_index];
         switch (proof.final_rail) {
             .base => try checkQueryBase(
                 position,
@@ -236,7 +173,7 @@ fn checkQueryBase(
     level_roots: []const types.Digest,
     level_ds: []const u32,
     proof: types.FriProof,
-    challenges: CommitChallenges,
+    challenges: ResolvedChallenges,
 ) FriError!void {
     try verifyLevelQueryMerkleBase(position, proof_query_index, params, level_roots, level_ds, proof);
 
@@ -271,7 +208,7 @@ fn checkQueryBase(
                 const level_layer = proof.level_queries[level_index - 1][proof_query_index];
                 if (level_layer.rail != .base) return FriError.BadDimensions;
                 const level_value = if (is_leaf_p) level_layer.leaf_p_base else level_layer.leaf_q_base;
-                const term = level_value.mul(challenges.gammas[level_index].B0.a0);
+                const term = level_value.mul(challenges.gammas_base[level_index]);
                 expected_next = expected_next.add(term);
             }
 
@@ -291,7 +228,7 @@ fn checkQueryExt(
     level_roots: []const types.Digest,
     level_ds: []const u32,
     proof: types.FriProof,
-    challenges: CommitChallenges,
+    challenges: ResolvedChallenges,
 ) FriError!void {
     try verifyLevelQueryMerkleExt(position, proof_query_index, params, level_roots, level_ds, proof);
 
@@ -326,7 +263,7 @@ fn checkQueryExt(
                 const level_layer = proof.level_queries[level_index - 1][proof_query_index];
                 if (level_layer.rail != .ext) return FriError.BadDimensions;
                 const level_value = if (is_leaf_p) level_layer.leaf_p_ext else level_layer.leaf_q_ext;
-                const term = level_value.mul(challenges.gammas[level_index]);
+                const term = level_value.mul(challenges.gammas_ext[level_index]);
                 expected_next = expected_next.add(term);
             }
 
@@ -431,7 +368,7 @@ fn xInv(params: types.Params, round: u32, base: u32) field.Element {
     return params.domain_gens_inv[@intCast(round)].pow(base);
 }
 
-fn queryIndex(challenge: types.Digest, modulus: u32) u32 {
+pub fn queryIndex(challenge: types.Digest, modulus: u32) u32 {
     if (modulus == 0) return 0;
     const wide = (@as(u64, challenge[0].value) << 31) ^ @as(u64, challenge[1].value);
     return @intCast(wide % modulus);
@@ -447,15 +384,4 @@ fn introducedRound(root_d: u32, level_d: u32, num_rounds: u32) FriError!u32 {
     const round: u32 = @intCast(field.log2PowerOfTwo(@intCast(ratio)));
     if (round >= num_rounds) return FriError.BadDimensions;
     return round;
-}
-
-fn extLimbs(value: ext.Ext) [6]field.Element {
-    return .{
-        value.B0.a0,
-        value.B0.a1,
-        value.B1.a0,
-        value.B1.a1,
-        value.B2.a0,
-        value.B2.a1,
-    };
 }

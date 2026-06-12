@@ -16,21 +16,21 @@ pub const Error = bridge.DeepChallengeError ||
 /// Runs the PCS verification checks in loom verifier order.
 ///
 /// The caller must have already registered and computed `__zeta`, and
-/// registered `alpha_DEEP`, on `ts`. This function derives `alpha_DEEP`, then
-/// lets FRI extend the same named transcript with its fold and query
-/// challenges.
+/// registered `alpha_DEEP`, on `ts`. This function derives `alpha_DEEP`; core
+/// FRI challenges are supplied by the caller from the shared protocol coins.
 pub fn verify(
     params: types.Params,
     layout: layout_mod.Layout,
     dq_layout: dq_layout_mod.DQLayout,
     roots: []const types.Digest,
     proof: types.Proof,
+    fri_challenges: fri_verify.FriChallenges,
     values_at_zeta: *const std.StringHashMap(ext.Ext),
     zeta: ext.Ext,
     ts: *fiat_shamir.Transcript,
 ) Error!void {
     const alpha = try bridge.deriveDeepAlpha(dq_layout, values_at_zeta, ts);
-    try fri_verify.friVerify(params, proof.deep_quotient_commitment, proof.level_ds, proof.fri, ts);
+    try fri_verify.friVerify(params, proof.deep_quotient_commitment, proof.level_ds, proof.fri, fri_challenges);
     try bridge.checkPointSamplings(roots, proof.point_samplings);
     try bridge.checkFRIBridge(layout, dq_layout, proof, values_at_zeta, zeta, alpha);
 }

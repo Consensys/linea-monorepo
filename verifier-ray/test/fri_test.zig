@@ -169,247 +169,9 @@ test "DEEP alpha rejects malformed DQ layout dimensions" {
     }, &values_at_zeta);
 }
 
-test "loom FRI base proof vector verifies" {
-    for (loom_vectors.loom_fri_base_proof_cases) |case| {
-        const round_count: usize = @intCast(case.num_rounds);
-        const query_count: usize = @intCast(case.num_queries);
-        try std.testing.expect(round_count <= 4);
-        try std.testing.expect(query_count <= 4);
-        try std.testing.expect(case.level_roots.len <= 4);
-        try std.testing.expect(case.fri_roots.len <= 4);
-
-        var level_roots: [4]fri.Digest = undefined;
-        var fri_roots: [4]fri.Digest = undefined;
-        var final_poly: [8]field.Element = undefined;
-        var domain_gens: [4]field.Element = undefined;
-        var domain_gens_inv: [4]field.Element = undefined;
-        var pow: [4]?fri.ProofOfWork = undefined;
-        var query_siblings: [4][4][4]fri.Digest = undefined;
-        var query_layers: [4][4]fri.QueryLayer = undefined;
-        var queries: [4]fri.Query = undefined;
-        var level_siblings: [4][4][4]fri.Digest = undefined;
-        var level_layers: [4][4]fri.QueryLayer = undefined;
-        var level_query_rows: [4][]const fri.QueryLayer = undefined;
-
-        fillDigests(level_roots[0..case.level_roots.len], case.level_roots);
-        fillDigests(fri_roots[0..case.fri_roots.len], case.fri_roots);
-        fillElems(final_poly[0..case.final_poly_base.len], case.final_poly_base);
-        for (pow[0..round_count]) |*slot| {
-            slot.* = null;
-        }
-        for (0..round_count) |round| {
-            const shift: u5 = @intCast(round);
-            const domain_size = case.n >> shift;
-            domain_gens[round] = try field.rootOfUnityBy(@intCast(domain_size));
-            domain_gens_inv[round] = domain_gens[round].inverse();
-        }
-
-        for (case.queries, 0..) |case_query, query_index| {
-            try std.testing.expect(case_query.layers.len <= 4);
-            for (case_query.layers, 0..) |case_layer, layer_index| {
-                try std.testing.expect(case_layer.path.siblings.len <= 4);
-                fillDigests(
-                    query_siblings[query_index][layer_index][0..case_layer.path.siblings.len],
-                    case_layer.path.siblings,
-                );
-                query_layers[query_index][layer_index] = .{
-                    .rail = .base,
-                    .leaf_p_base = elem(case_layer.leaf_p_base),
-                    .leaf_q_base = elem(case_layer.leaf_q_base),
-                    .path = .{
-                        .leaf_idx = case_layer.path.leaf_idx,
-                        .siblings = query_siblings[query_index][layer_index][0..case_layer.path.siblings.len],
-                    },
-                };
-            }
-            queries[query_index] = .{ .layers = query_layers[query_index][0..case_query.layers.len] };
-        }
-
-        for (case.level_queries, 0..) |case_level_queries, level_index| {
-            try std.testing.expect(case_level_queries.len <= 4);
-            for (case_level_queries, 0..) |case_layer, query_index| {
-                try std.testing.expect(case_layer.path.siblings.len <= 4);
-                fillDigests(
-                    level_siblings[level_index][query_index][0..case_layer.path.siblings.len],
-                    case_layer.path.siblings,
-                );
-                level_layers[level_index][query_index] = .{
-                    .rail = .base,
-                    .leaf_p_base = elem(case_layer.leaf_p_base),
-                    .leaf_q_base = elem(case_layer.leaf_q_base),
-                    .path = .{
-                        .leaf_idx = case_layer.path.leaf_idx,
-                        .siblings = level_siblings[level_index][query_index][0..case_layer.path.siblings.len],
-                    },
-                };
-            }
-            level_query_rows[level_index] = level_layers[level_index][0..case_level_queries.len];
-        }
-
-        const proof = fri.FriProof{
-            .fri_roots = fri_roots[0..case.fri_roots.len],
-            .final_rail = .base,
-            .final_poly_base = final_poly[0..case.final_poly_base.len],
-            .queries = queries[0..case.queries.len],
-            .level_queries = level_query_rows[0..case.level_queries.len],
-            .pow = pow[0..round_count],
-        };
-        const params = fri.Params{
-            .n = case.n,
-            .d = case.d,
-            .num_queries = case.num_queries,
-            .num_rounds = case.num_rounds,
-            .domain_gens = domain_gens[0..round_count],
-            .domain_gens_inv = domain_gens_inv[0..round_count],
-            .grinding = 0,
-        };
-
-        var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-        try fri.verify.friVerify(params, level_roots[0..case.level_roots.len], case.level_ds, proof, &ts);
-
-        for (case.query_positions, 0..) |expected_position, query_index| {
-            var name_buf: [32]u8 = undefined;
-            const name = try std.fmt.bufPrint(&name_buf, "fri_query_{d}", .{query_index});
-            const challenge = try ts.computeChallenge(name);
-            try std.testing.expectEqual(expected_position, queryIndexForTest(challenge, case.n / 2));
-        }
-
-        if (case.level_queries.len > 0 and case.level_queries[0].len > 0) {
-            level_layers[0][0].path.leaf_idx ^= 1;
-            try expectFriVerifyError(error.BadDimensions, params, level_roots[0..case.level_roots.len], case.level_ds, proof);
-            level_layers[0][0].path.leaf_idx ^= 1;
-        }
-
-        if (case.queries.len > 0 and case.queries[0].layers.len > 0) {
-            query_layers[0][0].path.leaf_idx ^= 1;
-            try expectFriVerifyError(error.BadDimensions, params, level_roots[0..case.level_roots.len], case.level_ds, proof);
-            query_layers[0][0].path.leaf_idx ^= 1;
-        }
-    }
-}
-
-test "loom FRI ext proof vector verifies" {
-    for (loom_vectors.loom_fri_ext_proof_cases) |case| {
-        const round_count: usize = @intCast(case.num_rounds);
-        const query_count: usize = @intCast(case.num_queries);
-        try std.testing.expect(round_count <= 4);
-        try std.testing.expect(query_count <= 4);
-        try std.testing.expect(case.level_roots.len <= 4);
-        try std.testing.expect(case.fri_roots.len <= 4);
-
-        var level_roots: [4]fri.Digest = undefined;
-        var fri_roots: [4]fri.Digest = undefined;
-        var final_poly: [8]ext.Ext = undefined;
-        var domain_gens: [4]field.Element = undefined;
-        var domain_gens_inv: [4]field.Element = undefined;
-        var pow: [4]?fri.ProofOfWork = undefined;
-        var query_siblings: [4][4][4]fri.Digest = undefined;
-        var query_layers: [4][4]fri.QueryLayer = undefined;
-        var queries: [4]fri.Query = undefined;
-        var level_siblings: [4][4][4]fri.Digest = undefined;
-        var level_layers: [4][4]fri.QueryLayer = undefined;
-        var level_query_rows: [4][]const fri.QueryLayer = undefined;
-
-        fillDigests(level_roots[0..case.level_roots.len], case.level_roots);
-        fillDigests(fri_roots[0..case.fri_roots.len], case.fri_roots);
-        fillExtValues(final_poly[0..case.final_poly_ext.len], case.final_poly_ext);
-        for (pow[0..round_count]) |*slot| {
-            slot.* = null;
-        }
-        for (0..round_count) |round| {
-            const shift: u5 = @intCast(round);
-            const domain_size = case.n >> shift;
-            domain_gens[round] = try field.rootOfUnityBy(@intCast(domain_size));
-            domain_gens_inv[round] = domain_gens[round].inverse();
-        }
-
-        for (case.queries, 0..) |case_query, query_index| {
-            try std.testing.expect(case_query.layers.len <= 4);
-            for (case_query.layers, 0..) |case_layer, layer_index| {
-                try std.testing.expect(case_layer.path.siblings.len <= 4);
-                fillDigests(
-                    query_siblings[query_index][layer_index][0..case_layer.path.siblings.len],
-                    case_layer.path.siblings,
-                );
-                query_layers[query_index][layer_index] = .{
-                    .rail = .ext,
-                    .leaf_p_ext = uintsToExt(case_layer.leaf_p_ext),
-                    .leaf_q_ext = uintsToExt(case_layer.leaf_q_ext),
-                    .path = .{
-                        .leaf_idx = case_layer.path.leaf_idx,
-                        .siblings = query_siblings[query_index][layer_index][0..case_layer.path.siblings.len],
-                    },
-                };
-            }
-            queries[query_index] = .{ .layers = query_layers[query_index][0..case_query.layers.len] };
-        }
-
-        for (case.level_queries, 0..) |case_level_queries, level_index| {
-            try std.testing.expect(case_level_queries.len <= 4);
-            for (case_level_queries, 0..) |case_layer, query_index| {
-                try std.testing.expect(case_layer.path.siblings.len <= 4);
-                fillDigests(
-                    level_siblings[level_index][query_index][0..case_layer.path.siblings.len],
-                    case_layer.path.siblings,
-                );
-                level_layers[level_index][query_index] = .{
-                    .rail = .ext,
-                    .leaf_p_ext = uintsToExt(case_layer.leaf_p_ext),
-                    .leaf_q_ext = uintsToExt(case_layer.leaf_q_ext),
-                    .path = .{
-                        .leaf_idx = case_layer.path.leaf_idx,
-                        .siblings = level_siblings[level_index][query_index][0..case_layer.path.siblings.len],
-                    },
-                };
-            }
-            level_query_rows[level_index] = level_layers[level_index][0..case_level_queries.len];
-        }
-
-        const proof = fri.FriProof{
-            .fri_roots = fri_roots[0..case.fri_roots.len],
-            .final_rail = .ext,
-            .final_poly_ext = final_poly[0..case.final_poly_ext.len],
-            .queries = queries[0..case.queries.len],
-            .level_queries = level_query_rows[0..case.level_queries.len],
-            .pow = pow[0..round_count],
-        };
-        const params = fri.Params{
-            .n = case.n,
-            .d = case.d,
-            .num_queries = case.num_queries,
-            .num_rounds = case.num_rounds,
-            .domain_gens = domain_gens[0..round_count],
-            .domain_gens_inv = domain_gens_inv[0..round_count],
-            .grinding = 0,
-        };
-
-        var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-        try fri.verify.friVerify(params, level_roots[0..case.level_roots.len], case.level_ds, proof, &ts);
-
-        for (case.query_positions, 0..) |expected_position, query_index| {
-            var name_buf: [32]u8 = undefined;
-            const name = try std.fmt.bufPrint(&name_buf, "fri_query_{d}", .{query_index});
-            const challenge = try ts.computeChallenge(name);
-            try std.testing.expectEqual(expected_position, queryIndexForTest(challenge, case.n / 2));
-        }
-
-        if (case.level_queries.len > 0 and case.level_queries[0].len > 0) {
-            level_layers[0][0].path.leaf_idx ^= 1;
-            try expectFriVerifyError(error.BadDimensions, params, level_roots[0..case.level_roots.len], case.level_ds, proof);
-            level_layers[0][0].path.leaf_idx ^= 1;
-        }
-
-        if (case.queries.len > 0 and case.queries[0].layers.len > 0) {
-            query_layers[0][0].path.leaf_idx ^= 1;
-            try expectFriVerifyError(error.BadDimensions, params, level_roots[0..case.level_roots.len], case.level_ds, proof);
-            query_layers[0][0].path.leaf_idx ^= 1;
-        }
-    }
-}
-
 test "fri leaf hash and merkle proof verify paired leaves" {
     const leaf0_base = [_]fri.PairBase{.{ elem(1), elem(2) }};
-    const leaf1_ext = [_]fri.PairExt{.{ ext.Ext.fromUints(3, 4, 5, 6, 7, 8), ext.Ext.fromUints(8, 7, 6, 5, 4, 3) }};
+    const leaf1_ext = [_]fri.PairExt{.{ ext.Ext.fromUints(.{ 3, 4, 5, 6, 7, 8 }), ext.Ext.fromUints(.{ 8, 7, 6, 5, 4, 3 }) }};
 
     const leaf0 = fri.leaf_hash.hashLeaf(leaf0_base[0..], &.{});
     const leaf1 = fri.leaf_hash.hashLeaf(&.{}, leaf1_ext[0..]);
@@ -709,28 +471,32 @@ test "PCS integration verifies vectored end-to-end proof" {
 
         var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
         const zeta = try preparePcsTranscript(case, &ts);
+        const fri_fold_alphas = [_]ext.Ext{extFromDigest(case.fri_alpha_digest)};
+        const fri_query_positions = [_]u32{case.query_position};
+        const fri_challenges = fri.verify.FriChallenges{
+            .fold_alphas = fri_fold_alphas[0..],
+            .query_positions = fri_query_positions[0..],
+        };
         try fri.pcs.verify(
             params,
             layout,
             dq_layout,
             point_roots[0..case.point_sampling_roots.len],
             proof,
+            fri_challenges,
             &values_at_zeta,
             zeta,
             &ts,
         );
         try expectDigest(try ts.computeChallenge(fri.bridge.deep_alpha_challenge), case.alpha_deep_digest);
         try expectExt(try ts.computeChallengeExt(fri.bridge.deep_alpha_challenge), uintsToExt(case.alpha_deep));
-        try expectDigest(try ts.computeChallenge("fri_fold_0"), case.fri_alpha_digest);
-        const query_digest = try ts.computeChallenge("fri_query_0");
-        try expectDigest(query_digest, case.query_digest);
-        try std.testing.expectEqual(case.query_position, queryIndexForTest(query_digest, case.n / 2));
+        try std.testing.expectEqual(case.query_position, queryIndexForTest(digest(case.query_digest), case.n / 2));
 
         const final_poly_index: usize = @intCast(case.query_position);
         const original_final_poly = final_poly_ext[final_poly_index];
         final_poly_ext[final_poly_index] = original_final_poly.add(ext.Ext.one());
         try expectPcsVerifyError(
-            error.BadDimensions,
+            error.FoldMismatch,
             case,
             params,
             layout,
@@ -784,238 +550,7 @@ test "PCS integration verifies vectored end-to-end proof" {
     }
 }
 
-test "loom PCS proof vector verifies composed pipeline" {
-    for (pcs_vectors.loom_pcs_cases) |case| {
-        try std.testing.expect(case.num_rounds <= 4);
-        try std.testing.expect(case.num_queries <= 4);
-        try std.testing.expect(case.roots.len <= 8);
-        try std.testing.expect(case.deep_quotient_commitment.len <= 4);
-        try std.testing.expect(case.fri_roots.len <= 4);
-        try std.testing.expect(case.final_poly_ext.len <= 8);
-        try std.testing.expect(case.queries.len <= 4);
-        try std.testing.expect(case.level_queries.len <= 4);
-        try std.testing.expect(case.point_samplings.len <= 4);
-        try std.testing.expect(case.dq_eval_points.len <= 4);
-
-        var roots: [8]fri.Digest = undefined;
-        var deep_quotient_roots: [4]fri.Digest = undefined;
-        var fri_roots: [4]fri.Digest = undefined;
-        var final_poly_ext: [8]ext.Ext = undefined;
-        fillDigests(roots[0..case.roots.len], case.roots);
-        fillDigests(deep_quotient_roots[0..case.deep_quotient_commitment.len], case.deep_quotient_commitment);
-        fillDigests(fri_roots[0..case.fri_roots.len], case.fri_roots);
-        fillExtValues(final_poly_ext[0..case.final_poly_ext.len], case.final_poly_ext);
-
-        var values_at_zeta = std.StringHashMap(ext.Ext).init(std.testing.allocator);
-        defer values_at_zeta.deinit();
-        for (case.values_at_zeta) |value| {
-            try values_at_zeta.put(value.name, uintsToExt(value.value));
-        }
-
-        var col_slots = std.StringHashMap(layout_types.Slot).init(std.testing.allocator);
-        defer col_slots.deinit();
-        for (case.col_slots) |slot| {
-            try col_slots.put(slot.name, .{
-                .tree_idx = slot.tree_idx,
-                .poly_idx = slot.poly_idx,
-                .rail = pcsRail(slot.rail),
-            });
-        }
-
-        var air_chunk_slots = std.StringHashMap(layout_types.Slot).init(std.testing.allocator);
-        defer air_chunk_slots.deinit();
-        for (case.air_chunk_slots) |slot| {
-            try air_chunk_slots.put(slot.name, .{
-                .tree_idx = slot.tree_idx,
-                .poly_idx = slot.poly_idx,
-                .rail = pcsRail(slot.rail),
-            });
-        }
-
-        const layout = layout_types.Layout{
-            .num_trees = @intCast(case.tree_sizes.len),
-            .setup_begin = 0,
-            .setup_end = 0,
-            .air_begin = 0,
-            .air_end = 0,
-            .tree_size = case.tree_sizes,
-            .col_slot = col_slots,
-            .air_chunk_slot = air_chunk_slots,
-        };
-
-        var eval_points: [4][4]ext.Ext = undefined;
-        var eval_point_rows: [4][]const ext.Ext = undefined;
-        for (case.dq_eval_points, 0..) |case_points, level_index| {
-            try std.testing.expect(case_points.len <= 4);
-            fillExtValues(eval_points[level_index][0..case_points.len], case_points);
-            eval_point_rows[level_index] = eval_points[level_index][0..case_points.len];
-        }
-        const dq_layout = dq_layout_types.DQLayout{
-            .sizes = case.level_ds,
-            .eval_points = eval_point_rows[0..case.dq_eval_points.len],
-            .column_names = case.dq_column_names,
-            .column_keys = case.dq_column_keys,
-            .air_chunks = case.dq_air_chunks,
-        };
-
-        var point_raw_base: [4][4][4]fri.PairBase = undefined;
-        var point_raw_ext: [4][4][4]fri.PairExt = undefined;
-        var point_siblings: [4][4][4]fri.Digest = undefined;
-        var point_sampling_storage: [4][4]fri.MerkleProof = undefined;
-        var point_sampling_rows: [4][]const fri.MerkleProof = undefined;
-        for (case.point_samplings, 0..) |case_row, query_index| {
-            try std.testing.expect(case_row.len <= 4);
-            for (case_row, 0..) |sampling, tree_index| {
-                try std.testing.expect(sampling.base_pairs.len <= 4);
-                try std.testing.expect(sampling.ext_pairs.len <= 4);
-                try std.testing.expect(sampling.path.siblings.len <= 4);
-                fillBasePairs(point_raw_base[query_index][tree_index][0..sampling.base_pairs.len], sampling.base_pairs);
-                fillExtPairs(point_raw_ext[query_index][tree_index][0..sampling.ext_pairs.len], sampling.ext_pairs);
-                fillDigests(point_siblings[query_index][tree_index][0..sampling.path.siblings.len], sampling.path.siblings);
-                point_sampling_storage[query_index][tree_index] = .{
-                    .raw_leaf_base = point_raw_base[query_index][tree_index][0..sampling.base_pairs.len],
-                    .raw_leaf_ext = point_raw_ext[query_index][tree_index][0..sampling.ext_pairs.len],
-                    .path = .{
-                        .leaf_idx = sampling.path.leaf_idx,
-                        .siblings = point_siblings[query_index][tree_index][0..sampling.path.siblings.len],
-                    },
-                };
-            }
-            point_sampling_rows[query_index] = point_sampling_storage[query_index][0..case_row.len];
-        }
-
-        var query_siblings: [4][4][4]fri.Digest = undefined;
-        var query_layers: [4][4]fri.QueryLayer = undefined;
-        var queries: [4]fri.Query = undefined;
-        for (case.queries, 0..) |case_query, query_index| {
-            try std.testing.expect(case_query.layers.len <= 4);
-            for (case_query.layers, 0..) |case_layer, layer_index| {
-                try std.testing.expect(case_layer.path.siblings.len <= 4);
-                fillDigests(
-                    query_siblings[query_index][layer_index][0..case_layer.path.siblings.len],
-                    case_layer.path.siblings,
-                );
-                query_layers[query_index][layer_index] = pcsLayer(
-                    case_layer,
-                    query_siblings[query_index][layer_index][0..case_layer.path.siblings.len],
-                );
-            }
-            queries[query_index] = .{ .layers = query_layers[query_index][0..case_query.layers.len] };
-        }
-
-        var level_siblings: [4][4][4]fri.Digest = undefined;
-        var level_layers: [4][4]fri.QueryLayer = undefined;
-        var level_query_rows: [4][]const fri.QueryLayer = undefined;
-        for (case.level_queries, 0..) |case_level_queries, level_index| {
-            try std.testing.expect(case_level_queries.len <= 4);
-            for (case_level_queries, 0..) |case_layer, query_index| {
-                try std.testing.expect(case_layer.path.siblings.len <= 4);
-                fillDigests(
-                    level_siblings[level_index][query_index][0..case_layer.path.siblings.len],
-                    case_layer.path.siblings,
-                );
-                level_layers[level_index][query_index] = pcsLayer(
-                    case_layer,
-                    level_siblings[level_index][query_index][0..case_layer.path.siblings.len],
-                );
-            }
-            level_query_rows[level_index] = level_layers[level_index][0..case_level_queries.len];
-        }
-
-        var pow: [4]?fri.ProofOfWork = undefined;
-        for (pow[0..case.num_rounds]) |*slot| {
-            slot.* = null;
-        }
-        const fri_proof = fri.FriProof{
-            .fri_roots = fri_roots[0..case.fri_roots.len],
-            .final_rail = .ext,
-            .final_poly_ext = final_poly_ext[0..case.final_poly_ext.len],
-            .queries = queries[0..case.queries.len],
-            .level_queries = level_query_rows[0..case.level_queries.len],
-            .pow = pow[0..case.num_rounds],
-        };
-        const proof = fri.types.Proof{
-            .deep_quotient_commitment = deep_quotient_roots[0..case.deep_quotient_commitment.len],
-            .level_ds = case.level_ds,
-            .fri = fri_proof,
-            .point_samplings = point_sampling_rows[0..case.point_samplings.len],
-        };
-
-        var domain_gens: [4]field.Element = undefined;
-        var domain_gens_inv: [4]field.Element = undefined;
-        for (0..case.num_rounds) |round| {
-            const shift: u5 = @intCast(round);
-            const domain_size = case.n >> shift;
-            domain_gens[round] = try field.rootOfUnityBy(@intCast(domain_size));
-            domain_gens_inv[round] = domain_gens[round].inverse();
-        }
-        const params = fri.Params{
-            .n = case.n,
-            .d = case.d,
-            .num_queries = case.num_queries,
-            .num_rounds = case.num_rounds,
-            .domain_gens = domain_gens[0..case.num_rounds],
-            .domain_gens_inv = domain_gens_inv[0..case.num_rounds],
-            .grinding = 0,
-        };
-
-        var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-        const zeta = try prepareLoomPcsTranscript(case, roots[0..case.roots.len], &ts);
-        try fri.pcs.verify(
-            params,
-            layout,
-            dq_layout,
-            roots[0..case.roots.len],
-            proof,
-            &values_at_zeta,
-            zeta,
-            &ts,
-        );
-        try expectDigest(try ts.computeChallenge(fri.bridge.deep_alpha_challenge), case.alpha_deep_digest);
-        try expectExt(try ts.computeChallengeExt(fri.bridge.deep_alpha_challenge), uintsToExt(case.alpha_deep));
-        for (case.fri_fold_digests, 0..) |expected_digest, round| {
-            var name_buf: [32]u8 = undefined;
-            const name = try std.fmt.bufPrint(&name_buf, "fri_fold_{d}", .{round});
-            try expectDigest(try ts.computeChallenge(name), expected_digest);
-        }
-        for (case.query_digests, case.query_positions, 0..) |expected_digest, expected_position, query_index| {
-            var name_buf: [32]u8 = undefined;
-            const name = try std.fmt.bufPrint(&name_buf, "fri_query_{d}", .{query_index});
-            const query_digest = try ts.computeChallenge(name);
-            try expectDigest(query_digest, expected_digest);
-            try std.testing.expectEqual(expected_position, queryIndexForTest(query_digest, case.n / 2));
-        }
-
-        const original_sample = point_raw_base[0][0][0][0];
-        point_raw_base[0][0][0][0] = original_sample.add(elem(1));
-        try expectLoomPcsVerifyError(
-            error.InvalidMerkleProof,
-            case,
-            params,
-            layout,
-            dq_layout,
-            roots[0..case.roots.len],
-            proof,
-            &values_at_zeta,
-            zeta,
-        );
-        point_raw_base[0][0][0][0] = original_sample;
-
-        try expectLoomPcsVerifyError(
-            error.BridgeMismatch,
-            case,
-            params,
-            layout,
-            dq_layout,
-            roots[0..case.roots.len],
-            proof,
-            &values_at_zeta,
-            zeta.add(ext.Ext.one()),
-        );
-    }
-}
-
-test "fri verifier accepts empty-query shape and rejects missing grinding" {
+test "fri verifier accepts empty-query shape" {
     const root = zeroDigest();
     const roots = [_]fri.Digest{root};
     const level_ds = [_]u32{4};
@@ -1036,16 +571,12 @@ test "fri verifier accepts empty-query shape and rejects missing grinding" {
         .grinding = 0,
     };
 
-    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    try fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts);
-
-    var grinding_ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    var grinding_params = params;
-    grinding_params.grinding = 1;
-    try std.testing.expectError(
-        error.MissingProofOfWork,
-        fri.verify.friVerify(grinding_params, roots[0..], level_ds[0..], proof, &grinding_ts),
-    );
+    const fold_alphas = [_]ext.Ext{ext.Ext.zero()};
+    const query_positions = [_]u32{};
+    try fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, .{
+        .fold_alphas = fold_alphas[0..],
+        .query_positions = query_positions[0..],
+    });
 }
 
 test "fri verifier accepts one-round base query" {
@@ -1098,9 +629,13 @@ test "fri verifier accepts one-round base query" {
         .grinding = 0,
     };
 
-    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    try fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts);
-    try std.testing.expect(digestEql(expected_query, try ts.computeChallenge("fri_query_0")));
+    const fold_alphas = [_]ext.Ext{extFromDigestValue(alpha_digest)};
+    const query_positions = [_]u32{query_pos};
+    try fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, .{
+        .fold_alphas = fold_alphas[0..],
+        .query_positions = query_positions[0..],
+    });
+    try std.testing.expectEqual(query_pos, queryIndexForTest(expected_query, 2));
 }
 
 test "fri verifier accepts one-round ext query" {
@@ -1110,8 +645,8 @@ test "fri verifier accepts one-round ext query" {
     const level_ds = [_]u32{2};
     const pow = [_]?fri.ProofOfWork{null};
     const leaf_pairs = [_]fri.PairExt{
-        .{ ext.Ext.fromUints(2, 3, 5, 7, 11, 13), ext.Ext.fromUints(17, 19, 23, 29, 31, 37) },
-        .{ ext.Ext.fromUints(41, 43, 47, 53, 59, 61), ext.Ext.fromUints(67, 71, 73, 79, 83, 89) },
+        .{ ext.Ext.fromUints(.{ 2, 3, 5, 7, 11, 13 }), ext.Ext.fromUints(.{ 17, 19, 23, 29, 31, 37 }) },
+        .{ ext.Ext.fromUints(.{ 41, 43, 47, 53, 59, 61 }), ext.Ext.fromUints(.{ 67, 71, 73, 79, 83, 89 }) },
     };
     const leaf0 = hashExtPairForTest(leaf_pairs[0]);
     const leaf1 = hashExtPairForTest(leaf_pairs[1]);
@@ -1159,9 +694,13 @@ test "fri verifier accepts one-round ext query" {
         .grinding = 0,
     };
 
-    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    try fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts);
-    try std.testing.expect(digestEql(expected_query, try ts.computeChallenge("fri_query_0")));
+    const fold_alphas = [_]ext.Ext{alpha};
+    const query_positions = [_]u32{query_pos};
+    try fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, .{
+        .fold_alphas = fold_alphas[0..],
+        .query_positions = query_positions[0..],
+    });
+    try std.testing.expectEqual(query_pos, queryIndexForTest(expected_query, 2));
 }
 
 test "fri verifier mixes extra level during query fold" {
@@ -1186,14 +725,6 @@ test "fri verifier mixes extra level during query fold" {
     };
     const root0 = merkleRoot4(layer0_leaves);
 
-    var expected_ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    const alpha0_digest = try bindSingleRoundFoldDigest(&expected_ts, root0);
-    const alpha0 = alpha0_digest[0];
-    var folded0: [4]field.Element = undefined;
-    for (&folded0, layer0_pairs, 0..) |*dst, pair, i| {
-        dst.* = foldBasePairForTest(pair[0], pair[1], alpha0, domain_gens_inv[0].pow(@intCast(i)));
-    }
-
     const extra_evals = [_]field.Element{ elem(29), elem(31), elem(37), elem(41) };
     const extra_pairs = [_]fri.PairBase{
         .{ extra_evals[0], extra_evals[2] },
@@ -1205,10 +736,21 @@ test "fri verifier mixes extra level during query fold" {
     };
     const extra_root = fri.leaf_hash.hashNode(extra_leaves[0], extra_leaves[1]);
 
-    try expected_ts.newChallenge("fri_level_1_gamma");
-    try expected_ts.bindDigest("fri_level_1_gamma", extra_root);
-    const gamma_digest = try expected_ts.computeChallenge("fri_level_1_gamma");
+    var expected_ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    try expected_ts.newChallenge("fri_gamma");
+    try expected_ts.bindDigest("fri_gamma", root0);
+    try expected_ts.bindDigest("fri_gamma", extra_root);
+    const gamma_digest = try expected_ts.computeChallenge("fri_gamma");
     const gamma = gamma_digest[0];
+
+    try expected_ts.newChallenge("fri_fold_0");
+    try expected_ts.bindDigest("fri_fold_0", root0);
+    const alpha0_digest = try expected_ts.computeChallenge("fri_fold_0");
+    const alpha0 = alpha0_digest[0];
+    var folded0: [4]field.Element = undefined;
+    for (&folded0, layer0_pairs, 0..) |*dst, pair, i| {
+        dst.* = foldBasePairForTest(pair[0], pair[1], alpha0, domain_gens_inv[0].pow(@intCast(i)));
+    }
 
     var mixed: [4]field.Element = undefined;
     for (&mixed, folded0, extra_evals) |*dst, folded, extra_value| {
@@ -1283,9 +825,14 @@ test "fri verifier mixes extra level during query fold" {
         .grinding = 0,
     };
 
-    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    try fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts);
-    try std.testing.expect(digestEql(expected_query, try ts.computeChallenge("fri_query_0")));
+    const fold_alphas = [_]ext.Ext{ extFromDigestValue(alpha0_digest), extFromDigestValue(alpha1_digest) };
+    const query_positions = [_]u32{query_pos};
+    try fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, .{
+        .gamma = extFromDigestValue(gamma_digest),
+        .fold_alphas = fold_alphas[0..],
+        .query_positions = query_positions[0..],
+    });
+    try std.testing.expectEqual(query_pos, queryIndexForTest(expected_query, 4));
 }
 
 test "fri verifier rejects final fold mismatch" {
@@ -1304,7 +851,7 @@ test "fri verifier rejects final fold mismatch" {
     const roots = [_]fri.Digest{root};
 
     var expected_ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    _ = try bindSingleRoundFoldDigest(&expected_ts, root);
+    const alpha_digest = try bindSingleRoundFoldDigest(&expected_ts, root);
     const final_poly = [_]field.Element{ elem(123), elem(456) };
 
     const expected_query = try bindBaseFinalPolyAndQuery(&expected_ts, final_poly[0..]);
@@ -1334,10 +881,14 @@ test "fri verifier rejects final fold mismatch" {
         .grinding = 0,
     };
 
-    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    const fold_alphas = [_]ext.Ext{extFromDigestValue(alpha_digest)};
+    const query_positions = [_]u32{query_pos};
     try std.testing.expectError(
         error.FoldMismatch,
-        fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts),
+        fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, .{
+            .fold_alphas = fold_alphas[0..],
+            .query_positions = query_positions[0..],
+        }),
     );
 }
 
@@ -1365,10 +916,14 @@ test "fri verifier rejects duplicate level introduction rounds" {
         .grinding = 0,
     };
 
-    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    const fold_alphas = [_]ext.Ext{ ext.Ext.zero(), ext.Ext.zero(), ext.Ext.zero() };
+    const query_positions = [_]u32{};
     try std.testing.expectError(
         error.BadDimensions,
-        fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts),
+        fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, .{
+            .fold_alphas = fold_alphas[0..],
+            .query_positions = query_positions[0..],
+        }),
     );
 }
 
@@ -1396,10 +951,14 @@ test "fri verifier rejects non-power-of-two extra level degree" {
         .grinding = 0,
     };
 
-    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
+    const fold_alphas = [_]ext.Ext{ ext.Ext.zero(), ext.Ext.zero(), ext.Ext.zero() };
+    const query_positions = [_]u32{};
     try std.testing.expectError(
         error.BadDimensions,
-        fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, &ts),
+        fri.verify.friVerify(params, roots[0..], level_ds[0..], proof, .{
+            .fold_alphas = fold_alphas[0..],
+            .query_positions = query_positions[0..],
+        }),
     );
 }
 
@@ -1408,7 +967,19 @@ fn elem(value: u32) field.Element {
 }
 
 fn uintsToExt(limbs: [6]u32) ext.Ext {
-    return ext.Ext.fromUints(limbs[0], limbs[1], limbs[2], limbs[3], limbs[4], limbs[5]);
+    return ext.Ext.fromUints(limbs);
+}
+
+fn extFromDigest(values: [8]u32) ext.Ext {
+    return uintsToExt(.{ values[0], values[1], values[2], values[3], values[4], values[5] });
+}
+
+fn extFromDigestValue(value: fri.Digest) ext.Ext {
+    return .{
+        .B0 = .{ .a0 = value[0], .a1 = value[1] },
+        .B1 = .{ .a0 = value[2], .a1 = value[3] },
+        .B2 = .{ .a0 = value[4], .a1 = value[5] },
+    };
 }
 
 fn digest(values: [8]u32) fri.Digest {
@@ -1611,9 +1182,15 @@ fn expectPcsVerifyError(
 ) !void {
     var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
     _ = try preparePcsTranscript(case, &ts);
+    const fri_fold_alphas = [_]ext.Ext{extFromDigest(case.fri_alpha_digest)};
+    const fri_query_positions = [_]u32{case.query_position};
+    const fri_challenges = fri.verify.FriChallenges{
+        .fold_alphas = fri_fold_alphas[0..],
+        .query_positions = fri_query_positions[0..],
+    };
     try std.testing.expectError(
         expected_error,
-        fri.pcs.verify(params, layout, dq_layout, roots, proof, values_at_zeta, zeta, &ts),
+        fri.pcs.verify(params, layout, dq_layout, roots, proof, fri_challenges, values_at_zeta, zeta, &ts),
     );
 }
 
@@ -1630,17 +1207,6 @@ fn expectBridgeError(
         expected_error,
         fri.bridge.checkFRIBridge(layout, dq_layout, proof, values_at_zeta, zeta, alpha),
     );
-}
-
-fn expectFriVerifyError(
-    expected_error: anyerror,
-    params: fri.Params,
-    level_roots: []const fri.Digest,
-    level_ds: []const u32,
-    proof: fri.FriProof,
-) !void {
-    var ts = fiat_shamir.Transcript.initWithBackend("poseidon2");
-    try std.testing.expectError(expected_error, fri.verify.friVerify(params, level_roots, level_ds, proof, &ts));
 }
 
 fn digestEql(left: fri.Digest, right: fri.Digest) bool {

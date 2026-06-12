@@ -1,6 +1,7 @@
 comptime {
     _ = @import("field_test.zig");
     _ = @import("fri_test.zig");
+    _ = @import("fri_spec_test.zig");
     _ = @import("golden_test.zig");
     _ = @import("layout_test.zig");
     _ = @import("transcript_test.zig");

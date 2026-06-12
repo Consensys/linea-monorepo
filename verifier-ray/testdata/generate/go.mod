@@ -3,11 +3,13 @@ module github.com/consensys/linea-monorepo/verifier-ray/testdata/generate
 go 1.25.7
 
 require (
-	github.com/consensys/linea-monorepo/prover-ray v0.0.0-20260604100845-588fd53a8c0f
+	github.com/consensys/linea-monorepo/prover-ray v0.0.0-20260610132712-f735159cffa9
 	github.com/consensys/linea-monorepo/verifier-ray/codegen v0.0.0
 )
 
 replace github.com/consensys/linea-monorepo/verifier-ray/codegen => ../../codegen
+
+replace github.com/consensys/linea-monorepo/prover-ray => ../../../prover-ray
 
 require (
 	github.com/bits-and-blooms/bitset v1.24.4 // indirect

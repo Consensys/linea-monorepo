@@ -43,9 +43,16 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-
     const test_vanishing_mod = b.addModule("test_vanishing", .{
         .root_source_file = b.path("testdata/generated/vanishing.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "verifier_ray", .module = verifier_mod },
+        },
+    });
+    const fri_spec_mod = b.addModule("fri_spec", .{
+        .root_source_file = b.path("testdata/generated/fri_spec.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &.{
@@ -98,6 +105,7 @@ pub fn build(b: *std.Build) void {
                     .{ .name = "loom_test_vectors", .module = loom_test_vectors_mod },
                     .{ .name = "pcs_test_vectors", .module = pcs_test_vectors_mod },
                     .{ .name = "test_vanishing", .module = test_vanishing_mod },
+                    .{ .name = "fri_spec", .module = fri_spec_mod },
                 },
             }),
         });

@@ -18,6 +18,8 @@ import (
 
 	fiatshamir "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamir"
 	poseidon2 "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/poseidon2"
+	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/commitment"
+	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fri"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/polynomials"
 	"github.com/consensys/linea-monorepo/prover-ray/wiop"
@@ -41,6 +43,10 @@ func main() {
 	writePoseidonCases(&out)
 	writeFiatShamirCases(&out)
 	writeRuntimeTraceCases(&out)
+	if err := writeFRISpecFixture(); err != nil {
+		panic(err)
+	}
+
 	vanishingCases, vanishingSystems, err := buildVanishingFixtureCases()
 	if err != nil {
 		panic(err)
@@ -1022,4 +1028,62 @@ func runZigFmt(data []byte) ([]byte, error) {
 		return nil, err
 	}
 	return os.ReadFile(tmp.Name())
+}
+
+// writeFRISpecFixture generates testdata/generated/fri_spec.zig from a
+// hand-authored FRI spec. This stubs the (a) IOP-extraction front-end: once a
+// PCS verifier action exists in prover-ray, this function will walk the
+// compiled system instead of constructing the data by hand.
+func writeFRISpecFixture() error {
+	p, err := fri.NewParams(32, 8, 4,
+		commitment.DefaultLeafHasher, commitment.DefaultNodeHasher,
+		fri.WithGrinding(0))
+	if err != nil {
+		return fmt.Errorf("fri.NewParams: %w", err)
+	}
+	params, err := codegen.BuildFRIParams(p)
+	if err != nil {
+		return fmt.Errorf("BuildFRIParams: %w", err)
+	}
+
+	layout, err := codegen.BuildLayout(codegen.LayoutConfig{
+		NumTrees:   1,
+		SetupBegin: 0, SetupEnd: 0,
+		TraceBegin: []int{0}, TraceEnd: []int{1},
+		AirBegin: 1, AirEnd: 1,
+		TreeSizes: []int{32},
+		ColSlots: map[string]codegen.Slot{
+			"col0": {TreeIdx: 0, PolyIdx: 0, Rail: codegen.RailBase},
+			"col1": {TreeIdx: 0, PolyIdx: 1, Rail: codegen.RailExt},
+		},
+		AirChunkSlots: map[string]codegen.Slot{},
+	})
+	if err != nil {
+		return fmt.Errorf("BuildLayout: %w", err)
+	}
+
+	dq, err := codegen.BuildDQLayout([]codegen.DQLevel{
+		{
+			Size:      32,
+			Shifts:    []int{0, 1},
+			ColGroups: [][]codegen.ColRef{{{"col0", "key0"}}, {{"col1", "key1"}}},
+			AirChunks: []string{},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("BuildDQLayout: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := codegen.WriteFRISpecZig(&buf, params, layout, dq); err != nil {
+		return fmt.Errorf("WriteFRISpecZig: %w", err)
+	}
+
+	data := buf.Bytes()
+	if zigfmt, err := runZigFmt(data); err == nil {
+		data = zigfmt
+	}
+
+	outputPath := filepath.Join("..", "generated", "fri_spec.zig")
+	return os.WriteFile(outputPath, data, 0o644)
 }

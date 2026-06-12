@@ -26,9 +26,11 @@ pub const query = struct {
 
 pub const fri = struct {
     pub const types = @import("fri/types.zig");
+    pub const spec = @import("fri/spec.zig");
     pub const leaf_hash = @import("fri/leaf_hash.zig");
     pub const merkle = @import("fri/merkle.zig");
     pub const verify = @import("fri/verify.zig");
+    pub const challenges = @import("fri/challenges.zig");
     pub const bridge = @import("fri/bridge.zig");
     pub const pcs = @import("fri/pcs.zig");
 
@@ -44,21 +46,3 @@ pub const fri = struct {
     pub const FriProof = types.FriProof;
     pub const Params = types.Params;
 };
-
-pub const vortex = struct {
-    pub const reed_solomon = @import("vortex/reed_solomon.zig");
-    pub const ringsis = @import("vortex/ringsis.zig");
-    pub const smt = @import("vortex/smt.zig");
-    pub const verifier = @import("vortex/verifier.zig");
-};
-
-pub const generated = struct {
-    pub const stub = @import("generated/stub.zig");
-};
-
-pub const Proof = proof.Proof;
-pub const VerifyError = verifier.VerifyError;
-
-pub fn verify(p: Proof) VerifyError!void {
-    return verifier.verify(p);
-}
