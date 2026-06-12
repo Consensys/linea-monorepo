@@ -1,13 +1,14 @@
 // Package messagebus implements the LogUp message-bus compiler pass for the
 // wiop protocol framework.
 //
-// The pass consumes every unreduced [wiop.MessageBus] entry and emits, for
-// each (segment, handle) pair, a [wiop.LogDerivativeSum] holding the per-pair
-// running sum. A single verifier action per handle then asserts that the
-// per-segment cells for that handle sum to zero. By Schwartz–Zippel over two
-// extension-field coins α, β (shared across every participant of every
-// handle reduced by this pass), the resulting identity holds, for each
-// handle h, iff
+// A single [Compile] invocation runs inside exactly one shard, so every
+// unreduced [wiop.MessageBus] entry it sees is expected to share the same
+// [wiop.MessageBus.OriginShard] (the compiler panics on a mismatch). The
+// pass consumes those entries and emits, for each Handle, a single
+// [wiop.LogDerivativeSum] holding this shard's running sum on that Handle —
+// i.e. the shard's "residual". By Schwartz–Zippel over two extension-field
+// coins α, β (shared across every participant of every Handle reduced by
+// this pass), the residual is zero, for each Handle h, iff
 //
 //	∑_{Send entries on h}  Σ_row filter(row) ·  1               / d_h(row)
 //	    =
@@ -17,20 +18,20 @@
 // the multiset of rows sent into h equals the multiset of rows received from
 // h, weighted by the receiver-side multiplicities. The same α, β are reused
 // across handles (each handle just folds with α raised to powers up to its
-// own width); handles remain independent multiset identities because each is
-// asserted by its own verifier action. See [wiop.MessageBus] for the
-// per-entry semantics.
+// own width); handles remain independent residuals because each is asserted
+// by its own verifier action. See [wiop.MessageBus] for the per-entry
+// semantics.
 //
 // The pass allocates α and β itself, via [Round.NewCoinField] on a fresh
 // (or reused) coin round immediately after the latest participant round.
 // In a sharded protocol the caller is expected to pre-allocate that coin
 // round and register a [Round.RegisterPreSamplingHook] entry on it that
 // calls [Runtime.SetFSState] with shared randomness derived from a
-// cross-shard handoff. [Round.ensureRoundAfter] reuses any pre-existing
-// tail round at the right position, so messagebus's coin allocation
-// transparently lands on the same round the hook is registered on — and
-// every shard's α, β therefore derive from the seeded FS state instead of
-// the local transcript.
+// cross-shard handoff. The compiler's ensureRoundAfter reuses any
+// pre-existing tail round at the right position, so messagebus's coin
+// allocation lands on the same round the hook is registered on — and every
+// shard's α, β therefore derive from the seeded FS state instead of the
+// local transcript.
 //
 // Caller order: invoke messagebus.Compile(sys) BEFORE
 // logderivativesum.Compile(sys); the latter discharges the LogDerivativeSums
@@ -46,17 +47,22 @@ import (
 )
 
 // Compile reduces every unreduced [wiop.MessageBus] entry in sys to a
-// collection of [wiop.LogDerivativeSum] queries (one per (segment, handle)
-// pair) plus one [wiop.VerifierAction] per handle that asserts the per-segment
-// sums total to zero. See the package documentation for the full reduction.
+// collection of [wiop.LogDerivativeSum] queries (one per handle) plus one
+// [wiop.VerifierAction] per handle that asserts the shard's residual equals
+// the expected value (zero in the unsharded case). See the package
+// documentation for the full reduction.
 //
 // The pass appends up to two fresh interactive rounds to sys.Rounds: a
 // coin round where the shared α and β are declared, and a result round
 // where the [wiop.LogDerivativeSum] result cells and the per-handle
 // verifier action live. Either round may already exist at the right
 // position (e.g. when a sharded protocol pre-allocates the coin round to
-// attach a [Round.RegisterPreSamplingHook]); [ensureRoundAfter] reuses
+// attach a [Round.RegisterPreSamplingHook]); ensureRoundAfter reuses
 // existing tail rounds rather than appending duplicates.
+//
+// Panics if the unreduced entries do not all share the same
+// [wiop.MessageBus.OriginShard] — Compile is a per-shard operation and
+// mixing shards in one call is a misuse.
 //
 // Already-reduced entries are skipped; remaining unreduced entries are marked
 // reduced on return.
@@ -65,9 +71,20 @@ func Compile(sys *wiop.System) {
 	// handle. Sort the handles for deterministic round/coin/cell ordering
 	// across runs.
 	byHandle := map[string][]*wiop.MessageBus{}
+	var anyEntry *wiop.MessageBus
 	for _, mb := range sys.MessageBuses {
 		if mb.IsReduced() {
 			continue
+		}
+		if anyEntry == nil {
+			anyEntry = mb
+		} else if mb.OriginShard != anyEntry.OriginShard {
+			panic(fmt.Sprintf(
+				"wiop/compilers/messagebus: Compile is a per-shard operation but the system contains entries "+
+					"from different shards: %q at %q vs %q at %q",
+				anyEntry.OriginShard, anyEntry.Context().Path(),
+				mb.OriginShard, mb.Context().Path(),
+			))
 		}
 		byHandle[mb.Handle] = append(byHandle[mb.Handle], mb)
 	}
@@ -91,7 +108,11 @@ func Compile(sys *wiop.System) {
 
 	// Find the highest-ID round any participant column or multiplicity touches.
 	maxParticipantRound := latestParticipantRound(byHandle)
-	// Pick the slot directly after the participants — allocate a fresh round if empty, reuse any round already sitting there. The reuse path is what lands α/β on the *same* round a sharded caller pre-allocated for a PreSamplingHook, so the hook's SetFSState fires immediately before this round's coin sampling.
+	// Pick the slot directly after the participants — allocate a fresh round
+	// if empty, reuse any round already sitting there. The reuse path is what
+	// lands α/β on the *same* round a sharded caller pre-allocated for a
+	// PreSamplingHook, so the hook's SetFSState fires immediately before this
+	// round's coin sampling.
 	coinRound := ensureRoundAfter(sys, maxParticipantRound)
 	// Declare α on that round — sampled by AdvanceRound, after any pre-sampling hook fires.
 	alpha := coinRound.NewCoinField(compCtx.Childf("alpha"))
@@ -120,42 +141,25 @@ func Compile(sys *wiop.System) {
 		}
 	}
 
-	// Per (handle, segment): collect Fractions, build one LogDerivativeSum,
-	// remember the resulting cell so we can sum them per handle.
-	cellsByHandle := make(map[string][]*wiop.Cell, len(handles))
+	// Per handle: aggregate every entry's contribution into one
+	// LogDerivativeSum holding this shard's residual on that handle.
+	cellByHandle := make(map[string]*wiop.Cell, len(handles))
 	for _, h := range handles {
-		entries := byHandle[h]
-
-		// Group entries by segment. We iterate in declaration order so that
-		// segment order is deterministic; the registration ordering of
-		// fractions within a segment is then the input order.
-		bySegment := map[string][]*wiop.MessageBus{}
-		segmentOrder := []string{}
-		for _, mb := range entries {
-			if _, seen := bySegment[mb.Segment]; !seen {
-				segmentOrder = append(segmentOrder, mb.Segment)
-			}
-			bySegment[mb.Segment] = append(bySegment[mb.Segment], mb)
-		}
-
-		hCtx := compCtx.Childf("handle-%s", h)
-		for _, seg := range segmentOrder {
-			fractions := buildFractionsForSegment(alpha, beta, bySegment[seg])
-			ld := sys.NewLogDerivativeSum(hCtx.Childf("seg-%s", seg), fractions)
-			cellsByHandle[h] = append(cellsByHandle[h], ld.Result)
-		}
+		fractions := buildFractions(alpha, beta, byHandle[h])
+		ld := sys.NewLogDerivativeSum(compCtx.Childf("handle-%s", h), fractions)
+		cellByHandle[h] = ld.Result
 	}
 
-	// One in-shard verifier action per handle: the per-segment LogDerivativeSum
-	// cells must algebraically sum to Expected (zero in the single-shard case).
-	// Suppressed when System.MessageBusSkipInShardCheck is set, so a downstream
+	// One in-shard verifier action per handle: this shard's residual on the
+	// handle must equal Expected (zero in the unsharded case). Suppressed
+	// when System.MessageBusSkipInShardCheck is set, so a downstream
 	// cross-shard layer can own the consistency check instead.
 	if !sys.MessageBusSkipInShardCheck {
 		for _, h := range handles {
 			resultRound.RegisterVerifierAction(&CheckHandleSumInShard{
 				Handle:   h,
-				Cells:    cellsByHandle[h],
-				Path:     compCtx.Childf("handle-%s", h).Childf("sum-in-shard").Path(),
+				Cell:     cellByHandle[h],
+				Path:     compCtx.Childf("handle-%s", h).Childf("residual").Path(),
 				Expected: field.ElemZero(),
 			})
 		}
@@ -202,8 +206,8 @@ func ensureRoundAfter(sys *wiop.System, after *wiop.Round) *wiop.Round {
 	return sys.Rounds[startID+1]
 }
 
-// buildFractionsForSegment turns every MessageBus entry on one (segment,
-// handle) into a [wiop.Fraction] suitable for [wiop.System.NewLogDerivativeSum].
+// buildFractions turns every MessageBus entry on one handle into a
+// [wiop.Fraction] suitable for [wiop.System.NewLogDerivativeSum].
 //
 // Each entry contributes one fraction:
 //
@@ -214,7 +218,7 @@ func ensureRoundAfter(sys *wiop.System, after *wiop.Round) *wiop.Round {
 // the Horner loop is empty and the fold reduces to β + c_0(row); α is still
 // passed in but never multiplied. A nil Multiplicity on the Receive side
 // becomes the constant 1 (so the numerator is just -1).
-func buildFractionsForSegment(
+func buildFractions(
 	alpha *wiop.CoinField,
 	beta *wiop.CoinField,
 	entries []*wiop.MessageBus,
@@ -269,41 +273,39 @@ func foldDenominator(alpha, beta *wiop.CoinField, cols []*wiop.ColumnView) wiop.
 }
 
 // CheckHandleSumInShard is the verifier action that closes the in-shard half
-// of the message-bus reduction: the LogDerivativeSum cells produced for one
-// handle (one per participating segment on this shard) must algebraically
-// sum to [CheckHandleSumInShard.Expected]. For a single-shard protocol the
-// expected value is always zero; the field exists so a sharded protocol can
-// later instantiate this action with the residual the cross-shard layer
-// expects to see on this shard.
+// of the message-bus reduction: the LogDerivativeSum cell produced for one
+// handle on this shard — the shard's residual on that handle — must equal
+// [CheckHandleSumInShard.Expected]. For a single-shard protocol the expected
+// value is always zero; the field exists so a sharded protocol can
+// instantiate this action with the residual the cross-shard layer expects
+// to see on this shard.
 type CheckHandleSumInShard struct {
 	// Handle names the bus this check belongs to. Diagnostic-only.
 	Handle string
-	// Cells is the per-segment result cells, in registration order.
-	Cells []*wiop.Cell
+	// Cell is the LogDerivativeSum result holding this shard's residual on
+	// Handle. A single Compile call produces exactly one cell per handle —
+	// the action is therefore a single-cell equality check, not a sum.
+	Cell *wiop.Cell
 	// Path is the qualified ContextFrame path of the check, used in error
 	// messages.
 	Path string
-	// Expected is the value the per-segment cells must sum to on this shard.
-	// Constant — fixed at action-construction time, not derived from any
-	// other runtime state. [Compile] sets this to [field.ElemZero] for the
-	// single-shard case; sharded callers that bypass [Compile]'s built-in
-	// registration may construct the action directly with a non-zero value.
+	// Expected is the value Cell must hold on this shard. Constant — fixed
+	// at action-construction time, not derived from any other runtime
+	// state. [Compile] sets this to [field.ElemZero] for the single-shard
+	// case; sharded callers that bypass [Compile]'s built-in registration
+	// may construct the action directly with a non-zero value.
 	Expected field.Gen
 }
 
-// Check implements [wiop.VerifierAction]. Sums the values of every per-segment
-// cell registered for this handle and returns an error if the total differs
-// from [CheckHandleSumInShard.Expected].
+// Check implements [wiop.VerifierAction]. Reads the residual cell and
+// returns an error if it differs from [CheckHandleSumInShard.Expected].
 func (h *CheckHandleSumInShard) Check(rt wiop.Runtime) error {
-	acc := field.ElemZero()
-	for _, c := range h.Cells {
-		acc = acc.Add(rt.GetCellValue(c))
-	}
-	diff := acc.Sub(h.Expected)
+	got := rt.GetCellValue(h.Cell)
+	diff := got.Sub(h.Expected)
 	if !diff.IsZero() {
 		return fmt.Errorf(
-			"wiop/compilers/messagebus: handle %q (%s): per-segment cells sum to %v, expected %v",
-			h.Handle, h.Path, acc, h.Expected,
+			"wiop/compilers/messagebus: handle %q (%s): residual is %v, expected %v",
+			h.Handle, h.Path, got, h.Expected,
 		)
 	}
 	return nil

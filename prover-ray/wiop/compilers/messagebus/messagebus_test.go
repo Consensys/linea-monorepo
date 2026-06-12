@@ -124,10 +124,11 @@ func drive(rt *wiop.Runtime) {
 	runRound(rt)      // assigns Z columns + result cells
 }
 
-// TestCompile_TwoSegmentsBalanced is the canonical completeness case: one
-// handle, one Send segment, one Receive segment, multiplicities all 1, every
-// sent row matches a received row. The verifier must accept.
-func TestCompile_TwoSegmentsBalanced(t *testing.T) {
+// TestCompile_Balanced is the canonical completeness case: one handle, one
+// Send entry, one Receive entry, multiplicities all 1, every sent row
+// matches a received row. The shard's residual on the handle is zero and
+// the verifier must accept.
+func TestCompile_Balanced(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
 		t.Helper()
 		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
@@ -138,12 +139,12 @@ func TestCompile_TwoSegmentsBalanced(t *testing.T) {
 
 		sys.NewMessageBusSend(
 			sys.Context.Childf("send-A"),
-			"segA", "ping",
+			"shard", "ping",
 			wiop.NewTable(colA.View()),
 		)
 		sys.NewMessageBusReceive(
 			sys.Context.Childf("recv-B"),
-			"segB", "ping",
+			"shard", "ping",
 			wiop.NewTable(colB.View()),
 			mulB.View(),
 		)
@@ -163,7 +164,7 @@ func TestCompile_TwoSegmentsBalanced(t *testing.T) {
 
 // TestCompile_TamperedMultiplicity exercises the soundness path: with a
 // receiver multiplicity that no longer counts the senders correctly, the
-// per-handle cells should not sum to zero and the verifier must reject.
+// shard's residual on the handle is non-zero and the verifier must reject.
 func TestCompile_TamperedMultiplicity(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
 		t.Helper()
@@ -175,12 +176,12 @@ func TestCompile_TamperedMultiplicity(t *testing.T) {
 
 		sys.NewMessageBusSend(
 			sys.Context.Childf("send-A"),
-			"segA", "ping",
+			"shard", "ping",
 			wiop.NewTable(colA.View()),
 		)
 		sys.NewMessageBusReceive(
 			sys.Context.Childf("recv-B"),
-			"segB", "ping",
+			"shard", "ping",
 			wiop.NewTable(colB.View()),
 			mulB.View(),
 		)
@@ -216,12 +217,12 @@ func TestCompile_TamperedValueFailsInShardCheck(t *testing.T) {
 
 		sys.NewMessageBusSend(
 			sys.Context.Childf("send-A"),
-			"segA", "ping",
+			"shard", "ping",
 			wiop.NewTable(colA.View()),
 		)
 		sys.NewMessageBusReceive(
 			sys.Context.Childf("recv-B"),
-			"segB", "ping",
+			"shard", "ping",
 			wiop.NewTable(colB.View()),
 			mulB.View(),
 		)
@@ -256,12 +257,12 @@ func TestCompile_TamperedFilterFailsInShardCheck(t *testing.T) {
 
 		sys.NewMessageBusSend(
 			sys.Context.Childf("send-A"),
-			"segA", "ping",
+			"shard", "ping",
 			wiop.NewFilteredTable(selA.View(), colA.View()),
 		)
 		sys.NewMessageBusReceive(
 			sys.Context.Childf("recv-B"),
-			"segB", "ping",
+			"shard", "ping",
 			wiop.NewTable(colB.View()),
 			mulB.View(),
 		)
@@ -281,10 +282,11 @@ func TestCompile_TamperedFilterFailsInShardCheck(t *testing.T) {
 	})
 }
 
-// TestCompile_MultipleSendersOneReceiver verifies that several Send segments
-// can balance against a single Receive segment if multiplicities tally them
-// correctly. Sender 1 emits values [10, 20]; sender 2 also emits [10, 20];
-// the receiver holds [10, 20] with multiplicity [2, 2].
+// TestCompile_MultipleSendersOneReceiver verifies that several Send entries
+// on the same handle can balance against a single Receive entry if
+// multiplicities tally them correctly. Sender 1 emits values [10, 20];
+// sender 2 also emits [10, 20]; the receiver holds [10, 20] with
+// multiplicity [2, 2]. All three entries live on the same shard.
 func TestCompile_MultipleSendersOneReceiver(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
 		t.Helper()
@@ -298,17 +300,17 @@ func TestCompile_MultipleSendersOneReceiver(t *testing.T) {
 
 		sys.NewMessageBusSend(
 			sys.Context.Childf("send-S1"),
-			"segS1", "bus",
+			"shard", "bus",
 			wiop.NewTable(colS1.View()),
 		)
 		sys.NewMessageBusSend(
 			sys.Context.Childf("send-S2"),
-			"segS2", "bus",
+			"shard", "bus",
 			wiop.NewTable(colS2.View()),
 		)
 		sys.NewMessageBusReceive(
 			sys.Context.Childf("recv-R"),
-			"segR", "bus",
+			"shard", "bus",
 			wiop.NewTable(colR.View()),
 			mulR.View(),
 		)
@@ -344,12 +346,12 @@ func TestCompile_MultiColumnTuples(t *testing.T) {
 
 		sys.NewMessageBusSend(
 			sys.Context.Childf("send-A"),
-			"segA", "kv",
+			"shard", "kv",
 			wiop.NewTable(keyA.View(), valA.View()),
 		)
 		sys.NewMessageBusReceive(
 			sys.Context.Childf("recv-B"),
-			"segB", "kv",
+			"shard", "kv",
 			wiop.NewTable(keyB.View(), valB.View()),
 			mulB.View(),
 		)
@@ -385,12 +387,12 @@ func TestCompile_FilteredSelectors(t *testing.T) {
 
 		sys.NewMessageBusSend(
 			sys.Context.Childf("send-A"),
-			"segA", "filtered",
+			"shard", "filtered",
 			wiop.NewFilteredTable(selA.View(), colA.View()),
 		)
 		sys.NewMessageBusReceive(
 			sys.Context.Childf("recv-B"),
-			"segB", "filtered",
+			"shard", "filtered",
 			wiop.NewFilteredTable(selB.View(), colB.View()),
 			mulB.View(),
 		)
@@ -432,19 +434,19 @@ func TestCompile_TwoHandlesIndependent(t *testing.T) {
 		mulD := modD.NewColumn(sys.Context.Childf("mD"), wiop.VisibilityOracle, r0)
 
 		sys.NewMessageBusSend(
-			sys.Context.Childf("send-A"), "segA", "alpha",
+			sys.Context.Childf("send-A"), "shard", "alpha",
 			wiop.NewTable(colA.View()),
 		)
 		sys.NewMessageBusReceive(
-			sys.Context.Childf("recv-B"), "segB", "alpha",
+			sys.Context.Childf("recv-B"), "shard", "alpha",
 			wiop.NewTable(colB.View()), mulB.View(),
 		)
 		sys.NewMessageBusSend(
-			sys.Context.Childf("send-C"), "segC", "beta",
+			sys.Context.Childf("send-C"), "shard", "beta",
 			wiop.NewTable(colC.View()),
 		)
 		sys.NewMessageBusReceive(
-			sys.Context.Childf("recv-D"), "segD", "beta",
+			sys.Context.Childf("recv-D"), "shard", "beta",
 			wiop.NewTable(colD.View()), mulD.View(),
 		)
 
@@ -476,11 +478,11 @@ func TestCompile_ReceiveWithoutMultiplicity(t *testing.T) {
 		colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
 
 		sys.NewMessageBusSend(
-			sys.Context.Childf("send-A"), "segA", "impl-one",
+			sys.Context.Childf("send-A"), "shard", "impl-one",
 			wiop.NewTable(colA.View()),
 		)
 		sys.NewMessageBusReceive(
-			sys.Context.Childf("recv-B"), "segB", "impl-one",
+			sys.Context.Childf("recv-B"), "shard", "impl-one",
 			wiop.NewTable(colB.View()),
 			nil, // explicit nil → constant-1 multiplicity
 		)
@@ -511,13 +513,12 @@ func TestCompile_NoMessageBusesIsNoOp(t *testing.T) {
 		"Compile must not append rounds when there are no MessageBus queries")
 }
 
-// TestCompile_DynamicModule_TwoSegmentsBalanced is the completeness counterpart
-// of TestCompile_TwoSegmentsBalanced for dynamic modules: the participating
-// modules' sizes are not declared statically but established at runtime by the
-// first column assignment. The same compiled System is then re-driven across
-// two different runtime sizes to confirm size-agnostic compilation.
-func TestCompile_DynamicModule_TwoSegmentsBalanced(t *testing.T) {
-
+// TestCompile_DynamicModule_Balanced is the completeness counterpart of
+// [TestCompile_Balanced] for dynamic modules: the participating modules'
+// sizes are not declared statically but established at runtime by the first
+// column assignment. The same compiled System is then re-driven across two
+// different runtime sizes to confirm size-agnostic compilation.
+func TestCompile_DynamicModule_Balanced(t *testing.T) {
 	sys := wiop.NewSystemf("mb-dyn-balanced")
 	r0 := sys.NewRound()
 	setupMessageBusHook(sys)
@@ -530,12 +531,12 @@ func TestCompile_DynamicModule_TwoSegmentsBalanced(t *testing.T) {
 
 	sys.NewMessageBusSend(
 		sys.Context.Childf("send-A"),
-		"segA", "ping",
+		"shard", "ping",
 		wiop.NewTable(colA.View()),
 	)
 	sys.NewMessageBusReceive(
 		sys.Context.Childf("recv-B"),
-		"segB", "ping",
+		"shard", "ping",
 		wiop.NewTable(colB.View()),
 		mulB.View(),
 	)
@@ -584,12 +585,12 @@ func TestCompile_DynamicModule_TamperedFails(t *testing.T) {
 
 	sys.NewMessageBusSend(
 		sys.Context.Childf("send-A"),
-		"segA", "ping",
+		"shard", "ping",
 		wiop.NewTable(colA.View()),
 	)
 	sys.NewMessageBusReceive(
 		sys.Context.Childf("recv-B"),
-		"segB", "ping",
+		"shard", "ping",
 		wiop.NewTable(colB.View()),
 		mulB.View(),
 	)
@@ -626,12 +627,12 @@ func TestCompile_DynamicModule_TamperedValueFailsInShardCheck(t *testing.T) {
 
 	sys.NewMessageBusSend(
 		sys.Context.Childf("send-A"),
-		"segA", "ping",
+		"shard", "ping",
 		wiop.NewTable(colA.View()),
 	)
 	sys.NewMessageBusReceive(
 		sys.Context.Childf("recv-B"),
-		"segB", "ping",
+		"shard", "ping",
 		wiop.NewTable(colB.View()),
 		mulB.View(),
 	)
@@ -668,12 +669,12 @@ func TestCompile_DynamicModule_TamperedFilterFailsInShardCheck(t *testing.T) {
 
 	sys.NewMessageBusSend(
 		sys.Context.Childf("send-A"),
-		"segA", "ping",
+		"shard", "ping",
 		wiop.NewFilteredTable(selA.View(), colA.View()),
 	)
 	sys.NewMessageBusReceive(
 		sys.Context.Childf("recv-B"),
-		"segB", "ping",
+		"shard", "ping",
 		wiop.NewTable(colB.View()),
 		mulB.View(),
 	)
@@ -712,12 +713,12 @@ func TestCompile_DynamicModule_MultiColumnTuples(t *testing.T) {
 
 	sys.NewMessageBusSend(
 		sys.Context.Childf("send-A"),
-		"segA", "kv",
+		"shard", "kv",
 		wiop.NewTable(keyA.View(), valA.View()),
 	)
 	sys.NewMessageBusReceive(
 		sys.Context.Childf("recv-B"),
-		"segB", "kv",
+		"shard", "kv",
 		wiop.NewTable(keyB.View(), valB.View()),
 		mulB.View(),
 	)
@@ -749,16 +750,42 @@ func TestCompile_WidthMismatchPanics(t *testing.T) {
 	colB := mod.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
 
 	sys.NewMessageBusSend(
-		sys.Context.Childf("send-1col"), "segA", "h",
+		sys.Context.Childf("send-1col"), "shard", "h",
 		wiop.NewTable(colA.View()),
 	)
 	sys.NewMessageBusReceive(
-		sys.Context.Childf("recv-2col"), "segB", "h",
+		sys.Context.Childf("recv-2col"), "shard", "h",
 		wiop.NewTable(colB.View(), colA2.View()),
 		nil,
 	)
 
 	assert.Panics(t, func() { messagebus.Compile(sys) })
+}
+
+// TestCompile_MixedOriginShardPanics asserts that Compile rejects a system
+// containing unreduced MessageBus entries from more than one shard.
+// [messagebus.Compile] is a per-shard operation; mixing OriginShard values
+// in a single invocation is a misuse the compiler catches at the top of
+// the pass so the error surfaces before any artefacts are emitted.
+func TestCompile_MixedOriginShardPanics(t *testing.T) {
+	sys := wiop.NewSystemf("mb-mixed-shards")
+	r0 := sys.NewRound()
+
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 2, wiop.PaddingDirectionNone)
+	colA := mod.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+	colB := mod.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+
+	sys.NewMessageBusSend(
+		sys.Context.Childf("send-shardA"), "shardA", "h",
+		wiop.NewTable(colA.View()),
+	)
+	sys.NewMessageBusSend(
+		sys.Context.Childf("send-shardB"), "shardB", "h",
+		wiop.NewTable(colB.View()),
+	)
+
+	assert.Panics(t, func() { messagebus.Compile(sys) },
+		"Compile must panic when MessageBus entries straddle different OriginShard values")
 }
 
 // TestCheckHandleSumInShard_ExpectedNonZero exercises the Expected field on
@@ -767,13 +794,13 @@ func TestCompile_WidthMismatchPanics(t *testing.T) {
 // for the cross-shard layer that constructs this action itself. This test
 // fills that coverage gap by:
 //
-//  1. Building a balanced single-handle, two-segment pipeline so the
-//     per-segment LDS Result cells are guaranteed to sum to zero.
+//  1. Building a balanced single-handle pipeline so the LDS Result cell —
+//     this shard's residual on the handle — is guaranteed to be zero.
 //  2. Suppressing Compile's auto-registered action via
 //     [wiop.System.MessageBusSkipInShardCheck].
 //  3. Constructing CheckHandleSumInShard directly with two Expected values:
-//     zero (matches the actual sum) and one (does not), and asserting Check
-//     accepts/rejects accordingly.
+//     zero (matches the actual residual) and one (does not), and asserting
+//     Check accepts/rejects accordingly.
 //
 // The error message is also spot-checked to confirm it mentions the handle
 // name and the "expected" framing, since the cross-shard caller will rely
@@ -793,11 +820,11 @@ func TestCheckHandleSumInShard_ExpectedNonZero(t *testing.T) {
 		mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
 
 		sys.NewMessageBusSend(
-			sys.Context.Childf("send-A"), "segA", "ping",
+			sys.Context.Childf("send-A"), "shard", "ping",
 			wiop.NewTable(colA.View()),
 		)
 		sys.NewMessageBusReceive(
-			sys.Context.Childf("recv-B"), "segB", "ping",
+			sys.Context.Childf("recv-B"), "shard", "ping",
 			wiop.NewTable(colB.View()), mulB.View(),
 		)
 
@@ -811,34 +838,30 @@ func TestCheckHandleSumInShard_ExpectedNonZero(t *testing.T) {
 
 		drive(&rt)
 
-		// The two LDS queries (one per segment) are the cells this handle's
-		// action would consume.
-		require.Len(t, sys.LogDerivativeSums, 2, "expected exactly one LDS per segment")
-		cells := []*wiop.Cell{
-			sys.LogDerivativeSums[0].Result,
-			sys.LogDerivativeSums[1].Result,
-		}
+		// The single LDS query is this shard's residual on the handle.
+		require.Len(t, sys.LogDerivativeSums, 1, "single-shard Compile must emit exactly one LDS per handle")
+		residual := sys.LogDerivativeSums[0].Result
 
-		// Happy path: Expected matches the actual sum (zero for a balanced bus).
+		// Happy path: Expected matches the actual residual (zero for a balanced bus).
 		happy := &messagebus.CheckHandleSumInShard{
 			Handle:   "ping",
-			Cells:    cells,
+			Cell:     residual,
 			Path:     "test/ping/expected-zero",
 			Expected: field.ElemZero(),
 		}
 		require.NoError(t, happy.Check(rt),
-			"Check must accept when Expected matches the actual cell sum")
+			"Check must accept when Expected matches the actual residual")
 
-		// Sad path: Expected differs from the actual sum, so Check must reject.
+		// Sad path: Expected differs from the actual residual, so Check must reject.
 		sad := &messagebus.CheckHandleSumInShard{
 			Handle:   "ping",
-			Cells:    cells,
+			Cell:     residual,
 			Path:     "test/ping/expected-one",
 			Expected: field.ElemOne(),
 		}
 		err := sad.Check(rt)
 		require.Error(t, err,
-			"Check must reject when Expected differs from the actual cell sum")
+			"Check must reject when Expected differs from the actual residual")
 		assert.Contains(t, err.Error(), `handle "ping"`,
 			"error must name the handle for diagnostics")
 		assert.Contains(t, err.Error(), "expected",
@@ -859,7 +882,7 @@ func TestNewMessageBusReceive_WrongMultiplicityModulePanics(t *testing.T) {
 
 	assert.Panics(t, func() {
 		sys.NewMessageBusReceive(
-			sys.Context.Childf("recv-bad-mod"), "segA", "h",
+			sys.Context.Childf("recv-bad-mod"), "shard", "h",
 			wiop.NewTable(col.View()),
 			wiop.NewConstantVector(foreign, field.NewFromString("1")),
 		)

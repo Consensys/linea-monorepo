@@ -3,15 +3,15 @@ package wiop
 import "fmt"
 
 // BusDirection is the sign of a [MessageBus] entry's contribution to its
-// (segment, handle) accumulator.
+// (OriginShard, Handle) accumulator.
 type BusDirection int
 
 const (
-	// BusSend marks an entry that ADDS its rows to the (segment, handle)
+	// BusSend marks an entry that ADDS its rows to the (OriginShard, Handle)
 	// accumulator. Built by [System.NewMessageBusSend].
 	BusSend BusDirection = iota
 	// BusReceive marks an entry that SUBTRACTS its rows (weighted by an optional
-	// multiplicity) from the (segment, handle) accumulator. Built by
+	// multiplicity) from the (OriginShard, Handle) accumulator. Built by
 	// [System.NewMessageBusReceive].
 	BusReceive
 )
@@ -28,8 +28,8 @@ func (d BusDirection) String() string {
 	}
 }
 
-// MessageBus is a [Query] declaring that one [Table] participates in a
-// (Segment, Handle)-keyed log-up accumulator. Each instance is the unit of
+// MessageBus is a [Query] declaring that one [Table] participates in an
+// (OriginShard, Handle)-keyed log-up accumulator. Each instance is the unit of
 // participation: one Send entry adds its rows to the accumulator; one Receive
 // entry subtracts them.
 //
@@ -46,30 +46,35 @@ func (d BusDirection) String() string {
 //	Send:    +Σ_row filter(row) · 1 / d(row)
 //	Receive: -Σ_row filter(row) · Multiplicity(row) / d(row)         (Multiplicity = 1 if nil)
 //
-// to the (Segment, Handle) accumulator. The [messagebus] compiler lowers all
-// entries with the same Segment/Handle into a single [LogDerivativeSum] (one
-// Cell per (Segment, Handle) holding the running sum) and emits a verifier
-// action that asserts, for each Handle, the cells across every Segment sum to
-// zero. By Schwartz–Zippel over α, β, that identity holds iff the multiset of
-// rows sent into the Handle equals the multiset of rows received from it
-// (with the multiplicity weighting on the Receive side).
+// to the (OriginShard, Handle) accumulator. A single [messagebus.Compile]
+// invocation runs inside exactly one shard, so every entry it sees must agree
+// on OriginShard. The compiler enforces that invariant and lowers all entries
+// of a Handle into a single [LogDerivativeSum] holding this shard's running
+// sum (the shard's "residual" on that Handle), plus a verifier action that
+// asserts the residual equals an expected value (zero in the unsharded case).
+// The OriginShard tag is preserved on the query so a downstream cross-shard
+// layer can collect residuals from sibling shards and join them.
 //
 // MessageBus does not implement [GnarkCheckableQuery] nor [AssignableQuery]:
 // its semantics span multiple queries within a system and are discharged by
 // the dedicated compiler pass. [MessageBus.Check] is a no-op for that reason —
-// the per-Handle multiset identity is enforced after compilation by the
+// the in-shard residual identity is enforced after compilation by the
 // LogDerivativeSum and the verifier action.
 //
 // Use [System.NewMessageBusSend] and [System.NewMessageBusReceive] to
 // construct instances.
 type MessageBus struct {
 	baseQuery
-	// Segment is the segment identifier (e.g., a region of the trace) used,
-	// together with Handle, to key the accumulator the entry contributes to.
+	// OriginShard names the shard whose [messagebus.Compile] call this entry
+	// belongs to. Within a single Compile invocation every entry must share
+	// the same OriginShard — the compiler panics on a mismatch. Across
+	// shards the field lets a downstream cross-shard layer identify which
+	// shard contributed which residual to the per-Handle accumulator.
 	// Always non-empty.
-	Segment string
-	// Handle is the bus name. Entries with the same Handle are summed together
-	// (across every Segment) by the compiler. Always non-empty.
+	OriginShard string
+	// Handle is the bus name. Entries with the same Handle in the same
+	// Compile invocation are summed together into a single LogDerivativeSum
+	// representing this shard's residual on that Handle. Always non-empty.
 	Handle string
 	// Direction selects the sign of the contribution. See [BusDirection].
 	Direction BusDirection
@@ -103,34 +108,35 @@ func (mb *MessageBus) Round() *Round {
 	return best
 }
 
-// Check implements [Query]. Always returns nil. The per-Handle multiset
+// Check implements [Query]. Always returns nil. The per-Handle residual
 // identity is inherently cross-query and is discharged by the [messagebus]
 // compiler pass together with the [logderivativesum] compiler that follows.
 func (mb *MessageBus) Check(_ Runtime) error { return nil }
 
-// NewMessageBusSend constructs and registers a Send entry on (segment,
-// handle). The entry contributes +Σ_row filter(row) / d(row) to the
-// (segment, handle) accumulator. There is no multiplicity on the Send side
-// (per the message-bus spec).
+// NewMessageBusSend constructs and registers a Send entry on
+// (originShard, handle). The entry contributes +Σ_row filter(row) / d(row)
+// to the (OriginShard, Handle) accumulator. There is no multiplicity on the
+// Send side (per the message-bus spec).
 //
 // Invariants enforced at construction:
 //   - ctx is non-nil.
-//   - segment and handle are non-empty.
+//   - originShard and handle are non-empty.
 //   - tab has at least one column (already enforced by [NewTable]).
 //
 // Panics on any invariant violation.
-func (sys *System) NewMessageBusSend(ctx *ContextFrame, segment, handle string, tab Table) *MessageBus {
-	return sys.newMessageBus(ctx, segment, handle, BusSend, tab, nil)
+func (sys *System) NewMessageBusSend(ctx *ContextFrame, originShard, handle string, tab Table) *MessageBus {
+	return sys.newMessageBus(ctx, originShard, handle, BusSend, tab, nil)
 }
 
-// NewMessageBusReceive constructs and registers a Receive entry on (segment,
-// handle). The entry contributes -Σ_row filter(row) · multiplicity(row) /
-// d(row) to the (segment, handle) accumulator. multiplicity may be nil, in
-// which case it is treated as the constant 1.
+// NewMessageBusReceive constructs and registers a Receive entry on
+// (originShard, handle). The entry contributes
+// -Σ_row filter(row) · multiplicity(row) / d(row) to the (OriginShard,
+// Handle) accumulator. multiplicity may be nil, in which case it is treated
+// as the constant 1.
 //
 // Invariants enforced at construction:
 //   - ctx is non-nil.
-//   - segment and handle are non-empty.
+//   - originShard and handle are non-empty.
 //   - tab has at least one column.
 //   - If multiplicity is non-nil and vector-valued, its module matches
 //     tab.Module().
@@ -138,11 +144,11 @@ func (sys *System) NewMessageBusSend(ctx *ContextFrame, segment, handle string, 
 // Panics on any invariant violation.
 func (sys *System) NewMessageBusReceive(
 	ctx *ContextFrame,
-	segment, handle string,
+	originShard, handle string,
 	tab Table,
 	multiplicity Expression,
 ) *MessageBus {
-	return sys.newMessageBus(ctx, segment, handle, BusReceive, tab, multiplicity)
+	return sys.newMessageBus(ctx, originShard, handle, BusReceive, tab, multiplicity)
 }
 
 // newMessageBus is the shared constructor for [System.NewMessageBusSend] and
@@ -150,7 +156,7 @@ func (sys *System) NewMessageBusReceive(
 // query to [System.MessageBuses].
 func (sys *System) newMessageBus(
 	ctx *ContextFrame,
-	segment, handle string,
+	originShard, handle string,
 	dir BusDirection,
 	tab Table,
 	multiplicity Expression,
@@ -158,8 +164,8 @@ func (sys *System) newMessageBus(
 	if ctx == nil {
 		panic("wiop: System.NewMessageBus* requires a non-nil ContextFrame")
 	}
-	if segment == "" {
-		panic("wiop: System.NewMessageBus*: segment must be non-empty")
+	if originShard == "" {
+		panic("wiop: System.NewMessageBus*: originShard must be non-empty")
 	}
 	if handle == "" {
 		panic("wiop: System.NewMessageBus*: handle must be non-empty")
@@ -185,7 +191,7 @@ func (sys *System) newMessageBus(
 			context:     ctx,
 			Annotations: make(Annotations),
 		},
-		Segment:      segment,
+		OriginShard:  originShard,
 		Handle:       handle,
 		Direction:    dir,
 		Tab:          tab,
