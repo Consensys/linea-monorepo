@@ -18,7 +18,7 @@ ARITHMETIZATION_DIR := $(abspath $(MAKEFILE_DIR)../..)
 
 # Paths to go main (to turn BIN into JSON), zkc main (to execute/debug the json) and linker script
 ELF_TO_JSON_GEN := $(MAKEFILE_DIR)scripts/elf_to_json_gen/main.go
-ZKC_MAIN        := $(MAKEFILE_DIR)../../main/riscv/main.zkc
+ZKC_MAIN        := $(MAKEFILE_DIR)../main/riscv/main.zkc
 LINKER_SCRIPT   := $(MAKEFILE_DIR)linker_script.ld
 # Assembly, Zig, or Rust test file to execute with exec target (TEST=src_optional_subfolder/your_test(.s|.zig|.rs)
 TEST ?=
