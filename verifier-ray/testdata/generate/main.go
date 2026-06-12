@@ -627,6 +627,30 @@ func buildVanishingFixtureCases() ([]vanishingFixtureCase, []codegen.NamedVanish
 			return nil, nil, err
 		}
 	}
+	for _, factory := range wioptest.LocalVanishingScenarios() {
+		sc := factory()
+		if err := add("LocalVanishing", sc.Name, sc.Sys, sc.AssignHonest, sc.AssignInvalid); err != nil {
+			return nil, nil, err
+		}
+	}
+	for _, factory := range wioptest.LogDerivativeSumCompilerScenarios() {
+		sc := factory()
+		if err := add("LogDerivativeSumCompiler", sc.Name, sc.Sys, sc.AssignWitness, nil); err != nil {
+			return nil, nil, err
+		}
+	}
+	for _, factory := range wioptest.LookupScenarios() {
+		sc := factory()
+		if err := add("Lookup", sc.Name, sc.Sys, sc.AssignWitness, nil); err != nil {
+			return nil, nil, err
+		}
+	}
+	for _, factory := range wioptest.RangeCheckCompilerScenarios() {
+		sc := factory()
+		if err := add("RangeCheckCompiler", sc.Name, sc.Sys, sc.AssignWitness, nil); err != nil {
+			return nil, nil, err
+		}
+	}
 
 	// LagrangeSelector boundary scenario. It is constructed here rather than in
 	// prover-ray's wioptest because it exercises the lagrange_selector codegen
@@ -651,30 +675,6 @@ func buildVanishingFixtureCases() ([]vanishingFixtureCase, []codegen.NamedVanish
 		honest := func(rt *wiop.Runtime) { rt.AssignColumn(col, concreteBase(elems(7, 99, 7, 7))) }
 		invalid := func(rt *wiop.Runtime) { rt.AssignColumn(col, concreteBase(elems(7, 98, 7, 7))) }
 		if err := add("Vanishing", "DynamicLagrangeSelectorBoundary", sys, honest, invalid); err != nil {
-			return nil, nil, err
-		}
-	}
-	for _, factory := range wioptest.LocalVanishingScenarios() {
-		sc := factory()
-		if err := add("LocalVanishing", sc.Name, sc.Sys, sc.AssignHonest, sc.AssignInvalid); err != nil {
-			return nil, nil, err
-		}
-	}
-	for _, factory := range wioptest.LogDerivativeSumCompilerScenarios() {
-		sc := factory()
-		if err := add("LogDerivativeSumCompiler", sc.Name, sc.Sys, sc.AssignWitness, nil); err != nil {
-			return nil, nil, err
-		}
-	}
-	for _, factory := range wioptest.LookupScenarios() {
-		sc := factory()
-		if err := add("Lookup", sc.Name, sc.Sys, sc.AssignWitness, nil); err != nil {
-			return nil, nil, err
-		}
-	}
-	for _, factory := range wioptest.RangeCheckCompilerScenarios() {
-		sc := factory()
-		if err := add("RangeCheckCompiler", sc.Name, sc.Sys, sc.AssignWitness, nil); err != nil {
 			return nil, nil, err
 		}
 	}
