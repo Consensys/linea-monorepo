@@ -103,6 +103,50 @@ test "loom proof-of-work transcript challenges match static vectors" {
     }
 }
 
+test "FRI challenge adapter resolves flat coin indices" {
+    const coins = [_]ext.Ext{
+        uintsToExt(.{ 3, 5, 0, 0, 0, 0 }),
+        uintsToExt(.{ 7, 11, 13, 17, 19, 23 }),
+        uintsToExt(.{ 29, 31, 37, 41, 43, 47 }),
+        uintsToExt(.{ 53, 59, 61, 67, 71, 73 }),
+        uintsToExt(.{ 79, 83, 0, 0, 0, 0 }),
+    };
+    const params = fri.Params{
+        .n = 16,
+        .d = 4,
+        .num_queries = 2,
+        .num_rounds = 2,
+        .grinding = 0,
+    };
+    var fold_alphas: [2]ext.Ext = undefined;
+    var query_positions: [2]u32 = undefined;
+
+    const resolved = try fri.challenges.resolve(
+        .{ .gamma = 2, .fold_alphas = &.{ 1, 3 }, .query_coins = &.{ 0, 4 } },
+        coins[0..],
+        params,
+        fold_alphas[0..],
+        query_positions[0..],
+    );
+
+    try expectExt(resolved.gamma.?, coins[2]);
+    try expectExt(resolved.fold_alphas[0], coins[1]);
+    try expectExt(resolved.fold_alphas[1], coins[3]);
+    try std.testing.expectEqual(fri.challenges.queryIndex(coins[0], params.n / 2), resolved.query_positions[0]);
+    try std.testing.expectEqual(fri.challenges.queryIndex(coins[4], params.n / 2), resolved.query_positions[1]);
+
+    try std.testing.expectError(
+        error.CoinIndexOutOfBounds,
+        fri.challenges.resolve(
+            .{ .gamma = 9, .fold_alphas = &.{ 1, 3 }, .query_coins = &.{ 0, 4 } },
+            coins[0..],
+            params,
+            fold_alphas[0..],
+            query_positions[0..],
+        ),
+    );
+}
+
 test "loom DEEP alpha binding order matches static vector" {
     const bridge_case = loom_vectors.loom_bridge_cases[0];
     const dq_layout = dq_layout_types.DQLayout{
@@ -490,7 +534,7 @@ test "PCS integration verifies vectored end-to-end proof" {
         );
         try expectDigest(try ts.computeChallenge(fri.bridge.deep_alpha_challenge), case.alpha_deep_digest);
         try expectExt(try ts.computeChallengeExt(fri.bridge.deep_alpha_challenge), uintsToExt(case.alpha_deep));
-        try std.testing.expectEqual(case.query_position, queryIndexForTest(digest(case.query_digest), case.n / 2));
+        try std.testing.expectEqual(case.query_position, fri.challenges.queryIndex(extFromDigest(case.query_digest), case.n / 2));
 
         const final_poly_index: usize = @intCast(case.query_position);
         const original_final_poly = final_poly_ext[final_poly_index];
@@ -577,6 +621,33 @@ test "fri verifier accepts empty-query shape" {
         .fold_alphas = fold_alphas[0..],
         .query_positions = query_positions[0..],
     });
+
+    var grinding_params = params;
+    grinding_params.grinding = 1;
+    try std.testing.expectError(
+        error.MissingProofOfWork,
+        fri.verify.friVerify(grinding_params, roots[0..], level_ds[0..], proof, .{
+            .fold_alphas = fold_alphas[0..],
+            .query_positions = query_positions[0..],
+        }),
+    );
+
+    const grinding_pow = [_]?fri.ProofOfWork{.{ .nb_bits = 1, .salt = elem(0) }};
+    var grinding_proof = proof;
+    grinding_proof.pow = grinding_pow[0..];
+    try fri.verify.friVerify(grinding_params, roots[0..], level_ds[0..], grinding_proof, .{
+        .fold_alphas = fold_alphas[0..],
+        .query_positions = query_positions[0..],
+    });
+
+    const bad_grinding_alphas = [_]ext.Ext{ext.Ext.one()};
+    try std.testing.expectError(
+        error.InvalidProofOfWork,
+        fri.verify.friVerify(grinding_params, roots[0..], level_ds[0..], grinding_proof, .{
+            .fold_alphas = bad_grinding_alphas[0..],
+            .query_positions = query_positions[0..],
+        }),
+    );
 }
 
 test "fri verifier accepts one-round base query" {
@@ -603,7 +674,7 @@ test "fri verifier accepts one-round base query" {
     };
 
     const expected_query = try bindBaseFinalPolyAndQuery(&expected_ts, final_poly[0..]);
-    const query_pos = queryIndexForTest(expected_query, 2);
+    const query_pos = fri.challenges.queryIndex(extFromDigestValue(expected_query), 2);
     const query_pos_usize: usize = @intCast(query_pos);
     const sibling = [_]fri.Digest{if (query_pos == 0) leaf1 else leaf0};
     const layers = [_]fri.QueryLayer{.{
@@ -635,7 +706,7 @@ test "fri verifier accepts one-round base query" {
         .fold_alphas = fold_alphas[0..],
         .query_positions = query_positions[0..],
     });
-    try std.testing.expectEqual(query_pos, queryIndexForTest(expected_query, 2));
+    try std.testing.expectEqual(query_pos, fri.challenges.queryIndex(extFromDigestValue(expected_query), 2));
 }
 
 test "fri verifier accepts one-round ext query" {
@@ -669,7 +740,7 @@ test "fri verifier accepts one-round ext query" {
     };
 
     const expected_query = try bindExtFinalPolyAndQuery(&expected_ts, final_poly[0..]);
-    const query_pos = queryIndexForTest(expected_query, 2);
+    const query_pos = fri.challenges.queryIndex(extFromDigestValue(expected_query), 2);
     const query_pos_usize: usize = @intCast(query_pos);
     const sibling = [_]fri.Digest{if (query_pos == 0) leaf1 else leaf0};
     const layers = [_]fri.QueryLayer{.{
@@ -700,7 +771,7 @@ test "fri verifier accepts one-round ext query" {
         .fold_alphas = fold_alphas[0..],
         .query_positions = query_positions[0..],
     });
-    try std.testing.expectEqual(query_pos, queryIndexForTest(expected_query, 2));
+    try std.testing.expectEqual(query_pos, fri.challenges.queryIndex(extFromDigestValue(expected_query), 2));
 }
 
 test "fri verifier mixes extra level during query fold" {
@@ -776,7 +847,7 @@ test "fri verifier mixes extra level during query fold" {
     };
 
     const expected_query = try bindBaseFinalPolyAndQuery(&expected_ts, final_poly[0..]);
-    const query_pos = queryIndexForTest(expected_query, 4);
+    const query_pos = fri.challenges.queryIndex(extFromDigestValue(expected_query), 4);
     const layer0_base = query_pos % 4;
     const layer1_base = query_pos % 2;
     const layer0_path_siblings = merklePath4(layer0_leaves, layer0_base);
@@ -832,7 +903,7 @@ test "fri verifier mixes extra level during query fold" {
         .fold_alphas = fold_alphas[0..],
         .query_positions = query_positions[0..],
     });
-    try std.testing.expectEqual(query_pos, queryIndexForTest(expected_query, 4));
+    try std.testing.expectEqual(query_pos, fri.challenges.queryIndex(extFromDigestValue(expected_query), 4));
 }
 
 test "fri verifier rejects final fold mismatch" {
@@ -855,7 +926,7 @@ test "fri verifier rejects final fold mismatch" {
     const final_poly = [_]field.Element{ elem(123), elem(456) };
 
     const expected_query = try bindBaseFinalPolyAndQuery(&expected_ts, final_poly[0..]);
-    const query_pos = queryIndexForTest(expected_query, 2);
+    const query_pos = fri.challenges.queryIndex(extFromDigestValue(expected_query), 2);
     const query_pos_usize: usize = @intCast(query_pos);
     const sibling = [_]fri.Digest{if (query_pos == 0) leaf1 else leaf0};
     const layers = [_]fri.QueryLayer{.{
@@ -1097,12 +1168,6 @@ fn foldBasePairForTest(p: field.Element, q: field.Element, alpha: field.Element,
 
 fn foldExtPairForTest(p: ext.Ext, q: ext.Ext, alpha: ext.Ext, x_inv: field.Element) ext.Ext {
     return p.add(q).halve().add(p.sub(q).halve().mulByBase(x_inv).mul(alpha));
-}
-
-fn queryIndexForTest(challenge: fri.Digest, modulus: u32) u32 {
-    if (modulus == 0) return 0;
-    const wide = (@as(u64, challenge[0].value) << 31) ^ @as(u64, challenge[1].value);
-    return @intCast(wide % modulus);
 }
 
 fn extLimbs(value: ext.Ext) [6]field.Element {

@@ -33,7 +33,7 @@ pub fn resolve(
     }
 
     inline for (map.query_coins, 0..) |coin_index, i| {
-        query_position_storage[i] = queryIndexFromCoin(try coinAt(all_coins, coin_index), params.n / 2);
+        query_position_storage[i] = queryIndex(try coinAt(all_coins, coin_index), params.n / 2);
     }
 
     return .{
@@ -48,7 +48,7 @@ fn coinAt(all_coins: []const protocol.Coin, index: usize) Error!ext.Ext {
     return all_coins[index];
 }
 
-pub fn queryIndexFromCoin(coin: protocol.Coin, modulus: u32) u32 {
+pub fn queryIndex(coin: protocol.Coin, modulus: u32) u32 {
     if (modulus == 0) return 0;
     const wide = (@as(u64, coin.B0.a0.value) << 31) ^ @as(u64, coin.B0.a1.value);
     return @intCast(wide % modulus);

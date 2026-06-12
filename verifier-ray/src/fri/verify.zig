@@ -36,7 +36,7 @@ pub fn friVerify(
     challenges: FriChallenges,
 ) FriError!void {
     try checkDimensions(params, level_roots, level_ds, proof);
-    const resolved = try resolveChallenges(params, level_roots, challenges);
+    const resolved = try resolveChallenges(params, level_roots, proof, challenges);
     try verifyQueries(params, level_roots, level_ds, proof, challenges.query_positions, resolved);
 }
 
@@ -100,12 +100,14 @@ fn checkDimensions(
 fn resolveChallenges(
     params: types.Params,
     level_roots: []const types.Digest,
+    proof: types.FriProof,
     challenges: FriChallenges,
 ) FriError!ResolvedChallenges {
     const round_count: usize = @intCast(params.num_rounds);
     const query_count: usize = @intCast(params.num_queries);
     if (challenges.fold_alphas.len != round_count) return FriError.BadDimensions;
     if (challenges.query_positions.len != query_count) return FriError.BadDimensions;
+    try validateProofOfWork(params, proof, challenges.fold_alphas);
 
     for (challenges.query_positions) |position| {
         if (position >= params.n / 2) return FriError.BadDimensions;
@@ -129,6 +131,47 @@ fn resolveChallenges(
     }
 
     return resolved;
+}
+
+fn validateProofOfWork(
+    params: types.Params,
+    proof: types.FriProof,
+    fold_alphas: []const ext.Ext,
+) FriError!void {
+    // The pure verifier can enforce the declared PoW shape and low-bit
+    // constraint on injected fold coins. The named transcript binding from
+    // salt to coin is enforced by the challenge-production layer.
+    if (params.grinding > 31) return FriError.InvalidProofOfWork;
+    for (proof.pow, fold_alphas) |maybe_pow, alpha| {
+        if (params.grinding != 0) {
+            const pow = maybe_pow orelse return FriError.MissingProofOfWork;
+            if (pow.nb_bits != params.grinding) return FriError.InvalidProofOfWork;
+            if (!hasLowZeroBits(alpha, params.grinding)) return FriError.InvalidProofOfWork;
+        } else if (maybe_pow) |pow| {
+            if (pow.nb_bits != 0) return FriError.InvalidProofOfWork;
+        }
+    }
+}
+
+fn hasLowZeroBits(value: ext.Ext, nb_bits: u32) bool {
+    var remaining = nb_bits;
+    const limbs = [_]field.Element{
+        value.B0.a0,
+        value.B0.a1,
+        value.B1.a0,
+        value.B1.a1,
+        value.B2.a0,
+        value.B2.a1,
+    };
+    for (limbs) |limb| {
+        if (remaining == 0) return true;
+        const bits = @min(remaining, 31);
+        const shift: u6 = @intCast(bits);
+        const mask = (@as(u64, 1) << shift) - 1;
+        if ((@as(u64, limb.value) & mask) != 0) return false;
+        remaining -= bits;
+    }
+    return remaining == 0;
 }
 
 fn verifyQueries(
@@ -366,12 +409,6 @@ fn foldExtPair(p: ext.Ext, q: ext.Ext, alpha: ext.Ext, x_inv: field.Element) ext
 
 fn xInv(params: types.Params, round: u32, base: u32) field.Element {
     return params.domain_gens_inv[@intCast(round)].pow(base);
-}
-
-pub fn queryIndex(challenge: types.Digest, modulus: u32) u32 {
-    if (modulus == 0) return 0;
-    const wide = (@as(u64, challenge[0].value) << 31) ^ @as(u64, challenge[1].value);
-    return @intCast(wide % modulus);
 }
 
 fn introducedRound(root_d: u32, level_d: u32, num_rounds: u32) FriError!u32 {
