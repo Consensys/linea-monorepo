@@ -24,12 +24,6 @@ func IsUnsupportedExpression(err error) bool {
 	return errors.As(err, &unsupported)
 }
 
-type NamedVanishingSystem struct {
-	Name    string
-	System  VanishingSystem
-	Routing CoinRouting
-}
-
 type VanishingSystem struct {
 	SourceName          string
 	Modules             []VanishingModule

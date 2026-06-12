@@ -92,7 +92,7 @@ func TestWriteVanishingScenariosZigEmitsSizeModes(t *testing.T) {
 		t.Fatalf("BuildVanishingSystem() error = %v", err)
 	}
 	var out bytes.Buffer
-	if err := WriteVanishingScenariosZig(&out, []NamedVanishingSystem{{Name: "mixed", System: vanishingSystem}}); err != nil {
+	if err := WriteVanishingScenariosZig(&out, []VanishingSystem{vanishingSystem}); err != nil {
 		t.Fatalf("WriteVanishingScenariosZig() error = %v", err)
 	}
 	zig := out.String()
@@ -133,7 +133,7 @@ func TestBuildVanishingSystemSupportsCellAndCoinLeaves(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := WriteVanishingScenariosZig(&out, []NamedVanishingSystem{{Name: "cell-coin", System: vanishingSystem}}); err != nil {
+	if err := WriteVanishingScenariosZig(&out, []VanishingSystem{vanishingSystem}); err != nil {
 		t.Fatalf("WriteVanishingScenariosZig() error = %v", err)
 	}
 	zig := out.String()
@@ -178,7 +178,7 @@ func TestBuildVanishingSystemSupportsLagrangeSelector(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := WriteVanishingScenariosZig(&out, []NamedVanishingSystem{{Name: "lagrange", System: vanishingSystem}}); err != nil {
+	if err := WriteVanishingScenariosZig(&out, []VanishingSystem{vanishingSystem}); err != nil {
 		t.Fatalf("WriteVanishingScenariosZig() error = %v", err)
 	}
 	if want := ".{ .lagrange_selector = 2 },"; !strings.Contains(out.String(), want) {

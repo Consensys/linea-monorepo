@@ -1,5 +1,6 @@
 const protocol = @import("protocol/root.zig");
 const vanishing = @import("query/vanishing.zig");
+const logderivativesum = @import("query/logderivativesum.zig");
 const ext = @import("field/koalabear_ext.zig");
 // TODO(new-sub-verifier): add import here — step 1 below.
 
@@ -16,8 +17,8 @@ const ext = @import("field/koalabear_ext.zig");
 //           logderiv:  logderiv.System,   // ← add
 //       };
 //
-//  3. Add its runtime claim fields to `ProofData`:
-//       pub const ProofData = struct {
+//  3. Add its runtime claim fields to `Proof`:
+//       pub const Proof = struct {
 //           ...
 //           logderiv_claims: []const ext.Ext,   // ← add
 //       };
@@ -36,15 +37,19 @@ const ext = @import("field/koalabear_ext.zig");
 /// One field per sub-verifier; each holds the comptime metadata for that query.
 pub const Systems = struct {
     vanishing: vanishing.System,
-    // TODO(new-sub-verifier): add field here — step 2 above.
+    logderivativesum: logderivativesum.System = .{},
+    // TODO(new-sub-verifier): add compiled system field here — step 2 above.
 };
 
-/// All proof data consumed by the verifier in one pass.
+/// Proof is the verifier-visible transcript consumed by `verify` in one pass.
+/// It is the verifier-ray analogue of prover-ray's `wiop.Proof`: a
+/// self-contained bundle of exactly the data a verifier is entitled to see.
 ///
-/// Protocol-level round messages are shared across every sub-verifier.
-/// Sub-verifier-specific claim slices are routed only to the verifier that
-/// registered them.
-pub const ProofData = struct {
+/// Protocol-level round messages (public columns + cells) are shared across
+/// every sub-verifier. Sub-verifier-specific claim slices are routed only to
+/// the verifier that registered them. Coins are not stored here — they are
+/// re-derived deterministically by `protocol.replay` from the round messages.
+pub const Proof = struct {
     rounds: []const protocol.RoundMessage,
     // vanishing claims
     witness_claims: []const ext.Ext,
@@ -73,7 +78,7 @@ pub const ProofData = struct {
 pub fn verify(
     comptime spec: protocol.Spec,
     comptime systems: Systems,
-    proof: ProofData,
+    proof: Proof,
 ) !void {
     // Step 1 — replay transcript, derive all coins. `replay` comptime-validates
     // `spec` internal consistency and returns the stack-allocated coin array.
@@ -86,11 +91,14 @@ pub fn verify(
     };
 
     // Step 3 — dispatch each sub-verifier with ctx + its own claims.
-    // TODO(new-sub-verifier): add dispatch call here — step 4 above.
     try vanishing.verify(systems.vanishing, .{
         .ctx = ctx,
         .witness_claims = proof.witness_claims,
         .quotient_claims = proof.quotient_claims,
         .module_sizes = proof.module_sizes,
     });
+    // LogDerivativeSum reads only public cell openings from ctx.rounds; its
+    // Z-recurrence and L_0 initial condition are discharged by vanishing above.
+    try logderivativesum.verify(systems.logderivativesum, ctx);
+    // TODO(new-sub-verifier): dispatch here — step 4 above.
 }
