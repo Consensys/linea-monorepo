@@ -88,9 +88,14 @@ func Compile(sys *wiop.System) {
 	// PreSamplingHook that seeds FS with cross-shard shared randomness;
 	// ensureRoundAfter reuses any tail round already at this position
 	// rather than appending a duplicate.
+
+	// Find the highest-ID round any participant column or multiplicity touches.
 	maxParticipantRound := latestParticipantRound(byHandle)
+	// Pick the slot directly after the participants — allocate a fresh round if empty, reuse any round already sitting there. The reuse path is what lands α/β on the *same* round a sharded caller pre-allocated for a PreSamplingHook, so the hook's SetFSState fires immediately before this round's coin sampling.
 	coinRound := ensureRoundAfter(sys, maxParticipantRound)
+	// Declare α on that round — sampled by AdvanceRound, after any pre-sampling hook fires.
 	alpha := coinRound.NewCoinField(compCtx.Childf("alpha"))
+	// Declare β on the same round, drawn from the same Fiat–Shamir state as α.
 	beta := coinRound.NewCoinField(compCtx.Childf("beta"))
 
 	// The result round (where LDS cells and the verifier action live) sits
