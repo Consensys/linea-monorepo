@@ -6,7 +6,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	ext "github.com/consensys/gnark-crypto/field/koalabear/extensions"
-	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/commitment"
 	fiatshamir "github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fiatshamirrefactor"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/fri"
 	"github.com/consensys/linea-monorepo/prover-ray/crypto/koalabear/hash"
@@ -56,7 +55,7 @@ func buildLevelTreeExt(t *testing.T, p fri.Params, layer []ext.E6) *merkle.Tree 
 
 func testParams(t *testing.T, N, D, queries int) fri.Params {
 	t.Helper()
-	p, err := fri.NewParams(N, D, queries, commitment.DefaultLeafHasher, commitment.DefaultNodeHasher)
+	p, err := fri.NewParams(N, D, queries, fri.DefaultLeafHasher, fri.DefaultNodeHasher)
 	if err != nil {
 		t.Fatalf("NewParams(%d,%d,%d): %v", N, D, queries, err)
 	}

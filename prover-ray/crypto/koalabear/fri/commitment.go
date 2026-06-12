@@ -1,4 +1,4 @@
-package commitment
+package fri
 
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear"

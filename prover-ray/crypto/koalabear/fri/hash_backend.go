@@ -1,4 +1,4 @@
-package commitment
+package fri
 
 import (
 	"fmt"
