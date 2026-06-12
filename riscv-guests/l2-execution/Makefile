@@ -50,7 +50,7 @@ test:
 # lazy execution_spec_tests_zkevm dependency. Narrow/triage with SPEC_ARGS, e.g.
 # `make spec-test SPEC_ARGS="--fork Amsterdam -x"` or `SPEC_ARGS="--report-only"`.
 SPEC_ARGS ?=
-spec-test:
+spec-test: gp-linker-script
 	$(ZIG) build spec-tests $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS) $(if $(strip $(SPEC_ARGS)),-- $(SPEC_ARGS))
 
 clean:
