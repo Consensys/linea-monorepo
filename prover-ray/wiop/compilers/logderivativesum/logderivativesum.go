@@ -140,7 +140,12 @@ type zEntry struct {
 }
 
 // buildZ allocates one Z column for a packed fraction group, registers the
-// recurrence Vanishing, and opens the two endpoints.
+// recurrence Vanishing, and opens the two endpoints. The module's size does
+// not need to be known at compile time: the endpoint LocalOpening is
+// addressed via [ColumnPosition]'s negative-row convention (Position = −1
+// ⇒ last row), and Vanishing's cancelled-positions logic gracefully handles
+// a runtime size of 1 by automatically skipping row 0 (the only row of a
+// one-row module), so the recurrence Vanishing is registered unconditionally.
 func buildZ(
 	m *wiop.Module,
 	packed []wiop.Fraction,
@@ -148,14 +153,6 @@ func buildZ(
 	ctx *wiop.ContextFrame,
 	bIdx, kIdx int,
 ) zEntry {
-	n := m.Size()
-	if n <= 0 {
-		panic(fmt.Sprintf(
-			"wiop/compilers/logderivativesum: module %q must be sized before Compile",
-			m.Context.Path(),
-		))
-	}
-
 	zNum, zDen := buildZExpressions(packed)
 
 	zCol := m.NewExtensionColumn(
@@ -167,8 +164,13 @@ func buildZ(
 	// The recurrence zNum − (Z − Z<<−1)·zDen carries a −1 shift on Z, so
 	// NewVanishing automatically cancels row 0 — the initial condition is
 	// instead enforced by the verifier action through the Z[0] opening.
-	// For a single-row module the recurrence is vacuous: skip it.
-	if n > 1 {
+	//
+	// For a *statically* one-row module the recurrence is vacuous and we
+	// skip it as an optimisation. For a dynamic module we cannot know the
+	// runtime size at compile time, so the Vanishing is registered
+	// unconditionally; Vanishing.Check's cancelled-positions logic makes
+	// the constraint vacuous if RuntimeSize ends up being 1.
+	if m.IsDynamic() || m.Size() > 1 {
 		zView := zCol.View()
 		recurrence := wiop.Sub(
 			zNum,
@@ -183,8 +185,13 @@ func buildZ(
 		)
 	}
 
+	// Endpoint openings: Z[0] for the initial condition, Z[last] for the
+	// running-sum total. The negative-row form on Z[last] resolves to
+	// RuntimeSize-1 per-Runtime, which is what makes the dynamic-module
+	// case work — for static modules it resolves to the compile-time size
+	// just like the original m.Size()-1 form.
 	zInit := zCol.At(0).Open(ctx.Childf("z-init-b%d-k%d", bIdx, kIdx))
-	zFinal := zCol.At(n - 1).Open(ctx.Childf("z-final-b%d-k%d", bIdx, kIdx))
+	zFinal := zCol.At(-1).Open(ctx.Childf("z-final-b%d-k%d", bIdx, kIdx))
 
 	return zEntry{
 		zCol:   zCol,

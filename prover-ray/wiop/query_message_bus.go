@@ -136,7 +136,12 @@ func (sys *System) NewMessageBusSend(ctx *ContextFrame, segment, handle string, 
 //     tab.Module().
 //
 // Panics on any invariant violation.
-func (sys *System) NewMessageBusReceive(ctx *ContextFrame, segment, handle string, tab Table, multiplicity Expression) *MessageBus {
+func (sys *System) NewMessageBusReceive(
+	ctx *ContextFrame,
+	segment, handle string,
+	tab Table,
+	multiplicity Expression,
+) *MessageBus {
 	return sys.newMessageBus(ctx, segment, handle, BusReceive, tab, multiplicity)
 }
 

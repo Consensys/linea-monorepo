@@ -42,16 +42,20 @@ func (lo *LocalOpening) IsAlreadyAssigned(rt Runtime) bool {
 }
 
 // SelfAssign implements [AssignableQuery]. Reads Column[Position] from the
-// runtime and writes the value into Result.
+// runtime and writes the value into Result. A negative Pol.Position is
+// resolved from the end of the domain (see [ColumnPosition.Position]), which
+// is how dynamic-module endpoints are addressed.
 func (lo *LocalOpening) SelfAssign(rt Runtime) {
 	col := lo.Pol.Column
 	m := col.Module
-	elem := rt.GetColumnAssignment(col).ElementAtN(m.Padding, m.RuntimeSize(rt), lo.Pol.Position)
+	n := m.RuntimeSize(rt)
+	elem := rt.GetColumnAssignment(col).ElementAtN(m.Padding, n, lo.Pol.resolvedRow(n))
 	rt.AssignCell(lo.Result, elem)
 }
 
 // Check implements [Query]. Verifies that Result equals the column assignment
-// at Pol.Position.
+// at Pol.Position. Negative Pol.Position values are resolved from the end of
+// the domain at runtime.
 func (lo *LocalOpening) Check(rt Runtime) error {
 	col := lo.Pol.Column
 	if !rt.HasColumnAssignment(col) {
@@ -62,7 +66,8 @@ func (lo *LocalOpening) Check(rt Runtime) error {
 	}
 
 	m := col.Module
-	got := rt.GetColumnAssignment(col).ElementAtN(m.Padding, m.RuntimeSize(rt), lo.Pol.Position)
+	n := m.RuntimeSize(rt)
+	got := rt.GetColumnAssignment(col).ElementAtN(m.Padding, n, lo.Pol.resolvedRow(n))
 	claim := rt.GetCellValue(lo.Result)
 
 	diff := got.Sub(claim)

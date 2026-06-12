@@ -129,6 +129,7 @@ func drive(rt *wiop.Runtime) {
 // sent row matches a received row. The verifier must accept.
 func TestCompile_TwoSegmentsBalanced(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		t.Helper()
 		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
 		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
 		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
@@ -165,6 +166,7 @@ func TestCompile_TwoSegmentsBalanced(t *testing.T) {
 // per-handle cells should not sum to zero and the verifier must reject.
 func TestCompile_TamperedMultiplicity(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		t.Helper()
 		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
 		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
 		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
@@ -205,6 +207,7 @@ func TestCompile_TamperedMultiplicity(t *testing.T) {
 // element of the extension field.
 func TestCompile_TamperedValueFailsInShardCheck(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		t.Helper()
 		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
 		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
 		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
@@ -243,6 +246,7 @@ func TestCompile_TamperedValueFailsInShardCheck(t *testing.T) {
 // has a different cardinality and the per-handle sum is non-zero.
 func TestCompile_TamperedFilterFailsInShardCheck(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		t.Helper()
 		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
 		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
 		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
@@ -283,6 +287,7 @@ func TestCompile_TamperedFilterFailsInShardCheck(t *testing.T) {
 // the receiver holds [10, 20] with multiplicity [2, 2].
 func TestCompile_MultipleSendersOneReceiver(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		t.Helper()
 		modS1 := sys.NewSizedModule(sys.Context.Childf("modS1"), 2, wiop.PaddingDirectionNone)
 		modS2 := sys.NewSizedModule(sys.Context.Childf("modS2"), 2, wiop.PaddingDirectionNone)
 		modR := sys.NewSizedModule(sys.Context.Childf("modR"), 2, wiop.PaddingDirectionNone)
@@ -328,6 +333,7 @@ func TestCompile_MultipleSendersOneReceiver(t *testing.T) {
 // via Horner before hashing.
 func TestCompile_MultiColumnTuples(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		t.Helper()
 		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
 		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
 		keyA := modA.NewColumn(sys.Context.Childf("kA"), wiop.VisibilityOracle, r0)
@@ -368,6 +374,7 @@ func TestCompile_MultiColumnTuples(t *testing.T) {
 // accumulator.
 func TestCompile_FilteredSelectors(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		t.Helper()
 		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
 		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
 		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
@@ -412,6 +419,7 @@ func TestCompile_FilteredSelectors(t *testing.T) {
 // own verifier action, so tampering one handle cannot mask the other.
 func TestCompile_TwoHandlesIndependent(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		t.Helper()
 		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 2, wiop.PaddingDirectionNone)
 		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 2, wiop.PaddingDirectionNone)
 		modC := sys.NewSizedModule(sys.Context.Childf("modC"), 2, wiop.PaddingDirectionNone)
@@ -461,6 +469,7 @@ func TestCompile_TwoHandlesIndependent(t *testing.T) {
 // constant 1.
 func TestCompile_ReceiveWithoutMultiplicity(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		t.Helper()
 		modA := sys.NewSizedModule(sys.Context.Childf("modA"), 2, wiop.PaddingDirectionNone)
 		modB := sys.NewSizedModule(sys.Context.Childf("modB"), 2, wiop.PaddingDirectionNone)
 		colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
@@ -498,7 +507,7 @@ func TestCompile_NoMessageBusesIsNoOp(t *testing.T) {
 
 	roundsBefore := len(sys.Rounds)
 	messagebus.Compile(sys)
-	assert.Equal(t, roundsBefore, len(sys.Rounds),
+	assert.Len(t, sys.Rounds, roundsBefore,
 		"Compile must not append rounds when there are no MessageBus queries")
 }
 
@@ -507,14 +516,7 @@ func TestCompile_NoMessageBusesIsNoOp(t *testing.T) {
 // modules' sizes are not declared statically but established at runtime by the
 // first column assignment. The same compiled System is then re-driven across
 // two different runtime sizes to confirm size-agnostic compilation.
-//
-// TODO: unskip once [logderivativesum] supports dynamic modules. The
-// messagebus pass itself is already size-agnostic — it never inspects
-// Module.Size() — but logderivativesum.buildZ currently panics on a dynamic
-// module because it needs the static size to allocate the Z column. Until
-// that lands, the end-to-end path stops at logderivativesum.Compile.
 func TestCompile_DynamicModule_TwoSegmentsBalanced(t *testing.T) {
-	t.Skip("dynamic modules not yet supported by logderivativesum.Compile (panics on m.Size()==0)")
 
 	sys := wiop.NewSystemf("mb-dyn-balanced")
 	r0 := sys.NewRound()
@@ -568,11 +570,7 @@ func TestCompile_DynamicModule_TwoSegmentsBalanced(t *testing.T) {
 // TestCompile_DynamicModule_TamperedFails is the soundness counterpart on a
 // dynamic module: a multiplicity that miscounts the senders must be rejected
 // regardless of the runtime size.
-//
-// TODO: unskip once [logderivativesum] supports dynamic modules — see
-// [TestCompile_DynamicModule_TwoSegmentsBalanced] for the rationale.
 func TestCompile_DynamicModule_TamperedFails(t *testing.T) {
-	t.Skip("dynamic modules not yet supported by logderivativesum.Compile (panics on m.Size()==0)")
 
 	sys := wiop.NewSystemf("mb-dyn-tampered")
 	r0 := sys.NewRound()
@@ -613,11 +611,7 @@ func TestCompile_DynamicModule_TamperedFails(t *testing.T) {
 // dynamic modules: (key, value) tuples sent and received with matching
 // multiplicities. Exercises both the Horner fold and the runtime-determined
 // row count simultaneously.
-//
-// TODO: unskip once [logderivativesum] supports dynamic modules — see
-// [TestCompile_DynamicModule_TwoSegmentsBalanced] for the rationale.
 func TestCompile_DynamicModule_MultiColumnTuples(t *testing.T) {
-	t.Skip("dynamic modules not yet supported by logderivativesum.Compile (panics on m.Size()==0)")
 
 	sys := wiop.NewSystemf("mb-dyn-tuples")
 	r0 := sys.NewRound()
@@ -701,6 +695,7 @@ func TestCompile_WidthMismatchPanics(t *testing.T) {
 // on those for diagnostics.
 func TestCheckHandleSumInShard_ExpectedNonZero(t *testing.T) {
 	runWithAndWithoutHook(t, func(t *testing.T, sys *wiop.System, r0 *wiop.Round) {
+		t.Helper()
 		// Own the in-shard check ourselves so Compile doesn't pre-register one.
 		// This flag is orthogonal to the coin-source variation (hook vs natural
 		// FS) — both subtests exercise the manual CheckHandleSumInShard path.
