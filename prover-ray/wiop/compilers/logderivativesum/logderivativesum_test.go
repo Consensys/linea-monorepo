@@ -602,6 +602,139 @@ func TestCompile_Soundness_WrongInitialZ(t *testing.T) {
 		"the verifier action must catch a Z whose row-0 value disagrees with zNum[0]/zDen[0]")
 }
 
+// ---- Dynamic-module coverage ----
+
+// newDynamicFilteredSum is the dynamic-module counterpart of
+// [newSimpleFilteredSum]: it builds the same single-fraction Num/1 LDS query
+// but over a [wiop.NewDynamicModule] whose domain size is fixed at runtime
+// by the first column assignment instead of at construction time. The
+// helper does NOT supply a size — every [TestCompile_DynamicModule_*]
+// caller is expected to pick one per [wiop.Runtime] via the witness vector
+// it assigns.
+func newDynamicFilteredSum(t *testing.T) (
+	sys *wiop.System,
+	num *wiop.Column,
+	filter *wiop.Column,
+	ld *wiop.LogDerivativeSum,
+) {
+	t.Helper()
+	sys = wiop.NewSystemf("ld2-dyn-test")
+	r0 := sys.NewRound()
+	sys.NewRound() // hosts ld.Result
+	mod := sys.NewDynamicModule(sys.Context.Childf("mod"), wiop.PaddingDirectionRight)
+	num = mod.NewColumn(sys.Context.Childf("num"), wiop.VisibilityOracle, r0)
+	filter = mod.NewColumn(sys.Context.Childf("filter"), wiop.VisibilityOracle, r0)
+	one := wiop.NewConstantVector(mod, field.NewFromString("1"))
+	ld = sys.NewLogDerivativeSum(
+		sys.Context.Childf("ld2-dyn"),
+		[]wiop.Fraction{{
+			Filter:      filter.View(),
+			Numerator:   num.View(),
+			Denominator: one,
+		}},
+	)
+	return
+}
+
+// TestCompile_DynamicModule_Completeness exercises the completeness path for
+// dynamic-module LDS: the same compiled System is re-driven against two
+// different runtime sizes, and an honest witness must verify both times.
+// This pins down the end-to-end behaviour of [zCol.At(-1)] +
+// [Module.RuntimeSize] driving the endpoint LocalOpening to the correct row.
+func TestCompile_DynamicModule_Completeness(t *testing.T) {
+	sys, num, filter, _ := newDynamicFilteredSum(t)
+	logderivativesum.Compile(sys)
+
+	for _, tc := range []struct {
+		name string
+		n    int
+	}{
+		{"size-4", 4},
+		{"size-8", 8},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			nums := make([]uint64, tc.n)
+			fil := make([]uint64, tc.n)
+			for i := range nums {
+				nums[i] = 2
+				fil[i] = 1
+			}
+
+			rt := wiop.NewRuntime(sys)
+			rt.AssignColumn(num, makeVec(nums...))
+			rt.AssignColumn(filter, makeVec(fil...))
+			rt.AdvanceRound()
+			runRound(&rt)
+
+			require.NoError(t, checkAllVerifierActions(&rt),
+				"honest dynamic-module assignment must verify (RuntimeSize=%d)", tc.n)
+		})
+	}
+}
+
+// TestCompile_DynamicModule_RecurrenceCatchesWrongZ is the soundness
+// counterpart focused on the recurrence Vanishing. The honest Z for
+// num=[2,2,2,2], filter=[1,1,1,1] is [2,4,6,8]; we instead pin Z to a
+// constant column and assert the Vanishing rejects it. This proves the
+// unconditional Vanishing emission for dynamic modules ([m.IsDynamic() ||
+// m.Size() > 1]) is actually constraining at runtime — without it, a
+// tampered Z would pass the recurrence and only the LDS verifier action's
+// initial-condition check could catch the error.
+func TestCompile_DynamicModule_RecurrenceCatchesWrongZ(t *testing.T) {
+	sys, num, filter, _ := newDynamicFilteredSum(t)
+	mod := sys.Modules[0]
+	witnessColumns := append([]*wiop.Column{}, mod.Columns...)
+	logderivativesum.Compile(sys)
+	zCol := findZColumn(t, mod, witnessColumns)
+
+	require.Len(t, mod.Vanishings, 1,
+		"dynamic module must emit the recurrence Vanishing unconditionally")
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(num, makeVec(2, 2, 2, 2))
+	rt.AssignColumn(filter, makeVec(1, 1, 1, 1))
+	rt.AdvanceRound()
+
+	bogus := []field.Ext{
+		field.Lift(field.NewFromString("1")),
+		field.Lift(field.NewFromString("1")),
+		field.Lift(field.NewFromString("1")),
+		field.Lift(field.NewFromString("1")),
+	}
+	rt.AssignColumn(zCol, &wiop.ConcreteVector{Plain: field.VecFromExt(bogus)})
+
+	assert.Error(t, mod.Vanishings[0].Check(rt),
+		"recurrence Vanishing must reject a constant Z on a dynamic module")
+}
+
+// TestCompile_DynamicModule_SizeOne pins down the corner case that drives
+// the [m.IsDynamic() || m.Size() > 1] decision in buildZ: the recurrence
+// Vanishing is emitted at compile time even though the runtime size turns
+// out to be 1, and Vanishing.Check must treat the constraint as vacuous on
+// the single row (cancelled by the Shift(-1) on Z). Both the recurrence
+// and the LDS verifier action must accept an honest single-row witness.
+func TestCompile_DynamicModule_SizeOne(t *testing.T) {
+	sys, num, filter, _ := newDynamicFilteredSum(t)
+	mod := sys.Modules[0]
+	logderivativesum.Compile(sys)
+
+	require.Len(t, mod.Vanishings, 1,
+		"dynamic module always emits the recurrence Vanishing at compile time, "+
+			"even when the runtime size will turn out to be 1")
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(num, makeVec(7))
+	rt.AssignColumn(filter, makeVec(1))
+	rt.AdvanceRound()
+	runRound(&rt)
+
+	require.NoError(t, mod.Vanishings[0].Check(rt),
+		"recurrence Vanishing must be vacuous when RuntimeSize == 1 "+
+			"(the only row is cancelled by Z's −1 shift)")
+	require.NoError(t, checkAllVerifierActions(&rt),
+		"honest single-row dynamic-module assignment must verify end-to-end")
+}
+
 // ---- Construction-time validation ----
 
 func TestNewLogDerivativeSum_NilCtxPanic(t *testing.T) {
