@@ -20,25 +20,31 @@ import (
 	"github.com/consensys/linea-monorepo/prover-ray/maths/koalabear/field"
 )
 
-// ReedSolomonCodec is a Reed-Solomon error correcting-code encoder and decoder.
-type ReedSolomonCodec struct {
-	// Domain is the domain used by the encoder
-	Domain        *fft.Domain
+// Encoder is a Reed-Solomon error correcting-code encoder and decoder.
+type Encoder struct {
+	// Domain is the codeword domain (cardinality N), used for the forward FFT.
+	Domain *fft.Domain
+	// smallDomain has cardinality PlainTextSize and is used for the interpolating
+	// inverse FFT. The inverse FFT must run over the plaintext-sized domain so it
+	// uses ωₙ (not ω_N) as its root and scales by 1/n (not 1/N).
+	smallDomain   *fft.Domain
 	PlainTextSize int
 }
 
-// NewReedSolomonCodec constructs a ReedSolomonCodec and its inside domain.
-func NewReedSolomonCodec(N uint64, plainTextSize int) ReedSolomonCodec {
-	return ReedSolomonCodec{
+// NewEncoder constructs a ReedSolomonCodec and its inside domain.
+func NewEncoder(N uint64, plainTextSize int) Encoder {
+	return Encoder{
 		Domain:        fft.NewDomain(N),
+		smallDomain:   fft.NewDomain(uint64(plainTextSize)),
 		PlainTextSize: plainTextSize,
 	}
 }
 
-// NewReedSolomonCodecWithDomain constructs a ReedSolomonCodec.
-func NewReedSolomonCodecWithDomain(domain *fft.Domain, plainTextSize int) ReedSolomonCodec {
-	return ReedSolomonCodec{
+// NewEncoderWithDomain constructs a ReedSolomonCodec.
+func NewEncoderWithDomain(domain *fft.Domain, plainTextSize int) Encoder {
+	return Encoder{
 		Domain:        domain,
+		smallDomain:   fft.NewDomain(uint64(plainTextSize)),
 		PlainTextSize: plainTextSize,
 	}
 }
@@ -49,7 +55,7 @@ func NewReedSolomonCodecWithDomain(domain *fft.Domain, plainTextSize int) ReedSo
 // Optional fftOpts are forwarded to both internal FFTs (e.g. to cap inner
 // parallelism with fft.WithNbTasks when Encode is itself called inside a
 // parallel.Execute loop).
-func (codec *ReedSolomonCodec) Encode(p []field.Element) []field.Element {
+func (codec *Encoder) Encode(p []field.Element, fftOpt ...fft.Option) []field.Element {
 
 	// get the size of p
 	n := len(p)
@@ -62,9 +68,9 @@ func (codec *ReedSolomonCodec) Encode(p []field.Element) []field.Element {
 	// Lagrange normal to canonical bit-reversed (w.r.t. n). We place those
 	// coefficients directly in N-bit-reversed order and use a DIT FFT, avoiding
 	// the two explicit BitReverse passes previously needed for normal order.
-	codec.Domain.FFTInverse(_p[:n], fft.DIF)
+	codec.smallDomain.FFTInverse(_p[:n], fft.DIF, fftOpt...)
 	scatterBitReversedCoeffs(_p, n, int(N))
-	codec.Domain.FFT(_p, fft.DIT)
+	codec.Domain.FFT(_p, fft.DIT, fftOpt...)
 
 	// return _p
 	return _p
@@ -73,16 +79,16 @@ func (codec *ReedSolomonCodec) Encode(p []field.Element) []field.Element {
 // EncodeExt evaluates an extension-field polynomial on the codec domain.
 // The input p is in Lagrange normal form over d; the output is a fresh
 // extension polynomial in Lagrange normal form over codec.Domain.
-func (codec *ReedSolomonCodec) EncodeExt(p []field.Ext) []field.Ext {
+func (codec *Encoder) EncodeExt(p []field.Ext, fftOpt ...fft.Option) []field.Ext {
 	n := len(p)
 
 	N := codec.Domain.Cardinality
 	_p := make([]field.Ext, N)
 	copy(_p, p)
 
-	codec.Domain.FFTInverseExt6(_p[:n], fft.DIF)
+	codec.smallDomain.FFTInverseExt6(_p[:n], fft.DIF, fftOpt...)
 	scatterBitReversedCoeffs(_p, n, int(N))
-	codec.Domain.FFTExt6(_p, fft.DIT)
+	codec.Domain.FFTExt6(_p, fft.DIT, fftOpt...)
 
 	return _p
 }

@@ -20,7 +20,7 @@ func TestEvaluateOnExtendedDomainRootMatchesEncode(t *testing.T) {
 			field.NewElement(9),
 			field.NewElement(13),
 		}
-		codec   = NewReedSolomonCodec(8, len(p))
+		codec   = NewEncoder(8, len(p))
 		encoded = codec.Encode(p)
 		prng    = rand.New(utils.NewRandSource(0))
 	)
@@ -49,7 +49,7 @@ func TestExtEvaluateOnExtendedDomainRootMatchesEncodeExt(t *testing.T) {
 			field.IntsToExt(13, 14, 15, 16, 0, 0),
 		}
 
-		codec   = NewReedSolomonCodec(8, len(p))
+		codec   = NewEncoder(8, len(p))
 		encoded = codec.EncodeExt(p)
 		prng    = rand.New(utils.NewRandSource(0))
 	)
@@ -86,7 +86,7 @@ func TestEncodeExt(t *testing.T) {
 	gutils.BitReverse(p)
 
 	var (
-		codec   = NewReedSolomonCodec(8, len(coeffs))
+		codec   = NewEncoder(8, len(coeffs))
 		encoded = codec.EncodeExt(p)
 		domainN = fft.NewDomain(uint64(len(encoded)))
 		omega   = domainN.Generator
