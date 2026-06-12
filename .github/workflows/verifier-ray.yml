@@ -36,7 +36,7 @@ permissions:
 
 env:
   GO_VERSION: '1.25.7'
-  GO_CORSET_VERSION: 'v1.2.17'
+  GO_CORSET_VERSION: 'v1.2.18'
   GO_CORSET_REF_FOR_ZKC: 'd070f9968ece6f3d8d30d32574485dca1c62daf3'
   ZIG_VERSION: '0.17.0-dev.251+0db721ec2'
 
