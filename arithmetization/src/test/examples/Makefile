@@ -175,6 +175,7 @@ clean-all:
 	rm -rf $(MAKEFILE_DIR)zig/.zig-cache/
 	rm -rf $(MAKEFILE_DIR)rust/target/
 	rm -rf $(MAKEFILE_DIR)act4/bin/
+	rm -rf $(MAKEFILE_DIR)bin/
 	rm -f  $(LINKER_SCRIPT)
 
 # Generate the linker script with the specified memory layout
