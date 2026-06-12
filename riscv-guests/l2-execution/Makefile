@@ -26,18 +26,18 @@ ZIG_FETCH_FLAGS ?=
 # Makefile containaining the logic for generating a linker scritpt, executing and debugging generic programs
 GENERIC_PROGRAM_MAKEFILE := $(abspath $(MAKEFILE_DIR)../../arithmetization/src/test/examples)/Makefile
 
-GUEST_BIN    := evm_execution_guest
+GP_NAME     := evm_execution_guest
 # Committed sample input for the fixture-exec/-debug convenience runs: a real fixture's SSZ framed
 # [u64 LE len][SSZ] and pre-reversed for the converter (see "running the guest program in zkc.md",
 # which also regenerates it). Lives under test/testdata/ with the other host-only data.
-SAMPLE_INPUT ?= $(MAKEFILE_DIR)test/testdata/fixture_input.in.hex
+GP_INPUT    ?= $(MAKEFILE_DIR)test/testdata/fixture_input.in.hex
 
 # Guest artifact: the statically-linked rv64im ELF `compile` produces (entry _start + memory layout
 # from build_common) — the zkvm-standards deliverable. The ZKC exec/debug runs feed it to ELF->JSON.
-ELF_BIN := $(MAKEFILE_DIR)zig-out/bin/$(GUEST_BIN)
+GP_BIN      := $(MAKEFILE_DIR)zig-out/bin/$(GP_NAME)
 
 # If true, generates an objdump of the generated ELF for debugging purposes
-OBJDUMP        ?= false
+OBJDUMP     ?= false
 
 # ── Proving-system-agnostic guest lifecycle ─────────────────────────────────
 fetch:
@@ -76,15 +76,15 @@ gp-compile: gp-linker-script
 	$(ZIG) build $(ZIG_BUILD_FLAGS) $(ZIG_FETCH_FLAGS)
 	@if command -v riscv64-unknown-elf-objdump >/dev/null 2>&1; then \
 		if [ "$(OBJDUMP)" = "true" ]; then \
-			echo "\nDisassembling $(ELF_BIN)"; \
-			LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(ELF_BIN) > $(ELF_BIN).objdump; \
+			echo "\nDisassembling $(GP_BIN)"; \
+			LANG=C riscv64-unknown-elf-objdump -D -s --line-numbers $(GP_BIN) > $(GP_BIN).objdump; \
 		fi \
 	else \
 		echo "\nSkipping objdump: riscv64-unknown-elf-objdump is not on PATH"; \
 	fi
 
-gp-exec:
-	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) elf-exec BIN_EXT="$(ELF_BIN)" IN_BYTES="@$(SAMPLE_INPUT)" ZKC_EXEC_FLAGS=-q
+gp-exec: gp-compile
+	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) elf-exec BIN_EXT="$(GP_BIN)" IN_BYTES="@$(GP_INPUT)" ZKC_EXEC_FLAGS=-q
 
 gp-debug:
-	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) elf-debug BIN_EXT="$(ELF_BIN)" IN_BYTES="@$(SAMPLE_INPUT)"
+	$(MAKE) -f $(GENERIC_PROGRAM_MAKEFILE) elf-debug BIN_EXT="$(GP_BIN)" IN_BYTES="@$(GP_INPUT)"

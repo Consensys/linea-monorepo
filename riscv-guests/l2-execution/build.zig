@@ -11,7 +11,7 @@ pub fn build(b: *std.Build) void {
         .preferred_optimize_mode = .ReleaseSmall,
     });
 
-    const guest_name = "evm_execution_guest";
+    const gp_name = "evm_execution_guest";
     const source = "src/evm_execution_guest.zig";
 
     // ── Guest: statically-linked rv64im ELF ───────────────────────────────────
@@ -59,7 +59,7 @@ pub fn build(b: *std.Build) void {
     guest_module.addImport("linea_zkvm_accel", linea_accel_mod);
     guest_module.addImport("linea_zkvm_io", linea_io_mod);
     common.clearFreestandingNativeLinkage(b, guest_module);
-    common.installGuestElf(b, guest_module, guest_name);
+    common.installGuestElf(b, guest_module, gp_name);
 
     // ── Native test ───────────────────────────────────────────────────────────
     // Runs the thin wrapper (vanilla zesu stateless execution) on the host against a real
