@@ -260,6 +260,7 @@ fn evalLagrangeSelector(comptime position: usize, comptime static_n: usize, ctx:
     const omega_pos = if (static_n != 0)
         comptime staticRootPower(static_n, position)
     else blk: {
+        if (position >= ctx.dynamic_n) return error.InvalidModuleSize;
         const omega = field.rootOfUnityBy(ctx.dynamic_n) catch return error.InvalidModuleSize;
         break :blk omega.pow(@as(u64, @intCast(position)));
     };

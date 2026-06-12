@@ -38,6 +38,11 @@ type LogDerivQuery struct {
 // BuildLogDerivSystem extracts the LogDerivativeSum verifier actions registered
 // on sys into a LogDerivSystem. Queries are collected in round/registration
 // order so the output is deterministic.
+//
+// The error return is kept for API symmetry with BuildVanishingSystem (which
+// can fail on unsupported expression types). BuildLogDerivSystem itself never
+// returns a non-nil error because LogDerivativeSum operands are always cell
+// references, which require no expression compilation.
 func BuildLogDerivSystem(sys *wiop.System) (LogDerivSystem, error) {
 	out := LogDerivSystem{SourceName: sys.Context.Path()}
 
