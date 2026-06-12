@@ -607,6 +607,91 @@ func TestCompile_DynamicModule_TamperedFails(t *testing.T) {
 		"verifier must reject a multiplicity that miscounts senders on a dynamic module")
 }
 
+// TestCompile_DynamicModule_TamperedValueFailsInShardCheck is the
+// dynamic-module counterpart of [TestCompile_TamperedValueFailsInShardCheck]:
+// the send and receive multisets disagree on a single row's value (colB has
+// 21 where colA has 20), so the per-handle sum lands at a non-zero element
+// of the extension field and the in-shard verifier action must reject —
+// regardless of the runtime-determined row count.
+func TestCompile_DynamicModule_TamperedValueFailsInShardCheck(t *testing.T) {
+	sys := wiop.NewSystemf("mb-dyn-tampered-value")
+	r0 := sys.NewRound()
+	setupMessageBusHook(sys)
+
+	modA := sys.NewDynamicModule(sys.Context.Childf("modA"), wiop.PaddingDirectionRight)
+	modB := sys.NewDynamicModule(sys.Context.Childf("modB"), wiop.PaddingDirectionRight)
+	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+
+	sys.NewMessageBusSend(
+		sys.Context.Childf("send-A"),
+		"segA", "ping",
+		wiop.NewTable(colA.View()),
+	)
+	sys.NewMessageBusReceive(
+		sys.Context.Childf("recv-B"),
+		"segB", "ping",
+		wiop.NewTable(colB.View()),
+		mulB.View(),
+	)
+
+	messagebus.Compile(sys)
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(colB, makeVec(10, 21, 30, 40)) // wrong: row 1 holds 21, not 20
+	rt.AssignColumn(mulB, makeVec(1, 1, 1, 1))
+
+	drive(&rt)
+	assert.Error(t, checkAllVerifierActions(&rt),
+		"verifier must reject a tampered receive value on a dynamic-module bus")
+}
+
+// TestCompile_DynamicModule_TamperedFilterFailsInShardCheck is the
+// dynamic-module counterpart of [TestCompile_TamperedFilterFailsInShardCheck]:
+// the send side filters out a row the receive side still claims, so the
+// multisets have different cardinalities and the in-shard verifier action
+// must reject. Exercises the selector path through the dynamic-module fold.
+func TestCompile_DynamicModule_TamperedFilterFailsInShardCheck(t *testing.T) {
+	sys := wiop.NewSystemf("mb-dyn-tampered-filter")
+	r0 := sys.NewRound()
+	setupMessageBusHook(sys)
+
+	modA := sys.NewDynamicModule(sys.Context.Childf("modA"), wiop.PaddingDirectionRight)
+	modB := sys.NewDynamicModule(sys.Context.Childf("modB"), wiop.PaddingDirectionRight)
+	colA := modA.NewColumn(sys.Context.Childf("A"), wiop.VisibilityOracle, r0)
+	selA := modA.NewColumn(sys.Context.Childf("selA"), wiop.VisibilityOracle, r0)
+	colB := modB.NewColumn(sys.Context.Childf("B"), wiop.VisibilityOracle, r0)
+	mulB := modB.NewColumn(sys.Context.Childf("mB"), wiop.VisibilityOracle, r0)
+
+	sys.NewMessageBusSend(
+		sys.Context.Childf("send-A"),
+		"segA", "ping",
+		wiop.NewFilteredTable(selA.View(), colA.View()),
+	)
+	sys.NewMessageBusReceive(
+		sys.Context.Childf("recv-B"),
+		"segB", "ping",
+		wiop.NewTable(colB.View()),
+		mulB.View(),
+	)
+
+	messagebus.Compile(sys)
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(colA, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(selA, makeVec(1, 0, 1, 1)) // sender filters out row 1 (value 20)
+	rt.AssignColumn(colB, makeVec(10, 20, 30, 40))
+	rt.AssignColumn(mulB, makeVec(1, 1, 1, 1)) // receiver still claims all four
+
+	drive(&rt)
+	assert.Error(t, checkAllVerifierActions(&rt),
+		"verifier must reject an asymmetric send-side selector on a dynamic-module bus")
+}
+
 // TestCompile_DynamicModule_MultiColumnTuples covers the width-2 α-fold over
 // dynamic modules: (key, value) tuples sent and received with matching
 // multiplicities. Exercises both the Horner fold and the runtime-determined

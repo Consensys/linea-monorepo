@@ -707,6 +707,72 @@ func TestCompile_DynamicModule_RecurrenceCatchesWrongZ(t *testing.T) {
 		"recurrence Vanishing must reject a constant Z on a dynamic module")
 }
 
+// TestCompile_DynamicModule_Soundness_WrongResult is the dynamic-module
+// counterpart of [TestCompile_Soundness_WrongResult]: a tampered Result
+// cell must be caught by the LDS verifier action's claim-vs-running-sum
+// identity, even when the underlying column lives on a dynamic module.
+func TestCompile_DynamicModule_Soundness_WrongResult(t *testing.T) {
+	sys, num, filter, ld := newDynamicFilteredSum(t)
+	logderivativesum.Compile(sys)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(num, makeVec(2, 2, 2, 2))
+	rt.AssignColumn(filter, makeVec(1, 1, 1, 1))
+	rt.AdvanceRound()
+	// Pre-assigning Result before the prover action runs short-circuits the
+	// prover-side AssignCell (HasCellAssignment is true), so the bogus value
+	// survives into the verifier action.
+	rt.AssignCell(ld.Result, field.ElemFromBase(field.NewFromString("99")))
+	runRound(&rt)
+
+	assert.Error(t, checkAllVerifierActions(&rt),
+		"a corrupted Result cell on a dynamic-module LDS must be detected by the verifier action")
+}
+
+// TestCompile_DynamicModule_Soundness_WrongInitialZ is the dynamic-module
+// counterpart of [TestCompile_Soundness_WrongInitialZ]: a Z column whose
+// per-row differences satisfy the recurrence but whose row-0 value is
+// shifted away from the honest zNum[0]/zDen[0] must pass the recurrence
+// Vanishing AND fail the LDS verifier action's initial-condition check.
+// This pins down that the verifier action closes the soundness gap the
+// recurrence leaves open, on the dynamic-module path just like on the
+// static one.
+func TestCompile_DynamicModule_Soundness_WrongInitialZ(t *testing.T) {
+	sys, num, filter, ld := newDynamicFilteredSum(t)
+	mod := sys.Modules[0]
+	witnessColumns := append([]*wiop.Column{}, mod.Columns...)
+	logderivativesum.Compile(sys)
+	zCol := findZColumn(t, mod, witnessColumns)
+
+	rt := wiop.NewRuntime(sys)
+	rt.AssignColumn(num, makeVec(2, 2, 2, 2))
+	rt.AssignColumn(filter, makeVec(1, 1, 1, 1))
+	rt.AdvanceRound()
+
+	// Honest Z = [2, 4, 6, 8]. A constant-step-of-2 sequence starting at 5
+	// satisfies Z[i] − Z[i−1] = 2 but disagrees with Z[0]·zDen[0] = zNum[0].
+	shifted := []field.Ext{
+		field.Lift(field.NewFromString("5")),
+		field.Lift(field.NewFromString("7")),
+		field.Lift(field.NewFromString("9")),
+		field.Lift(field.NewFromString("11")),
+	}
+	rt.AssignColumn(zCol, &wiop.ConcreteVector{Plain: field.VecFromExt(shifted)})
+
+	for _, lo := range mod.LocalOpenings {
+		lo.SelfAssign(rt)
+	}
+	rt.AssignCell(ld.Result, field.ElemFromExt(shifted[3]))
+
+	for _, v := range mod.Vanishings {
+		require.NoError(t, v.Check(rt),
+			"recurrence must accept a constant-step Z on a dynamic module — "+
+				"the initial-condition check is the only line of defence")
+	}
+	assert.Error(t, checkAllVerifierActions(&rt),
+		"the verifier action must catch a Z whose row-0 value disagrees with zNum[0]/zDen[0] on a dynamic module")
+}
+
 // TestCompile_DynamicModule_SizeOne pins down the corner case that drives
 // the [m.IsDynamic() || m.Size() > 1] decision in buildZ: the recurrence
 // Vanishing is emitted at compile time even though the runtime size turns
