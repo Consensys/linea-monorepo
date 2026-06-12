@@ -11,7 +11,7 @@
 
 # guest-program = gp
 
-.PHONY: fetch test spec-test clean gp-linker-script gp-compile gp-exec gp-debug 
+.PHONY: fetch test spec-test clean gp-linker-script gp-compile gp-exec gp-debug
 
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
@@ -27,13 +27,10 @@ ZIG_FETCH_FLAGS ?=
 GENERIC_PROGRAM_MAKEFILE := $(abspath $(MAKEFILE_DIR)../../arithmetization/src/test/examples)/Makefile
 
 GP_NAME     := evm_execution_guest
-# Committed sample input for the fixture-exec/-debug convenience runs: a real fixture's SSZ framed
-# [u64 LE len][SSZ] and pre-reversed for the converter (see "running the guest program in zkc.md",
-# which also regenerates it). Lives under test/testdata/ with the other host-only data.
+# Sample fixture input used by gp-exec/gp-debug
 GP_INPUT    ?= $(MAKEFILE_DIR)test/testdata/fixture_input.in.hex
 
-# Guest artifact: the statically-linked rv64im ELF `compile` produces (entry _start + memory layout
-# from build_common) — the zkvm-standards deliverable. The ZKC exec/debug runs feed it to ELF->JSON.
+# Guest ELF produced by gp-compile
 GP_BIN      := $(MAKEFILE_DIR)zig-out/bin/$(GP_NAME)
 
 # If true, generates an objdump of the generated ELF for debugging purposes
