@@ -18,7 +18,7 @@ Within a guest, `src/` holds **only the production code that ships in the rv64im
 
 ## Required Toolchain
 
-- Zig `0.16.0-dev.3153+d6f43caad`. Recorded in `.zigversion` and enforced by `build_common` (`requireZigVersion`).
+- Zig `0.16.0`. Recorded in `.zigversion` and enforced by `build_common` (`requireZigVersion`).
 - Go, for converting compiled ELFs into the JSON input consumed by the ZKC interpreter.
 - `zkc` on `PATH`, for a guest's `exec` / `debug` / fixture targets.
 - Optional: `riscv64-unknown-elf-objdump` for compile-time disassembly output.

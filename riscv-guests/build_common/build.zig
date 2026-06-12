@@ -15,7 +15,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 /// The one Zig toolchain pinned for all guests (kept in sync with riscv-guests/.zigversion).
-pub const required_zig_version = "0.16.0-dev.3153+d6f43caad";
+pub const required_zig_version = "0.16.0";
 
 /// Abort unless the active Zig matches the pinned toolchain.
 pub fn requireZigVersion() void {

@@ -2,7 +2,7 @@
     .name = .l2_execution_guest,
     .version = "0.0.0",
     .fingerprint = 0x16d3d5ae145fe30c,
-    .minimum_zig_version = "0.16.0-dev.3153+d6f43caad",
+    .minimum_zig_version = "0.16.0",
     .dependencies = .{
         // Upstream Consensys/zesu, pinned by commit. Includes the PR #44 work (exposed module
         // graph + accel_impl include-path fix + -Dcrypto-prefix).
