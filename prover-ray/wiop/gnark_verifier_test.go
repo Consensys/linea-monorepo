@@ -1,6 +1,7 @@
 package wiop_test
 
 import (
+	"fmt"
 	"maps"
 	"math/big"
 	"slices"
@@ -135,6 +136,30 @@ func TestVerifierCircuit_PCSOnly(t *testing.T) {
 		bad.Commitments[0] = root
 		require.Error(t, cv.solve(t, bad, pub), "tampered commitment must not satisfy the circuit")
 	})
+}
+
+// TestVerifierCircuit_PCSOnly_RSBlowup checks that the circuit replays the
+// opening at the System's blowup: query positions are drawn from the blowup's
+// codeword domain, so a circuit assuming another rate rejects honest proofs.
+func TestVerifierCircuit_PCSOnly_RSBlowup(t *testing.T) {
+	for _, blowup := range []int{4, 16} {
+		t.Run(fmt.Sprintf("blowup=%d", blowup), func(t *testing.T) {
+			sys := wiop.NewSystemf("gnark-pcs-blowup")
+			r0 := sys.NewRound()
+			r1 := sys.NewRound()
+			mod := sys.NewSizedModule(sys.Context.Childf("mod"), 8, wiop.PaddingDirectionNone)
+			col := mod.NewColumn(sys.Context.Childf("col"), r0)
+			zeta := r1.NewCoinField(sys.Context.Childf("zeta"))
+			le := sys.NewLagrangeEval(sys.Context.Childf("le"), []*wiop.ColumnView{col.View()}, zeta)
+			r1.RegisterAction(&selfAssignLagrange{le: le})
+			pcs.Compile(sys, append(testPCSOptions(), pcs.WithRSBlowup(blowup))...)
+
+			proof, pub := sys.Prove(func(rt *wiop.Runtime) { rt.AssignColumn(col, nonConstVec(8)) })
+			require.NoError(t, sys.Verify(proof, pub), "honest proof must verify natively")
+			cv := compileVerifierCircuit(t, sys, proof, pub)
+			require.NoError(t, cv.solve(t, proof, pub), "honest proof must satisfy the circuit")
+		})
+	}
 }
 
 func TestVerifierCircuit_Vanishing(t *testing.T) {

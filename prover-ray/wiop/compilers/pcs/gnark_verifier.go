@@ -45,7 +45,7 @@ func (a *OpeningVerifierAction) CheckGnark(api frontend.API, run *wiop.GnarkRunt
 	foldAlphas = append(foldAlphas, fs.RandomFext())
 
 	fs.UpdateExt(proof.FRIProof.FinalPoly...)
-	queryPositions := fs.RandomManyIntegers(int(pcs.Params.NumQueries), effectiveNWith(staticSizeOf, batches, manifests))
+	queryPositions := fs.RandomManyIntegers(int(pcs.Params.NumQueries), a.c.effectiveNWith(staticSizeOf, batches, manifests))
 
 	pcs.VerifyGnark(api, fri.GnarkVerifyInputs{
 		Roots:          a.c.collectRootsGnark(run, batches),
