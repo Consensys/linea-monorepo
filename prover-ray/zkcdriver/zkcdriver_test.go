@@ -8,15 +8,8 @@ import (
 
 	koalafield "github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop"
-	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/global"
-	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/grandproduct"
-	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/localvanishing"
-	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/logderivativesum"
-	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/lookuptologderivsum"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/messagebus"
-	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/nonnative"
-	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/pcs"
-	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/rangecheck"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/zkcdriver"
 	"github.com/LFDT-Lineth/zkc/pkg/util/field"
 	"github.com/LFDT-Lineth/zkc/pkg/util/field/koalabear"
@@ -138,17 +131,15 @@ func traceZkc(
 }
 
 func proverCompilePipeline(sys *wiop.System) {
-	nonnative.Compile(sys)
-	rangecheck.Compile(sys)
-	lookuptologderivsum.Compile(sys)
 	// Shared randomness is off for now: the zkc driver's bus columns still live
 	// on round 0, which the shared-randomness path rejects (see #4020).
-	messagebus.Compile(sys, messagebus.WithoutSharedRandomness())
-	grandproduct.Compile(sys)
-	logderivativesum.Compile(sys)
-	localvanishing.Compile(sys)
-	global.Compile(sys)
-	pcs.Compile(sys)
+	//
+	// XXX: when zkcdriver is updated and puts traces in round 1 then we can remove this wrapper and just call `CompileFull`
+	// everywhere
+	if err := compilers.CompileFull(sys,
+		compilers.WithMessageBusOption(messagebus.WithoutSharedRandomness())); err != nil {
+		panic(err)
+	}
 }
 
 // runProveVerify proves and verifies a given test-case, returning an error if the proof fails to verify.
