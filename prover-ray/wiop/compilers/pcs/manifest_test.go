@@ -100,7 +100,7 @@ func TestColumnElisionEndToEnd(t *testing.T) {
 
 func TestColumnElisionDisabled(t *testing.T) {
 	s := newElisionSystem()
-	Compile(s.sys, CompileOptions{DisableColumnElision: true})
+	Compile(s.sys, WithoutColumnElision())
 
 	proof, pub := s.prove()
 	require.Equal(t, allPresentManifest(7), s.manifestOf(proof))
