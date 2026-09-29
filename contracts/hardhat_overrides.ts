@@ -112,4 +112,15 @@ export const overrides = {
       evmVersion: "osaka",
     },
   },
+  "src/rollup/ValidiumV3Stub.sol": {
+    version: "0.8.33",
+    settings: {
+      viaIR: useViaIR,
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+      evmVersion: "osaka",
+    },
+  },
 };
