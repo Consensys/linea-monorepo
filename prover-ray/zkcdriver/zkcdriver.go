@@ -23,11 +23,29 @@ import (
 // access to the AIR constraints representing the given ZkC program; secondly,
 // it provides a means to generate a trace of that program from a given set of
 // inputs.
-type BinaryFile = constraints.BinaryFile[koalabear.Element]
+type BinaryFile = constraints.BinaryFile[koalabear.Element, vm.Uint32]
+
+// LazyTrace represents a partially realised trace whose shards can be
+// materalised as required (i.e. lazily).  A lazy trace has been computed from a
+// fast-mode execution of the target program, and contains internally a
+// checkpoint for each shard.  When a given shard is to be materialised, tracing
+// begins from that checkpoint until the shard is fully materialised (i.e.
+// traced).  The primary benefit of a lazy trace is that it allows one to
+// process shards without requiring that all shards are held in memory at the
+// same time.
+type LazyTrace = trace.LazyTrace[koalabear.Element]
+
+// Shard represents an atomic unit of a given trace which has been fully
+// materialised.
+type Shard = trace.Shard[koalabear.Element]
 
 // Settings specifies the parameters for the arithmetization (a.k.a. the
 // "constraints").
 type Settings struct {
+	// TraceRound is the round holding the trace columns, apart from the
+	// program ones which are in [ProgramRound]. Zero puts the whole trace in
+	// round 0.
+	TraceRound int
 }
 
 // ZkCDriver exposes all the methods relevant for the user to interact with the
@@ -61,7 +79,7 @@ func NewZkCDriver(sys *wiop.System, settings Settings, bin io.Reader) *ZkCDriver
 	// Extract the AIR constraints from the binary file
 	schema := binf.AirConstraints()
 	// Translate air.Schema into prover's internal representation
-	Define(sys, &schema)
+	Define(sys, &schema, settings.TraceRound)
 	// Construct the driver
 	return &ZkCDriver{
 		BinaryFile:    binf,
@@ -98,7 +116,7 @@ func PreReadZkcInputs(inputsFile string) *PreReadInputs {
 
 // TraceZkcInputs reads and expands a trace file, returning the pre-read trace
 // data laid out on multiple shards. The function panics on errors.
-func (a *ZkCDriver) TraceZkcInputs(preRead *PreReadInputs) trace.Trace[koalabear.Element] {
+func (a *ZkCDriver) TraceZkcInputs(preRead *PreReadInputs) trace.LazyTrace[koalabear.Element] {
 
 	assignStart := time.Now()
 	var (
@@ -132,13 +150,13 @@ func (a *ZkCDriver) TraceZkcInputs(preRead *PreReadInputs) trace.Trace[koalabear
 	}
 	logrus.Infof("[bootstrapper] tracing: %v", time.Since(tracingStart))
 
-	return expandedTrace
+	return expandedTrace.Unwrap()
 }
 
 // AssignTraceShard assigns arithmetization columns using a pre-read trace.
 func (a *ZkCDriver) AssignTraceShard(
 	run *wiop.Runtime,
-	expandedShard trace.Shard[koalabear.Element],
+	expandedShard Shard,
 	sharedRandomness field.Octuplet,
 ) {
 
