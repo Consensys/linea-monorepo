@@ -8,6 +8,7 @@
 ### 🚜 Refactor
 
 - *(coordinator)* Move prover transport from per-proof-type to RiscvProverConfig (#4172)
+- *(coordinator)* Remove TracingModuleV2 and TracingModuleV4 support (#4180)
 ## [2.1.0] - 2026-10-09
 
 ### 🚀 Features
