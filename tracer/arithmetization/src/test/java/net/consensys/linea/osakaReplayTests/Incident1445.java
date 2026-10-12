@@ -56,7 +56,12 @@ public class Incident1445 extends TracerTestBase {
 
   @Test
   void block_28279180_runWithBesu(TestInfo testInfo) {
-    replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279180.mainnet.json.gz", testInfo, false, true);
+    replay(
+        MAINNET_TESTCONFIG(OSAKA),
+        "osaka/incident-1445-28279180.mainnet.json.gz",
+        testInfo,
+        false,
+        true);
   }
 
   // Issue on Sepolia
@@ -70,6 +75,11 @@ public class Incident1445 extends TracerTestBase {
   // https://github.com/LFDT-Lineth/lineth-monorepo/issues/2194
   @Test
   void block_23985771_runWithBesu(TestInfo testInfo) {
-    replay(SEPOLIA_TESTCONFIG(OSAKA), "osaka/incident-1445-23985771.sepolia.json.gz", testInfo, false, true);
+    replay(
+        SEPOLIA_TESTCONFIG(OSAKA),
+        "osaka/incident-1445-23985771.sepolia.json.gz",
+        testInfo,
+        false,
+        true);
   }
 }
