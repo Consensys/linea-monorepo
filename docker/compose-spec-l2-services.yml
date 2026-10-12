@@ -244,7 +244,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: ${LINEA_COORDINATOR_IMAGE_NAME:-consensys/linea-coordinator}:${LINEA_COORDINATOR_TAG:-2.1.0-20261009-9699044}
+    image: ${LINEA_COORDINATOR_IMAGE_NAME:-consensys/linea-coordinator}:${LINEA_COORDINATOR_TAG:-2.2.0-20261012-5c0c4ca}
     profiles: [ "l2", "debug" ]
     depends_on:
       l2-genesis-initialization:
