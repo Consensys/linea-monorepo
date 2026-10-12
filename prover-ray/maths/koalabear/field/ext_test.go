@@ -77,7 +77,7 @@ func TestBatchInvertExtRoundTrip(t *testing.T) {
 // lengths around and across the lane width, out of place and in place.
 func TestBatchInvertExtIntoMatchesInverse(t *testing.T) {
 	rng := newRng()
-	for _, n := range []int{1, 5, invLanes - 1, invLanes, invLanes + 1, 3*invLanes + 7, 5 * invLanes} {
+	for _, n := range []int{1, 5, 15, 16, 17, 3*16 + 7, 5 * 16} {
 		a := make([]Ext, n)
 		for i := range a {
 			a[i] = PseudoRandExt(rng)
