@@ -1,0 +1,235 @@
+package recursion
+
+import (
+	"fmt"
+
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/global"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/localvanishing"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/logderivativesum"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/lookuptologderivsum"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/pcs"
+)
+
+// Module names of the chips.
+const (
+	witnessMod = "witness"
+	constMod   = "const"
+)
+
+// Machine builds a program for the chips: it allocates addresses, counts the
+// reads of every cell and records the instructions, without values. A cell
+// holds an input (supplied per execution), a constant (known when building),
+// or the output of an instruction. Compile turns the program into a wiop
+// system and its setup; Program.Execute runs it on inputs and traces the
+// witness.
+type Machine struct {
+	nCells int
+	reads  []int // read count of every address
+
+	inputs    []int // input cells, in input order
+	hints     []int // cells the witness chip writes with a computed value, checked by their readers
+	consts    map[Cell]int
+	constList []int        // addresses written by the const chip
+	constVal  map[int]Cell // value of every constant
+
+	instrs []instr // every instruction, in execution order
+
+	// extra are chips added by tests (a chip of their own, with its
+	// instructions executed by funcs).
+	extra []chip
+	funcs []func(r *Run) error
+}
+
+// instr is one instruction in execution order: its kind and its index in the
+// kind's list.
+type instr struct {
+	kind, idx int
+}
+
+const (
+	instrFunc = iota // a function of the run (tests' chips)
+)
+
+func (m *Machine) alloc() int {
+	m.reads = append(m.reads, 0)
+	m.nCells++
+	return m.nCells - 1
+}
+
+func (m *Machine) read(addr int) { m.reads[addr]++ }
+
+func (m *Machine) record(kind, idx int) { m.instrs = append(m.instrs, instr{kind, idx}) }
+
+// Input allocates a cell whose value is the next input of every execution
+// (proof values, indices) and returns its address.
+func (m *Machine) Input() int {
+	a := m.alloc()
+	m.inputs = append(m.inputs, a)
+	return a
+}
+
+// NumInputs returns the number of input cells.
+func (m *Machine) NumInputs() int { return len(m.inputs) }
+
+// recordFunc records an instruction executed by f (used by tests' chips).
+func (m *Machine) recordFunc(f func(r *Run) error) {
+	m.funcs = append(m.funcs, f)
+	m.record(instrFunc, len(m.funcs)-1)
+}
+
+// chip is one module of the machine: setup fills its setup columns (from the
+// program), define its constraints and bus accesses (setup columns are
+// precomputed columns, declared before define), trace its witness columns
+// (from an execution). Chips are traced in the order of Machine.chips, so a
+// chip may use what an earlier one recorded in the Run.
+type chip interface {
+	name() string
+	rows() int
+	setup(c *cols)
+	define(m *module, bus *Bus) error
+	trace(c *cols, r *Run) error
+}
+
+func (m *Machine) chips() []chip {
+	return append([]chip{witnessChip{m}, constChip{m}}, m.extra...)
+}
+
+// height returns the number of rows of a chip's module: a power of two, at
+// least 4.
+func height(n int) int {
+	h := 4
+	for h < n {
+		h *= 2
+	}
+	return h
+}
+
+// Program is a compiled machine: its wiop system (with the setup columns as
+// precomputed columns, compiled down to the PCS), built once, and executed
+// on any number of inputs.
+type Program struct {
+	Sys     *wiop.System
+	Bus     *wiop.LogDerivativeSum // nil if no chip accesses the memory
+	m       *Machine
+	modules []*module // the chips with rows, in Machine.chips order
+	chips   []chip
+}
+
+// Compile builds the chips' modules, their setup (precomputed) columns,
+// constraints and bus accesses, the bus, and runs prover-ray's compiler
+// passes down to the PCS. The machine must not be modified afterwards.
+//
+// Rounds: the chips' witness columns are committed in round 0; the bus's
+// coins α and γ are drawn in round 1; its sum is claimed in round 2.
+func (m *Machine) Compile() (*Program, error) {
+	sys := wiop.NewSystemf("recursion")
+	witnessRound := sys.NewRound()
+	coinRound := witnessRound.EnsureNext()
+	coinRound.EnsureNext()
+	p := &Program{Sys: sys, m: m}
+	bus := &Bus{}
+	for _, c := range m.chips() {
+		if c.rows() == 0 {
+			continue
+		}
+		n := height(c.rows())
+		setup := newCols(n)
+		c.setup(setup)
+		mod := newModule(sys, witnessRound, c.name(), n, setup)
+		if err := c.define(mod, bus); err != nil {
+			return nil, fmt.Errorf("chip %s: %w", c.name(), err)
+		}
+		p.modules = append(p.modules, mod)
+		p.chips = append(p.chips, c)
+	}
+	p.Bus = bus.build(sys, coinRound)
+
+	lookuptologderivsum.Compile(sys)
+	logderivativesum.Compile(sys)
+	localvanishing.Compile(sys)
+	global.Compile(sys)
+	pcs.Compile(sys)
+	return p, nil
+}
+
+// Run is one execution of a program: every cell's value and the chips'
+// witness columns.
+type Run struct {
+	values  []Cell
+	witness []*cols // the witness columns of Program.modules[i]
+}
+
+// Value returns the value of the cell at addr.
+func (r *Run) Value(addr int) Cell { return r.values[addr] }
+
+// Witness returns the values of a chip's witness column, for tests to tamper
+// with (nil if the chip has no such column).
+func (r *Run) Witness(p *Program, chip, name string) []field.Element {
+	for i, mod := range p.modules {
+		if mod.name == chip {
+			return r.witness[i].vals[name]
+		}
+	}
+	return nil
+}
+
+// Execute runs the program on inputs (one cell per Input, in order) and
+// traces the witness.
+func (p *Program) Execute(inputs []Cell) (*Run, error) {
+	m := p.m
+	if len(inputs) != len(m.inputs) {
+		return nil, fmt.Errorf("Execute: %d inputs, want %d", len(inputs), len(m.inputs))
+	}
+	r := &Run{values: make([]Cell, m.nCells)}
+	for i, a := range m.inputs {
+		r.values[a] = inputs[i]
+	}
+	for a, v := range m.constVal {
+		r.values[a] = v
+	}
+	for _, in := range m.instrs {
+		if err := m.exec(in, r); err != nil {
+			return nil, err
+		}
+	}
+	for i, c := range p.chips {
+		w := newCols(p.modules[i].mod.Size())
+		if err := c.trace(w, r); err != nil {
+			return nil, fmt.Errorf("chip %s: %w", c.name(), err)
+		}
+		r.witness = append(r.witness, w)
+	}
+	return r, nil
+}
+
+// exec computes the cells an instruction writes.
+func (m *Machine) exec(in instr, r *Run) error {
+	switch in.kind {
+	case instrFunc:
+		return m.funcs[in.idx](r)
+	}
+	return fmt.Errorf("unknown instruction kind %d", in.kind)
+}
+
+// Prove proves an execution: it assigns every chip's witness columns (zero
+// where the trace left a column unset) and runs the compiled system's prover.
+func (p *Program) Prove(r *Run) (wiop.Proof, wiop.PublicInput) {
+	return p.Sys.Prove(func(rt *wiop.Runtime) {
+		for i, mod := range p.modules {
+			for name, col := range mod.witness {
+				v, ok := r.witness[i].vals[name]
+				if !ok {
+					v = make([]field.Element, mod.mod.Size())
+				}
+				rt.AssignColumn(col, &wiop.ConcreteVector{Plain: field.VecFromBase(v)})
+			}
+		}
+	})
+}
+
+// Verify verifies a proof of the program.
+func (p *Program) Verify(proof wiop.Proof, pub wiop.PublicInput) error {
+	return p.Sys.Verify(proof, pub)
+}
