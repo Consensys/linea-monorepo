@@ -12,8 +12,8 @@ import (
 )
 
 // KoalagnarkMDHasher is a Merkle-Damgard hasher using Poseidon2 as compression function.
-// This implementation uses circuit.Element and circuit.KoalaBearAPI, allowing it to work
-// in both native KoalaBear circuits and emulated circuits (e.g., BLS12-377).
+// This implementation uses circuit.Element and circuit.KoalaBearAPI, so KoalaBear
+// arithmetic is emulated in the circuit's field (e.g., BN254).
 type KoalagnarkMDHasher struct {
 	api      frontend.API
 	koalaAPI *circuit.KoalaBearAPI
@@ -105,7 +105,7 @@ func (h *KoalagnarkMDHasher) compressPoseidon2(a, b circuit.Octuplet) circuit.Oc
 
 // KoalagnarkCompress is the in-circuit counterpart of [Compress]: it applies
 // the Poseidon2 compression function to (a, b) using koalagnark arithmetic,
-// so it runs in native KoalaBear circuits and in emulated ones alike.
+// emulated in the circuit's field.
 func KoalagnarkCompress(api *circuit.KoalaBearAPI, a, b circuit.Octuplet) circuit.Octuplet {
 	res := circuit.Octuplet{}
 

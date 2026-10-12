@@ -14,9 +14,9 @@ import (
 func init() {
 	solver.RegisterHint(
 		inverseE2Hint,
-		inverseExtHintNative, inverseExtHintEmulated,
-		divExtHintNative, divExtHintEmulated,
-		mulExtHintNative, mulExtHintEmulated)
+		inverseExtHint,
+		divExtHint,
+		mulExtHint)
 }
 
 // E2 is a quadratic extension element.
@@ -357,12 +357,8 @@ func (a *KoalaBearAPI) MulConstExt(x Ext, c *big.Int) Ext {
 	}
 }
 
-// ModReduceExt reduces an Ext element (no-op in native mode).
+// ModReduceExt reduces an Ext element.
 func (a *KoalaBearAPI) ModReduceExt(x Ext) Ext {
-	if a.IsNative() {
-		// in native mode, no reduction is necessary
-		return x
-	}
 	return Ext{
 		B0: E2{A0: a.ModReduce(x.B0.A0), A1: a.ModReduce(x.B0.A1)},
 		B1: E2{A0: a.ModReduce(x.B1.A0), A1: a.ModReduce(x.B1.A1)},
@@ -492,7 +488,7 @@ func (a *KoalaBearAPI) AssertIsEqualExt(x, y Ext) {
 
 // InverseExt returns 1/x in the extension field.
 func (a *KoalaBearAPI) InverseExt(x Ext) Ext {
-	hint := a.inverseExtHint()
+	hint := inverseExtHint
 	res, err := a.NewHint(hint, extDegree,
 		x.B0.A0, x.B0.A1, x.B1.A0, x.B1.A1, x.B2.A0, x.B2.A1)
 	if err != nil {
@@ -508,7 +504,7 @@ func (a *KoalaBearAPI) InverseExt(x Ext) Ext {
 
 // DivExt returns x / y in the extension field.
 func (a *KoalaBearAPI) DivExt(x, y Ext) Ext {
-	hint := a.divExtHint()
+	hint := divExtHint
 	res, err := a.NewHint(hint, extDegree,
 		x.B0.A0, x.B0.A1, x.B1.A0, x.B1.A1, x.B2.A0, x.B2.A1,
 		y.B0.A0, y.B0.A1, y.B1.A0, y.B1.A1, y.B2.A0, y.B2.A1)
@@ -581,7 +577,7 @@ func (a *KoalaBearAPI) ExpExt(x Ext, n *big.Int) Ext {
 
 // ExpVariableExponentExt computes x^exp where exp is a circuit variable.
 func (a *KoalaBearAPI) ExpVariableExponentExt(x Ext, exp frontend.Variable, expNumBits int) Ext {
-	expBits := a.nativeAPI.ToBinary(exp, expNumBits)
+	expBits := a.frontendAPI.ToBinary(exp, expNumBits)
 	res := a.OneExt()
 
 	for i := len(expBits) - 1; i >= 0; i-- {
@@ -607,31 +603,6 @@ func (a *KoalaBearAPI) PrintlnExt(vars ...Ext) {
 
 // NewHintExt calls a hint function with Ext inputs and outputs.
 func (a *KoalaBearAPI) NewHintExt(f solver.Hint, nbOutputs int, inputs ...Ext) ([]Ext, error) {
-	if a.IsNative() {
-		flatInputs := make([]frontend.Variable, extDegree*len(inputs))
-		for i, r := range inputs {
-			flatInputs[extDegree*i+0] = r.B0.A0.Native()
-			flatInputs[extDegree*i+1] = r.B0.A1.Native()
-			flatInputs[extDegree*i+2] = r.B1.A0.Native()
-			flatInputs[extDegree*i+3] = r.B1.A1.Native()
-			flatInputs[extDegree*i+4] = r.B2.A0.Native()
-			flatInputs[extDegree*i+5] = r.B2.A1.Native()
-		}
-		flatRes, err := a.nativeAPI.NewHint(f, extDegree*nbOutputs, flatInputs...)
-		if err != nil {
-			return nil, err
-		}
-		res := make([]Ext, nbOutputs)
-		for i := range res {
-			res[i] = Ext{
-				B0: E2{A0: Element{V: flatRes[extDegree*i+0]}, A1: Element{V: flatRes[extDegree*i+1]}},
-				B1: E2{A0: Element{V: flatRes[extDegree*i+2]}, A1: Element{V: flatRes[extDegree*i+3]}},
-				B2: E2{A0: Element{V: flatRes[extDegree*i+4]}, A1: Element{V: flatRes[extDegree*i+5]}},
-			}
-		}
-		return res, nil
-	}
-
 	flatInputs := make([]*emulated.Element[emulated.KoalaBear], extDegree*len(inputs))
 	for i, r := range inputs {
 		flatInputs[extDegree*i+0] = r.B0.A0.Emulated()
@@ -687,7 +658,7 @@ func extToOutputs(e field.Ext, out []*big.Int) {
 	e.B2.A1.BigInt(out[5])
 }
 
-func inverseExtHintNative(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
+func inverseExtKoala(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	a := extFromInputs(inputs)
 	var c field.Ext
 	c.Inverse(&a)
@@ -695,18 +666,11 @@ func inverseExtHintNative(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	return nil
 }
 
-func inverseExtHintEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
-	return emulated.UnwrapHint(inputs, output, inverseExtHintNative)
+func inverseExtHint(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
+	return emulated.UnwrapHint(inputs, output, inverseExtKoala)
 }
 
-func (a *KoalaBearAPI) inverseExtHint() solver.Hint {
-	if a.IsNative() {
-		return inverseExtHintNative
-	}
-	return inverseExtHintEmulated
-}
-
-func divExtHintNative(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
+func divExtKoala(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	x := extFromInputs(inputs[:extDegree])
 	y := extFromInputs(inputs[extDegree : 2*extDegree])
 	var c field.Ext
@@ -715,18 +679,11 @@ func divExtHintNative(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	return nil
 }
 
-func divExtHintEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
-	return emulated.UnwrapHint(inputs, output, divExtHintNative)
+func divExtHint(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
+	return emulated.UnwrapHint(inputs, output, divExtKoala)
 }
 
-func (a *KoalaBearAPI) divExtHint() solver.Hint {
-	if a.IsNative() {
-		return divExtHintNative
-	}
-	return divExtHintEmulated
-}
-
-func mulExtHintNative(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
+func mulExtKoala(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	x := extFromInputs(inputs[:extDegree])
 	y := extFromInputs(inputs[extDegree : 2*extDegree])
 	var c field.Ext
@@ -735,8 +692,8 @@ func mulExtHintNative(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	return nil
 }
 
-func mulExtHintEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
-	return emulated.UnwrapHint(inputs, output, mulExtHintNative)
+func mulExtHint(_ *big.Int, inputs []*big.Int, output []*big.Int) error {
+	return emulated.UnwrapHint(inputs, output, mulExtKoala)
 }
 
 // IsConstantZeroExt returns true if e is a constant zero element.

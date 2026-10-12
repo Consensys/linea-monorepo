@@ -20,8 +20,8 @@ type GnarkFiatShamir struct {
 	h   *poseidon2.KoalagnarkMDHasher
 }
 
-// NewGnarkFiatShamir creates a transcript over the given frontend. It works in
-// both native KoalaBear circuits and emulated ones.
+// NewGnarkFiatShamir creates a transcript over the given frontend, with
+// KoalaBear emulated in the circuit's field.
 func NewGnarkFiatShamir(api frontend.API) *GnarkFiatShamir {
 	return &GnarkFiatShamir{
 		api: circuit.NewAPI(api),

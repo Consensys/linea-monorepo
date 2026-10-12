@@ -9,9 +9,6 @@ import (
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/utils"
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/field/koalabear"
-	"github.com/consensys/gnark/backend/witness"
-	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/stretchr/testify/require"
@@ -109,26 +106,12 @@ func (w capWitness) template(capDepth, numBits int) *capCircuit {
 	}
 }
 
-// solveCap compiles the circuit and reports whether the assignment satisfies it.
-func solveCap(t *testing.T, template, assignment *capCircuit, emulated bool) error {
+// solveCap compiles the circuit over BN254 and reports whether the assignment
+// satisfies it.
+func solveCap(t *testing.T, template, assignment *capCircuit) error {
 	t.Helper()
-
-	// CompileU32 and Compile return different constraint-system types; both
-	// answer Solve, which is all this helper needs.
-	type solvable interface {
-		Solve(witness.Witness, ...solver.Option) (any, error)
-	}
-	var (
-		ccs     solvable
-		modulus = koalabear.Modulus()
-		err     error
-	)
-	if emulated {
-		modulus = ecc.BLS12_377.ScalarField()
-		ccs, err = frontend.Compile(modulus, scs.NewBuilder, template)
-	} else {
-		ccs, err = frontend.CompileU32(modulus, scs.NewBuilder, template)
-	}
+	modulus := ecc.BN254.ScalarField()
+	ccs, err := frontend.Compile(modulus, scs.NewBuilder, template)
 	require.NoError(t, err, "circuit must compile")
 
 	w, err := frontend.NewWitness(assignment, modulus)
@@ -138,7 +121,7 @@ func solveCap(t *testing.T, template, assignment *capCircuit, emulated bool) err
 }
 
 // TestCapCircuitMatchesNative checks the honest path across the cap depths the
-// verifier actually uses, in both native and emulated modes.
+// verifier actually uses.
 func TestCapCircuitMatchesNative(t *testing.T) {
 	prng := rand.New(utils.NewRandSource(7))
 
@@ -162,10 +145,8 @@ func TestCapCircuitMatchesNative(t *testing.T) {
 			require.Len(t, w.branch.Siblings, height-tc.capDepth,
 				"capped branch must drop its top siblings")
 
-			require.NoError(t, solveCap(t, w.template(tc.capDepth, height), w.assign(tc.capDepth, height), false),
-				"honest capped opening must satisfy the circuit (native)")
-			require.NoError(t, solveCap(t, w.template(tc.capDepth, height), w.assign(tc.capDepth, height), true),
-				"honest capped opening must satisfy the circuit (emulated)")
+			require.NoError(t, solveCap(t, w.template(tc.capDepth, height), w.assign(tc.capDepth, height)),
+				"honest capped opening must satisfy the circuit")
 		})
 	}
 }
@@ -191,7 +172,7 @@ func TestCapCircuitRejectsCorruptedFrontier(t *testing.T) {
 
 		require.Error(t, tampered.cap.Authenticate(capDepth, w.tree.Root()),
 			"native verifier must reject a corrupted frontier node %d", node)
-		require.Error(t, solveCap(t, w.template(capDepth, height), tampered.assign(capDepth, height), false),
+		require.Error(t, solveCap(t, w.template(capDepth, height), tampered.assign(capDepth, height)),
 			"circuit must reject a corrupted frontier node %d", node)
 	}
 }
@@ -223,7 +204,7 @@ func TestCapCircuitRejectsWrongFrontierSlot(t *testing.T) {
 		flipped := idx ^ (1 << bit)
 		require.Error(t, w.branch.AuthenticateToCap(flipped, w.frontier()),
 			"native verifier must reject frontier slot bit %d flipped", bit)
-		require.Error(t, solveCap(t, w.template(capDepth, height), assignment, false),
+		require.Error(t, solveCap(t, w.template(capDepth, height), assignment),
 			"circuit must reject frontier slot bit %d flipped", bit)
 	}
 }
@@ -251,7 +232,7 @@ func TestCapCircuitRejectsTamperedSibling(t *testing.T) {
 
 		require.Error(t, tampered.branch.AuthenticateToCap(idx, w.frontier()),
 			"native verifier must reject a tampered sibling %d", sib)
-		require.Error(t, solveCap(t, w.template(capDepth, height), tampered.assign(capDepth, height), false),
+		require.Error(t, solveCap(t, w.template(capDepth, height), tampered.assign(capDepth, height)),
 			"circuit must reject a tampered sibling %d", sib)
 	}
 }

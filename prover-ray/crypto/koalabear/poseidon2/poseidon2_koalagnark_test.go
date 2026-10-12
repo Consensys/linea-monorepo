@@ -6,7 +6,6 @@ import (
 	kbcircuit "github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/circuit"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/stretchr/testify/assert"
@@ -65,36 +64,7 @@ func getKoalagnarkMDHasherWitness(nbElmts int) (*KoalagnarkMDHasherCircuit, *Koa
 	return &circuit, &witness
 }
 
-// TestKoalagnarkMDHasherNative tests the koalagnark-based hasher in native KoalaBear mode
-func TestKoalagnarkMDHasherNative(t *testing.T) {
-	testCases := []struct {
-		name    string
-		nbElmts int
-	}{
-		{"single_element", 1},
-		{"half_block", 4},
-		{"full_block", 8},
-		{"two_blocks", 16},
-		{"partial_second_block", 12},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			circuit, witness := getKoalagnarkMDHasherWitness(tc.nbElmts)
-
-			ccs, err := frontend.CompileU32(field.Modulus(), scs.NewBuilder, circuit)
-			require.NoError(t, err)
-
-			fullWitness, err := frontend.NewWitness(witness, field.Modulus())
-			require.NoError(t, err)
-
-			_, err = ccs.Solve(fullWitness)
-			require.NoError(t, err)
-		})
-	}
-}
-
-// TestKoalagnarkMDHasherEmulated tests the koalagnark-based hasher in emulated BLS12-377 mode
+// TestKoalagnarkMDHasherEmulated tests the koalagnark-based hasher in emulated BN254 mode
 func TestKoalagnarkMDHasherEmulated(t *testing.T) {
 	testCases := []struct {
 		name    string
@@ -111,10 +81,10 @@ func TestKoalagnarkMDHasherEmulated(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			circuit, witness := getKoalagnarkMDHasherWitness(tc.nbElmts)
 
-			ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+			ccs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, circuit)
 			require.NoError(t, err)
 
-			fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+			fullWitness, err := frontend.NewWitness(witness, ecc.BN254.ScalarField())
 			require.NoError(t, err)
 
 			_, err = ccs.Solve(fullWitness)
@@ -164,26 +134,13 @@ func getCompressWitness() (*KoalagnarkCompressCircuit, *KoalagnarkCompressCircui
 	return &circuit, &witness
 }
 
-func TestKoalagnarkCompressNative(t *testing.T) {
-	circuit, witness := getCompressWitness()
-
-	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
-	require.NoError(t, err)
-
-	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-	require.NoError(t, err)
-
-	_, err = ccs.Solve(fullWitness)
-	require.NoError(t, err)
-}
-
 func TestKoalagnarkCompressEmulated(t *testing.T) {
 	circuit, witness := getCompressWitness()
 
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, circuit)
 	require.NoError(t, err)
 
-	fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+	fullWitness, err := frontend.NewWitness(witness, ecc.BN254.ScalarField())
 	require.NoError(t, err)
 
 	_, err = ccs.Solve(fullWitness)
@@ -221,34 +178,18 @@ func TestKoalagnarkConsistencyWithOriginal(t *testing.T) {
 	}
 }
 
-// BenchmarkKoalagnarkNative benchmarks the native mode circuit
-func BenchmarkKoalagnarkNative(b *testing.B) {
-	circuit, witness := getKoalagnarkMDHasherWitness(16)
-
-	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		fullWitness, _ := frontend.NewWitness(witness, koalabear.Modulus())
-		_, _ = ccs.Solve(fullWitness)
-	}
-}
-
 // BenchmarkKoalagnarkEmulated benchmarks the emulated mode circuit
 func BenchmarkKoalagnarkEmulated(b *testing.B) {
 	circuit, witness := getKoalagnarkMDHasherWitness(16)
 
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, circuit)
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		fullWitness, _ := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+		fullWitness, _ := frontend.NewWitness(witness, ecc.BN254.ScalarField())
 		_, _ = ccs.Solve(fullWitness)
 	}
 }

@@ -140,8 +140,7 @@ func fsReplayWitness(t *testing.T) *fsReplayCircuit {
 
 // TestGnarkFiatShamir_MatchesNative is the primary guard on the two transcripts
 // agreeing. It solves the replay circuit against challenges the native
-// transcript produced, in both field modes: native KoalaBear, and emulated over
-// BN254 — the mode the recursion actually uses.
+// transcript produced, with KoalaBear emulated over BN254.
 //
 // If the two drift apart, the consequence splits. A circuit that derives
 // *different* coins rejects honest proofs, so the recursive prover simply
@@ -160,15 +159,6 @@ func fsReplayWitness(t *testing.T) *fsReplayCircuit {
 func TestGnarkFiatShamir_MatchesNative(t *testing.T) {
 	// gnark also mutates the assignment while building a witness, so each
 	// subtest builds its own.
-	t.Run("native", func(t *testing.T) {
-		ccs, err := frontend.CompileU32(field.Modulus(), scs.NewBuilder, fsReplayCircuitTemplate())
-		require.NoError(t, err)
-		w, err := frontend.NewWitness(fsReplayWitness(t), field.Modulus())
-		require.NoError(t, err)
-		_, err = ccs.Solve(w)
-		require.NoError(t, err, "circuit transcript must derive the native challenges")
-	})
-
 	t.Run("emulated-bn254", func(t *testing.T) {
 		ccs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, fsReplayCircuitTemplate())
 		require.NoError(t, err)
