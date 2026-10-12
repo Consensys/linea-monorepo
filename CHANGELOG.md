@@ -109,6 +109,7 @@
 - *(coordinator)* Extract ForcedTransactionsApp from ConflationAppV1, make invalidity proof service injectable (#3856)
 - *(coordinator)* Select batches insert query by DB schema version (#4145)
 - *(coordinator)* Move prover transport from per-proof-type to RiscvProverConfig (#4172)
+- *(coordinator)* Remove TracingModuleV2 and TracingModuleV4 support (#4180)
 
 ### ⚡ Performance
 
