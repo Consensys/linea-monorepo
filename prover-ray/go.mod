@@ -66,4 +66,4 @@ require (
 
 tool github.com/LFDT-Lineth/zkc/cmd/zkc
 
-replace github.com/consensys/gnark-crypto => github.com/YaoJGalteland/gnark-crypto v0.0.0-20261012130029-84e4d540f737
+replace github.com/consensys/gnark-crypto => github.com/YaoJGalteland/gnark-crypto v0.0.0-20261012132424-5a677ef13522
