@@ -243,7 +243,7 @@ func TestConfigure_Conflicts(t *testing.T) {
 func TestConfigure_NoPCS(t *testing.T) {
 	sc := wioptest.NewFibonacciVanishingScenario()
 	require.NoError(t, compilers.Configure(sc.Sys, compilers.WithoutPCS()))
-	require.Equal(t, 0, pcs.Mode(sc.Sys), "Configure must declare no-PCS mode")
+	require.Equal(t, 0, sc.Sys.PCSMode(), "Configure must declare no-PCS mode")
 	err := compilers.Configure(sc.Sys, compilers.ConfigurePCS(pcs.WithFRINumQueries(2)))
 	require.ErrorContains(t, err, "no-PCS", "PCS options must not override the no-PCS declaration")
 	require.NoError(t, compilers.CompileFull(sc.Sys))
@@ -257,7 +257,7 @@ func TestConfigure_NoPCSConflictsWithPreconfiguredPCS(t *testing.T) {
 	require.NoError(t, compilers.Configure(sys, compilers.ConfigurePCS(pcs.WithFRINumQueries(2))))
 	err := compilers.Configure(sys, compilers.WithoutPCS())
 	require.ErrorContains(t, err, "conflicts", "no-PCS must reject an earlier PCS selection")
-	require.Equal(t, -1, pcs.Mode(sys), "rejection must preserve the provisional PCS state")
+	require.Equal(t, 1, sys.PCSMode(), "rejection must preserve the PCS selection")
 }
 
 // TestConfigure_RejectsHooks checks that pipeline-only hooks are rejected

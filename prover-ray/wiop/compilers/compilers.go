@@ -108,7 +108,7 @@ func ConfigureMessageBus(opts ...messagebus.Option) Option {
 	return func(o *options) { o.messageBusOptions = append(o.messageBusOptions, opts...) }
 }
 
-// WithoutPCS declares the System PCS-less ([pcs.DeclareNone]). In
+// WithoutPCS declares the System PCS-less ([wiop.System.DeclareNoPCS]). In
 // [CompileFull] it leaves compiled columns uncommitted and skips both the PCS
 // pass and its hooks. It conflicts with [ConfigurePCS] and with a previously
 // configured PCS selection.
@@ -176,12 +176,8 @@ func (cfg *options) apply(sys *wiop.System) error {
 			return fmt.Errorf("compilers: %w", err)
 		}
 	}
-	// WithoutPCS excludes pcsOptions (see resolve), so DeclareNone is the only
-	// PCS write; it fails without mutating sys.
-	if cfg.withoutPCS {
-		if err := pcs.DeclareNone(sys); err != nil {
-			return fmt.Errorf("compilers: WithoutPCS: %w", err)
-		}
+	if cfg.withoutPCS && sys.PCSMode() == 1 {
+		return fmt.Errorf("compilers: WithoutPCS conflicts with a previously configured PCS selection")
 	}
 
 	// Every remaining selection was validated: none of these can fail against
@@ -195,6 +191,11 @@ func (cfg *options) apply(sys *wiop.System) error {
 		if err := messagebus.Apply(sys, cfg.messageBusOptions...); err != nil {
 			return fmt.Errorf("compilers: %w", err)
 		}
+	}
+	// resolve rejects WithoutPCS together with ConfigurePCS, so no PCS
+	// selection was applied above.
+	if cfg.withoutPCS {
+		sys.DeclareNoPCS()
 	}
 	return nil
 }
@@ -252,7 +253,7 @@ func CompileFull(sys *wiop.System, opts ...Option) error {
 	}
 	for index, compile := range passes {
 		pass := Pass(index)
-		if pass == PCS && pcs.Mode(sys) == 0 {
+		if pass == PCS && sys.PCSMode() == 0 {
 			break
 		}
 		for _, h := range hooks[pass].pre {

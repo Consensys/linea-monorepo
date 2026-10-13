@@ -270,8 +270,8 @@ func TestConfigure_NoOpCompileConsumesNothing(t *testing.T) {
 // no-PCS System, both when configuring and when compiling.
 func TestConfigure_RejectsNoPCS(t *testing.T) {
 	sys, _, _ := newPCSTestSystem()
-	require.NoError(t, DeclareNone(sys))
-	require.NoError(t, DeclareNone(sys), "DeclareNone must be idempotent")
+	sys.DeclareNoPCS()
+	sys.DeclareNoPCS()
 	require.ErrorContains(t, Configure(sys, WithFRINumQueries(2)), "no-PCS", "Configure must reject no-PCS")
 	require.Panics(t, func() { Compile(sys) }, "Compile must reject a declared no-PCS System")
 }

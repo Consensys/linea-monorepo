@@ -68,8 +68,6 @@ type compileOptions struct {
 type config struct {
 	compileOptions
 	consumed bool
-	// none declares the System PCS-less; see [DeclareNone].
-	none bool
 }
 
 // configOf returns the PCS configuration recorded on sys, or the zero
@@ -128,10 +126,10 @@ func merge(sys *wiop.System, opts []Option) (compileOptions, error) {
 	for _, opt := range opts {
 		opt(&cfg)
 	}
-	state := configOf(sys)
-	if state.none {
+	if sys.PCSMode() == 0 {
 		return cfg, fmt.Errorf("pcs: PCS options conflict with the declared no-PCS mode")
 	}
+	state := configOf(sys)
 	pre := state.compileOptions
 	if cfg.friNumQueries != 0 && pre.friNumQueries != 0 && cfg.friNumQueries != pre.friNumQueries {
 		return cfg, fmt.Errorf("pcs: FRI query count %d conflicts with preconfigured %d",
@@ -147,43 +145,13 @@ func merge(sys *wiop.System, opts []Option) (compileOptions, error) {
 	return cfg, nil
 }
 
-// DeclareNone declares sys PCS-less: its compiled columns stay uncommitted and
-// later PCS options, including [Compile], are rejected. It is the standalone
-// counterpart of compilers.WithoutPCS. Idempotent.
-//
-// Returns an error, leaving sys untouched, if a PCS selection was already
-// preconfigured or consumed.
-func DeclareNone(sys *wiop.System) error {
-	state := configOf(sys)
-	if state.consumed || state.compileOptions != (compileOptions{}) {
-		return fmt.Errorf("pcs: no-PCS mode conflicts with the configured PCS selection")
-	}
-	setConfig(sys, config{none: true})
-	return nil
-}
-
-// Mode reports the PCS state of sys:
-//
-//	 1 — PCS selected: [Compile] consumed its selection;
-//	 0 — explicit no-PCS: declared via [DeclareNone];
-//	-1 — provisional: neither happened yet.
-func Mode(sys *wiop.System) int {
-	switch state := configOf(sys); {
-	case state.consumed:
-		return 1
-	case state.none:
-		return 0
-	default:
-		return -1
-	}
-}
-
 // Configure validates opts against sys's preconfigured selection and records
 // them, without compiling anything. It is the entry point behind
 // compilers.ConfigurePCS. A later [Compile] merges its own local options with
 // this selection: matching values are not a conflict, divergent ones are.
 // Only explicitly provided options are recorded, so defaults stay unset until
-// a consuming [Compile] freezes them.
+// a consuming [Compile] freezes them. Configuring selects a PCS for sys
+// ([wiop.System.SelectPCS]), so a later no-PCS declaration panics.
 //
 // [Validate] and [Apply] are its two halves, so that a caller configuring
 // several passes can validate every selection before applying any.
@@ -218,6 +186,7 @@ func Apply(sys *wiop.System, opts ...Option) error {
 	state := configOf(sys)
 	state.compileOptions = cfg
 	setConfig(sys, state)
+	sys.SelectPCS()
 	return nil
 }
 
@@ -370,6 +339,7 @@ func Compile(sys *wiop.System, opts ...Option) {
 	// Freeze the effective configuration before mutating sys; merge
 	// guarantees it matches any earlier consumption.
 	setConfig(sys, config{compileOptions: cfg, consumed: true})
+	sys.SelectPCS()
 
 	c := &compiled{
 		manifestCells:   make(map[int][]*wiop.Cell),
