@@ -663,40 +663,43 @@ func (q *moduleQuotient) run(rt *wiop.Runtime) {
 		}
 		clear(aggregate[:N])
 
-		// Bind every vanishing expression once: leaves resolve to their coset
-		// slices and runtime scalars up front, so the evaluation below involves
-		// no map lookups and no runtime access. This is what makes the parallel
-		// workers free of shared-state reads (and of the runtime mutex).
+		// Every vanishing expression is lowered into one program, its leaves
+		// reading the bucket's coset tables. The program runs over blocks of
+		// coset points in parallel, reading every (R/ratio)-th of the module's
+		// cosets, then divides by the annihilator (x^n − 1), whose inverse on
+		// the bucket's coset k is annInv[k].
+		b := vecprog.NewBuilder()
+		leaf := func(expr wiop.Expression) int {
+			switch e := expr.(type) {
+			case *wiop.ColumnView:
+				// A shift s reads the point x_t·ω_n^s, in the same small coset
+				// as x_t (see [cosetShifts]).
+				offset := ((e.ShiftingOffset % n) + n) % n
+				if e.Column.IsExtension {
+					return b.Ext(cosetEvalsExt[e.Column.Context.ID], offset)
+				}
+				return b.Base(cosetEvals[e.Column.Context.ID], offset)
+			case *wiop.LagrangeSelector:
+				return b.Base(selectorCosets[e.Position], 0)
+			}
+			panic(fmt.Sprintf("wiop/compilers: unsupported expression type %T in the quotient", expr))
+		}
 		var coinPow field.Ext
 		coinPow.SetOne()
-		var bound []boundEntry
+		accumulate := func(v *wiop.Vanishing, cancellation []field.Element) {
+			b.Accumulate(wiop.LowerExpression(rt, b, v.Expression, leaf), cancellation, coinPow)
+			coinPow.Mul(&coinPow, &coinExt)
+		}
 		if bkt.entries != nil {
-			// Static module: use precomputed cancellation cosets.
 			for _, entry := range bkt.entries {
-				bound = append(bound, boundEntry{
-					expr:         bindExpr(rt, entry.v.Expression, cosetEvals, cosetEvalsExt, selectorCosets, n),
-					cancellation: entry.cancellationCoset,
-					coinPow:      coinPow,
-				})
-				// advance coinPow: coinPow *= coinExt
-				coinPow.Mul(&coinPow, &coinExt)
+				accumulate(entry.v, entry.cancellationCoset)
 			}
 		} else {
 			for _, v := range bkt.vanishings {
-				bound = append(bound, boundEntry{
-					expr:         bindExpr(rt, v.Expression, cosetEvals, cosetEvalsExt, selectorCosets, n),
-					cancellation: cancels.get(v.CancelledPositions),
-					coinPow:      coinPow,
-				})
-				coinPow.Mul(&coinPow, &coinExt)
+				accumulate(v, cancels.get(v.CancelledPositions))
 			}
 		}
-
-		// The bound entries are lowered into one program that runs over blocks
-		// of coset points in parallel, reading every (R/ratio)-th of the
-		// module's cosets, then divides by the annihilator (x^n − 1), whose
-		// inverse on the bucket's coset k is annInv[k].
-		runBucketProgram(bound, n, ratio, R/ratio, aggregate[:N], annInv)
+		b.Compile(n, ratio, R/ratio).Run(aggregate[:N], annInv, 0)
 
 		// --- Interpolate the quotient into its shares ---
 		for k, share := range cosetsToShares(aggregate[:N], smallDomain, bucketDomains) {
@@ -1189,130 +1192,6 @@ func evalExprAtPoint(
 	default:
 		panic(fmt.Sprintf("wiop/compilers: unsupported expression type %T in evalExprAtPoint", expr))
 	}
-}
-
-// boundKind discriminates the node types of a [boundExpr].
-type boundKind uint8
-
-const (
-	boundOp         boundKind = iota // arithmetic node
-	boundVecBase                     // base-field column or selector coset evaluations
-	boundVecExt                      // extension-field column coset evaluations
-	boundScalarBase                  // constant or base cell, invariant across coset points
-	boundScalarExt                   // extension cell or coin, invariant across coset points
-)
-
-// boundExpr is a Vanishing expression specialised against one bucket's coset
-// tables: every leaf holds a direct slice or a resolved scalar, so the
-// program lowered from it (see [runBucketProgram]) involves no map lookups and
-// no runtime access. Binding happens once per (bucket, expression).
-//
-// isBase reports whether the subtree evaluates in the base field: extension
-// cells, extension column views, and coins make a subtree extension. Base
-// subtrees are evaluated in base-field arithmetic and only meet the extension
-// field at their boundary.
-type boundExpr struct {
-	kind       boundKind
-	isBase     bool
-	operator   wiop.ArithmeticOperator
-	operands   []boundExpr
-	vecBase    []field.Element // boundVecBase: length-N coset evaluations
-	vecExt     []field.Ext     // boundVecExt: length-N coset evaluations
-	offset     int             // boundVec*: column shift within a small coset, in [0, n)
-	scalarBase field.Element   // boundScalarBase
-	scalarExt  field.Ext       // boundScalarExt
-}
-
-// bindExpr resolves every leaf of expr against the runtime and the bucket's
-// coset tables. A ColumnView with shift s reads the point x_t·ω_n^s, which is
-// in the same small coset as x_t (see [cosetShifts]): offset is s mod n, the
-// shift within a coset of n points.
-func bindExpr(
-	rt *wiop.Runtime,
-	expr wiop.Expression,
-	cosetEvals map[wiop.ObjectID][]field.Element,
-	cosetEvalsExt map[wiop.ObjectID][]field.Ext,
-	selectorCosets map[int][]field.Element,
-	n int,
-) boundExpr {
-	switch e := expr.(type) {
-	case *wiop.ColumnView:
-		offset := ((e.ShiftingOffset % n) + n) % n
-		if e.Column.IsExtension {
-			return boundExpr{kind: boundVecExt, vecExt: cosetEvalsExt[e.Column.Context.ID], offset: offset}
-		}
-		return boundExpr{kind: boundVecBase, isBase: true, vecBase: cosetEvals[e.Column.Context.ID], offset: offset}
-	case *wiop.LagrangeSelector:
-		// Selectors are base-field and unshifted.
-		return boundExpr{kind: boundVecBase, isBase: true, vecBase: selectorCosets[e.Position]}
-	case *wiop.Constant:
-		return boundExpr{kind: boundScalarBase, isBase: true, scalarBase: e.Value}
-	case *wiop.Cell:
-		v := rt.GetCellValue(e)
-		if e.IsExtension() {
-			return boundExpr{kind: boundScalarExt, scalarExt: v.AsExt()}
-		}
-		if !v.IsBase() {
-			panic(fmt.Sprintf(
-				"wiop/compilers: cell %q declared as base but holds an extension-field value",
-				e.Context.Path(),
-			))
-		}
-		return boundExpr{kind: boundScalarBase, isBase: true, scalarBase: v.AsBase()}
-	case *wiop.CoinField:
-		return boundExpr{kind: boundScalarExt, scalarExt: rt.GetCoinValue(e).AsExt()}
-	case *wiop.ArithmeticOperation:
-		operands := make([]boundExpr, len(e.Operands))
-		isBase := true
-		for i, op := range e.Operands {
-			operands[i] = bindExpr(rt, op, cosetEvals, cosetEvalsExt, selectorCosets, n)
-			isBase = isBase && operands[i].isBase
-		}
-		return boundExpr{kind: boundOp, isBase: isBase, operator: e.Operator, operands: operands}
-	default:
-		panic(fmt.Sprintf("wiop/compilers: unsupported expression type %T in bindExpr", expr))
-	}
-}
-
-// boundEntry pairs one bound Vanishing expression with its cancellation coset
-// and its merging-coin power, ready for accumulation.
-type boundEntry struct {
-	expr         boundExpr
-	cancellation []field.Element // nil when the constraint has no cancelled positions
-	coinPow      field.Ext       // coin^i for the i-th constraint of the bucket
-}
-
-// runBucketProgram adds Σᵢ coinPowᵢ·Pᵢ·Cᵢ into aggregate over the ratio
-// cosets of n points of a bucket, whose coset k is coset k·step of the
-// tables, then multiplies coset k by annInv[k]. The bound entries are lowered
-// into one [vecprog] program, which shares subexpressions, folds scalars and
-// turns random linear combinations into linear forms.
-func runBucketProgram(bound []boundEntry, n, ratio, step int, aggregate []field.Ext, annInv []field.Element) {
-	b := vecprog.NewBuilder()
-	for i := range bound {
-		b.Accumulate(lowerBound(b, &bound[i].expr), bound[i].cancellation, bound[i].coinPow)
-	}
-	b.Compile(n, ratio, step).Run(aggregate, annInv, 0)
-}
-
-// lowerBound adds e to b and returns its node.
-func lowerBound(b *vecprog.Builder, e *boundExpr) int {
-	switch e.kind {
-	case boundVecBase:
-		return b.Base(e.vecBase, e.offset)
-	case boundVecExt:
-		return b.Ext(e.vecExt, e.offset)
-	case boundScalarBase:
-		return b.Scalar(field.Lift(e.scalarBase), true)
-	case boundScalarExt:
-		return b.Scalar(e.scalarExt, false)
-	}
-	o := wiop.LowerOperator(e.operator)
-	args := make([]int, o.Arity())
-	for i := range args {
-		args[i] = lowerBound(b, &e.operands[i])
-	}
-	return b.Op(o, args...)
 }
 
 // ---------------------------------------------------------------------------

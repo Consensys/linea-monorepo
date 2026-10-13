@@ -20,9 +20,10 @@ type tree struct {
 	isBase bool
 }
 
-// at evaluates t at point i of n.
-func (t *tree) at(i, n int) field.Ext {
-	j := (i + t.offset) % n
+// at evaluates t at point i of cosets of n points, coset k of the points
+// reading coset k·step of the leaves' tables.
+func (t *tree) at(i, n, step int) field.Ext {
+	j := i/n*step*n + (i%n+t.offset)%n
 	switch {
 	case t.s != nil:
 		return *t.s
@@ -33,7 +34,7 @@ func (t *tree) at(i, n int) field.Ext {
 	}
 	vals := make([]field.Ext, len(t.args))
 	for k, a := range t.args {
-		vals[k] = a.at(i, n)
+		vals[k] = a.at(i, n, step)
 	}
 	return applyExt(t.op, vals)
 }
@@ -61,12 +62,13 @@ type treeGen struct {
 	ext  [][]field.Ext
 }
 
-func newTreeGen(rng *rand.Rand, n int) *treeGen {
+// newTreeGen draws trees over cosets of n points, from tables of size points.
+func newTreeGen(rng *rand.Rand, n, size int) *treeGen {
 	g := &treeGen{rng: rng, n: n}
 	for range 3 {
-		v := field.VecPseudoRandBase(rng, n)
-		e := field.VecPseudoRandExt(rng, n)
-		for j := range n {
+		v := field.VecPseudoRandBase(rng, size)
+		e := field.VecPseudoRandExt(rng, size)
+		for j := range size {
 			if rng.IntN(8) == 0 {
 				v[j], e[j] = field.Element{}, field.Ext{}
 			}
@@ -111,7 +113,7 @@ func TestSinksMatchTreeEvaluation(t *testing.T) {
 	for _, n := range []int{5, BlockSize, 3*BlockSize + 17} {
 		for seed := range uint64(6) {
 			t.Run(fmt.Sprintf("n=%d/seed=%d", n, seed), func(t *testing.T) {
-				g := newTreeGen(rand.New(rand.NewPCG(seed, uint64(n))), n)
+				g := newTreeGen(rand.New(rand.NewPCG(seed, uint64(n))), n, n)
 				trees := make([]*tree, 8)
 				for i := range trees {
 					trees[i] = g.tree(5)
@@ -135,11 +137,11 @@ func TestSinksMatchTreeEvaluation(t *testing.T) {
 				var wantZeros []int
 				for j := range n {
 					for i, tr := range trees {
-						v := tr.at(j, n)
+						v := tr.at(j, n, 1)
 						require.Equal(t, v, stored[i][j], "tree %d, point %d", i, j)
 						wantSum[j].Add(&wantSum[j], &v)
 					}
-					r, gv := trees[0].at(j, n), trees[1].at(j, n)
+					r, gv := trees[0].at(j, n, 1), trees[1].at(j, n, 1)
 					if r.IsZero() && !gv.IsZero() {
 						wantZeros = append(wantZeros, j)
 					}
@@ -151,11 +153,61 @@ func TestSinksMatchTreeEvaluation(t *testing.T) {
 	}
 }
 
+// The Accumulate sinks must add coef·root·cancellation over ratio cosets of n
+// points, coset k reading coset k·step of the tables, then scale coset k by
+// scale[k], as a point-by-point evaluation does: on sizes below, at and across
+// a block, with subtrees shared across sinks and zeros hitting every division
+// and inversion.
+func TestAccumulateMatchesTreeEvaluation(t *testing.T) {
+	for _, tc := range []struct{ n, ratio, step int }{
+		{4, 1, 1}, {8, 2, 2}, {75, 4, 1}, {BlockSize, 1, 4}, {2*BlockSize + 40, 4, 1},
+	} {
+		for seed := range uint64(4) {
+			t.Run(fmt.Sprintf("n=%d/ratio=%d/step=%d/seed=%d", tc.n, tc.ratio, tc.step, seed), func(t *testing.T) {
+				size, N := tc.n*tc.ratio*tc.step, tc.n*tc.ratio
+				g := newTreeGen(rand.New(rand.NewPCG(seed, uint64(tc.n))), tc.n, size)
+				b := NewBuilder()
+				want := make([]field.Ext, N)
+				var prev *tree
+				for range 12 {
+					tr := g.tree(5)
+					if prev != nil && g.rng.IntN(3) == 0 {
+						tr = &tree{op: Mul, args: []*tree{prev, tr}}
+					}
+					prev = tr
+					var cancellation []field.Element
+					if g.rng.IntN(2) == 0 {
+						cancellation = g.base[g.rng.IntN(len(g.base))]
+					}
+					coef := field.VecPseudoRandExt(g.rng, 1)[0]
+					b.Accumulate(tr.build(b), cancellation, coef)
+					for j := range N {
+						v := tr.at(j, tc.n, tc.step)
+						if cancellation != nil {
+							v.MulByElement(&v, &cancellation[j/tc.n*tc.step*tc.n+j%tc.n])
+						}
+						v.Mul(&v, &coef)
+						want[j].Add(&want[j], &v)
+					}
+				}
+				scale := field.VecPseudoRandBase(g.rng, tc.ratio)
+				for j := range want {
+					want[j].MulByElement(&want[j], &scale[j/tc.n])
+				}
+
+				got := make([]field.Ext, N)
+				b.Compile(tc.n, tc.ratio, tc.step).Run(got, scale, 0)
+				require.Equal(t, want, got)
+			})
+		}
+	}
+}
+
 // A log-derivative style constraint, a product of Horner-form random linear
 // combinations each used twice, must be lowered without any extension product
 // inside the linear combinations and with each combination computed once.
 func TestFoldsHornerForms(t *testing.T) {
-	g := newTreeGen(rand.New(rand.NewPCG(7, 7)), 64)
+	g := newTreeGen(rand.New(rand.NewPCG(7, 7)), 64, 64)
 	horner := func(k int) *tree {
 		beta := field.VecPseudoRandExt(g.rng, 1)[0]
 		alpha := field.VecPseudoRandExt(g.rng, 1)[0]

@@ -7,8 +7,8 @@ import (
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/internal/vecprog"
 )
 
-// LowerOperator maps o to its [vecprog] operator.
-func LowerOperator(o ArithmeticOperator) vecprog.Op {
+// lowerOperator maps o to its [vecprog] operator.
+func lowerOperator(o ArithmeticOperator) vecprog.Op {
 	switch o {
 	case ArithmeticOperatorAdd:
 		return vecprog.Add
@@ -79,30 +79,43 @@ func (l *RowLowering) sizedTo(expr Expression) bool {
 	return !expr.IsMultiValued()
 }
 
-func (l *RowLowering) lower(expr Expression) int {
+// LowerExpression adds expr to b and returns its node. Constants, cells,
+// coins and arithmetic operations are lowered here, reading their values from
+// rt; every other leaf (column views, selectors, ...) is lowered by leaf.
+func LowerExpression(rt *Runtime, b *vecprog.Builder, expr Expression, leaf func(Expression) int) int {
 	switch e := expr.(type) {
-	case *ColumnView:
-		return l.column(e)
 	case *Constant:
-		return l.B.Scalar(field.Lift(e.Value), true)
+		return b.Scalar(field.Lift(e.Value), true)
 	case *Cell:
-		v := l.rt.GetCellValue(e)
+		v := rt.GetCellValue(e)
 		if e.IsExtension() {
-			return l.B.Scalar(v.AsExt(), false)
+			return b.Scalar(v.AsExt(), false)
 		}
 		if !v.IsBase() {
 			panic(fmt.Sprintf("wiop: cell %q declared as base but holds an extension-field value", e.Context.Path()))
 		}
-		return l.B.Scalar(field.Lift(v.AsBase()), true)
+		return b.Scalar(field.Lift(v.AsBase()), true)
 	case *CoinField:
-		return l.B.Scalar(l.rt.GetCoinValue(e).AsExt(), false)
+		return b.Scalar(rt.GetCoinValue(e).AsExt(), false)
 	case *ArithmeticOperation:
-		o := LowerOperator(e.Operator)
+		o := lowerOperator(e.Operator)
 		args := make([]int, o.Arity())
 		for i := range args {
-			args[i] = l.lower(e.Operands[i])
+			args[i] = LowerExpression(rt, b, e.Operands[i], leaf)
 		}
-		return l.B.Op(o, args...)
+		return b.Op(o, args...)
+	}
+	return leaf(expr)
+}
+
+func (l *RowLowering) lower(expr Expression) int {
+	return LowerExpression(l.rt, l.B, expr, l.leaf)
+}
+
+// leaf lowers a vector or single-valued leaf of a sized expression.
+func (l *RowLowering) leaf(expr Expression) int {
+	if cv, ok := expr.(*ColumnView); ok {
+		return l.column(cv)
 	}
 	if !expr.IsMultiValued() {
 		v := expr.EvaluateSingle(l.rt).Value
