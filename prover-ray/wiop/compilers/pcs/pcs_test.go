@@ -232,3 +232,46 @@ func TestCompile_NoCommittedColumnsRecordsNoQueries(t *testing.T) {
 	require.Len(t, sys.Rounds, 1, "no opening round without committed columns")
 	require.Zero(t, FRINumQueries(sys), "no FRI opening means no query count")
 }
+
+// TestConfigure_StandaloneCompile checks that a preconfigured query count is
+// consumed by a standalone Compile, and that a divergent local count panics
+// before Compile touches the System.
+func TestConfigure_StandaloneCompile(t *testing.T) {
+	t.Run("consumed", func(t *testing.T) {
+		sys, col, _ := newPCSTestSystem()
+		require.NoError(t, Configure(sys, WithFRINumQueries(2)))
+		Compile(sys, WithFRINumQueries(2))
+		require.Equal(t, 2, FRINumQueries(sys), "Compile must use the preconfigured query count")
+		proof, pub := sys.Prove(func(rt *wiop.Runtime) { rt.AssignColumn(col, baseVec(4, 3)) })
+		require.Len(t, proof.PCSOpeningProof.InputQueries, 2, "one input query per configured FRI query")
+		require.NoError(t, sys.Verify(proof, pub), "honest witness must verify")
+	})
+	t.Run("conflict", func(t *testing.T) {
+		sys, _, _ := newPCSTestSystem()
+		numRounds := len(sys.Rounds)
+		require.NoError(t, Configure(sys, WithFRINumQueries(2)))
+		require.PanicsWithValue(t, "pcs: FRI query count 4 conflicts with preconfigured 2",
+			func() { Compile(sys, WithFRINumQueries(4)) }, "a local count must not override the preconfigured one")
+		require.Len(t, sys.Rounds, numRounds, "no opening round may be added")
+		require.False(t, sys.Rounds[0].HasCommitment, "no round may be flagged as committed")
+	})
+}
+
+// TestConfigure_NoOpCompileConsumesNothing checks that a Compile without
+// committed columns leaves the selection open for a later configuration.
+func TestConfigure_NoOpCompileConsumesNothing(t *testing.T) {
+	sys := wiop.NewSystemf("pcs-empty-configure")
+	sys.NewRound()
+	Compile(sys)
+	require.NoError(t, Configure(sys, WithFRINumQueries(2)), "a no-op Compile must not freeze the default")
+}
+
+// TestConfigure_RejectsNoPCS checks that PCS options conflict with a declared
+// no-PCS System, both when configuring and when compiling.
+func TestConfigure_RejectsNoPCS(t *testing.T) {
+	sys, _, _ := newPCSTestSystem()
+	require.NoError(t, DeclareNone(sys))
+	require.NoError(t, DeclareNone(sys), "DeclareNone must be idempotent")
+	require.ErrorContains(t, Configure(sys, WithFRINumQueries(2)), "no-PCS", "Configure must reject no-PCS")
+	require.Panics(t, func() { Compile(sys) }, "Compile must reject a declared no-PCS System")
+}
