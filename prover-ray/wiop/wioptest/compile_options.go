@@ -11,6 +11,6 @@ import (
 // count must not be used in production.
 func TestingCompileOptions() []compilers.Option {
 	return []compilers.Option{
-		compilers.WithPCSOption(pcs.WithFRINumQueries(2)),
+		compilers.ConfigurePCS(pcs.WithFRINumQueries(2)),
 	}
 }

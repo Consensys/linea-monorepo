@@ -53,16 +53,44 @@ const (
 // from https://github.com/ethereum/soundcalc to match 128 bits of security.
 const defaultFRINumQueries = 229
 
-// friNumQueriesAnnotationKey is the [wiop.System.Annotations] key under which
-// [Compile] records the System's effective FRI query count.
-const friNumQueriesAnnotationKey = "compiler.pcs.fri_num_queries"
+// configAnnotationKey is the [wiop.System.Annotations] key of the System's PCS
+// [config]. Only this package writes it.
+const configAnnotationKey = "compiler.pcs.config"
 
 type compileOptions struct {
 	friNumQueries   int
 	elisionDisabled bool
 }
 
-// Option configures a single [Compile] invocation.
+// config is the PCS configuration recorded on a System. Zero option fields
+// are unset until [Compile] consumes the selection; from then on they hold the
+// effective configuration, defaults included, and are frozen.
+type config struct {
+	compileOptions
+	consumed bool
+	// none declares the System PCS-less; see [DeclareNone].
+	none bool
+}
+
+// configOf returns the PCS configuration recorded on sys, or the zero
+// (provisional) configuration when none is recorded.
+func configOf(sys *wiop.System) config {
+	v, exists := sys.Annotations[configAnnotationKey]
+	if !exists {
+		return config{}
+	}
+	cfg, ok := v.(config)
+	if !ok {
+		utils.Panic("pcs: annotation %q holds %T, want a PCS config", configAnnotationKey, v)
+	}
+	return cfg
+}
+
+func setConfig(sys *wiop.System, cfg config) { sys.Annotations[configAnnotationKey] = cfg }
+
+// Option configures a [Configure] or [Compile] invocation. [Configure]
+// records a preconfigured selection that a later [Compile] merges with its own
+// local options.
 type Option func(*compileOptions)
 
 // WithFRINumQueries sets the number of FRI query openings for the compiled
@@ -88,6 +116,109 @@ func WithFRINumQueries(n int) Option {
 // effect of elision or to isolate a regression.
 func WithoutColumnElision() Option {
 	return func(o *compileOptions) { o.elisionDisabled = true }
+}
+
+// merge resolves opts against sys's recorded PCS configuration without
+// mutating anything. A local value that conflicts with an explicit
+// preconfigured (or consumed) value is an error, while a matching value is
+// not a second override. Unset fields keep the preconfigured selection;
+// defaults are left to the consuming [Compile].
+func merge(sys *wiop.System, opts []Option) (compileOptions, error) {
+	var cfg compileOptions
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+	state := configOf(sys)
+	if state.none {
+		return cfg, fmt.Errorf("pcs: PCS options conflict with the declared no-PCS mode")
+	}
+	pre := state.compileOptions
+	if cfg.friNumQueries != 0 && pre.friNumQueries != 0 && cfg.friNumQueries != pre.friNumQueries {
+		return cfg, fmt.Errorf("pcs: FRI query count %d conflicts with preconfigured %d",
+			cfg.friNumQueries, pre.friNumQueries)
+	}
+	if cfg.elisionDisabled && state.consumed && !pre.elisionDisabled {
+		return cfg, fmt.Errorf("pcs: WithoutColumnElision conflicts with the consumed column elision")
+	}
+	if cfg.friNumQueries == 0 {
+		cfg.friNumQueries = pre.friNumQueries
+	}
+	cfg.elisionDisabled = cfg.elisionDisabled || pre.elisionDisabled
+	return cfg, nil
+}
+
+// DeclareNone declares sys PCS-less: its compiled columns stay uncommitted and
+// later PCS options, including [Compile], are rejected. It is the standalone
+// counterpart of compilers.WithoutPCS. Idempotent.
+//
+// Returns an error, leaving sys untouched, if a PCS selection was already
+// preconfigured or consumed.
+func DeclareNone(sys *wiop.System) error {
+	state := configOf(sys)
+	if state.consumed || state.compileOptions != (compileOptions{}) {
+		return fmt.Errorf("pcs: no-PCS mode conflicts with the configured PCS selection")
+	}
+	setConfig(sys, config{none: true})
+	return nil
+}
+
+// Mode reports the PCS state of sys:
+//
+//	 1 — PCS selected: [Compile] consumed its selection;
+//	 0 — explicit no-PCS: declared via [DeclareNone];
+//	-1 — provisional: neither happened yet.
+func Mode(sys *wiop.System) int {
+	switch state := configOf(sys); {
+	case state.consumed:
+		return 1
+	case state.none:
+		return 0
+	default:
+		return -1
+	}
+}
+
+// Configure validates opts against sys's preconfigured selection and records
+// them, without compiling anything. It is the entry point behind
+// compilers.ConfigurePCS. A later [Compile] merges its own local options with
+// this selection: matching values are not a conflict, divergent ones are.
+// Only explicitly provided options are recorded, so defaults stay unset until
+// a consuming [Compile] freezes them.
+//
+// [Validate] and [Apply] are its two halves, so that a caller configuring
+// several passes can validate every selection before applying any.
+func Configure(sys *wiop.System, opts ...Option) error {
+	if err := Validate(sys, opts...); err != nil {
+		return err
+	}
+	return Apply(sys, opts...)
+}
+
+// Validate checks opts against sys's preconfigured selection without mutating
+// anything: a declared no-PCS mode, or a value diverging from an explicit
+// preconfigured or consumed one, is an error. At least one option is required.
+func Validate(sys *wiop.System, opts ...Option) error {
+	if len(opts) == 0 {
+		return fmt.Errorf("pcs: Configure requires at least one option")
+	}
+	_, err := merge(sys, opts)
+	return err
+}
+
+// Apply records the [Validate]-checked opts as sys's preconfigured selection.
+// It re-runs the validation, so it never records a conflicting selection.
+func Apply(sys *wiop.System, opts ...Option) error {
+	if len(opts) == 0 {
+		return fmt.Errorf("pcs: Configure requires at least one option")
+	}
+	cfg, err := merge(sys, opts)
+	if err != nil {
+		return err
+	}
+	state := configOf(sys)
+	state.compileOptions = cfg
+	setConfig(sys, state)
+	return nil
 }
 
 var (
@@ -126,15 +257,11 @@ func staticFRI() (fri.Params, []*fri.RSEncoder) {
 // for sys, or 0 when sys has no PCS opening (PCS pass not run, or no committed
 // columns).
 func FRINumQueries(sys *wiop.System) int {
-	v, exists := sys.Annotations[friNumQueriesAnnotationKey]
-	if !exists {
+	state := configOf(sys)
+	if !state.consumed {
 		return 0
 	}
-	n, ok := v.(int)
-	if !ok {
-		utils.Panic("malformed FRI number queries annotation")
-	}
-	return n
+	return state.friNumQueries
 }
 
 // FRIMaxCommittableSizeLog2 is the log2 of the largest committed column size the
@@ -220,15 +347,19 @@ type BatchRef struct {
 
 // Compile wires the polynomial-commitment scheme onto sys. It must run last, after
 // every arithmetization pass has registered its columns and [wiop.LagrangeEval]
-// queries. It is a no-op when no columns are committed. A non-positive query
-// count or a repeated query-count option panics before touching sys.
+// queries. It is a no-op when no columns are committed.
+//
+// The local options are merged with sys's preconfigured selection (recorded
+// by [Configure] or compilers.ConfigurePCS): divergent values, a declared
+// no-PCS mode, a non-positive query count or a repeated query-count option
+// panic before touching sys. Unset fields take their defaults. A consuming
+// Compile freezes the merged selection; a no-op Compile freezes nothing.
 func Compile(sys *wiop.System, opts ...Option) {
-	cfg := new(compileOptions)
-	for _, opt := range opts {
-		opt(cfg)
+	cfg, err := merge(sys, opts)
+	if err != nil {
+		utils.Panic("%v", err)
 	}
 	if cfg.friNumQueries == 0 {
-		// no option was set, use default
 		cfg.friNumQueries = defaultFRINumQueries
 	}
 
@@ -236,6 +367,9 @@ func Compile(sys *wiop.System, opts ...Option) {
 	if len(batches) == 0 {
 		return
 	}
+	// Freeze the effective configuration before mutating sys; merge
+	// guarantees it matches any earlier consumption.
+	setConfig(sys, config{compileOptions: cfg, consumed: true})
 
 	c := &compiled{
 		manifestCells:   make(map[int][]*wiop.Cell),
@@ -280,7 +414,6 @@ func Compile(sys *wiop.System, opts ...Option) {
 	openingRound := sys.NewRound()
 	openingRound.RegisterAction(&openingProverAction{c: c})
 	openingRound.RegisterVerifierAction(&OpeningVerifierAction{c: c})
-	sys.Annotations[friNumQueriesAnnotationKey] = cfg.friNumQueries
 }
 
 // CommittedBatches returns the canonical batch ordering: every interactive round

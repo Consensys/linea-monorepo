@@ -32,8 +32,8 @@ func TestCompileFull_HooksAndPCS(t *testing.T) {
 		return nil
 	}
 	require.NoError(t, compilers.CompileFull(sc.Sys,
-		compilers.WithMessageBusOption(messagebus.WithoutSharedRandomness()),
-		compilers.WithPCSOption(pcs.WithFRINumQueries(2)),
+		compilers.ConfigureMessageBus(messagebus.WithoutSharedRandomness()),
+		compilers.ConfigurePCS(pcs.WithFRINumQueries(2)),
 		compilers.WithPreHook(compilers.PCS, checkGlobal),
 		compilers.WithPreHook(compilers.PCS, func(*wiop.System) error {
 			order = append(order, "pre-2")
@@ -49,7 +49,7 @@ func TestCompileFull_HooksAndPCS(t *testing.T) {
 
 	invalid := wioptest.NewFibonacciVanishingScenario()
 	require.NoError(t, compilers.CompileFull(invalid.Sys,
-		compilers.WithPCSOption(pcs.WithFRINumQueries(2))))
+		compilers.ConfigurePCS(pcs.WithFRINumQueries(2))))
 	proof, pub = invalid.Sys.Prove(invalid.AssignInvalid)
 	require.Error(t, invalid.Sys.Verify(proof, pub), "invalid witness must fail verification")
 }
@@ -70,7 +70,7 @@ func TestCompileFull_HookErrors(t *testing.T) {
 			cause := errors.New("hook failed")
 			var sawGlobal bool
 			err := compilers.CompileFull(sc.Sys,
-				compilers.WithPCSOption(pcs.WithFRINumQueries(2)),
+				compilers.ConfigurePCS(pcs.WithFRINumQueries(2)),
 				tc.opt(compilers.PCS, func(sys *wiop.System) error {
 					sawGlobal = len(sys.LagrangeEvals) > 0
 					return cause
@@ -156,8 +156,8 @@ func TestCompileFull_MessageBusOption(t *testing.T) {
 	busRecv.SkipInShardCheck = true
 
 	require.NoError(t, compilers.CompileFull(sys,
-		compilers.WithMessageBusOption(messagebus.WithoutSharedRandomness()),
-		compilers.WithPCSOption(pcs.WithFRINumQueries(2)),
+		compilers.ConfigureMessageBus(messagebus.WithoutSharedRandomness()),
+		compilers.ConfigurePCS(pcs.WithFRINumQueries(2)),
 	))
 	require.False(t, messagebus.HasSharedRandomness(sys), "the opt-out option must reach messagebus")
 }
@@ -172,8 +172,8 @@ func TestCompileFull_OptionValidation(t *testing.T) {
 	}{
 		{name: "invalid pass", opts: []compilers.Option{compilers.WithPreHook(compilers.PCS+1, func(*wiop.System) error { return nil })}, want: "invalid pass Pass(9)"},
 		{name: "nil hook", opts: []compilers.Option{compilers.WithPostHook(compilers.Global, nil)}, want: "nil post hook for Global"},
-		{name: "pcs conflict first", opts: []compilers.Option{compilers.WithoutPCS(), compilers.WithPCSOption(pcs.WithFRINumQueries(2))}, want: "conflicts with WithPCSOption"},
-		{name: "pcs conflict last", opts: []compilers.Option{compilers.WithPCSOption(pcs.WithFRINumQueries(2)), compilers.WithoutPCS()}, want: "conflicts with WithPCSOption"},
+		{name: "pcs conflict first", opts: []compilers.Option{compilers.WithoutPCS(), compilers.ConfigurePCS(pcs.WithFRINumQueries(2))}, want: "WithoutPCS conflicts with ConfigurePCS"},
+		{name: "pcs conflict last", opts: []compilers.Option{compilers.ConfigurePCS(pcs.WithFRINumQueries(2)), compilers.WithoutPCS()}, want: "WithoutPCS conflicts with ConfigurePCS"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sc := wioptest.NewFibonacciVanishingScenario()

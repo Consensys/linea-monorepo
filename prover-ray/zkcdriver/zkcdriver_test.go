@@ -137,7 +137,7 @@ func proverCompilePipeline(sys *wiop.System) {
 	// XXX: when zkcdriver is updated and puts traces in round 1 then we can remove this wrapper and just call `CompileFull`
 	// everywhere
 	if err := compilers.CompileFull(sys,
-		compilers.WithMessageBusOption(messagebus.WithoutSharedRandomness())); err != nil {
+		compilers.ConfigureMessageBus(messagebus.WithoutSharedRandomness())); err != nil {
 		panic(err)
 	}
 }

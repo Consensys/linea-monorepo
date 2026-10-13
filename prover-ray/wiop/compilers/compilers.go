@@ -5,6 +5,7 @@ package compilers
 import (
 	"fmt"
 
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/utils"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/global"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/grandproduct"
@@ -78,20 +79,39 @@ type options struct {
 	hooks             []hookRegistration
 }
 
-// Option configures a single CompileFull invocation.
+// Option configures a [Configure] or [CompileFull] invocation. Both entry
+// points share this type: the configuration options ([ConfigurePCS],
+// [ConfigureMessageBus], [WithoutPCS]) select a System's pass settings, while
+// [WithPreHook] and [WithPostHook] are pipeline-only and rejected by
+// [Configure].
 type Option func(*options)
 
-// WithPCSOption configures the PCS pass for this System.
-func WithPCSOption(option pcs.Option) Option {
-	return func(o *options) { o.pcsOptions = append(o.pcsOptions, option) }
+// ConfigurePCS configures the PCS pass for this System. The options are
+// merged with any previously configured selection; conflicting or repeated
+// choices are rejected before the System is mutated. At least one option is
+// required, and [WithoutPCS] conflicts with it.
+func ConfigurePCS(opts ...pcs.Option) Option {
+	if len(opts) == 0 {
+		utils.Panic("compilers: ConfigurePCS requires at least one pcs option")
+	}
+	return func(o *options) { o.pcsOptions = append(o.pcsOptions, opts...) }
 }
 
-// WithMessageBusOption configures the message-bus pass for this System.
-func WithMessageBusOption(option messagebus.Option) Option {
-	return func(o *options) { o.messageBusOptions = append(o.messageBusOptions, option) }
+// ConfigureMessageBus configures the message-bus pass for this System. The
+// options are merged with any previously configured selection; conflicting
+// choices are rejected before the System is mutated. At least one option is
+// required.
+func ConfigureMessageBus(opts ...messagebus.Option) Option {
+	if len(opts) == 0 {
+		utils.Panic("compilers: ConfigureMessageBus requires at least one messagebus option")
+	}
+	return func(o *options) { o.messageBusOptions = append(o.messageBusOptions, opts...) }
 }
 
-// WithoutPCS leaves compiled columns uncommitted and skips both PCS hooks.
+// WithoutPCS declares the System PCS-less ([pcs.DeclareNone]). In
+// [CompileFull] it leaves compiled columns uncommitted and skips both the PCS
+// pass and its hooks. It conflicts with [ConfigurePCS] and with a previously
+// configured PCS selection.
 func WithoutPCS() Option { return func(o *options) { o.withoutPCS = true } }
 
 // WithPreHook runs hook immediately before pass, even if the pass is a no-op.
@@ -110,25 +130,27 @@ func WithPostHook(pass Pass, h func(*wiop.System) error) Option {
 	}
 }
 
-// CompileFull runs all wiop passes in dependency order. Invalid options are
-// rejected before any pass runs. A failing hook stops the pipeline, leaving
-// mutations from preceding passes intact.
-func CompileFull(sys *wiop.System, opts ...Option) error {
+// resolve applies opts and validates them as a whole: cross-option
+// contradictions, invalid passes and nil hooks are rejected. It returns the
+// resolved configuration and the per-pass hook table.
+func resolve(opts []Option, allowHooks bool) (*options, *[PCS + 1]passHooks, error) {
 	var cfg options
 	for _, opt := range opts {
 		opt(&cfg)
 	}
 	if cfg.withoutPCS && len(cfg.pcsOptions) != 0 {
-		return fmt.Errorf("compilers: WithoutPCS conflicts with WithPCSOption")
+		return nil, nil, fmt.Errorf("compilers: WithoutPCS conflicts with ConfigurePCS")
 	}
-
+	if len(cfg.hooks) != 0 && !allowHooks {
+		return nil, nil, fmt.Errorf("compilers: hooks are only accepted by CompileFull")
+	}
 	var hooks [PCS + 1]passHooks
 	for _, registration := range cfg.hooks {
 		if registration.pass > PCS {
-			return fmt.Errorf("compilers: invalid pass %s", registration.pass)
+			return nil, nil, fmt.Errorf("compilers: invalid pass %s", registration.pass)
 		}
 		if registration.hook == nil {
-			return fmt.Errorf("compilers: nil %s hook for %s", registration.phase, registration.pass)
+			return nil, nil, fmt.Errorf("compilers: nil %s hook for %s", registration.phase, registration.pass)
 		}
 		entry := &hooks[registration.pass]
 		if registration.phase == "pre" {
@@ -137,21 +159,100 @@ func CompileFull(sys *wiop.System, opts ...Option) error {
 			entry.post = append(entry.post, registration.hook)
 		}
 	}
+	return &cfg, &hooks, nil
+}
 
+// apply records the resolved pass selections on sys. Every selection is
+// validated against the System's existing ones before any is written, so a
+// conflicting option set leaves the System untouched.
+func (cfg *options) apply(sys *wiop.System) error {
+	if len(cfg.pcsOptions) != 0 {
+		if err := pcs.Validate(sys, cfg.pcsOptions...); err != nil {
+			return fmt.Errorf("compilers: %w", err)
+		}
+	}
+	if len(cfg.messageBusOptions) != 0 {
+		if err := messagebus.Validate(sys, cfg.messageBusOptions...); err != nil {
+			return fmt.Errorf("compilers: %w", err)
+		}
+	}
+	// WithoutPCS excludes pcsOptions (see resolve), so DeclareNone is the only
+	// PCS write; it fails without mutating sys.
+	if cfg.withoutPCS {
+		if err := pcs.DeclareNone(sys); err != nil {
+			return fmt.Errorf("compilers: WithoutPCS: %w", err)
+		}
+	}
+
+	// Every remaining selection was validated: none of these can fail against
+	// the same System state.
+	if len(cfg.pcsOptions) != 0 {
+		if err := pcs.Apply(sys, cfg.pcsOptions...); err != nil {
+			return fmt.Errorf("compilers: %w", err)
+		}
+	}
+	if len(cfg.messageBusOptions) != 0 {
+		if err := messagebus.Apply(sys, cfg.messageBusOptions...); err != nil {
+			return fmt.Errorf("compilers: %w", err)
+		}
+	}
+	return nil
+}
+
+// Configure records the configuration options on sys without running any
+// pass. It accepts the same configuration options as [CompileFull] but
+// rejects hooks. The selections are stored on the System so that standalone
+// passes, and a later [CompileFull], consume them: defaults stay unset until
+// the first consuming pass freezes them, and a pass receiving previously
+// configured values merges them instead of overriding. Conflicting or invalid
+// options are returned as errors before sys is mutated.
+//
+// Typical standalone use:
+//
+//	compilers.Configure(sys,
+//		compilers.ConfigurePCS(pcs.WithFRINumQueries(115)),
+//		compilers.ConfigureMessageBus(messagebus.WithoutSharedRandomness()),
+//	)
+//	messagebus.Compile(sys)
+//	// ... remaining passes ...
+//	pcs.Compile(sys)
+func Configure(sys *wiop.System, opts ...Option) error {
+	cfg, _, err := resolve(opts, false)
+	if err != nil {
+		return err
+	}
+	return cfg.apply(sys)
+}
+
+// CompileFull runs all wiop passes in dependency order. The configuration
+// options are recorded on sys as by [Configure] before the first pass runs;
+// invalid options, including contradictions with an earlier [Configure], are
+// rejected before any pass runs. A failing hook stops the pipeline, leaving
+// mutations from preceding passes intact.
+func CompileFull(sys *wiop.System, opts ...Option) error {
+	cfg, hooks, err := resolve(opts, true)
+	if err != nil {
+		return err
+	}
+	if err := cfg.apply(sys); err != nil {
+		return err
+	}
+
+	// The message-bus and PCS passes consume the selections apply recorded.
 	passes := [...]func(*wiop.System){
 		nonnative.Compile,
 		rangecheck.Compile,
 		lookuptologderivsum.Compile,
-		func(s *wiop.System) { messagebus.Compile(s, cfg.messageBusOptions...) },
+		func(s *wiop.System) { messagebus.Compile(s) },
 		grandproduct.Compile,
 		logderivativesum.Compile,
 		localvanishing.Compile,
 		global.Compile,
-		func(s *wiop.System) { pcs.Compile(s, cfg.pcsOptions...) },
+		func(s *wiop.System) { pcs.Compile(s) },
 	}
 	for index, compile := range passes {
 		pass := Pass(index)
-		if pass == PCS && cfg.withoutPCS {
+		if pass == PCS && pcs.Mode(sys) == 0 {
 			break
 		}
 		for _, h := range hooks[pass].pre {
