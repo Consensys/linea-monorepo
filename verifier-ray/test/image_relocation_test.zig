@@ -138,3 +138,95 @@ test "image relocation rebases every Merkle cap slice" {
     try expectPointer(&image, round_cap_1 + @offsetOf(merkle.MerkleCap, "nodes"), mapped_base + round_cap_1_nodes);
     try expectPointer(&image, round_cap_1 + @offsetOf(merkle.MerkleCap, "aux"), mapped_base);
 }
+
+test "pair members relocate relative to their own encoded and mapped bases" {
+    const guest_base: usize = 0x08800000;
+    const mapped_base: usize = 0x50000000;
+    const member_offsets = [_]usize{ 16, 0x1238 };
+    const payload_offsets = [_]usize{ 112, 0x4560 };
+
+    for (member_offsets, payload_offsets) |member_offset, payload_offset| {
+        const encoded_member_base = guest_base + member_offset;
+        const mapped_member_base = mapped_base + member_offset;
+        const encoded_pointer = encoded_member_base + payload_offset;
+
+        try std.testing.expectEqual(
+            payload_offset,
+            try verifier_ray.image_relocation.imageOffset(encoded_pointer, encoded_member_base),
+        );
+        try std.testing.expectEqual(
+            mapped_member_base + payload_offset,
+            try verifier_ray.image_relocation.relocatePointer(encoded_pointer, encoded_member_base, mapped_member_base),
+        );
+    }
+}
+
+test "single image relocation preserves its existing base-relative behavior" {
+    const guest_base: usize = 0x08800000;
+    const mapped_base: usize = 0x70000000;
+    const payload_offset: usize = 0x3210;
+
+    try std.testing.expectEqual(
+        mapped_base + payload_offset,
+        try verifier_ray.image_relocation.relocatePointer(guest_base + payload_offset, guest_base, mapped_base),
+    );
+}
+
+test "relocation rejects pointers outside the encoded image" {
+    try std.testing.expectError(
+        error.PointerBeforeImage,
+        verifier_ray.image_relocation.relocatePointer(0x1000, 0x2000, 0x3000),
+    );
+    try std.testing.expectError(
+        error.AddressOverflow,
+        verifier_ray.image_relocation.relocatePointer(0x2001, 0x2000, std.math.maxInt(usize)),
+    );
+}
+
+test "pair relocation rebases the header and each sub-image against its own start" {
+    const relocation = verifier_ray.image_relocation;
+    const encoded_base: usize = 0x08800000;
+    const hdr = relocation.pair_header_len;
+    // Each sub-image is a zeroed VerifyInput (every other slice null) whose
+    // public_inputs points just past it.
+    const payload = @sizeOf(verifier.VerifyInput);
+    const sub_len = payload + 32;
+    const public_inputs_header = @offsetOf(verifier.VerifyInput, "public_inputs");
+
+    var image: [hdr + 2 * sub_len]u8 align(8) = @splat(0);
+    const mapped_base = @intFromPtr(&image);
+    const subs = [_]usize{ hdr, hdr + sub_len };
+    for (subs, 0..) |sub, i| {
+        std.mem.writeInt(u64, image[i * 8 ..][0..8], encoded_base + sub, .little);
+        putSlice(image[sub..], public_inputs_header, encoded_base + sub + payload, 1);
+    }
+
+    try relocation.rebasePair(&image, image.len, encoded_base, mapped_base);
+
+    for (subs, 0..) |sub, i| {
+        try std.testing.expectEqual(
+            @as(u64, mapped_base + sub),
+            std.mem.readInt(u64, image[i * 8 ..][0..8], .little),
+        );
+        try expectPointer(image[sub..], public_inputs_header, mapped_base + sub + payload);
+    }
+}
+
+test "pair relocation rejects header pointers outside the image" {
+    const relocation = verifier_ray.image_relocation;
+    const encoded_base: usize = 0x08800000;
+    var image: [64]u8 align(8) = @splat(0);
+
+    std.mem.writeInt(u64, image[0..8], encoded_base + 0x1000, .little);
+    std.mem.writeInt(u64, image[8..16], encoded_base + 16, .little);
+    try std.testing.expectError(
+        error.PointerPastImage,
+        relocation.rebasePair(&image, image.len, encoded_base, @intFromPtr(&image)),
+    );
+
+    std.mem.writeInt(u64, image[0..8], encoded_base - 8, .little);
+    try std.testing.expectError(
+        error.PointerBeforeImage,
+        relocation.rebasePair(&image, image.len, encoded_base, @intFromPtr(&image)),
+    );
+}

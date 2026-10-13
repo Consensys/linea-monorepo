@@ -1,8 +1,34 @@
+const std = @import("std");
 const merkle = @import("crypto/merkle.zig");
 const protocol = @import("protocol/types.zig");
 const fri = @import("query/fri.zig");
 const pcs = @import("query/pcs.zig");
 const verifier = @import("verifier.zig");
+
+comptime {
+    // encoded_pointer/encoded_base/mapped_base are all treated as one 64-bit
+    // address space below; every supported target (x86_64, aarch64, R5/RV64)
+    // has a 64-bit usize, so no width-narrowing cast is needed or checked for.
+    if (@bitSizeOf(usize) != 64) @compileError("image_relocation assumes a 64-bit usize");
+}
+
+pub const Error = error{
+    PointerBeforeImage,
+    PointerPastImage,
+    AddressOverflow,
+};
+
+/// Returns an encoded absolute pointer's byte offset within its image.
+pub fn imageOffset(encoded_pointer: u64, encoded_base: usize) Error!usize {
+    if (encoded_pointer < encoded_base) return error.PointerBeforeImage;
+    return encoded_pointer - encoded_base;
+}
+
+/// Relocates an absolute in-image pointer from encoded_base to mapped_base.
+pub fn relocatePointer(encoded_pointer: u64, encoded_base: usize, mapped_base: usize) Error!usize {
+    const offset = try imageOffset(encoded_pointer, encoded_base);
+    return std.math.add(usize, mapped_base, offset) catch error.AddressOverflow;
+}
 
 /// Strides and offsets of the image layout, derived from the types so that a
 /// field added to any of them moves this walk with it. Nothing downstream would
@@ -175,6 +201,27 @@ pub fn rebase(img: [*]u8, img_len: usize, encoded_base: usize, mapped_base: usiz
             const br = rq_inner_ptr + j * abi.branch;
             _ = patchPtr(img, img_len, br + abi.branch_siblings, encoded_base, delta);
         }
+    }
+}
+
+/// Byte-for-byte layout of the aggregator pair image header: two absolute
+/// little-endian u64 pointers, matching `EncodeAggregatorPair`'s header write
+/// and `verifier.AggregatorInput`.
+pub const pair_header_len = 2 * @sizeOf(u64);
+
+/// Rebases an aggregator pair image (see `verifier.AggregatorInput`): patches
+/// the two header pointers, then rebases each `VerifyInput` sub-image they
+/// point to. `EncodeAggregatorPair` encodes each sub-image with `Encode` at its
+/// own absolute start address, so each is walked relative to that start rather
+/// than to the pair image's base.
+pub fn rebasePair(img: [*]u8, img_len: usize, encoded_base: usize, mapped_base: usize) Error!void {
+    if (img_len < pair_header_len) return error.PointerPastImage;
+    inline for (.{ 0, @sizeOf(u64) }) |hdr| {
+        const old_ptr = readU64(img, hdr);
+        const off = try imageOffset(old_ptr, encoded_base);
+        if (off < pair_header_len or off >= img_len) return error.PointerPastImage;
+        writeU64(img, hdr, @intCast(try relocatePointer(old_ptr, encoded_base, mapped_base)));
+        rebase(img + off, img_len - off, encoded_base + off, mapped_base + off);
     }
 }
 
