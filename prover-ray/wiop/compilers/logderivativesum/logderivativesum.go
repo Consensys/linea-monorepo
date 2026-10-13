@@ -317,10 +317,8 @@ func (a *proverAction) Run(rt *wiop.Runtime) {
 // every fraction of the group: subexpressions shared by the fractions are
 // computed once, the denominators' random linear combinations become linear
 // forms, and each block of rows takes one batch inversion per denominator,
-// without materialising the fractions' vectors. The running sum is then a
-// two-pass chunked scan (each chunk sums locally, then adds the total of the
-// chunks before it). workers bounds the goroutines used. Field arithmetic is
-// exact, so the result does not depend on workers.
+// without materialising the fractions' vectors. [field.VecPrefixSumExt] then
+// takes their running sum. workers bounds the goroutines used.
 func computeFilteredPrefixSum(rt *wiop.Runtime, packed []wiop.Fraction, n int, workers int) []field.Ext {
 	l := wiop.NewRowLowering(rt, n)
 	b := l.B
@@ -347,48 +345,9 @@ func computeFilteredPrefixSum(rt *wiop.Runtime, packed []wiop.Fraction, n int, w
 	}
 	b.Compile(n, 1, 1).Run(nil, nil, workers)
 
-	// First pass: each chunk's running sum from zero, and its total.
-	chunk := max(prefixSumMinChunk, (n+workers-1)/workers)
-	nbChunks := (n + chunk - 1) / chunk
-	bounds := func(c int) (int, int) { return c * chunk, min((c+1)*chunk, n) }
-	z := rows // the running sum overwrites the row terms in place
-	chunkTotals := make([]field.Ext, nbChunks)
-	parallel.Execute(nbChunks, func(start, end int) {
-		for c := start; c < end; c++ {
-			lo, hi := bounds(c)
-			var running field.Ext
-			for i := lo; i < hi; i++ {
-				running.Add(&running, &rows[i])
-				z[i] = running
-			}
-			chunkTotals[c] = running
-		}
-	}, workers)
-
-	// Second pass: shift every chunk but the first by the total of the
-	// chunks before it.
-	if nbChunks < 2 {
-		return z
-	}
-	offsets := make([]field.Ext, nbChunks)
-	for c := 1; c < nbChunks; c++ {
-		offsets[c].Add(&offsets[c-1], &chunkTotals[c-1])
-	}
-	parallel.Execute(nbChunks-1, func(start, end int) {
-		for c := start + 1; c < end+1; c++ {
-			lo, hi := bounds(c)
-			for i := lo; i < hi; i++ {
-				z[i].Add(&z[i], &offsets[c])
-			}
-		}
-	}, workers)
-	return z
+	field.VecPrefixSumExt(rows, workers)
+	return rows
 }
-
-// prefixSumMinChunk is the smallest number of rows a worker of
-// [computeFilteredPrefixSum] handles: below it, splitting costs more than it
-// saves.
-const prefixSumMinChunk = 4096
 
 // VerifierAction enforces the only boundary identity that is not already
 // pinned in-circuit: the sum of all Z[n-1] endpoint openings equals the

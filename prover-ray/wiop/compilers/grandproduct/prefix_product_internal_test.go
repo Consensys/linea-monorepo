@@ -10,11 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// scanChunk is the smallest chunk of field.VecPrefixProductExt, so that the
+// tests' columns span several chunks.
+const scanChunk = 4096
+
 // The chunked running product must match a row-by-row product of the
 // evaluated factors, for any number of workers, including chunk counts that
 // do not divide the column.
 func TestComputePrefixProduct_MatchesSerial(t *testing.T) {
-	for _, n := range []int{1, 8, 3*prefixProductMinChunk + 5} {
+	for _, n := range []int{1, 8, 3*scanChunk + 5} {
 		t.Run(fmt.Sprintf("n=%d", n), func(t *testing.T) {
 			rng := rand.New(rand.NewPCG(uint64(n), 3))
 			sys := wiop.NewSystemf("prefix-product")
@@ -57,7 +61,7 @@ func TestComputePrefixProduct_MatchesSerial(t *testing.T) {
 
 // A zero denominator is malformed input, whichever chunk the row falls in.
 func TestComputePrefixProduct_PanicsOnZeroDenominator(t *testing.T) {
-	const n = 3 * prefixProductMinChunk
+	const n = 3 * scanChunk
 	sys := wiop.NewSystemf("prefix-product-panic")
 	r0 := sys.NewRound()
 	mod := sys.NewSizedModule(sys.Context.Childf("mod"), n, wiop.PaddingDirectionNone)

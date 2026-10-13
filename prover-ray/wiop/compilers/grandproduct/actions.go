@@ -86,10 +86,8 @@ func (a *proverAction) Run(rt *wiop.Runtime) {
 // since the β-randomisation is supposed to make every denominator non-zero.
 //
 // The row terms are computed by one [vecprog] program (one batch inversion
-// per block of rows), then the running product is a two-pass chunked scan:
-// each chunk multiplies locally, then by the product of the chunks before
-// it. workers bounds the goroutines used. Field multiplication is exact, so
-// the result does not depend on workers.
+// per block of rows), then [field.VecPrefixProductExt] takes their running
+// product. workers bounds the goroutines used.
 func computePrefixProduct(rt *wiop.Runtime, zNum, zDen wiop.Expression, n, workers int) []field.Ext {
 	l := wiop.NewRowLowering(rt, n)
 	b := l.B
@@ -104,49 +102,9 @@ func computePrefixProduct(rt *wiop.Runtime, zNum, zDen wiop.Expression, n, worke
 	b.Store(b.Op(vecprog.Div, l.Lower(zNum), den), z)
 	b.Compile(n, 1, 1).Run(nil, nil, workers)
 
-	// First pass: each chunk's running product from one, and its total.
-	chunk := max(prefixProductMinChunk, (n+workers-1)/workers)
-	nbChunks := (n + chunk - 1) / chunk
-	bounds := func(c int) (int, int) { return c * chunk, min((c+1)*chunk, n) }
-	chunkTotals := make([]field.Ext, nbChunks)
-	parallel.Execute(nbChunks, func(start, end int) {
-		for c := start; c < end; c++ {
-			lo, hi := bounds(c)
-			var running field.Ext
-			running.SetOne()
-			for i := lo; i < hi; i++ {
-				running.Mul(&running, &z[i])
-				z[i] = running
-			}
-			chunkTotals[c] = running
-		}
-	}, workers)
-
-	// Second pass: multiply every chunk but the first by the product of the
-	// chunks before it.
-	if nbChunks < 2 {
-		return z
-	}
-	offsets := make([]field.Ext, nbChunks)
-	offsets[0].SetOne()
-	for c := 1; c < nbChunks; c++ {
-		offsets[c].Mul(&offsets[c-1], &chunkTotals[c-1])
-	}
-	parallel.Execute(nbChunks-1, func(start, end int) {
-		for c := start + 1; c < end+1; c++ {
-			lo, hi := bounds(c)
-			for i := lo; i < hi; i++ {
-				z[i].Mul(&z[i], &offsets[c])
-			}
-		}
-	}, workers)
+	field.VecPrefixProductExt(z, workers)
 	return z
 }
-
-// prefixProductMinChunk is the smallest number of rows a worker of
-// [computePrefixProduct] handles: below it, splitting costs more than it
-// saves.
-const prefixProductMinChunk = 4096
 
 // FinalProductCheck asserts that the product of all Z endpoint openings equals
 // the GrandProduct's claimed Result cell. Each endpoint is bound in-circuit to
