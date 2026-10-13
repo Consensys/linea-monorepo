@@ -185,3 +185,96 @@ func TestCompileFull_OptionValidation(t *testing.T) {
 		})
 	}
 }
+
+// TestConfigure_ConsumedByCompileFull checks that a selection recorded by
+// Configure reaches a later option-less CompileFull, and that repeating the
+// same selection is not a conflict.
+func TestConfigure_ConsumedByCompileFull(t *testing.T) {
+	sc := wioptest.NewFibonacciVanishingScenario()
+	require.NoError(t, compilers.Configure(sc.Sys, compilers.ConfigurePCS(pcs.WithFRINumQueries(2))))
+	require.Zero(t, pcs.FRINumQueries(sc.Sys), "Configure must not run the PCS pass")
+	require.NoError(t, compilers.CompileFull(sc.Sys, compilers.ConfigurePCS(pcs.WithFRINumQueries(2))),
+		"repeating the configured value must not conflict")
+	require.Equal(t, 2, pcs.FRINumQueries(sc.Sys), "the PCS pass must consume the configured query count")
+	proof, pub := sc.Sys.Prove(sc.AssignHonest)
+	require.NoError(t, sc.Sys.Verify(proof, pub), "the configured System must verify")
+}
+
+// TestConfigure_Conflicts checks that a conflicting selection is rejected,
+// including against a default consumed by an earlier pipeline, without
+// changing the recorded selection.
+func TestConfigure_Conflicts(t *testing.T) {
+	t.Run("preconfigured", func(t *testing.T) {
+		sc := wioptest.NewFibonacciVanishingScenario()
+		require.NoError(t, compilers.Configure(sc.Sys, compilers.ConfigurePCS(pcs.WithFRINumQueries(2))))
+		err := compilers.CompileFull(sc.Sys, compilers.ConfigurePCS(pcs.WithFRINumQueries(4)))
+		require.ErrorContains(t, err, "conflicts with preconfigured 2", "a new query count must not override")
+		require.NoError(t, compilers.CompileFull(sc.Sys), "the preserved selection must still compile")
+		require.Equal(t, 2, pcs.FRINumQueries(sc.Sys), "the failed call must preserve the selection")
+	})
+	t.Run("consumed default", func(t *testing.T) {
+		sc := wioptest.NewFibonacciVanishingScenario()
+		require.NoError(t, compilers.CompileFull(sc.Sys))
+		err := compilers.Configure(sc.Sys, compilers.ConfigurePCS(pcs.WithFRINumQueries(2)))
+		require.ErrorContains(t, err, "conflicts", "the consumed default query count is frozen")
+	})
+	t.Run("atomic", func(t *testing.T) {
+		sys := wiop.NewSystemf("configure-atomic")
+		sys.NewRound()
+		r1 := sys.NewRound()
+		mod := sys.NewSizedModule(sys.Context.Childf("mod"), 4, wiop.PaddingDirectionNone)
+		sys.NewMessageBusSend(sys.Context.Childf("send"), "shard", "h",
+			wiop.NewTable(mod.NewColumn(sys.Context.Childf("a"), r1).View())).SkipInShardCheck = true
+		sys.NewMessageBusReceive(sys.Context.Childf("recv"), "shard", "h",
+			wiop.NewTable(mod.NewColumn(sys.Context.Childf("b"), r1).View())).SkipInShardCheck = true
+		messagebus.Compile(sys)
+
+		err := compilers.Configure(sys,
+			compilers.ConfigurePCS(pcs.WithFRINumQueries(2)),
+			compilers.ConfigureMessageBus(messagebus.WithoutSharedRandomness()))
+		require.ErrorContains(t, err, "shared randomness false conflicts")
+		require.NoError(t, compilers.Configure(sys, compilers.ConfigurePCS(pcs.WithFRINumQueries(4))),
+			"a rejected option set must not record any selection")
+	})
+}
+
+// TestConfigure_NoPCS checks that WithoutPCS declared by Configure skips the
+// PCS pass of a later CompileFull and rejects later PCS options.
+func TestConfigure_NoPCS(t *testing.T) {
+	sc := wioptest.NewFibonacciVanishingScenario()
+	require.NoError(t, compilers.Configure(sc.Sys, compilers.WithoutPCS()))
+	require.Equal(t, 0, pcs.Mode(sc.Sys), "Configure must declare no-PCS mode")
+	err := compilers.Configure(sc.Sys, compilers.ConfigurePCS(pcs.WithFRINumQueries(2)))
+	require.ErrorContains(t, err, "no-PCS", "PCS options must not override the no-PCS declaration")
+	require.NoError(t, compilers.CompileFull(sc.Sys))
+	require.Zero(t, pcs.FRINumQueries(sc.Sys), "the declared no-PCS mode must skip the PCS pass")
+}
+
+// TestConfigure_NoPCSConflictsWithPreconfiguredPCS ensures an explicit PCS
+// selection cannot silently become a PCS-less System.
+func TestConfigure_NoPCSConflictsWithPreconfiguredPCS(t *testing.T) {
+	sys := wiop.NewSystemf("pcs-then-none")
+	require.NoError(t, compilers.Configure(sys, compilers.ConfigurePCS(pcs.WithFRINumQueries(2))))
+	err := compilers.Configure(sys, compilers.WithoutPCS())
+	require.ErrorContains(t, err, "conflicts", "no-PCS must reject an earlier PCS selection")
+	require.Equal(t, -1, pcs.Mode(sys), "rejection must preserve the provisional PCS state")
+}
+
+// TestConfigure_RejectsHooks checks that pipeline-only hooks are rejected
+// before the System is configured.
+func TestConfigure_RejectsHooks(t *testing.T) {
+	sys := wiop.NewSystemf("configure-hooks")
+	err := compilers.Configure(sys,
+		compilers.ConfigurePCS(pcs.WithFRINumQueries(2)),
+		compilers.WithPreHook(compilers.Global, func(*wiop.System) error { return nil }))
+	require.ErrorContains(t, err, "hooks are only accepted by CompileFull")
+	require.NoError(t, compilers.Configure(sys, compilers.ConfigurePCS(pcs.WithFRINumQueries(4))),
+		"a rejected Configure must not record the PCS selection")
+}
+
+// TestConfigurePCS_RequiresOption checks that empty pass configurations are
+// programming errors.
+func TestConfigurePCS_RequiresOption(t *testing.T) {
+	require.Panics(t, func() { compilers.ConfigurePCS() }, "ConfigurePCS needs at least one option")
+	require.Panics(t, func() { compilers.ConfigureMessageBus() }, "ConfigureMessageBus needs at least one option")
+}
