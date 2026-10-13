@@ -142,10 +142,8 @@ func Compile(sys *wiop.System) {
 		fractions  []wiop.Fraction
 		consumedQs []*wiop.TableRelationQuery
 	)
-	// The M-assignment tasks of the groups sharing a witness round are
-	// registered as one batch, in place of one action per group, so that they
-	// run concurrently. The batches go on after the row-limit checks
-	// registered above, as the individual tasks did.
+	// The M-assignment tasks of the groups sharing a witness round run as
+	// one batch, after the row-limit checks registered above.
 	var (
 		batchRounds []*wiop.Round
 		batches     = map[*wiop.Round]*mAssignmentBatch{}

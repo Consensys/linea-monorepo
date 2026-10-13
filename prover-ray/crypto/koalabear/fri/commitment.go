@@ -162,7 +162,7 @@ func (table MultiSizeTable) Merkleize() *Tree {
 	// which saves allocating and copying a leaf array as large as the encoded
 	// bottom table's height.
 	size := table[bottom].Size()
-	tree := allocTree(size)
+	tree := allocPooledTree(size)
 	hashSizedLeaves(table[bottom], false, tree.Nodes[size-1:])
 
 	// Every table but the bottom is digested as conjugate pairs, one tree

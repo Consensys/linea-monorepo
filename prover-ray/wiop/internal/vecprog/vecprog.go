@@ -523,14 +523,14 @@ func (b *Builder) Compile(n, ratio, cosetStep int) *Program {
 		for _, a := range nd.deps() {
 			emit(a)
 		}
-		p.steps = append(p.steps, stepOf(id, -1))
+		p.steps = append(p.steps, step{node: id, sink: -1})
 	}
 	for i := range p.sinks {
 		emit(p.sinks[i].root)
 		if p.sinks[i].kind == sinkCheck {
 			emit(p.sinks[i].guard)
 		}
-		p.steps = append(p.steps, stepOf(p.sinks[i].root, i))
+		p.steps = append(p.steps, step{node: p.sinks[i].root, sink: i})
 	}
 
 	reads := func(st step) []int {
@@ -589,8 +589,6 @@ func (b *Builder) Compile(n, ratio, cosetStep int) *Program {
 	}
 	return p
 }
-
-func stepOf(node, sink int) step { return step{node: node, sink: sink} }
 
 // Run evaluates the program on every point. Accumulate sinks add into
 // aggregate (nil when there are none), which is then multiplied by scale[k]

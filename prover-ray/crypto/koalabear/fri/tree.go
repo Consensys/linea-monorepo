@@ -121,7 +121,7 @@ func NewTree(leaves [][]field.Octuplet) *Tree {
 		}
 	}
 
-	t := allocTree(len(leaves[bottom]))
+	t := allocPooledTree(len(leaves[bottom]))
 	copy(t.Nodes[len(leaves[bottom])-1:], leaves[bottom])
 	t.buildLevels(leaves[:bottom])
 	return t
@@ -134,12 +134,23 @@ func allocTree(numLeaves int) *Tree {
 	if numLeaves <= 0 || numLeaves&(numLeaves-1) != 0 {
 		panic("fri: allocTree: number of leaves must be a positive power of two")
 	}
-	// Every node is written by the leaf hashing and buildLevels, so the
-	// stale nodes of a pooled slice are fine; its capacity, 2·numLeaves, is
-	// the pool's power-of-two class (see [CommitterState.Release]).
-	nodes := field.OctupletPool.Get(2 * numLeaves)[:2*numLeaves-1]
 	return &Tree{
-		Nodes: nodes,
+		Nodes: make([]field.Octuplet, 2*numLeaves-1),
+		Aux:   make([]*field.Octuplet, numLeaves-1),
+	}
+}
+
+// allocPooledTree is [allocTree] with its nodes taken from the octuplet pool,
+// for the commitment trees that [CommitterState.Release] gives back. Every
+// node is written by the leaf hashing and buildLevels, so the stale nodes of
+// a pooled slice are fine; its capacity, 2·numLeaves, is the pool's
+// power-of-two class.
+func allocPooledTree(numLeaves int) *Tree {
+	if numLeaves <= 0 || numLeaves&(numLeaves-1) != 0 {
+		panic("fri: allocPooledTree: number of leaves must be a positive power of two")
+	}
+	return &Tree{
+		Nodes: field.OctupletPool.Get(2 * numLeaves)[:2*numLeaves-1],
 		Aux:   make([]*field.Octuplet, numLeaves-1),
 	}
 }

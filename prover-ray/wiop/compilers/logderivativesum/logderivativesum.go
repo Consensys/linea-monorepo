@@ -267,12 +267,8 @@ type proverAction struct {
 // The Z columns are independent of one another, so they are computed
 // concurrently, largest module first to balance the workers. Each entry only
 // writes its own Z column and its own slot of finals; the total is summed
-// afterwards in entry order.
-//
-// Each entry's inner loops get a share of the CPUs proportional to its row
-// count (at least one), so the largest columns -- which bound the wall time --
-// are themselves computed in parallel, while the shares add up to about
-// GOMAXPROCS.
+// afterwards in entry order. Each entry's inner loops get a share of the
+// CPUs proportional to its row count (see [parallel.ExecuteLargestFirst]).
 func (a *proverAction) Run(rt *wiop.Runtime) {
 	sizes := make([]int, len(a.entries))
 	for i, e := range a.entries {

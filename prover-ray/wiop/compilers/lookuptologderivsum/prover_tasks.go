@@ -548,14 +548,8 @@ const joinEntriesPerBucket = 4096
 // mAssignmentBatch runs the M-assignment tasks of every lookup group sharing a
 // witness round. The tasks are independent -- each reads committed witness
 // columns and writes only its own M columns -- so they run concurrently,
-// largest first to balance the workers. It replaces one prover action per
-// group, which ran the groups one after another.
-//
-// Each task's inner parallel loops get a share of the CPUs proportional to its
-// row count (at least one), so the shares add up to about GOMAXPROCS. Letting
-// every task fan out over all CPUs instead multiplies goroutines by the
-// number of tasks, and the scheduler overhead outweighs the work of the small
-// groups.
+// largest first, each with a share of the CPUs proportional to its row count
+// (see [parallel.ExecuteLargestFirst]).
 type mAssignmentBatch struct {
 	tasks []*mAssignmentTask
 }

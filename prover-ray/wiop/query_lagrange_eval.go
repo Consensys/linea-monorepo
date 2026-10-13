@@ -222,24 +222,24 @@ func (le *LagrangeEval) evalPolynomialsShared(rt *Runtime, z field.Ext) []field.
 	}
 	parallel.ExecuteDynamic(len(weightChunks), func(c int) {
 		var (
-			it     = weightChunks[c]
-			d      = domains[it.owner]
-			w      = weights[it.owner][it.start:it.end]
-			gen    = field.RootOfUnityBy(d.n)
-			powers = make([]field.Element, len(w))
-			denom  = make([]field.Ext, len(w))
-			omega  field.Element
+			it           = weightChunks[c]
+			d            = domains[it.owner]
+			w            = weights[it.owner][it.start:it.end]
+			gen          = field.RootOfUnityBy(d.n)
+			first, omega field.Element
 		)
-		omega.ExpInt64(gen, int64(it.start))
+		first.ExpInt64(gen, int64(it.start))
+		omega = first
 		for j := range w {
-			powers[j] = omega
-			denom[j] = d.z
-			denom[j].B0.A0.Sub(&denom[j].B0.A0, &omega) // z' - ω^j
+			w[j] = d.z
+			w[j].B0.A0.Sub(&w[j].B0.A0, &omega) // z' - ω^j
 			omega.Mul(&omega, &gen)
 		}
-		field.BatchInvertExtInto(denom, w)
+		field.BatchInvertExtInto(w, w)
+		omega = first
 		for j := range w {
-			w[j].MulByElement(&w[j], &powers[j])
+			w[j].MulByElement(&w[j], &omega)
+			omega.Mul(&omega, &gen)
 		}
 	})
 

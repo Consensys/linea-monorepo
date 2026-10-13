@@ -539,7 +539,7 @@ func bktVanishings(bkt *proverBucket) []*wiop.Vanishing {
 // QuotientProverAction computes the quotient share columns of every module. It
 // runs in quotientRound. Modules are independent, so they run concurrently,
 // largest first: the many small modules fill the CPUs that the large ones
-// leave idle, instead of each taking its turn.
+// leave idle.
 type QuotientProverAction struct {
 	modules []*moduleQuotient
 }
@@ -657,9 +657,9 @@ func (q *moduleQuotient) run(rt *wiop.Runtime) {
 		// Reuse scratchAgg if Plan was called; it may contain stale data from
 		// the previous proof run, so clear it before use as an accumulator.
 		aggregate := bkt.scratchAgg
-		if len(aggregate) < N {
+		pooled := len(aggregate) < N
+		if pooled {
 			aggregate = field.ExtPool.Get(N)
-			defer field.ExtPool.Put(aggregate)
 		}
 		clear(aggregate[:N])
 
@@ -705,6 +705,9 @@ func (q *moduleQuotient) run(rt *wiop.Runtime) {
 		for k, share := range cosetsToShares(aggregate[:N], smallDomain, bucketDomains) {
 			rt.AssignColumn(bkt.shares[k], &wiop.ConcreteVector{Plain: field.VecFromExt(share)})
 		}
+		if pooled {
+			field.ExtPool.Put(aggregate)
+		}
 	}
 }
 
@@ -747,11 +750,10 @@ type domainKey struct {
 	shift field.Element
 }
 
-// domainCache holds every FFT domain the quotient has built. gnark's own
-// domain cache only keeps weak references, so a garbage collection between
-// two proofs made every dynamic module rebuild its twiddles and coset tables,
-// serially, before its columns could be re-evaluated. The domains only depend
-// on (size, shift), of which a system has a handful per module size.
+// domainCache holds every FFT domain the quotient has built, for the life of
+// the process: gnark's domain cache only keeps weak references, which a
+// garbage collection between two proofs drops. The domains only depend on
+// (size, shift), of which a system has a handful per module size.
 var domainCache sync.Map // domainKey -> *fft.Domain
 
 // cachedDomain returns the size-n domain with the given shift (the default
