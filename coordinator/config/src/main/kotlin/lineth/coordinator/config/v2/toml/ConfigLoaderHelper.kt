@@ -7,9 +7,11 @@ import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.map
 import com.github.michaelbull.result.recoverIf
+import com.sksamuel.hoplite.ConfigLoader
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ConfigResult
 import com.sksamuel.hoplite.ExperimentalHoplite
+import com.sksamuel.hoplite.PropertySource
 import com.sksamuel.hoplite.fp.Validated
 import com.sksamuel.hoplite.toml.TomlPropertySource
 import linea.hoplite.toml.TomlByteArrayHexDecoder
@@ -66,17 +68,63 @@ inline fun <reified T : Any> parseConfig(
     .loadConfigOrThrow<T>()
 }
 
+@PublishedApi
+internal fun buildConfigLoader(
+  configFiles: List<Path>,
+  strict: Boolean,
+  ignoredTopLevelKeys: Set<String>,
+  onlyTopLevelKeys: Set<String>?,
+  deprecatedAliases: List<DeprecatedKeyAlias>,
+  capturedTables: List<UnknownTablesCapture>,
+  logger: Logger?,
+  addDefaultPreprocessors: Boolean,
+  addDefaultPropertySources: Boolean,
+): ConfigLoader {
+  // Hoplite gives priority to the first source, so the last config file is added first
+  val fileSources =
+    configFiles.reversed().map { file ->
+      PropertySource.path(file.toAbsolutePath())
+        .withDeprecatedAliases(deprecatedAliases, logger)
+        .withCapturedTables(capturedTables)
+        .withoutTopLevelKeys(ignoredTopLevelKeys)
+        .let { source -> if (onlyTopLevelKeys != null) source.onlyTopLevelKeys(onlyTopLevelKeys) else source }
+    }
+  return configLoaderBuilder(strict, addDefaultPreprocessors, addDefaultPropertySources)
+    .addPropertySources(fileSources)
+    .build()
+}
+
+/**
+ * @param ignoredTopLevelKeys top-level tables dropped before decoding (e.g. owned by a [ConfigExtension]),
+ *   so they do not trigger the unknown key handling
+ * @param onlyTopLevelKeys when set, only these top-level tables are kept (used to load [ConfigExtension] sections)
+ * @param deprecatedAliases renamed keys still accepted from the config files
+ * @param capturedTables tables whose user-named sub-tables are collected instead of reported as unknown keys
+ * @param logger used for deprecation warnings; pass it on the strict pass only, as the lenient pass re-reads the files
+ */
 inline fun <reified T : Any> loadConfigsOrError(
   configFiles: List<Path>,
   strict: Boolean,
   addDefaultPreprocessors: Boolean,
   addDefaultPropertySources: Boolean,
+  ignoredTopLevelKeys: Set<String> = emptySet(),
+  onlyTopLevelKeys: Set<String>? = null,
+  deprecatedAliases: List<DeprecatedKeyAlias> = emptyList(),
+  capturedTables: List<UnknownTablesCapture> = emptyList(),
+  logger: Logger? = null,
 ): Result<T, String> {
-  val confLoader = configLoaderBuilder(strict, addDefaultPreprocessors, addDefaultPropertySources)
-    .build()
-
-  return confLoader
-    .loadConfig<T>(configFiles.reversed().map { it.toAbsolutePath().toString() })
+  return buildConfigLoader(
+    configFiles,
+    strict,
+    ignoredTopLevelKeys,
+    onlyTopLevelKeys,
+    deprecatedAliases,
+    capturedTables,
+    logger,
+    addDefaultPreprocessors,
+    addDefaultPropertySources,
+  )
+    .loadConfig<T>()
     .let { configResult: ConfigResult<T> ->
       when (configResult) {
         is Validated.Valid -> Ok(configResult.value)
@@ -97,12 +145,22 @@ inline fun <reified T : Any> loadConfigsAndLogErrors(
   strict: Boolean,
   addDefaultPreprocessors: Boolean,
   addDefaultPropertySources: Boolean,
+  ignoredTopLevelKeys: Set<String> = emptySet(),
+  onlyTopLevelKeys: Set<String>? = null,
+  deprecatedAliases: List<DeprecatedKeyAlias> = emptyList(),
+  capturedTables: List<UnknownTablesCapture> = emptyList(),
 ): Result<T, String> {
   return loadConfigsOrError<T>(
     configFiles,
     strict = strict,
     addDefaultPreprocessors = addDefaultPreprocessors,
     addDefaultPropertySources = addDefaultPropertySources,
+    ignoredTopLevelKeys = ignoredTopLevelKeys,
+    onlyTopLevelKeys = onlyTopLevelKeys,
+    deprecatedAliases = deprecatedAliases,
+    capturedTables = capturedTables,
+    // the lenient pass re-reads the same files, warn once
+    logger = if (strict) logger else null,
   )
     .also {
       val logLevel = if (strict) Level.WARN else Level.ERROR
@@ -157,41 +215,32 @@ fun loadSmartContractErrors(
 
 fun loadConfigsOrError(
   coordinatorConfigFiles: List<Path>,
-  tracesLimitsFileV4: Path?,
-  tracesLimitsFileV5: Path?,
+  tracesLimitsFileV5: Path,
   gasPriceCapTimeOfDayMultipliersFile: Path,
   smartContractErrorsFile: Path? = null,
   logger: Logger = LogManager.getLogger("lineth.coordinator.config"),
   strict: Boolean = false,
+  ignoredTopLevelKeys: Set<String> = emptySet(),
 ): Result<CoordinatorConfigToml, String> {
   val coordinatorBaseConfigs =
     loadConfigsAndLogErrors<CoordinatorConfigFilesToml>(
       coordinatorConfigFiles,
       logger,
       strict,
+      ignoredTopLevelKeys = ignoredTopLevelKeys,
+      deprecatedAliases = coordinatorDeprecatedKeyAliases,
+      capturedTables = coordinatorSignerTableCaptures,
       addDefaultPreprocessors = true,
       addDefaultPropertySources = true,
     )
-  val tracesLimitsV4Configs =
-    tracesLimitsFileV4?.let {
-      loadConfigsAndLogErrors<TracesLimitsConfigFileV4Toml>(
-        listOf(it),
-        logger,
-        strict,
-        addDefaultPreprocessors = false,
-        addDefaultPropertySources = false,
-      )
-    }
   val tracesLimitsV5Configs =
-    tracesLimitsFileV5?.let {
-      loadConfigsAndLogErrors<TracesLimitsConfigFileV5Toml>(
-        listOf(it),
-        logger,
-        strict,
-        addDefaultPreprocessors = false,
-        addDefaultPropertySources = false,
-      )
-    }
+    loadConfigsAndLogErrors<TracesLimitsConfigFileV5Toml>(
+      listOf(tracesLimitsFileV5),
+      logger,
+      strict,
+      addDefaultPreprocessors = false,
+      addDefaultPropertySources = false,
+    )
   val gasPriceCapTimeOfDayMultipliersConfig =
     loadConfigsAndLogErrors<GasPriceCapTimeOfDayMultipliersConfigFileToml>(
       listOf(gasPriceCapTimeOfDayMultipliersFile),
@@ -205,7 +254,6 @@ fun loadConfigsOrError(
   val configError =
     listOf(
       coordinatorBaseConfigs,
-      tracesLimitsV4Configs,
       tracesLimitsV5Configs,
       gasPriceCapTimeOfDayMultipliersConfig,
       smartContractErrorsConfig,
@@ -220,8 +268,7 @@ fun loadConfigsOrError(
   val finalConfig =
     CoordinatorConfigToml(
       configs = requireNotNull(coordinatorBaseConfigs.get()) { "coordinatorBaseConfigs have errors" },
-      tracesLimitsV4 = tracesLimitsV4Configs?.get(),
-      tracesLimitsV5 = tracesLimitsV5Configs?.get(),
+      tracesLimitsV5 = requireNotNull(tracesLimitsV5Configs.get()) { "tracesLimitsV5Configs have errors" },
       l1DynamicGasPriceCapTimeOfDayMultipliers = gasPriceCapTimeOfDayMultipliersConfig.get(),
       smartContractErrors = smartContractErrorsConfig.get(),
     )
@@ -230,31 +277,32 @@ fun loadConfigsOrError(
 
 fun loadConfigs(
   coordinatorConfigFiles: List<Path>,
-  tracesLimitsFileV4: Path?,
-  tracesLimitsFileV5: Path?,
+  tracesLimitsFileV5: Path,
   gasPriceCapTimeOfDayMultipliersFile: Path,
   smartContractErrorsFile: Path? = null,
   logger: Logger = LogManager.getLogger("lineth.coordinator.config"),
   enforceStrict: Boolean = false,
+  ignoredTopLevelKeys: Set<String> = emptySet(),
 ): CoordinatorConfig {
+  requireNoCoordinatorKeyCollision(ignoredTopLevelKeys)
   return loadConfigsOrError(
     coordinatorConfigFiles = coordinatorConfigFiles,
-    tracesLimitsFileV4 = tracesLimitsFileV4,
     tracesLimitsFileV5 = tracesLimitsFileV5,
     gasPriceCapTimeOfDayMultipliersFile = gasPriceCapTimeOfDayMultipliersFile,
     smartContractErrorsFile = smartContractErrorsFile,
     logger = logger,
     strict = true,
+    ignoredTopLevelKeys = ignoredTopLevelKeys,
   )
     .recoverIf({ !enforceStrict }, {
       loadConfigsOrError(
         coordinatorConfigFiles = coordinatorConfigFiles,
-        tracesLimitsFileV4 = tracesLimitsFileV4,
         tracesLimitsFileV5 = tracesLimitsFileV5,
         gasPriceCapTimeOfDayMultipliersFile = gasPriceCapTimeOfDayMultipliersFile,
         smartContractErrorsFile = smartContractErrorsFile,
         logger = logger,
         strict = false,
+        ignoredTopLevelKeys = ignoredTopLevelKeys,
       ).getOrElse {
         throw RuntimeException("Invalid configurations: $it")
       }
