@@ -2,8 +2,6 @@ package grandproduct
 
 import (
 	"fmt"
-	"runtime"
-	"sort"
 
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/utils/hugepage"
@@ -70,19 +68,11 @@ type proverAction struct {
 // proportional to its row count.
 func (a *proverAction) Run(rt *wiop.Runtime) {
 	sizes := make([]int, len(a.entries))
-	order := make([]int, len(a.entries))
-	total := 0
 	for i, e := range a.entries {
 		sizes[i] = e.zCol.Module.RuntimeSize(rt)
-		order[i] = i
-		total += sizes[i]
 	}
-	sort.SliceStable(order, func(i, j int) bool { return sizes[order[i]] > sizes[order[j]] })
-
-	cpus := runtime.GOMAXPROCS(0)
-	parallel.ExecuteDynamic(len(order), func(k int) {
-		e, n := a.entries[order[k]], sizes[order[k]]
-		workers := max(1, cpus*n/max(1, total))
+	parallel.ExecuteLargestFirst(sizes, func(i, workers int) {
+		e, n := a.entries[i], sizes[i]
 		z := computePrefixProduct(rt, e.zNum, e.zDen, n, workers)
 		rt.AssignColumn(e.zCol, &wiop.ConcreteVector{Plain: field.VecFromExt(z)})
 	})

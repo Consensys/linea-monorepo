@@ -34,8 +34,6 @@ package logderivativesum
 
 import (
 	"fmt"
-	"runtime"
-	"sort"
 
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/utils"
@@ -277,24 +275,12 @@ type proverAction struct {
 // GOMAXPROCS.
 func (a *proverAction) Run(rt *wiop.Runtime) {
 	sizes := make([]int, len(a.entries))
-	order := make([]int, len(a.entries))
-	total := 0
 	for i, e := range a.entries {
 		sizes[i] = e.zCol.Module.RuntimeSize(rt)
-		order[i] = i
-		total += sizes[i]
 	}
-	sort.SliceStable(order, func(i, j int) bool { return sizes[order[i]] > sizes[order[j]] })
-
-	cpus := runtime.GOMAXPROCS(0)
 	finals := make([]field.Ext, len(a.entries))
-	parallel.ExecuteDynamic(len(order), func(k int) {
-		i := order[k]
+	parallel.ExecuteLargestFirst(sizes, func(i, workers int) {
 		e, n := a.entries[i], sizes[i]
-		workers := 1
-		if total > 0 {
-			workers = max(1, cpus*n/total)
-		}
 		z := computeFilteredPrefixSum(rt, e.packed, n, workers)
 
 		rt.AssignColumn(e.zCol, &wiop.ConcreteVector{Plain: field.VecFromExt(z)})

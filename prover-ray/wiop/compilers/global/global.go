@@ -3,7 +3,6 @@ package global
 import (
 	"fmt"
 	"runtime"
-	"sort"
 	"sync"
 
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
@@ -568,12 +567,7 @@ func (a *QuotientProverAction) Run(rt *wiop.Runtime) {
 	for i, q := range a.modules {
 		cost[i] = q.m.RuntimeSize(rt) * q.maxRatio * len(q.rootCols)
 	}
-	order := make([]int, len(a.modules))
-	for i := range order {
-		order[i] = i
-	}
-	sort.SliceStable(order, func(x, y int) bool { return cost[order[x]] > cost[order[y]] })
-	parallel.ExecuteDynamic(len(order), func(i int) { a.modules[order[i]].run(rt) })
+	parallel.ExecuteLargestFirst(cost, func(i, _ int) { a.modules[i].run(rt) })
 }
 
 // run computes the quotient polynomial of the module's buckets and assigns
@@ -1008,12 +1002,7 @@ func (a *EvalProverAction) Run(rt *wiop.Runtime) {
 	for i, le := range a.lagrangeEvals {
 		cost[i] = len(le.Polynomials) * le.Polynomials[0].Column.Module.RuntimeSize(rt)
 	}
-	order := make([]int, len(a.lagrangeEvals))
-	for i := range order {
-		order[i] = i
-	}
-	sort.SliceStable(order, func(x, y int) bool { return cost[order[x]] > cost[order[y]] })
-	parallel.ExecuteDynamic(len(order), func(i int) { a.lagrangeEvals[order[i]].SelfAssign(rt) })
+	parallel.ExecuteLargestFirst(cost, func(i, _ int) { a.lagrangeEvals[i].SelfAssign(rt) })
 }
 
 // ---------------------------------------------------------------------------

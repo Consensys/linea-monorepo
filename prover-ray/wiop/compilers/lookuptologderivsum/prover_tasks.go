@@ -3,7 +3,6 @@ package lookuptologderivsum
 import (
 	"fmt"
 	"runtime"
-	"sort"
 	"sync"
 	"sync/atomic"
 
@@ -564,7 +563,6 @@ type mAssignmentBatch struct {
 // Run implements [wiop.ProverAction].
 func (b *mAssignmentBatch) Run(rt *wiop.Runtime) {
 	sizes := make([]int, len(b.tasks))
-	order := make([]int, len(b.tasks))
 	for i, t := range b.tasks {
 		for _, it := range t.includings {
 			sizes[i] += it.module.RuntimeSize(rt)
@@ -572,23 +570,8 @@ func (b *mAssignmentBatch) Run(rt *wiop.Runtime) {
 		for _, inc := range t.included {
 			sizes[i] += inc.cols[0].Module().RuntimeSize(rt)
 		}
-		order[i] = i
 	}
-	sort.SliceStable(order, func(i, j int) bool { return sizes[order[i]] > sizes[order[j]] })
-
-	cpus := runtime.GOMAXPROCS(0)
-	total := 0
-	for _, sz := range sizes {
-		total += sz
-	}
-	parallel.ExecuteDynamic(len(order), func(k int) {
-		i := order[k]
-		workers := 1
-		if total > 0 {
-			workers = max(1, cpus*sizes[i]/total)
-		}
-		b.tasks[i].run(rt, workers)
-	})
+	parallel.ExecuteLargestFirst(sizes, func(i, workers int) { b.tasks[i].run(rt, workers) })
 }
 
 // extHash folds the six base-field coordinates of an extension element into a

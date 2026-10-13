@@ -3,7 +3,6 @@ package wiop
 import (
 	"fmt"
 	"math/bits"
-	"sort"
 
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/polynomials"
@@ -210,9 +209,13 @@ func (le *LagrangeEval) evalPolynomialsShared(rt *Runtime, z field.Ext) []field.
 	}
 
 	// Weight tables, largest domains first.
+	domainSizes := make([]int, len(domains))
+	for i, d := range domains {
+		domainSizes[i] = d.n
+	}
 	weights := make([][]field.Ext, len(domains))
 	var weightChunks []rowChunk
-	for _, i := range domainsBySizeDesc(domains) {
+	for _, i := range parallel.OrderDesc(domainSizes) {
 		weights[i] = make([]field.Ext, domains[i].n)
 		hugepage.Advise(weights[i])
 		weightChunks = chunksOf(i, domains[i].n, weightChunks)
@@ -242,7 +245,11 @@ func (le *LagrangeEval) evalPolynomialsShared(rt *Runtime, z field.Ext) []field.
 
 	// Inner products, tallest polynomials first, one partial sum per chunk.
 	var parts []rowChunk
-	for _, i := range termsBySizeDesc(terms, domains) {
+	termSizes := make([]int, len(terms))
+	for i, t := range terms {
+		termSizes[i] = domainSizes[t.domain]
+	}
+	for _, i := range parallel.OrderDesc(termSizes) {
 		parts = chunksOf(i, domains[terms[i].domain].n, parts)
 	}
 	sums := make([]field.Ext, len(parts))
@@ -316,28 +323,6 @@ func (le *LagrangeEval) evalPolynomialsShared(rt *Runtime, z field.Ext) []field.
 		results[i] = field.ElemFromExt(totals[i])
 	}
 	return results
-}
-
-// domainsBySizeDesc returns the indices of domains, largest n first.
-func domainsBySizeDesc(domains []lagrangeDomain) []int {
-	order := make([]int, len(domains))
-	for i := range order {
-		order[i] = i
-	}
-	sort.SliceStable(order, func(a, b int) bool { return domains[order[a]].n > domains[order[b]].n })
-	return order
-}
-
-// termsBySizeDesc returns the indices of terms, largest domain first.
-func termsBySizeDesc(terms []lagrangeTerm, domains []lagrangeDomain) []int {
-	order := make([]int, len(terms))
-	for i := range order {
-		order[i] = i
-	}
-	sort.SliceStable(order, func(a, b int) bool {
-		return domains[terms[order[a]].domain].n > domains[terms[order[b]].domain].n
-	})
-	return order
 }
 
 // evalPolynomialsEach evaluates every polynomial independently at a base-field
