@@ -51,10 +51,10 @@ class BlobSubmitterAsEIP4844MultipleBlobsPerTxV2(
           .fold(SafeFuture.completedFuture(emptyList())) { chainOfFutures, blobs ->
             val newChainOfFutures = chainOfFutures
               .thenCompose { listOfTxHashes ->
-                val storedDataRollingHash = blobs.map { it.blobBytes }.fold(
+                val storedDataRollingHash = blobs.map { it.chunkHash }.fold(
                   parentDataRollingHash,
-                ) { dataRollingHash, blob ->
-                  dataRollingHashCalculator.fold(dataRollingHash, blob)
+                ) { dataRollingHash, chunkHash ->
+                  dataRollingHashCalculator.fold(dataRollingHash, chunkHash)
                 }
                 submitBlobsInSingleTx(
                   blobs = blobs.map { it.blobBytes },
