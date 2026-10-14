@@ -1,3 +1,8 @@
+## [unreleased]
+
+### 🚀 Features
+
+- *(coordinator)* RISC-V rollup proof coordinator — chunk assembly + proof submission (#3967)
 ## [2.2.0] - 2026-10-12
 
 ### 🚀 Features
