@@ -10,6 +10,7 @@ pub const CellError = error{CellRefOutOfRange};
 pub const Error = error{
     InvalidRoundCount,
     MissingDynamicModuleSize,
+    UnexpectedDynamicModuleSize,
     DynamicModuleSizeTooLarge,
 } || CellError;
 
@@ -33,10 +34,10 @@ pub const Spec = struct {
     /// absorbs into the transcript at every round advance (prover-ray's
     /// `Runtime.AdvanceRound`, which feeds `NewElement(size)` for each dynamic
     /// module before the round's commitment/cells). `replayWithTranscript`
-    /// mirrors this by absorbing the first `dynamic_module_count` entries of the
-    /// caller-supplied `module_sizes` at the start of each round. 0 for protocols
-    /// with no dynamic modules, in which case the absorption is a no-op and
-    /// `module_sizes` may be empty.
+    /// mirrors this by absorbing the caller-supplied `module_sizes`, which must
+    /// hold exactly `dynamic_module_count` entries, at the start of each round.
+    /// 0 for protocols with no dynamic modules, in which case the absorption is
+    /// a no-op and `module_sizes` must be empty.
     dynamic_module_count: usize = 0,
     /// Maximum dynamic-module size a proof may declare (prover-ray's
     /// wiop.ColumnSizeMaxSupported). Any module_sizes entry above this is
@@ -106,8 +107,11 @@ pub fn replayWithTranscript(
     if (rounds.len != spec.round_coin_counts.len - 1) return error.InvalidRoundCount;
 
     // Dynamic-module sizes are absorbed once per round advance, so the caller
-    // must supply at least `dynamic_module_count` of them.
+    // must supply exactly `dynamic_module_count` of them. Extra entries would
+    // never reach the transcript, making the proof encoding non-canonical
+    // (and two proofs of one instance spuriously differ in `verifyPair`).
     if (module_sizes.len < spec.dynamic_module_count) return error.MissingDynamicModuleSize;
+    if (module_sizes.len > spec.dynamic_module_count) return error.UnexpectedDynamicModuleSize;
 
     for (module_sizes) |size| {
         if (size > spec.column_size_max_supported) return error.DynamicModuleSizeTooLarge;

@@ -239,33 +239,26 @@ fn loadR5PairInput() verifier.AggregatorInput {
     // The zkc JSON input writer places the pair image bytes directly at
     // `_in_start`, already relocated for GuestBase: a two-pointer
     // `AggregatorInput` header followed by its two `VerifyInput` sub-images.
-    const pair = readAggregatorInput(@ptrCast(&_in_start));
+    // The header is untrusted, so read it as raw integers and only form the
+    // non-null, aligned `*const VerifyInput` pointers once they are validated.
     const input_start = @intFromPtr(&_in_start);
     const input_end = @intFromPtr(&_in_end);
-    inline for (.{ pair.a, pair.b }) |input| {
-        const address = @intFromPtr(input);
-        if (address < input_start + image_relocation.pair_header_len or
-            address % @alignOf(verifier.VerifyInput) != 0 or
-            address > input_end - @sizeOf(verifier.VerifyInput))
-        {
-            exitR5(1);
-        }
-    }
+    const header: [*]const u8 = @ptrCast(&_in_start);
+    const a_address = std.math.cast(usize, std.mem.readInt(u64, header[0..8], .little)) orelse exitR5(1);
+    const b_address = std.math.cast(usize, std.mem.readInt(u64, header[8..16], .little)) orelse exitR5(1);
+
     // Proof A must start right after the header, matching the native loader
     // (`rebasePair`) and the encoder (`EncodeAggregatorPair`).
-    if (@intFromPtr(pair.a) != input_start + image_relocation.pair_header_len) exitR5(1);
-    if (@intFromPtr(pair.a) >= @intFromPtr(pair.b)) exitR5(1);
-    image_relocation.validateImage(
-        @ptrCast(pair.a),
-        @intFromPtr(pair.b) - @intFromPtr(pair.a),
-        @intFromPtr(pair.a),
-    ) catch exitR5(1);
-    image_relocation.validateImage(
-        @ptrCast(pair.b),
-        input_end - @intFromPtr(pair.b),
-        @intFromPtr(pair.b),
-    ) catch exitR5(1);
-    return pair;
+    if (a_address != input_start + image_relocation.pair_header_len) exitR5(1);
+    if (b_address < a_address + @sizeOf(verifier.VerifyInput) or
+        b_address % @alignOf(verifier.VerifyInput) != 0 or
+        b_address > input_end - @sizeOf(verifier.VerifyInput))
+    {
+        exitR5(1);
+    }
+    image_relocation.validateImage(@ptrFromInt(a_address), b_address - a_address, a_address) catch exitR5(1);
+    image_relocation.validateImage(@ptrFromInt(b_address), input_end - b_address, b_address) catch exitR5(1);
+    return .{ .a = @ptrFromInt(a_address), .b = @ptrFromInt(b_address) };
 }
 
 fn exitNative(code: u8) noreturn {

@@ -217,3 +217,40 @@ test "pair statement encoding binds normalized public inputs" {
 test "empty statements are trivially consistent" {
     try verifier.checkPublicInputConsistency(&.{}, &.{});
 }
+
+test "module sizes must match the dynamic module count exactly" {
+    // Entries past `dynamic_module_count` never reach the transcript, so
+    // accepting them would let one honest proof take several encodings and
+    // make an otherwise identical pair fail `verifyPair`'s size comparison.
+    var checked: usize = 0;
+    inline for (0..vf.case_count) |i| {
+        const case = comptime vf.get(i);
+        if (comptime case.spec.dynamic_module_count > 0) {
+            checked += 1;
+            const honest = vf.getInput(i);
+            const sizes = honest.proof.module_sizes;
+
+            var extended_sizes: [case.spec.dynamic_module_count + 1]usize = undefined;
+            @memcpy(extended_sizes[0..sizes.len], sizes);
+            extended_sizes[sizes.len] = sizes[0];
+            var extra = honest;
+            extra.proof.module_sizes = &extended_sizes;
+            try std.testing.expectError(
+                error.UnexpectedDynamicModuleSize,
+                verifier.verify(case.spec, case.systems, extra.proof, extra.public_inputs),
+            );
+            try std.testing.expectError(
+                error.UnexpectedDynamicModuleSize,
+                verifier.verifyPair(case.spec, case.systems, extra, extra),
+            );
+
+            var missing = honest;
+            missing.proof.module_sizes = sizes[0 .. sizes.len - 1];
+            try std.testing.expectError(
+                error.MissingDynamicModuleSize,
+                verifier.verify(case.spec, case.systems, missing.proof, missing.public_inputs),
+            );
+        }
+    }
+    try std.testing.expect(checked > 0);
+}
