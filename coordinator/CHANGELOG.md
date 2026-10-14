@@ -2,12 +2,18 @@
 
 ### 🚀 Features
 
+- *(coordinator)* RISC-V rollup proof coordinator — chunk assembly + proof submission (#3967)
+## [2.2.0] - 2026-10-12
+
+### 🚀 Features
+
 - *(coordinator)* Extension config sections and deprecated key aliases (#4162)
 - *(coordinator)* Inline pluggable signer types and per-proof-type prover transport (#4164)
 
 ### 🚜 Refactor
 
 - *(coordinator)* Move prover transport from per-proof-type to RiscvProverConfig (#4172)
+- *(coordinator)* Remove TracingModuleV2 and TracingModuleV4 support (#4180)
 ## [2.1.0] - 2026-10-09
 
 ### 🚀 Features

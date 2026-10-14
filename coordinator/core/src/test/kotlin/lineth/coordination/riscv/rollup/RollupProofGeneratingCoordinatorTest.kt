@@ -18,7 +18,7 @@ import lineth.coordination.riscv.conflation.ConflationSegmentBuilder
 import lineth.encoding.BlockEncoder
 import lineth.persistence.FakeBatchesRepository
 import lineth.vertx.vertxTestOptions
-import net.consensys.linea.traces.TracesCountersV2
+import net.consensys.linea.traces.TracesCountersV5
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
@@ -107,7 +107,7 @@ class RollupProofGeneratingCoordinatorTest {
         startBlockNumber = start,
         endBlockNumber = end,
         conflationTrigger = ConflationTrigger.BLOCKS_LIMIT,
-        tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
+        tracesCounters = TracesCountersV5.EMPTY_TRACES_COUNT,
       ),
     )
   }
