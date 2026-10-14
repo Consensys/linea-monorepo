@@ -4,7 +4,7 @@ import linea.domain.BlocksConflation
 import linea.domain.ConflationCalculationResult
 import linea.domain.ConflationTrigger
 import linea.domain.createBlock
-import net.consensys.linea.traces.TracesCountersV2
+import net.consensys.linea.traces.TracesCountersV5
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -29,7 +29,7 @@ class RollupTriggerCalculatorByConflationCountTest {
         startBlockNumber = start,
         endBlockNumber = end,
         conflationTrigger = ConflationTrigger.BLOCKS_LIMIT,
-        tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
+        tracesCounters = TracesCountersV5.EMPTY_TRACES_COUNT,
       ),
     )
   }
