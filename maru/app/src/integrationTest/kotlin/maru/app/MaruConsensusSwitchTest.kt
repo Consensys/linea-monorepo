@@ -9,70 +9,55 @@
 package maru.app
 
 import linea.kotlin.decodeHex
-import linea.testing.besu.BesuFactory
 import linea.testing.besu.BesuTransactionsHelper
 import linea.testing.besu.ethGetBlockByNumber
-import linea.testing.besu.startWithRetry
+import maru.consensus.ChainFork
+import maru.consensus.ClFork
+import maru.consensus.ElFork
+import maru.test.cluster.MaruCluster
+import maru.test.cluster.NodeRole
+import maru.test.cluster.assertSameCanonicalElChain
+import maru.test.cluster.configureLoggers
+import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
-import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
-import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
-import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
-import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
-import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import org.web3j.protocol.core.methods.response.EthBlock
-import testutils.Checks.checkAllNodesHaveSameBlocks
 import testutils.Checks.getMinedBlocks
 import testutils.Checks.verifyBlockTime
-import testutils.maru.MaruFactory
-import testutils.maru.awaitTillMaruHasPeers
-import java.io.File
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
+import kotlin.time.toJavaDuration
 
 class MaruConsensusSwitchTest {
   companion object {
     private const val VANILLA_EXTRA_DATA_LENGTH = 32
   }
 
-  private lateinit var cluster: Cluster
-  private lateinit var validatorBesuNode: BesuNode
-  private lateinit var validatorMaruNode: MaruApp
-  private lateinit var followerBesuNode: BesuNode
-  private lateinit var followerMaruNode: MaruApp
+  private lateinit var cluster: MaruCluster
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
 
-  @TempDir
-  private lateinit var validatorMaruTmpDir: File
-
-  @TempDir
-  private lateinit var followerMaruTmpDir: File
-  private val net = NetConditions(NetTransactions())
-
   @BeforeEach
   fun setUp() {
-    transactionsHelper = BesuTransactionsHelper()
-    // We'll set the switchTimestamp in the test method
-    cluster = Cluster(
-      ClusterConfigurationBuilder().build(),
-      net,
-      ThreadBesuNodeRunner(),
+    configureLoggers(
+      rootLevel = Level.WARN,
+      logLevels = listOf("maru" to Level.INFO),
     )
+    transactionsHelper = BesuTransactionsHelper()
   }
 
   @AfterEach
   fun tearDown() {
-    followerMaruNode.stop().get()
-    validatorMaruNode.stop().get()
-    followerMaruNode.close()
-    validatorMaruNode.close()
-    cluster.close()
+    if (::cluster.isInitialized) {
+      cluster.stop()
+    }
   }
 
   private fun verifyConsensusSwitch(
@@ -97,10 +82,10 @@ class MaruConsensusSwitchTest {
 
   @Test
   fun `follower node correctly switches from QBFT to POS after peering with Sequencer validator`() {
-    val stackStartupMargin = 40UL
+    val clusterStartupMargin = 40UL
     val expectedBlocksBeforeSwitch = 5
     var currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
-    val shanghaiTimestamp = currentTimestamp + stackStartupMargin + expectedBlocksBeforeSwitch.toULong()
+    val shanghaiTimestamp = currentTimestamp + clusterStartupMargin + expectedBlocksBeforeSwitch.toULong()
     val cancunTimestamp = shanghaiTimestamp + 10u
     val pragueTimestamp = cancunTimestamp + 10u
 
@@ -118,53 +103,35 @@ class MaruConsensusSwitchTest {
         "$cancunTimestamp, current timestamp: $currentTimestamp",
     )
 
-    validatorBesuNode = BesuFactory.buildSwitchableBesuQbft(
-      shanghaiTimestamp = shanghaiTimestamp,
-      cancunTimestamp = cancunTimestamp,
-      pragueTimestamp = pragueTimestamp,
-      ttd = ttd,
-      validator = true,
-    )
-    followerBesuNode = BesuFactory.buildSwitchableBesuQbft(
-      shanghaiTimestamp = shanghaiTimestamp,
-      cancunTimestamp = cancunTimestamp,
-      pragueTimestamp = pragueTimestamp,
-      ttd = ttd,
-      validator = false,
-    )
-    cluster.startWithRetry(validatorBesuNode, followerBesuNode)
+    cluster = MaruCluster(
+      terminalTotalDifficulty = ttd,
+      chainForks = mapOf(
+        Instant.fromEpochSeconds(0) to ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
+        Instant.fromEpochSeconds(shanghaiTimestamp.toLong()) to ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
+        Instant.fromEpochSeconds(cancunTimestamp.toLong()) to ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
+        Instant.fromEpochSeconds(pragueTimestamp.toLong()) to ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+      ),
 
-    // Create a new Maru node with consensus switch configuration
-    val validatorEthereumJsonRpcBaseUrl = validatorBesuNode.jsonRpcBaseUrl().get()
-    val validatorEngineRpcUrl = validatorBesuNode.engineRpcUrl().get()
+    ).addNode(NodeRole.Sequencer, withBesuEl = true) { nodeBuilder ->
+      nodeBuilder.maruConfig { it.copy(allowEmptyBlocks = false) }
+    }.addNode(NodeRole.Follower, withBesuEl = true) { nodeBuilder ->
+      nodeBuilder
+        .staticPeers(listOf("sequencer"))
+        .maruConfig { it.copy(syncing = it.syncing.copy(desyncTolerance = 10UL)) }
+    }.start()
 
-    val maruFactory =
-      MaruFactory(
-        pragueTimestamp = pragueTimestamp,
-        cancunTimestamp = cancunTimestamp,
-        shanghaiTimestamp = shanghaiTimestamp,
-        ttd = ttd,
-      )
-    validatorMaruNode = maruFactory.buildSwitchableTestMaruValidatorWithP2pPeering(
-      ethereumJsonRpcUrl = validatorEthereumJsonRpcBaseUrl,
-      engineApiRpc = validatorEngineRpcUrl,
-      dataDir = validatorMaruTmpDir.toPath(),
-    )
-    validatorMaruNode.start().get()
+    val validatorBesuNode = cluster.besuNode("sequencer")
+    val followerBesuNode = cluster.besuNode("follower")
+    val validatorMaruNode = cluster.maruNode("sequencer")
+    val followerMaruNode = cluster.maruNode("follower")
 
-    val followerEthereumJsonRpcBaseUrl = followerBesuNode.jsonRpcBaseUrl().get()
-    val followerEngineRpcUrl = followerBesuNode.engineRpcUrl().get()
-
-    followerMaruNode = maruFactory.buildTestMaruFollowerWithConsensusSwitch(
-      ethereumJsonRpcUrl = followerEthereumJsonRpcBaseUrl,
-      engineApiRpc = followerEngineRpcUrl,
-      dataDir = followerMaruTmpDir.toPath(),
-      validatorPortForStaticPeering = validatorMaruNode.p2pPort(),
-    )
-    followerMaruNode.start().get()
-
-    followerMaruNode.awaitTillMaruHasPeers(1u)
-    validatorMaruNode.awaitTillMaruHasPeers(1u)
+    await
+      .timeout(60.seconds.toJavaDuration())
+      .pollInterval(500.milliseconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(validatorMaruNode.p2pNetwork.peerCount).isGreaterThanOrEqualTo(1)
+        assertThat(followerMaruNode.p2pNetwork.peerCount).isGreaterThanOrEqualTo(1)
+      }
     log.info("Sending transactions")
     repeat(totalBlocksToProduce) {
       transactionsHelper.run {
@@ -182,7 +149,8 @@ class MaruConsensusSwitchTest {
 
     // Wait for both nodes to have all blocks before verifying contents.
     // The follower may still be syncing when the validator has already committed all blocks.
-    checkAllNodesHaveSameBlocks(totalBlocksToProduce, validatorBesuNode, followerBesuNode, timeout = 180.seconds)
+    cluster.assertSameCanonicalElChain(totalBlocksToProduce.toULong(), timeout = 100.seconds)
+    // checkAllNodesHaveSameBlocks(totalBlocksToProduce, validatorBesuNode, followerBesuNode, timeout = 180.seconds)
 
     verifyConsensusSwitch(
       besuNode = validatorBesuNode,
