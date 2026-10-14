@@ -1871,8 +1871,9 @@ func writeVerifyFailingInputSwitch(out *bytes.Buffer, cases []fixtureCase) {
 	fmt.Fprintln(out, "}")
 	fmt.Fprintln(out)
 
-	// getInputAlt returns a case's SECOND-size honest verifier input (multi-size
-	// cases only); hasAlt gates it. getInputAltSameStatement is its positive
+	// getInputAlt returns a case's second honest verifier input — a different
+	// size (multi-size cases) or a different statement (OpenedCellPublicInput);
+	// hasAlt gates it. getInputAltSameStatement is its positive
 	// counterpart: a second independently-proven proof whose statement matches
 	// the primary (honest) proof's. Both are checked against the SAME case
 	// systems (verify_case_i_systems.pcs) as the primary proof — one baked

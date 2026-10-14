@@ -101,7 +101,7 @@ build-r5:
 build-r5-aggregator:
 	$(ZIG_BUILD) --release=small -Dstrip=true -Dr5=true -Daggregator=true -Ddisable-accelerators=$(DISABLE_ACCELERATORS)
 
-# The pair image is derived data (see testdata/.gitignore), decoded and
+# The pair image is derived data (see .gitignore), decoded and
 # re-encoded from the single proof image — no proving involved;
 # regenerate it when a target needs it and it is missing.
 $(PAIR_IMAGE): $(PROOF_IMAGE) codegen/aggregator_image.go codegen/generate-aggregator-image/main.go

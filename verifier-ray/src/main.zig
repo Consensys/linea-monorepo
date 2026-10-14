@@ -194,6 +194,7 @@ fn loadNativePairInput() verifier.AggregatorInput {
     }
 
     const img = mapNativeImage(native_pair_input_path);
+    if (img.len < image_relocation.pair_header_len) exitNative(1);
     const a_offset = image_relocation.imageOffset(
         std.mem.readInt(u64, img[0..8], .little),
         input_guest_base,
@@ -250,6 +251,9 @@ fn loadR5PairInput() verifier.AggregatorInput {
             exitR5(1);
         }
     }
+    // Proof A must start right after the header, matching the native loader
+    // (`rebasePair`) and the encoder (`EncodeAggregatorPair`).
+    if (@intFromPtr(pair.a) != input_start + image_relocation.pair_header_len) exitR5(1);
     if (@intFromPtr(pair.a) >= @intFromPtr(pair.b)) exitR5(1);
     image_relocation.validateImage(
         @ptrCast(pair.a),

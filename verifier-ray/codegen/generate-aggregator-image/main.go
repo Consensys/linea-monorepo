@@ -16,7 +16,7 @@
 // public-input statement is the production RISC-V statement; adversarial
 // consistency coverage lives in the synthetic verify.zig fixtures.
 //
-// The output is not committed (see testdata/.gitignore): it is ~2x the single
+// The output is not committed (see verifier-ray/.gitignore): it is ~2x the single
 // image, above Git hosting file-size limits, and fully reproducible.
 package main
 
