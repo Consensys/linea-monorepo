@@ -67,6 +67,7 @@ func TestRun_RejectsInvalidMode(t *testing.T) {
 	cfg := filepath.Join(t.TempDir(), "config.toml")
 	require.NoError(t, os.WriteFile(cfg, []byte(
 		"version = \"t\"\n[execution]\nprover_mode = \"bogus\"\nrequests_root_dir = \"/tmp\"\n"), 0o600))
+	//nolint:goconst
 	err := run([]string{"--config", cfg})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid prover_mode")
@@ -100,7 +101,7 @@ func TestRunProve_DevMock(t *testing.T) {
 	assert.Equal(t, "t-dev-mock", resp["proverVersion"])
 	pi, ok := resp["publicInputs"].(map[string]any)
 	require.True(t, ok)
-	assert.Len(t, pi, 16, "all 16 public-input fields present (placeholder zeros)")
+	assert.Len(t, pi, 18, "all 18 public-input fields present (placeholder zeros)")
 	assert.Equal(t, resp["startBlockNumber"], pi["endBlockNumber"],
 		"single-block request: endBlockNumber must match the request, not stay zero")
 }
