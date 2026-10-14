@@ -19,7 +19,6 @@ fun createBlobRecordV2(
       chunkHash = Random.nextBytes(32),
       blobBytes = Random.nextBytes(32),
       batchesCount = 1U,
-      endBlockHash = Random.nextBytes(32),
     ),
   ),
   proofHash: ByteArray = Random.nextBytes(32),

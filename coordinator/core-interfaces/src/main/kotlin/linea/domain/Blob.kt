@@ -197,7 +197,6 @@ data class BlobData(
   val chunkHash: ByteArray,
   val blobBytes: ByteArray,
   val batchesCount: UInt,
-  val endBlockHash: ByteArray,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -208,7 +207,6 @@ data class BlobData(
     if (!chunkHash.contentEquals(other.chunkHash)) return false
     if (!blobBytes.contentEquals(other.blobBytes)) return false
     if (batchesCount != other.batchesCount) return false
-    if (!endBlockHash.contentEquals(other.endBlockHash)) return false
 
     return true
   }
@@ -217,7 +215,6 @@ data class BlobData(
     var result = chunkHash.contentHashCode()
     result = 31 * result + blobBytes.contentHashCode()
     result = 31 * result + batchesCount.hashCode()
-    result = 31 * result + endBlockHash.contentHashCode()
     return result
   }
 }
