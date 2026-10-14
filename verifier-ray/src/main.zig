@@ -1,3 +1,4 @@
+const std = @import("std");
 const builtin = @import("builtin");
 const verifier_ray = @import("verifier_ray");
 const embedded_data = @import("embedded_data");
@@ -20,6 +21,7 @@ const native_pair_input_path: [:0]const u8 = "testdata/riscv_proof_pair_image.bi
 const input_guest_base: usize = 0x08800000;
 
 extern const _in_start: u8;
+extern const _in_end: u8;
 
 // When the input is embedded at build time, the fixture proof is materialized
 // into static (.rodata) memory here so the loaders can hand out a runtime
@@ -124,6 +126,11 @@ fn runVerifierPair(pair: verifier.AggregatorInput) u8 {
         // if the verifier fails, return a non-zero exit code
         return 1;
     };
+    if (comptime is_r5_zkvm) {
+        var output: [verifier.pairStatementEncodedLen(riscv_system.system_0_public_input.refs.len)]u8 = undefined;
+        verifier.encodePairStatement(pair.a.public_inputs, &output) catch return 1;
+        lineth_accel.write_output(&output, output.len);
+    }
     return 0; // success
 }
 
@@ -187,6 +194,17 @@ fn loadNativePairInput() verifier.AggregatorInput {
     }
 
     const img = mapNativeImage(native_pair_input_path);
+    const a_offset = image_relocation.imageOffset(
+        std.mem.readInt(u64, img[0..8], .little),
+        input_guest_base,
+    ) catch exitNative(1);
+    const b_offset = image_relocation.imageOffset(
+        std.mem.readInt(u64, img[8..16], .little),
+        input_guest_base,
+    ) catch exitNative(1);
+    if (a_offset >= b_offset or b_offset > img.len) exitNative(1);
+    image_relocation.validateImage(img.ptr + a_offset, b_offset - a_offset, input_guest_base + a_offset) catch exitNative(1);
+    image_relocation.validateImage(img.ptr + b_offset, img.len - b_offset, input_guest_base + b_offset) catch exitNative(1);
     image_relocation.rebasePair(img.ptr, img.len, input_guest_base, @intFromPtr(img.ptr)) catch exitNative(1);
     return readAggregatorInput(img.ptr);
 }
@@ -220,7 +238,30 @@ fn loadR5PairInput() verifier.AggregatorInput {
     // The zkc JSON input writer places the pair image bytes directly at
     // `_in_start`, already relocated for GuestBase: a two-pointer
     // `AggregatorInput` header followed by its two `VerifyInput` sub-images.
-    return readAggregatorInput(@ptrCast(&_in_start));
+    const pair = readAggregatorInput(@ptrCast(&_in_start));
+    const input_start = @intFromPtr(&_in_start);
+    const input_end = @intFromPtr(&_in_end);
+    inline for (.{ pair.a, pair.b }) |input| {
+        const address = @intFromPtr(input);
+        if (address < input_start + image_relocation.pair_header_len or
+            address % @alignOf(verifier.VerifyInput) != 0 or
+            address > input_end - @sizeOf(verifier.VerifyInput))
+        {
+            exitR5(1);
+        }
+    }
+    if (@intFromPtr(pair.a) >= @intFromPtr(pair.b)) exitR5(1);
+    image_relocation.validateImage(
+        @ptrCast(pair.a),
+        @intFromPtr(pair.b) - @intFromPtr(pair.a),
+        @intFromPtr(pair.a),
+    ) catch exitR5(1);
+    image_relocation.validateImage(
+        @ptrCast(pair.b),
+        input_end - @intFromPtr(pair.b),
+        @intFromPtr(pair.b),
+    ) catch exitR5(1);
+    return pair;
 }
 
 fn exitNative(code: u8) noreturn {

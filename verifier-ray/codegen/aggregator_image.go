@@ -3,6 +3,7 @@ package codegen
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/proofserialization"
 )
@@ -42,18 +43,27 @@ const (
 // for base. See the layout comment above. base carries Encode's own
 // constraints (8-aligned, non-zero); Encode re-checks them for each sub-image.
 func EncodeAggregatorPair(a, b proofserialization.VerifyInput, base uint64) ([]byte, error) {
+	if base > math.MaxUint64-AggregatorHeaderSize {
+		return nil, fmt.Errorf("aggregator pair base 0x%x overflows the address space", base)
+	}
 	imageA, err := proofserialization.Encode(a, base+AggregatorHeaderSize)
 	if err != nil {
 		return nil, fmt.Errorf("encoding proof A: %w", err)
 	}
 
 	offsetB := alignUp8(AggregatorHeaderSize + uint64(len(imageA)))
+	if offsetB < AggregatorHeaderSize || base > math.MaxUint64-offsetB {
+		return nil, fmt.Errorf("aggregator proof B address overflows the address space")
+	}
 	imageB, err := proofserialization.Encode(b, base+offsetB)
 	if err != nil {
 		return nil, fmt.Errorf("encoding proof B: %w", err)
 	}
 
 	total := offsetB + uint64(len(imageB))
+	if total < offsetB || base > math.MaxUint64-total {
+		return nil, fmt.Errorf("aggregator pair extent overflows the address space")
+	}
 	if total > proofserialization.MaxImageSize {
 		return nil, fmt.Errorf("aggregator pair image is %d bytes, exceeds the guest "+
 			"input region's %d", total, proofserialization.MaxImageSize)

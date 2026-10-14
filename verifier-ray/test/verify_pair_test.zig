@@ -59,19 +59,18 @@ test "a pair containing a tampered proof is rejected" {
 }
 
 test "two individually valid proofs with different statements are rejected" {
-    // Sweep every case carrying a second honest proof (alt). Where the two
-    // statements agree (the multi-size cases: both statements are empty), the
-    // pair must verify — two DIFFERENT honest proofs are a legitimate pair.
-    // Where they disagree (OpenedCellPublicInput: 30 vs 31), the pair must be
-    // rejected with InconsistentPublicInputs even though — as pinned by
-    // verifier_test.zig's alt sweep — each proof verifies on its own.
+    // Sweep every case carrying a second honest proof. A pair must describe the
+    // same complete verifier instance: both its public-input values and dynamic
+    // module sizes must agree.
     var rejected: usize = 0;
     inline for (0..vf.case_count) |i| {
         if (comptime vf.hasAlt(i)) {
             const case = comptime vf.get(i);
             const honest = vf.getInput(i);
             const alt = vf.getInputAlt(i);
-            if (statementsAgree(honest.public_inputs, alt.public_inputs)) {
+            if (statementsAgree(honest.public_inputs, alt.public_inputs) and
+                std.mem.eql(usize, honest.proof.module_sizes, alt.proof.module_sizes))
+            {
                 verifier.verifyPair(case.spec, case.systems, honest, alt) catch |err| {
                     std.debug.print(
                         "pair case {d} ({s}) consistent alt pair failed: {s}\n",
@@ -79,7 +78,7 @@ test "two individually valid proofs with different statements are rejected" {
                     );
                     return err;
                 };
-            } else {
+            } else if (!statementsAgree(honest.public_inputs, alt.public_inputs)) {
                 rejected += 1;
                 try std.testing.expectError(
                     error.InconsistentPublicInputs,
@@ -87,6 +86,16 @@ test "two individually valid proofs with different statements are rejected" {
                 );
                 try std.testing.expectError(
                     error.InconsistentPublicInputs,
+                    verifier.verifyPair(case.spec, case.systems, alt, honest),
+                );
+            } else {
+                rejected += 1;
+                try std.testing.expectError(
+                    error.InconsistentModuleSizes,
+                    verifier.verifyPair(case.spec, case.systems, honest, alt),
+                );
+                try std.testing.expectError(
+                    error.InconsistentModuleSizes,
                     verifier.verifyPair(case.spec, case.systems, alt, honest),
                 );
             }
@@ -186,6 +195,23 @@ test "consistency: equality is over field values, not wire encoding" {
         error.InconsistentPublicInputs,
         verifier.checkPublicInputConsistency(&as_base, &other),
     );
+}
+
+test "pair statement encoding binds normalized public inputs" {
+    const as_base = [_]protocol.Scalar{.{ .base = field.Element.init(42) }};
+    const as_ext = [_]protocol.Scalar{.{ .ext = ext.Ext.lift(field.Element.init(42)) }};
+    var base_encoded: [verifier.pairStatementEncodedLen(1)]u8 = undefined;
+    var ext_encoded: [verifier.pairStatementEncodedLen(1)]u8 = undefined;
+    try verifier.encodePairStatement(&as_base, &base_encoded);
+    try verifier.encodePairStatement(&as_ext, &ext_encoded);
+    try std.testing.expectEqualSlices(u8, &base_encoded, &ext_encoded);
+    try std.testing.expectEqualSlices(u8, verifier.pair_statement_domain, base_encoded[0..verifier.pair_statement_domain.len]);
+    try std.testing.expectEqual(@as(u64, 1), std.mem.readInt(
+        u64,
+        base_encoded[verifier.pair_statement_domain.len..][0..@sizeOf(u64)],
+        .little,
+    ));
+    try std.testing.expectEqualSlices(u8, &as_ext[0].ext.toBytes(), base_encoded[verifier.pair_statement_domain.len + @sizeOf(u64) ..]);
 }
 
 test "empty statements are trivially consistent" {

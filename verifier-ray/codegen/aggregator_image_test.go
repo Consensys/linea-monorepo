@@ -3,6 +3,7 @@ package codegen
 import (
 	"bytes"
 	"encoding/binary"
+	"math"
 	"reflect"
 	"testing"
 
@@ -140,5 +141,12 @@ func TestEncodeAggregatorPair_PropagatesBadBase(t *testing.T) {
 	a := syntheticVerifyInput(11)
 	if _, err := EncodeAggregatorPair(a, a, 4); err == nil {
 		t.Fatal("expected error for misaligned base")
+	}
+}
+
+func TestEncodeAggregatorPair_RejectsAddressOverflow(t *testing.T) {
+	a := syntheticVerifyInput(11)
+	if _, err := EncodeAggregatorPair(a, a, math.MaxUint64-7); err == nil {
+		t.Fatal("expected error for overflowing base")
 	}
 }

@@ -13,10 +13,8 @@
 // The pair holds the same honest proof twice. The prover is deterministic, so
 // proving the guest again would yield this identical proof anyway; two
 // relocations of the one VerifyInput are the equivalent honest pair. Its
-// public-input statement is currently empty (the riscv system registers no
-// public inputs yet), so the aggregator's consistency check passes trivially
-// here — the adversarial consistency coverage lives in the synthetic
-// verify.zig fixtures.
+// public-input statement is the production RISC-V statement; adversarial
+// consistency coverage lives in the synthetic verify.zig fixtures.
 //
 // The output is not committed (see testdata/.gitignore): it is ~2x the single
 // image, above Git hosting file-size limits, and fully reproducible.

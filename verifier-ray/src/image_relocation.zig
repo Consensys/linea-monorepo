@@ -1,5 +1,8 @@
 const std = @import("std");
 const merkle = @import("crypto/merkle.zig");
+const field = @import("field/koalabear.zig");
+const ext = @import("field/koalabear_ext.zig");
+const poseidon2 = @import("crypto/poseidon2.zig");
 const protocol = @import("protocol/types.zig");
 const fri = @import("query/fri.zig");
 const pcs = @import("query/pcs.zig");
@@ -45,6 +48,7 @@ const abi = struct {
 
     const round_message = @sizeOf(protocol.RoundMessage);
     const round_cells = @offsetOf(protocol.RoundMessage, "cells");
+    const round_commitment = @offsetOf(protocol.RoundMessage, "commitment");
 
     /// OpeningProof lives at Proof.pcs_opening + PcsOpening.proof.
     const opening = @offsetOf(verifier.Proof, "pcs_opening") +
@@ -215,14 +219,150 @@ pub const pair_header_len = 2 * @sizeOf(u64);
 /// own absolute start address, so each is walked relative to that start rather
 /// than to the pair image's base.
 pub fn rebasePair(img: [*]u8, img_len: usize, encoded_base: usize, mapped_base: usize) Error!void {
+    const root_len = @sizeOf(verifier.VerifyInput);
     if (img_len < pair_header_len) return error.PointerPastImage;
-    inline for (.{ 0, @sizeOf(u64) }) |hdr| {
-        const old_ptr = readU64(img, hdr);
-        const off = try imageOffset(old_ptr, encoded_base);
-        if (off < pair_header_len or off >= img_len) return error.PointerPastImage;
-        writeU64(img, hdr, @intCast(try relocatePointer(old_ptr, encoded_base, mapped_base)));
-        rebase(img + off, img_len - off, encoded_base + off, mapped_base + off);
+    const a_ptr = readU64(img, 0);
+    const b_ptr = readU64(img, @sizeOf(u64));
+    const a_off = try imageOffset(a_ptr, encoded_base);
+    const b_off = try imageOffset(b_ptr, encoded_base);
+    if (img_len < pair_header_len + 2 * root_len or
+        a_off != pair_header_len or b_off < a_off + root_len or
+        b_off % @alignOf(verifier.VerifyInput) != 0 or b_off + root_len > img_len)
+    {
+        return error.PointerPastImage;
     }
+
+    // The pair encoder validates each member structurally before writing it.
+    // Keep native relocation bounded to each member so malformed roots cannot
+    // make one walk alias the other.
+    writeU64(img, 0, @intCast(try relocatePointer(a_ptr, encoded_base, mapped_base)));
+    writeU64(img, @sizeOf(u64), @intCast(try relocatePointer(b_ptr, encoded_base, mapped_base)));
+    rebase(img + a_off, b_off - a_off, encoded_base + a_off, mapped_base + a_off);
+    rebase(img + b_off, img_len - b_off, encoded_base + b_off, mapped_base + b_off);
+}
+
+const Region = struct {
+    offset: usize,
+    len: usize,
+};
+
+/// Validates an encoded VerifyInput without constructing Zig slices or tagged
+/// unions from untrusted bytes.
+pub fn validateImage(img: [*]const u8, img_len: usize, encoded_base: usize) Error!void {
+    try requireRange(0, @sizeOf(verifier.VerifyInput), img_len);
+    try validateScalars(img, img_len, try resolveSlice(img, img_len, abi.public_inputs, @sizeOf(protocol.Scalar), @alignOf(protocol.Scalar), encoded_base));
+    _ = try resolveSlice(img, img_len, abi.module_sizes, @sizeOf(usize), @alignOf(usize), encoded_base);
+
+    const rounds = try resolveSlice(img, img_len, abi.rounds, abi.round_message, @alignOf(protocol.RoundMessage), encoded_base);
+    for (0..rounds.len) |i| {
+        const round = rounds.offset + i * abi.round_message;
+        try validateOptionalDigest(img, img_len, round + abi.round_commitment);
+        try validateScalars(img, img_len, try resolveSlice(img, img_len, round + abi.round_cells, @sizeOf(protocol.Scalar), @alignOf(protocol.Scalar), encoded_base));
+    }
+
+    const input_caps = try resolveSlice(img, img_len, abi.input_caps, abi.input_cap, @alignOf(pcs.InputCap), encoded_base);
+    for (0..input_caps.len) |i| {
+        const cap = input_caps.offset + i * abi.input_cap;
+        try validateElements(img, img_len, try resolveSlice(img, img_len, cap + abi.input_cap_nodes, @sizeOf(poseidon2.Digest), @alignOf(poseidon2.Digest), encoded_base), @sizeOf(poseidon2.Digest));
+        const tables = try resolveSlice(img, img_len, cap + abi.input_cap_tables, abi.input_cap_table, @alignOf(pcs.InputCapTable), encoded_base);
+        for (0..tables.len) |j| {
+            const table = tables.offset + j * abi.input_cap_table;
+            try validateRows(img, img_len, try resolveSlice(img, img_len, table + abi.input_cap_table_rows, abi.row_opening, @alignOf(merkle.RowOpening), encoded_base), encoded_base);
+        }
+    }
+
+    const queries = try resolveSlice(img, img_len, abi.input_queries, abi.slice_hdr, @alignOf([]const merkle.InputTreeOpening), encoded_base);
+    for (0..queries.len) |i| {
+        const openings = try resolveSlice(img, img_len, queries.offset + i * abi.slice_hdr, abi.ito, @alignOf(merkle.InputTreeOpening), encoded_base);
+        for (0..openings.len) |j| {
+            const opening = openings.offset + j * abi.ito;
+            try validateElements(img, img_len, try resolveSlice(img, img_len, opening + abi.ito_siblings, @sizeOf(poseidon2.Digest), @alignOf(poseidon2.Digest), encoded_base), @sizeOf(poseidon2.Digest));
+            const leaves = try resolveSlice(img, img_len, opening + abi.ito_leaves, abi.opt_row_pair, @alignOf(?merkle.RowPair), encoded_base);
+            for (0..leaves.len) |k| {
+                const leaf = leaves.offset + k * abi.opt_row_pair;
+                const flag = img[leaf + abi.row_pair_flag];
+                if (flag > 1) return error.PointerPastImage;
+                if (flag == 1) try validateRows(img, img_len, .{ .offset = leaf, .len = 2 }, encoded_base);
+            }
+        }
+    }
+
+    try validateElements(img, img_len, try resolveSlice(img, img_len, abi.round_roots, @sizeOf(poseidon2.Digest), @alignOf(poseidon2.Digest), encoded_base), @sizeOf(poseidon2.Digest));
+    const caps = try resolveSlice(img, img_len, abi.round_caps, abi.merkle_cap, @alignOf(merkle.MerkleCap), encoded_base);
+    for (0..caps.len) |i| {
+        const cap = caps.offset + i * abi.merkle_cap;
+        try validateElements(img, img_len, try resolveSlice(img, img_len, cap + abi.merkle_cap_nodes, @sizeOf(poseidon2.Digest), @alignOf(poseidon2.Digest), encoded_base), @sizeOf(poseidon2.Digest));
+        const aux = try resolveSlice(img, img_len, cap + abi.merkle_cap_aux, @sizeOf(?poseidon2.Digest), @alignOf(?poseidon2.Digest), encoded_base);
+        for (0..aux.len) |j| try validateOptionalDigest(img, img_len, aux.offset + j * @sizeOf(?poseidon2.Digest));
+    }
+    try validateElements(img, img_len, try resolveSlice(img, img_len, abi.final_poly, @sizeOf(ext.Ext), @alignOf(ext.Ext), encoded_base), @sizeOf(ext.Ext));
+
+    const running = try resolveSlice(img, img_len, abi.running_queries, abi.slice_hdr, @alignOf([]const merkle.Branch), encoded_base);
+    for (0..running.len) |i| {
+        const branches = try resolveSlice(img, img_len, running.offset + i * abi.slice_hdr, abi.branch, @alignOf(merkle.Branch), encoded_base);
+        for (0..branches.len) |j| {
+            const branch = branches.offset + j * abi.branch;
+            try validateElements(img, img_len, try resolveSlice(img, img_len, branch + abi.branch_siblings, @sizeOf(poseidon2.Digest), @alignOf(poseidon2.Digest), encoded_base), @sizeOf(poseidon2.Digest));
+            try validateElements(img, img_len, .{ .offset = branch + @offsetOf(merkle.Branch, "leaf"), .len = 1 }, @sizeOf(poseidon2.Digest));
+        }
+    }
+}
+
+fn resolveSlice(img: [*]const u8, img_len: usize, header: usize, elem_size: usize, alignment: usize, encoded_base: usize) Error!Region {
+    try requireRange(header, abi.slice_hdr, img_len);
+    const pointer = readU64(img, header);
+    if (pointer < encoded_base) return error.PointerBeforeImage;
+    const offset: usize = @intCast(pointer - encoded_base);
+    const len: usize = @intCast(readU64(img, header + abi.slice_len_off));
+    if (offset % alignment != 0) return error.PointerPastImage;
+    const extent = std.math.mul(usize, len, elem_size) catch return error.AddressOverflow;
+    try requireRange(offset, extent, img_len);
+    return .{ .offset = offset, .len = len };
+}
+
+fn validateRows(img: [*]const u8, img_len: usize, rows: Region, encoded_base: usize) Error!void {
+    for (0..rows.len) |i| {
+        const row = rows.offset + i * abi.row_opening;
+        try validateElements(img, img_len, try resolveSlice(img, img_len, row + abi.row_base, @sizeOf(field.Element), @alignOf(field.Element), encoded_base), @sizeOf(field.Element));
+        try validateElements(img, img_len, try resolveSlice(img, img_len, row + abi.row_ext, @sizeOf(ext.Ext), @alignOf(ext.Ext), encoded_base), @sizeOf(ext.Ext));
+    }
+}
+
+fn validateScalars(img: [*]const u8, img_len: usize, scalars: Region) Error!void {
+    for (0..scalars.len) |i| {
+        const scalar = scalars.offset + i * @sizeOf(protocol.Scalar);
+        if (img[scalar + @sizeOf(ext.Ext)] > 1) return error.PointerPastImage;
+        try validateElements(img, img_len, .{ .offset = scalar, .len = 1 }, @sizeOf(ext.Ext));
+    }
+}
+
+fn validateOptionalDigest(img: [*]const u8, img_len: usize, offset: usize) Error!void {
+    try requireRange(offset, @sizeOf(?poseidon2.Digest), img_len);
+    const flag = img[offset + @sizeOf(poseidon2.Digest)];
+    if (flag > 1) return error.PointerPastImage;
+    if (flag == 1) try validateElements(img, img_len, .{ .offset = offset, .len = 1 }, @sizeOf(poseidon2.Digest));
+}
+
+fn validateElements(img: [*]const u8, img_len: usize, values: Region, stride: usize) Error!void {
+    try requireRange(values.offset, values.len * stride, img_len);
+    for (0..values.len) |i| {
+        for (0..stride / @sizeOf(field.Element)) |j| {
+            if (readU32(img, values.offset + i * stride + j * @sizeOf(field.Element)) >= field.modulus)
+                return error.PointerPastImage;
+        }
+    }
+}
+
+fn requireRange(offset: usize, len: usize, image_len: usize) Error!void {
+    const end = std.math.add(usize, offset, len) catch return error.AddressOverflow;
+    if (end > image_len) return error.PointerPastImage;
+}
+
+fn readU32(img: [*]const u8, off: usize) u32 {
+    return @as(u32, img[off]) |
+        (@as(u32, img[off + 1]) << 8) |
+        (@as(u32, img[off + 2]) << 16) |
+        (@as(u32, img[off + 3]) << 24);
 }
 
 fn readU64(img: [*]const u8, off: usize) u64 {

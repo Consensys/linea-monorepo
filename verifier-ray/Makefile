@@ -32,7 +32,7 @@ ZKC = go tool zkc
 # Use pinned elf_to_json in go.mod
 ELF_TO_JSON = go tool elf_to_json
 
-ci: fmt build-release run-passing run-failing-expected test zkc-verify-passing zkc-verify-failing-expected
+ci: fmt build-release build-r5-aggregator run-passing run-failing-expected run-aggregator test zkc-verify-passing zkc-verify-failing-expected
 
 help:
 	@printf '%s\n' \
@@ -104,7 +104,7 @@ build-r5-aggregator:
 # The pair image is derived data (see testdata/.gitignore), decoded and
 # re-encoded from the single proof image — no proving involved;
 # regenerate it when a target needs it and it is missing.
-$(PAIR_IMAGE):
+$(PAIR_IMAGE): $(PROOF_IMAGE) codegen/aggregator_image.go codegen/generate-aggregator-image/main.go
 	cd codegen/generate-aggregator-image && go run .
 
 run:

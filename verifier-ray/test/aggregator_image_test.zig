@@ -10,10 +10,9 @@
 //! Zig maps and rebases it, and `verifier.verifyPair` accepts both proofs plus
 //! their public-input consistency against the real compiled system.
 //!
-//! The riscv system currently registers no public inputs, so the consistency
-//! check here passes on two empty statements; the adversarial consistency
-//! coverage (differing statements between two individually valid proofs) is
-//! pinned by verify_pair_test.zig on the synthetic public-input fixtures.
+//! The fixture carries the production RISC-V system's registered public input.
+//! Differing-statement coverage is pinned by verify_pair_test.zig using two
+//! independently valid synthetic proofs.
 
 const std = @import("std");
 const verifier_ray = @import("verifier_ray");

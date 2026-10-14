@@ -1,3 +1,4 @@
+const std = @import("std");
 const protocol = @import("protocol/root.zig");
 const public_input_mod = protocol.public_input;
 const vanishing = @import("query/vanishing.zig");
@@ -10,6 +11,26 @@ const fiat_shamir = @import("crypto/fiat_shamir.zig");
 const poseidon2 = @import("crypto/poseidon2.zig");
 const ext = @import("field/koalabear_ext.zig");
 const profiling = @import("profiling.zig");
+
+pub const pair_statement_domain = "lineth-verifier-pair-v1";
+
+pub fn pairStatementEncodedLen(comptime count: usize) usize {
+    return pair_statement_domain.len + @sizeOf(u64) + count * ext.bytes;
+}
+
+/// Canonical outer statement for a verified pair. Scalars are normalized to
+/// extension-field values so this encoding uses the same equality relation as
+/// `checkPublicInputConsistency`.
+pub fn encodePairStatement(statement: PublicInput, out: []u8) !void {
+    if (out.len != pair_statement_domain.len + @sizeOf(u64) + statement.len * ext.bytes)
+        return error.InvalidPairStatementBuffer;
+    @memcpy(out[0..pair_statement_domain.len], pair_statement_domain);
+    std.mem.writeInt(u64, out[pair_statement_domain.len..][0..@sizeOf(u64)], statement.len, .little);
+    for (statement, 0..) |scalar, i| {
+        const encoded = scalar.toExt().toBytes();
+        @memcpy(out[pair_statement_domain.len + @sizeOf(u64) + i * ext.bytes ..][0..ext.bytes], &encoded);
+    }
+}
 
 /// Compiled verifier metadata for the protocol: the public-input transcript
 /// layout plus one field per sub-verifier.
@@ -165,9 +186,14 @@ pub fn verifyPairWithWorkspace(
     {
         return error.InvalidPublicInputCount;
     }
+    try checkModuleSizeConsistency(a.proof.module_sizes, b.proof.module_sizes);
     try checkPublicInputConsistency(a.public_inputs, b.public_inputs);
     try verifyWithWorkspace(spec, systems, a.proof, a.public_inputs, workspace);
     try verifyWithWorkspace(spec, systems, b.proof, b.public_inputs, workspace);
+}
+
+fn checkModuleSizeConsistency(a: []const usize, b: []const usize) !void {
+    if (!std.mem.eql(usize, a, b)) return error.InconsistentModuleSizes;
 }
 
 /// The public-input consistency rule for a proof pair: the two flat statements
