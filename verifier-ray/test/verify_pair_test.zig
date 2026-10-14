@@ -59,18 +59,22 @@ test "a pair containing a tampered proof is rejected" {
 }
 
 test "two individually valid proofs with different statements are rejected" {
-    // Sweep every case carrying a second honest proof. A pair must describe the
-    // same complete verifier instance: both its public-input values and dynamic
-    // module sizes must agree.
+    // Sweep every case carrying a second honest proof. The claim is the
+    // public-input statement and nothing else (see "Aggregate statement" in
+    // verifier.zig): a pair whose statements agree must verify even when the
+    // two proofs differ in proof-side data such as dynamic module sizes, and a
+    // pair whose statements differ must be rejected in either order.
     var rejected: usize = 0;
+    var accepted_with_different_sizes: usize = 0;
     inline for (0..vf.case_count) |i| {
         if (comptime vf.hasAlt(i)) {
             const case = comptime vf.get(i);
             const honest = vf.getInput(i);
             const alt = vf.getInputAlt(i);
-            if (statementsAgree(honest.public_inputs, alt.public_inputs) and
-                std.mem.eql(usize, honest.proof.module_sizes, alt.proof.module_sizes))
-            {
+            if (statementsAgree(honest.public_inputs, alt.public_inputs)) {
+                if (!std.mem.eql(usize, honest.proof.module_sizes, alt.proof.module_sizes)) {
+                    accepted_with_different_sizes += 1;
+                }
                 verifier.verifyPair(case.spec, case.systems, honest, alt) catch |err| {
                     std.debug.print(
                         "pair case {d} ({s}) consistent alt pair failed: {s}\n",
@@ -78,32 +82,24 @@ test "two individually valid proofs with different statements are rejected" {
                     );
                     return err;
                 };
-            } else if (!statementsAgree(honest.public_inputs, alt.public_inputs)) {
-                rejected += 1;
-                try std.testing.expectError(
-                    error.InconsistentPublicInputs,
-                    verifier.verifyPair(case.spec, case.systems, honest, alt),
-                );
-                try std.testing.expectError(
-                    error.InconsistentPublicInputs,
-                    verifier.verifyPair(case.spec, case.systems, alt, honest),
-                );
             } else {
                 rejected += 1;
                 try std.testing.expectError(
-                    error.InconsistentModuleSizes,
+                    error.InconsistentPublicInputs,
                     verifier.verifyPair(case.spec, case.systems, honest, alt),
                 );
                 try std.testing.expectError(
-                    error.InconsistentModuleSizes,
+                    error.InconsistentPublicInputs,
                     verifier.verifyPair(case.spec, case.systems, alt, honest),
                 );
             }
         }
     }
-    // Guard against the sweep silently losing its adversarial member: the
-    // public-input alt fixture must keep carrying a differing statement.
+    // Guard against the sweep silently losing either member: the public-input
+    // alt fixture must keep carrying a differing statement, and the multi-size
+    // fixtures must keep pairing one statement with two different size vectors.
     try std.testing.expect(rejected > 0);
+    try std.testing.expect(accepted_with_different_sizes > 0);
 }
 
 test "two independently proven proofs with the same non-trivial statement verify as a pair" {
@@ -220,8 +216,8 @@ test "empty statements are trivially consistent" {
 
 test "module sizes must match the dynamic module count exactly" {
     // Entries past `dynamic_module_count` never reach the transcript, so
-    // accepting them would let one honest proof take several encodings and
-    // make an otherwise identical pair fail `verifyPair`'s size comparison.
+    // accepting them would let one honest proof take several encodings.
+    // `verifyPair` inherits the check through `verify`, in both slots.
     var checked: usize = 0;
     inline for (0..vf.case_count) |i| {
         const case = comptime vf.get(i);

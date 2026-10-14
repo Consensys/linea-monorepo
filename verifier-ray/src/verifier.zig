@@ -12,15 +12,68 @@ const poseidon2 = @import("crypto/poseidon2.zig");
 const ext = @import("field/koalabear_ext.zig");
 const profiling = @import("profiling.zig");
 
+// ============================================================================
+// Aggregate statement
+//
+// Let S = (spec, systems) be the compiled inner verifier the aggregator guest
+// is built against (riscv_system.zig, a comptime constant of the ELF), and
+// n = systems.public_input.refs.len. A STATEMENT is
+//
+//     X ∈ F_{p^6}^n
+//
+// the flat public-input vector in prover-ray registration order, every scalar
+// lifted to the extension field (`Scalar.toExt`). The inner relation is
+//
+//     R_S(X, π)  ⇔  verify(S, π, X) accepts
+//
+// X is absorbed into π's Fiat-Shamir transcript by `bindRoundMessages`, so a
+// proof is a proof of exactly one X. The relation `verifyPair` decides is
+//
+//     R_pair(X; πA, πB)  ⇔  R_S(X, πA) ∧ R_S(X, πB)
+//
+// X is the whole claim; πA and πB are witnesses. Everything that travels in a
+// proof rather than in the statement — `module_sizes`, round messages,
+// openings — is private to its own verification and is NOT compared across the
+// pair: two accepted proofs of X with different module sizes are a valid pair.
+// πA == πB is accepted too; the claim is "X is proven", not "proven twice".
+//
+// The guest exposes exactly this claim through its output:
+//
+//     out = pair_statement_domain || LE64(n) || enc(X[0]) || … || enc(X[n-1])
+//
+// with enc = `Ext.toBytes` (6 little-endian u32 limbs, each < p). The domain
+// tag versions the encoding, LE64(n) makes it prefix-free, and the lift to the
+// extension field makes `out` injective on the same equality relation as
+// `checkPublicInputConsistency` — one claim, one encoding.
+//
+// The rest of the claim is bound by the OUTER proof, not by these bytes:
+//   - S: the aggregator ELF embeds it, so the outer program commitment
+//     identifies S. A different inner system is a different outer program.
+//   - πA, πB: read from the guest input region, never exposed.
+//   - how the zkVM commits to `out` (raw `guest_output` bytes, or their keccak
+//     in `guest_output_hash`) is the outer system's choice; it does not change
+//     the claim, only its representation as outer public inputs.
+//
+// So an accepted outer proof reads: "there exist two proofs, each accepted by
+// verifier S, of the one statement X whose canonical encoding is `out`."
+//
+// For the production RISC-V system n = 17: the inner guest's keccak output
+// digest (8 u32 words, 16 limbs) followed by the message-bus accumulator cell.
+// The pair claim is therefore "two accepted inner executions share this output
+// digest and bus state" — the same-statement milestone of issue #3832. A
+// chained aggregation (X_A ≠ X_B linked by a predicate, out = f(X_A, X_B)) is a
+// new relation and must take a new domain tag.
+// ============================================================================
+
 pub const pair_statement_domain = "lineth-verifier-pair-v1";
 
 pub fn pairStatementEncodedLen(comptime count: usize) usize {
     return pair_statement_domain.len + @sizeOf(u64) + count * ext.bytes;
 }
 
-/// Canonical outer statement for a verified pair. Scalars are normalized to
-/// extension-field values so this encoding uses the same equality relation as
-/// `checkPublicInputConsistency`.
+/// Canonical encoding of the aggregate statement (see the header above).
+/// Scalars are normalized to extension-field values so this encoding uses the
+/// same equality relation as `checkPublicInputConsistency`.
 pub fn encodePairStatement(statement: PublicInput, out: []u8) !void {
     if (out.len != pair_statement_domain.len + @sizeOf(u64) + statement.len * ext.bytes)
         return error.InvalidPairStatementBuffer;
@@ -144,17 +197,20 @@ pub const AggregatorInput = struct {
     b: *const VerifyInput,
 };
 
-/// Verifies TWO proofs of the same compiled protocol and checks that their
-/// public-input statements agree. This is the aggregation-shaped entry point:
-/// a caller (e.g. a recursive R5 guest) that attests to a pair of proofs must
-/// also attest that both proofs speak about the same statement — otherwise the
-/// pair "both verify" claim is meaningless, as each proof could be about a
-/// different instance.
+/// Decides R_pair (see "Aggregate statement" above): verifies TWO proofs of
+/// the same compiled protocol and checks that their public-input statements
+/// agree. This is the aggregation-shaped entry point: a caller (e.g. a
+/// recursive R5 guest) that attests to a pair of proofs must also attest that
+/// both proofs speak about the same statement — otherwise the pair "both
+/// verify" claim is meaningless, as each proof could be about a different
+/// instance.
 ///
 /// The consistency rule is element-wise equality of the two flat statements
-/// (see `checkPublicInputConsistency`). It runs BEFORE either verification:
-/// it is O(statement length) while each `verify` is the expensive part, so an
-/// inconsistent pair is rejected without paying for two full verifications.
+/// (see `checkPublicInputConsistency`) and nothing else: proof-side data such
+/// as `module_sizes` is validated per proof by `verify` and is not part of the
+/// claim. The rule runs BEFORE either verification: it is O(statement length)
+/// while each `verify` is the expensive part, so an inconsistent pair is
+/// rejected without paying for two full verifications.
 ///
 /// Both proofs are checked against the SAME comptime `spec`/`systems` by
 /// construction — there is deliberately no two-system variant: cross-system
@@ -186,14 +242,9 @@ pub fn verifyPairWithWorkspace(
     {
         return error.InvalidPublicInputCount;
     }
-    try checkModuleSizeConsistency(a.proof.module_sizes, b.proof.module_sizes);
     try checkPublicInputConsistency(a.public_inputs, b.public_inputs);
     try verifyWithWorkspace(spec, systems, a.proof, a.public_inputs, workspace);
     try verifyWithWorkspace(spec, systems, b.proof, b.public_inputs, workspace);
-}
-
-fn checkModuleSizeConsistency(a: []const usize, b: []const usize) !void {
-    if (!std.mem.eql(usize, a, b)) return error.InconsistentModuleSizes;
 }
 
 /// The public-input consistency rule for a proof pair: the two flat statements

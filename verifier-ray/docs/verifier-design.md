@@ -119,3 +119,39 @@ Each layer validates only what it has the information and authority to check:
 | Proof data | `replay` + `vanishing.verify` (Zig) | The runtime checks, because proof data is the only thing not known until runtime: round count matches the spec (`InvalidRoundCount`), claim slice lengths match (`InvalidClaimCount`), dynamic module sizes are present and valid (`MissingDynamicModuleSize`, `InvalidModuleSize`), and the quotient identity holds (`QuotientIdentityMismatch`). |
 
 Coin index bounds are **not** re-checked in Zig: the codegen guarantees them, and re-validating generated data adds noise without adding safety.
+
+## Aggregate Statement (`verifier.verifyPair`)
+
+The two-proof aggregator (`-Daggregator=true`) is a guest whose claim must be stated as precisely as the single verifier's. The normative text is the "Aggregate statement" header in `src/verifier.zig`; this is the summary.
+
+**Objects.** `S = (spec, systems)` is the compiled inner verifier baked into the aggregator ELF; `n = systems.public_input.refs.len`. A *statement* is the flat public-input vector `X ∈ F_{p^6}^n` in prover-ray registration order, every scalar lifted to the extension field (`Scalar.toExt`). A *proof* `π` is everything else in a `VerifyInput`: round messages, `module_sizes`, the PCS opening.
+
+**Relations.**
+
+```
+R_S(X, π)          ⇔  verify(S, π, X) accepts          (X is transcript-bound by bindRoundMessages)
+R_pair(X; πA, πB)  ⇔  R_S(X, πA)  ∧  R_S(X, πB)          (what verifyPair decides)
+```
+
+`X` is the entire claim; `πA`, `πB` are witnesses. Proof-side data is validated per proof by `verify` and is **not** compared across the pair — two accepted proofs of `X` with different `module_sizes` form a valid pair, and `πA == πB` is accepted (the claim is "X is proven", not "proven twice").
+
+**Outer output.** After both verifications the guest writes
+
+```
+out = "lineth-verifier-pair-v1" || LE64(n) || Ext.toBytes(X[0]) || … || Ext.toBytes(X[n-1])
+```
+
+`Ext.toBytes` is 6 little-endian `u32` limbs, each `< p`. The domain tag versions the encoding, `LE64(n)` makes it prefix-free, and the lift to the extension field makes `out` injective on the same equality relation `checkPublicInputConsistency` uses — one claim, one encoding.
+
+**What binds what.**
+
+| Component | Bound by |
+|---|---|
+| `X` | `out` (the guest output) |
+| `S` | the outer program commitment: the ELF embeds `S`, so a different inner system is a different outer program |
+| `πA`, `πB` | nothing — they are read from the input region and never exposed |
+| how `out` becomes outer public inputs (raw `guest_output` bytes vs. their keccak in `guest_output_hash`) | the outer arithmetization; it changes the representation of the claim, not the claim |
+
+An accepted outer proof therefore reads: *there exist two proofs, each accepted by verifier `S`, of the single statement `X` whose canonical encoding is `out`.*
+
+**Production instance.** For the compiled RISC-V system `n = 17`: the inner guest's keccak output digest (8 `u32` words as 16 limbs) followed by the message-bus accumulator cell. The pair claim is "two accepted inner executions share this output digest and bus state" — the same-statement milestone of #3832. A chained aggregation (`X_A ≠ X_B` linked by a predicate, `out = f(X_A, X_B)`) is a different relation and must take a new domain tag.
