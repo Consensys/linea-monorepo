@@ -277,9 +277,9 @@ class RollupProofGeneratingCoordinator(
       windowPending.first().startBlockNumber.toLong(),
       windowPending.last().endBlockNumber.toLong(),
     ).thenApply { batches ->
-      val batchesByStart = batches.associateBy { it.startBlockNumber }
+      val batchesByStartAndEnd = batches.associateBy { Pair(it.startBlockNumber, it.endBlockNumber) }
       windowPending.map { pending ->
-        val batch = batchesByStart[pending.startBlockNumber]
+        val batch = batchesByStartAndEnd[Pair(pending.startBlockNumber, pending.endBlockNumber)]
           ?: error("Batch not found for conflation ${pending.intervalString()}")
         val hash = batch.proofIndexHash
           ?: error("proofIndexHash is null for batch ${pending.intervalString()}")
