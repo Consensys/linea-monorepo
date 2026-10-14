@@ -60,9 +60,9 @@ const profiling = @import("profiling.zig");
 // For the production RISC-V system n = 17: the inner guest's keccak output
 // digest (8 u32 words, 16 limbs) followed by the message-bus accumulator cell.
 // The pair claim is therefore "two accepted inner executions share this output
-// digest and bus state" — the same-statement milestone of issue #3832. A
-// chained aggregation (X_A ≠ X_B linked by a predicate, out = f(X_A, X_B)) is a
-// new relation and must take a new domain tag.
+// digest and bus state". A chained aggregation (X_A ≠ X_B linked by a
+// predicate, out = f(X_A, X_B)) is a new relation and must take a new domain
+// tag.
 // ============================================================================
 
 pub const pair_statement_domain = "lineth-verifier-pair-v1";
@@ -183,15 +183,16 @@ pub const VerifyInput = struct {
 };
 
 /// The root of an aggregator pair image: two pointers to independently encoded
-/// `VerifyInput`s in the same input region. This is what the aggregator guest
-/// casts `_in_start` to (and the native aggregator mmaps), the two-proof
-/// analogue of casting the region to a single `*const VerifyInput`.
+/// `VerifyInput`s in the same input region, the two-proof analogue of the
+/// single `*const VerifyInput` at the start of a proof image.
 ///
 /// The pointers are absolute addresses written by the encoder
-/// (verifier-ray/codegen's `EncodeAggregatorPair`), so dereferencing needs no
-/// arithmetic and no fix-up pass — the same zero-cost-decode contract as the
-/// single-proof image, with the same cost: the image is only valid at the base
-/// it was encoded for. Layout is pinned in `proof_abi.zig`.
+/// (verifier-ray/codegen's `EncodeAggregatorPair`) for one base, so the image
+/// is only valid at that base. Unlike the single-proof root, the header is
+/// never cast straight out of untrusted memory: both loaders in `main.zig` read
+/// the two words as integers, check range/alignment/ordering and run
+/// `image_relocation.validateImage` on each member, and only then form these
+/// typed pointers. Layout is pinned in `proof_abi.zig`.
 pub const AggregatorInput = struct {
     a: *const VerifyInput,
     b: *const VerifyInput,

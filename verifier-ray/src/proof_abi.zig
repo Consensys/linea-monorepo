@@ -316,8 +316,9 @@ comptime {
 
     // The aggregator pair image root: two absolute pointers to VerifyInputs.
     // Written by verifier-ray/codegen's EncodeAggregatorPair rather than
-    // prover-ray, but pinned with the same rationale: the aggregator guest
-    // casts its input region to *const AggregatorInput with no parsing step.
+    // prover-ray, but pinned with the same rationale: the encoder writes the
+    // two words at these offsets and main.zig's loaders read them back from
+    // there (as raw integers, validated before they become pointers).
     expectSize(verifier.AggregatorInput, 16, 8);
     expectField(verifier.AggregatorInput, "a", 0);
     expectField(verifier.AggregatorInput, "b", 8);
