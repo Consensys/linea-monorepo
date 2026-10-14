@@ -157,9 +157,9 @@ The pair image carries a statement alongside each proof, `X_A` and `X_B`. `verif
 2. Reject unless `X_A = X_B` element-wise, compared as field values rather than wire encodings (`checkPublicInputConsistency`, `InconsistentPublicInputs`). Call the common value `X`.
 3. `Verify(VK, πA, X)`.
 4. `Verify(VK, πB, X)`.
-5. Write `out = "lineth-verifier-pair-v1" || LE64(n) || Ext.toBytes(X[0]) || … || Ext.toBytes(X[n-1])`.
+5. Write `out = "lineth-verifier-pair-v1" || BE64(n) || Ext.toBytes(X[0]) || … || Ext.toBytes(X[n-1])`.
 
-Step 2 runs first because it is O(n), so an inconsistent pair is rejected without paying for two full verifications. `Ext.toBytes` is 6 little-endian `u32` limbs, each `< p`. The domain tag versions the encoding, `LE64(n)` makes it prefix-free, and the lift to the extension field makes `out` injective on the same equality relation `checkPublicInputConsistency` uses — one claim, one encoding.
+Step 2 runs first because it is O(n), so an inconsistent pair is rejected without paying for two full verifications. `Ext.toBytes` is the field's canonical encoding: 6 **big-endian** `u32` limbs in the order `B0.a0, B0.a1, B1.a0, B1.a1, B2.a0, B2.a1`, each `< p`. Every integer in `out` is big-endian — deliberately unlike the little-endian proof image, because `out` reuses the canonical field bytes already pinned by the golden tests and Poseidon2. The domain tag versions the encoding, `BE64(n)` makes it prefix-free, and the lift to the extension field makes `out` injective on the same equality relation `checkPublicInputConsistency` uses — one claim, one encoding. `test/verify_pair_test.zig` ("matches the documented byte layout") pins the exact bytes without going through `toBytes`.
 
 ### What binds what
 

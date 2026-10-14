@@ -39,12 +39,17 @@ const profiling = @import("profiling.zig");
 //
 // The guest exposes exactly this claim through its output:
 //
-//     out = pair_statement_domain || LE64(n) || enc(X[0]) || … || enc(X[n-1])
+//     out = pair_statement_domain || BE64(n) || enc(X[0]) || … || enc(X[n-1])
 //
-// with enc = `Ext.toBytes` (6 little-endian u32 limbs, each < p). The domain
-// tag versions the encoding, LE64(n) makes it prefix-free, and the lift to the
-// extension field makes `out` injective on the same equality relation as
+// with enc = `Ext.toBytes`: the field's canonical encoding, 6 BIG-endian u32
+// limbs (B0.a0, B0.a1, B1.a0, B1.a1, B2.a0, B2.a1), each < p. Every integer in
+// `out` is big-endian; this is deliberately the opposite of the little-endian
+// proof image, because `out` reuses the canonical field bytes that golden
+// tests and Poseidon2 already pin. The domain tag versions the encoding,
+// BE64(n) makes it prefix-free, and the lift to the extension field makes
+// `out` injective on the same equality relation as
 // `checkPublicInputConsistency` — one claim, one encoding.
+// test/verify_pair_test.zig pins the exact bytes independently of `toBytes`.
 //
 // The rest of the claim is bound by the OUTER proof, not by these bytes:
 //   - S: the aggregator ELF embeds it, so the outer program commitment
@@ -78,7 +83,7 @@ pub fn encodePairStatement(statement: PublicInput, out: []u8) !void {
     if (out.len != pair_statement_domain.len + @sizeOf(u64) + statement.len * ext.bytes)
         return error.InvalidPairStatementBuffer;
     @memcpy(out[0..pair_statement_domain.len], pair_statement_domain);
-    std.mem.writeInt(u64, out[pair_statement_domain.len..][0..@sizeOf(u64)], statement.len, .little);
+    std.mem.writeInt(u64, out[pair_statement_domain.len..][0..@sizeOf(u64)], statement.len, .big);
     for (statement, 0..) |scalar, i| {
         const encoded = scalar.toExt().toBytes();
         @memcpy(out[pair_statement_domain.len + @sizeOf(u64) + i * ext.bytes ..][0..ext.bytes], &encoded);

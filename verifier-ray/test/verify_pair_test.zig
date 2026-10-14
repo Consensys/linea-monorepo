@@ -59,47 +59,55 @@ test "a pair containing a tampered proof is rejected" {
 }
 
 test "two individually valid proofs with different statements are rejected" {
-    // Sweep every case carrying a second honest proof. The claim is the
-    // public-input statement and nothing else (see "Aggregate statement" in
-    // verifier.zig): a pair whose statements agree must verify even when the
-    // two proofs differ in proof-side data such as dynamic module sizes, and a
-    // pair whose statements differ must be rejected in either order.
+    // The case only verifyPair can catch. Sweep every case carrying an
+    // altDifferentStatement fixture: a genuinely re-proven proof, same size,
+    // whose statement differs from honest's. Rejected in either order.
     var rejected: usize = 0;
-    var accepted_with_different_sizes: usize = 0;
+    inline for (0..vf.case_count) |i| {
+        if (comptime vf.hasAltDifferentStatement(i)) {
+            const case = comptime vf.get(i);
+            const honest = vf.getInput(i);
+            const alt = vf.getInputAltDifferentStatement(i);
+            // Pin the fixture's shape so the sweep cannot pass vacuously.
+            try std.testing.expect(!statementsAgree(honest.public_inputs, alt.public_inputs));
+            rejected += 1;
+            try std.testing.expectError(
+                error.InconsistentPublicInputs,
+                verifier.verifyPair(case.spec, case.systems, honest, alt),
+            );
+            try std.testing.expectError(
+                error.InconsistentPublicInputs,
+                verifier.verifyPair(case.spec, case.systems, alt, honest),
+            );
+        }
+    }
+    try std.testing.expect(rejected > 0);
+}
+
+test "two proofs of one statement at different dynamic sizes verify as a pair" {
+    // The claim is the public-input statement and nothing else (see "Aggregate
+    // statement" in verifier.zig): proof-side data such as module_sizes is
+    // validated per proof and never compared across the pair. hasAlt is the
+    // multi-size predicate, so every alt here has a different size vector.
+    var checked: usize = 0;
     inline for (0..vf.case_count) |i| {
         if (comptime vf.hasAlt(i)) {
             const case = comptime vf.get(i);
             const honest = vf.getInput(i);
             const alt = vf.getInputAlt(i);
-            if (statementsAgree(honest.public_inputs, alt.public_inputs)) {
-                if (!std.mem.eql(usize, honest.proof.module_sizes, alt.proof.module_sizes)) {
-                    accepted_with_different_sizes += 1;
-                }
-                verifier.verifyPair(case.spec, case.systems, honest, alt) catch |err| {
-                    std.debug.print(
-                        "pair case {d} ({s}) consistent alt pair failed: {s}\n",
-                        .{ i, case.name, @errorName(err) },
-                    );
-                    return err;
-                };
-            } else {
-                rejected += 1;
-                try std.testing.expectError(
-                    error.InconsistentPublicInputs,
-                    verifier.verifyPair(case.spec, case.systems, honest, alt),
+            try std.testing.expect(statementsAgree(honest.public_inputs, alt.public_inputs));
+            try std.testing.expect(!std.mem.eql(usize, honest.proof.module_sizes, alt.proof.module_sizes));
+            checked += 1;
+            verifier.verifyPair(case.spec, case.systems, honest, alt) catch |err| {
+                std.debug.print(
+                    "pair case {d} ({s}) different-size pair failed: {s}\n",
+                    .{ i, case.name, @errorName(err) },
                 );
-                try std.testing.expectError(
-                    error.InconsistentPublicInputs,
-                    verifier.verifyPair(case.spec, case.systems, alt, honest),
-                );
-            }
+                return err;
+            };
         }
     }
-    // Guard against the sweep silently losing either member: the public-input
-    // alt fixture must keep carrying a differing statement, and the multi-size
-    // fixtures must keep pairing one statement with two different size vectors.
-    try std.testing.expect(rejected > 0);
-    try std.testing.expect(accepted_with_different_sizes > 0);
+    try std.testing.expect(checked > 0);
 }
 
 test "two independently proven proofs with the same non-trivial statement verify as a pair" {
@@ -201,13 +209,35 @@ test "pair statement encoding binds normalized public inputs" {
     try verifier.encodePairStatement(&as_base, &base_encoded);
     try verifier.encodePairStatement(&as_ext, &ext_encoded);
     try std.testing.expectEqualSlices(u8, &base_encoded, &ext_encoded);
-    try std.testing.expectEqualSlices(u8, verifier.pair_statement_domain, base_encoded[0..verifier.pair_statement_domain.len]);
-    try std.testing.expectEqual(@as(u64, 1), std.mem.readInt(
-        u64,
-        base_encoded[verifier.pair_statement_domain.len..][0..@sizeOf(u64)],
-        .little,
-    ));
-    try std.testing.expectEqualSlices(u8, &as_ext[0].ext.toBytes(), base_encoded[verifier.pair_statement_domain.len + @sizeOf(u64) ..]);
+}
+
+test "pair statement encoding matches the documented byte layout" {
+    // Pins the "Aggregate statement" spec in verifier.zig byte for byte, WITHOUT
+    // going through Ext.toBytes — so a change to either the spec text or the
+    // encoder (endianness, limb order, prefix width) fails here rather than
+    // silently diverging from what an outer verifier would rebuild.
+    //
+    // Statement: two scalars. X[0] = 42 (base, lifted: only limb B0.a0 set).
+    // X[1] = an extension element with every limb distinct, to pin limb order.
+    const x1 = ext.Ext{
+        .B0 = .{ .a0 = field.Element.init(0x01020304), .a1 = field.Element.init(0x11121314) },
+        .B1 = .{ .a0 = field.Element.init(0x21222324), .a1 = field.Element.init(0x31323334) },
+        .B2 = .{ .a0 = field.Element.init(0x41424344), .a1 = field.Element.init(0x51525354) },
+    };
+    const statement = [_]protocol.Scalar{ .{ .base = field.Element.init(42) }, .{ .ext = x1 } };
+    var encoded: [verifier.pairStatementEncodedLen(2)]u8 = undefined;
+    try verifier.encodePairStatement(&statement, &encoded);
+
+    const expected = "lineth-verifier-pair-v1" ++
+        // BE64(n = 2)
+        "\x00\x00\x00\x00\x00\x00\x00\x02" ++
+        // enc(42): B0.a0 big-endian, remaining five limbs zero
+        "\x00\x00\x00\x2a" ++ "\x00" ** 20 ++
+        // enc(x1): B0.a0, B0.a1, B1.a0, B1.a1, B2.a0, B2.a1, each big-endian
+        "\x01\x02\x03\x04" ++ "\x11\x12\x13\x14" ++
+        "\x21\x22\x23\x24" ++ "\x31\x32\x33\x34" ++
+        "\x41\x42\x43\x44" ++ "\x51\x52\x53\x54";
+    try std.testing.expectEqualSlices(u8, expected, &encoded);
 }
 
 test "empty statements are trivially consistent" {

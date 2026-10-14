@@ -14817,42 +14817,42 @@ const verify_case_62_failing_input = verifier.VerifyInput{
     .public_inputs = &verify_case_62_failing_public_inputs,
 };
 
-const verify_case_62_alt_module_sizes = [_]usize{};
+const verify_case_62_alt_different_statement_module_sizes = [_]usize{};
 
-const verify_case_62_alt_round_0_cells = [_]protocol.Scalar{
+const verify_case_62_alt_different_statement_round_0_cells = [_]protocol.Scalar{
     .{ .base = .{ .value = 0 } },
 };
 
-const verify_case_62_alt_round_1_cells = [_]protocol.Scalar{
+const verify_case_62_alt_different_statement_round_1_cells = [_]protocol.Scalar{
     .{ .base = .{ .value = 0 } },
 };
 
-const verify_case_62_alt_round_2_cells = [_]protocol.Scalar{
+const verify_case_62_alt_different_statement_round_2_cells = [_]protocol.Scalar{
     .{ .ext = ext.Ext{ .B0 = .{ .a0 = .{ .value = 1691073514 }, .a1 = .{ .value = 1105262965 } }, .B1 = .{ .a0 = .{ .value = 646809894 }, .a1 = .{ .value = 1826472266 } }, .B2 = .{ .a0 = .{ .value = 1346445290 }, .a1 = .{ .value = 1709551567 } } } },
     .{ .ext = ext.Ext{ .B0 = .{ .a0 = .{ .value = 768277035 }, .a1 = .{ .value = 1189422716 } }, .B1 = .{ .a0 = .{ .value = 1320639382 }, .a1 = .{ .value = 1953569633 } }, .B2 = .{ .a0 = .{ .value = 247658761 }, .a1 = .{ .value = 1823538278 } } } },
 };
 
-const verify_case_62_alt_rounds = [_]protocol.RoundMessage{
-    .{ .commitment = commitment.Commitment{ .{ .value = 1189152016 }, .{ .value = 920622212 }, .{ .value = 935362528 }, .{ .value = 1886413110 }, .{ .value = 704755786 }, .{ .value = 1071327819 }, .{ .value = 1116603197 }, .{ .value = 2091089419 } }, .cells = &verify_case_62_alt_round_0_cells },
-    .{ .commitment = commitment.Commitment{ .{ .value = 585965823 }, .{ .value = 48107532 }, .{ .value = 129818401 }, .{ .value = 63120423 }, .{ .value = 1185900359 }, .{ .value = 1086202572 }, .{ .value = 331527525 }, .{ .value = 1209709110 } }, .cells = &verify_case_62_alt_round_1_cells },
-    .{ .cells = &verify_case_62_alt_round_2_cells },
+const verify_case_62_alt_different_statement_rounds = [_]protocol.RoundMessage{
+    .{ .commitment = commitment.Commitment{ .{ .value = 1189152016 }, .{ .value = 920622212 }, .{ .value = 935362528 }, .{ .value = 1886413110 }, .{ .value = 704755786 }, .{ .value = 1071327819 }, .{ .value = 1116603197 }, .{ .value = 2091089419 } }, .cells = &verify_case_62_alt_different_statement_round_0_cells },
+    .{ .commitment = commitment.Commitment{ .{ .value = 585965823 }, .{ .value = 48107532 }, .{ .value = 129818401 }, .{ .value = 63120423 }, .{ .value = 1185900359 }, .{ .value = 1086202572 }, .{ .value = 331527525 }, .{ .value = 1209709110 } }, .cells = &verify_case_62_alt_different_statement_round_1_cells },
+    .{ .cells = &verify_case_62_alt_different_statement_round_2_cells },
 };
 
-const verify_case_62_alt_pcs_opening = verifier.PcsOpening{ .proof = pcs.OpeningProof{ .input_queries = &.{ &.{ merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 40 }}, .ext = &[_]ext.Ext{} }, merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 20 }}, .ext = &[_]ext.Ext{} } } } }, merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 1579229187 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} }, merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 2107727873 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} } } } } }, &.{ merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 1675293423 }}, .ext = &[_]ext.Ext{} }, merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 614174011 }}, .ext = &[_]ext.Ext{} } } } }, merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 1261884332 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} }, merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 912690258 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} } } } } }, &.{ merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 366503166 }}, .ext = &[_]ext.Ext{} }, merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 1605442367 }}, .ext = &[_]ext.Ext{} } } } }, merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 1836800238 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} }, merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 1848067857 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} } } } } }, &.{ merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 31 }}, .ext = &[_]ext.Ext{} }, merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 10 }}, .ext = &[_]ext.Ext{} } } } }, merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 840794107 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} }, merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 1331691518 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} } } } } } }, .input_caps = &.{ pcs.InputCap{ .nodes = &[_]commitment.Commitment{ commitment.Commitment{ .{ .value = 1021211157 }, .{ .value = 936137084 }, .{ .value = 62749896 }, .{ .value = 686763026 }, .{ .value = 870500036 }, .{ .value = 81079951 }, .{ .value = 140082449 }, .{ .value = 384386314 } }, commitment.Commitment{ .{ .value = 119777635 }, .{ .value = 623360418 }, .{ .value = 1944911662 }, .{ .value = 295051106 }, .{ .value = 1338522605 }, .{ .value = 313922860 }, .{ .value = 1936222797 }, .{ .value = 1526329214 } }, commitment.Commitment{ .{ .value = 456792299 }, .{ .value = 1787002546 }, .{ .value = 1658617643 }, .{ .value = 1514759398 }, .{ .value = 223318688 }, .{ .value = 826847179 }, .{ .value = 60680495 }, .{ .value = 808788432 } }, commitment.Commitment{ .{ .value = 1469481079 }, .{ .value = 659764944 }, .{ .value = 390787796 }, .{ .value = 642326498 }, .{ .value = 2091648666 }, .{ .value = 315983070 }, .{ .value = 1246764023 }, .{ .value = 2079333772 } } }, .tables = &.{} }, pcs.InputCap{ .nodes = &[_]commitment.Commitment{ commitment.Commitment{ .{ .value = 1841170837 }, .{ .value = 678076868 }, .{ .value = 297339969 }, .{ .value = 1272050291 }, .{ .value = 1091544506 }, .{ .value = 1553516844 }, .{ .value = 396162523 }, .{ .value = 318032810 } }, commitment.Commitment{ .{ .value = 1953579144 }, .{ .value = 1359599538 }, .{ .value = 2076124150 }, .{ .value = 129509514 }, .{ .value = 2091856484 }, .{ .value = 349907989 }, .{ .value = 626588615 }, .{ .value = 263426720 } }, commitment.Commitment{ .{ .value = 128289306 }, .{ .value = 1289102207 }, .{ .value = 1676999522 }, .{ .value = 1691980029 }, .{ .value = 959471814 }, .{ .value = 1513934572 }, .{ .value = 426895213 }, .{ .value = 82522103 } }, commitment.Commitment{ .{ .value = 1511173801 }, .{ .value = 339134788 }, .{ .value = 2125243090 }, .{ .value = 646729944 }, .{ .value = 1058675367 }, .{ .value = 64778672 }, .{ .value = 1583919526 }, .{ .value = 1686974297 } } }, .tables = &.{} } }, .fri_proof = fri.Proof{ .round_roots = &[_]commitment.Commitment{commitment.Commitment{ .{ .value = 75540913 }, .{ .value = 781548250 }, .{ .value = 1336808992 }, .{ .value = 1653035346 }, .{ .value = 1918656181 }, .{ .value = 524356819 }, .{ .value = 2110147792 }, .{ .value = 786569459 } }}, .round_caps = &.{merkle.MerkleCap{ .nodes = &[_]commitment.Commitment{ commitment.Commitment{ .{ .value = 1798719400 }, .{ .value = 1366475147 }, .{ .value = 392835549 }, .{ .value = 1315384841 }, .{ .value = 340770899 }, .{ .value = 1118635648 }, .{ .value = 445413405 }, .{ .value = 1659565589 } }, commitment.Commitment{ .{ .value = 1319045025 }, .{ .value = 1327105675 }, .{ .value = 977524235 }, .{ .value = 500056362 }, .{ .value = 1333468524 }, .{ .value = 101036048 }, .{ .value = 1010351176 }, .{ .value = 1295076387 } } }, .aux = &.{null} }}, .final_poly = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 2066611935 }, .a1 = .{ .value = 798909691 } }, .B1 = .{ .a0 = .{ .value = 646778660 }, .a1 = .{ .value = 571785620 } }, .B2 = .{ .a0 = .{ .value = 1988802558 }, .a1 = .{ .value = 1579789058 } } }}, .running_queries = &.{ &.{merkle.Branch{ .leaf = commitment.Commitment{ .{ .value = 436333292 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }, .siblings = &[_]commitment.Commitment{commitment.Commitment{ .{ .value = 1668803288 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }} }}, &.{merkle.Branch{ .leaf = commitment.Commitment{ .{ .value = 1672981218 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }, .siblings = &[_]commitment.Commitment{commitment.Commitment{ .{ .value = 432155362 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }} }}, &.{merkle.Branch{ .leaf = commitment.Commitment{ .{ .value = 432155362 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }, .siblings = &[_]commitment.Commitment{commitment.Commitment{ .{ .value = 1672981218 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }} }}, &.{merkle.Branch{ .leaf = commitment.Commitment{ .{ .value = 1668803288 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }, .siblings = &[_]commitment.Commitment{commitment.Commitment{ .{ .value = 436333292 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }} }} } } } };
+const verify_case_62_alt_different_statement_pcs_opening = verifier.PcsOpening{ .proof = pcs.OpeningProof{ .input_queries = &.{ &.{ merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 40 }}, .ext = &[_]ext.Ext{} }, merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 20 }}, .ext = &[_]ext.Ext{} } } } }, merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 1579229187 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} }, merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 2107727873 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} } } } } }, &.{ merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 1675293423 }}, .ext = &[_]ext.Ext{} }, merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 614174011 }}, .ext = &[_]ext.Ext{} } } } }, merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 1261884332 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} }, merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 912690258 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} } } } } }, &.{ merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 366503166 }}, .ext = &[_]ext.Ext{} }, merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 1605442367 }}, .ext = &[_]ext.Ext{} } } } }, merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 1836800238 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} }, merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 1848067857 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} } } } } }, &.{ merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 31 }}, .ext = &[_]ext.Ext{} }, merkle.RowOpening{ .base = &[_]field.Element{.{ .value = 10 }}, .ext = &[_]ext.Ext{} } } } }, merkle.InputTreeOpening{ .siblings = &[_]commitment.Commitment{}, .leaves = &.{ null, null, merkle.RowPair{ merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 840794107 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} }, merkle.RowOpening{ .base = &[_]field.Element{}, .ext = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 1331691518 }, .a1 = .{ .value = 0 } }, .B1 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } }, .B2 = .{ .a0 = .{ .value = 0 }, .a1 = .{ .value = 0 } } }} } } } } } }, .input_caps = &.{ pcs.InputCap{ .nodes = &[_]commitment.Commitment{ commitment.Commitment{ .{ .value = 1021211157 }, .{ .value = 936137084 }, .{ .value = 62749896 }, .{ .value = 686763026 }, .{ .value = 870500036 }, .{ .value = 81079951 }, .{ .value = 140082449 }, .{ .value = 384386314 } }, commitment.Commitment{ .{ .value = 119777635 }, .{ .value = 623360418 }, .{ .value = 1944911662 }, .{ .value = 295051106 }, .{ .value = 1338522605 }, .{ .value = 313922860 }, .{ .value = 1936222797 }, .{ .value = 1526329214 } }, commitment.Commitment{ .{ .value = 456792299 }, .{ .value = 1787002546 }, .{ .value = 1658617643 }, .{ .value = 1514759398 }, .{ .value = 223318688 }, .{ .value = 826847179 }, .{ .value = 60680495 }, .{ .value = 808788432 } }, commitment.Commitment{ .{ .value = 1469481079 }, .{ .value = 659764944 }, .{ .value = 390787796 }, .{ .value = 642326498 }, .{ .value = 2091648666 }, .{ .value = 315983070 }, .{ .value = 1246764023 }, .{ .value = 2079333772 } } }, .tables = &.{} }, pcs.InputCap{ .nodes = &[_]commitment.Commitment{ commitment.Commitment{ .{ .value = 1841170837 }, .{ .value = 678076868 }, .{ .value = 297339969 }, .{ .value = 1272050291 }, .{ .value = 1091544506 }, .{ .value = 1553516844 }, .{ .value = 396162523 }, .{ .value = 318032810 } }, commitment.Commitment{ .{ .value = 1953579144 }, .{ .value = 1359599538 }, .{ .value = 2076124150 }, .{ .value = 129509514 }, .{ .value = 2091856484 }, .{ .value = 349907989 }, .{ .value = 626588615 }, .{ .value = 263426720 } }, commitment.Commitment{ .{ .value = 128289306 }, .{ .value = 1289102207 }, .{ .value = 1676999522 }, .{ .value = 1691980029 }, .{ .value = 959471814 }, .{ .value = 1513934572 }, .{ .value = 426895213 }, .{ .value = 82522103 } }, commitment.Commitment{ .{ .value = 1511173801 }, .{ .value = 339134788 }, .{ .value = 2125243090 }, .{ .value = 646729944 }, .{ .value = 1058675367 }, .{ .value = 64778672 }, .{ .value = 1583919526 }, .{ .value = 1686974297 } } }, .tables = &.{} } }, .fri_proof = fri.Proof{ .round_roots = &[_]commitment.Commitment{commitment.Commitment{ .{ .value = 75540913 }, .{ .value = 781548250 }, .{ .value = 1336808992 }, .{ .value = 1653035346 }, .{ .value = 1918656181 }, .{ .value = 524356819 }, .{ .value = 2110147792 }, .{ .value = 786569459 } }}, .round_caps = &.{merkle.MerkleCap{ .nodes = &[_]commitment.Commitment{ commitment.Commitment{ .{ .value = 1798719400 }, .{ .value = 1366475147 }, .{ .value = 392835549 }, .{ .value = 1315384841 }, .{ .value = 340770899 }, .{ .value = 1118635648 }, .{ .value = 445413405 }, .{ .value = 1659565589 } }, commitment.Commitment{ .{ .value = 1319045025 }, .{ .value = 1327105675 }, .{ .value = 977524235 }, .{ .value = 500056362 }, .{ .value = 1333468524 }, .{ .value = 101036048 }, .{ .value = 1010351176 }, .{ .value = 1295076387 } } }, .aux = &.{null} }}, .final_poly = &[_]ext.Ext{ext.Ext{ .B0 = .{ .a0 = .{ .value = 2066611935 }, .a1 = .{ .value = 798909691 } }, .B1 = .{ .a0 = .{ .value = 646778660 }, .a1 = .{ .value = 571785620 } }, .B2 = .{ .a0 = .{ .value = 1988802558 }, .a1 = .{ .value = 1579789058 } } }}, .running_queries = &.{ &.{merkle.Branch{ .leaf = commitment.Commitment{ .{ .value = 436333292 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }, .siblings = &[_]commitment.Commitment{commitment.Commitment{ .{ .value = 1668803288 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }} }}, &.{merkle.Branch{ .leaf = commitment.Commitment{ .{ .value = 1672981218 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }, .siblings = &[_]commitment.Commitment{commitment.Commitment{ .{ .value = 432155362 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }} }}, &.{merkle.Branch{ .leaf = commitment.Commitment{ .{ .value = 432155362 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }, .siblings = &[_]commitment.Commitment{commitment.Commitment{ .{ .value = 1672981218 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }} }}, &.{merkle.Branch{ .leaf = commitment.Commitment{ .{ .value = 1668803288 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }, .siblings = &[_]commitment.Commitment{commitment.Commitment{ .{ .value = 436333292 }, .{ .value = 1475739200 }, .{ .value = 1707323022 }, .{ .value = 1595358470 }, .{ .value = 1897631629 }, .{ .value = 934631175 }, .{ .value = 0 }, .{ .value = 0 } }} }} } } } };
 
-const verify_case_62_alt_proof = verifier.Proof{
-    .rounds = &verify_case_62_alt_rounds,
-    .module_sizes = &verify_case_62_alt_module_sizes,
-    .pcs_opening = verify_case_62_alt_pcs_opening,
+const verify_case_62_alt_different_statement_proof = verifier.Proof{
+    .rounds = &verify_case_62_alt_different_statement_rounds,
+    .module_sizes = &verify_case_62_alt_different_statement_module_sizes,
+    .pcs_opening = verify_case_62_alt_different_statement_pcs_opening,
 };
 
-const verify_case_62_alt_public_inputs = [_]protocol.Scalar{
+const verify_case_62_alt_different_statement_public_inputs = [_]protocol.Scalar{
     .{ .base = .{ .value = 31 } },
 };
 
-const verify_case_62_alt_input = verifier.VerifyInput{
-    .proof = verify_case_62_alt_proof,
-    .public_inputs = &verify_case_62_alt_public_inputs,
+const verify_case_62_alt_different_statement_input = verifier.VerifyInput{
+    .proof = verify_case_62_alt_different_statement_proof,
+    .public_inputs = &verify_case_62_alt_different_statement_public_inputs,
 };
 
 const verify_case_62_alt_same_statement_module_sizes = [_]usize{};
@@ -18157,7 +18157,7 @@ pub fn getInputAlt(comptime index: usize) verifier.VerifyInput {
         59 => @compileError("verifier fixture case 59 (RepeatedSValues) has no alt input"),
         60 => @compileError("verifier fixture case 60 (EmptySelected) has no alt input"),
         61 => @compileError("verifier fixture case 61 (DistinctBounds) has no alt input"),
-        62 => verify_case_62_alt_input,
+        62 => @compileError("verifier fixture case 62 (OpenedCellPublicInput) has no alt input"),
         63 => @compileError("verifier fixture case 63 (OpenedCellPublicInputDynamic) has no alt input"),
         64 => @compileError("verifier fixture case 64 (LagrangeSelectorBoundary) has no alt input"),
         65 => @compileError("verifier fixture case 65 (DynamicLagrangeSelectorBoundary) has no alt input"),
@@ -18201,6 +18201,156 @@ pub fn hasAlt(comptime index: usize) bool {
         28 => false,
         29 => true,
         30 => true,
+        31 => false,
+        32 => false,
+        33 => false,
+        34 => false,
+        35 => false,
+        36 => false,
+        37 => false,
+        38 => false,
+        39 => false,
+        40 => false,
+        41 => false,
+        42 => false,
+        43 => false,
+        44 => false,
+        45 => false,
+        46 => false,
+        47 => false,
+        48 => false,
+        49 => false,
+        50 => false,
+        51 => false,
+        52 => false,
+        53 => false,
+        54 => false,
+        55 => false,
+        56 => false,
+        57 => false,
+        58 => false,
+        59 => false,
+        60 => false,
+        61 => false,
+        62 => false,
+        63 => false,
+        64 => false,
+        65 => false,
+        66 => false,
+        67 => false,
+        68 => false,
+        else => false,
+    };
+}
+
+pub fn getInputAltDifferentStatement(comptime index: usize) verifier.VerifyInput {
+    return switch (index) {
+        0 => @compileError("verifier fixture case 0 (BooleanColumn) has no altDifferentStatement input"),
+        1 => @compileError("verifier fixture case 1 (Fibonacci) has no altDifferentStatement input"),
+        2 => @compileError("verifier fixture case 2 (GeometricProgression) has no altDifferentStatement input"),
+        3 => @compileError("verifier fixture case 3 (ConditionalCounter) has no altDifferentStatement input"),
+        4 => @compileError("verifier fixture case 4 (PythagoreanTriplet) has no altDifferentStatement input"),
+        5 => @compileError("verifier fixture case 5 (DynamicFibonacci) has no altDifferentStatement input"),
+        6 => @compileError("verifier fixture case 6 (ConstantColumn) has no altDifferentStatement input"),
+        7 => @compileError("verifier fixture case 7 (ForwardShiftConstant) has no altDifferentStatement input"),
+        8 => @compileError("verifier fixture case 8 (BooleanCube) has no altDifferentStatement input"),
+        9 => @compileError("verifier fixture case 9 (LinearCombination) has no altDifferentStatement input"),
+        10 => @compileError("verifier fixture case 10 (LargeFibonacci) has no altDifferentStatement input"),
+        11 => @compileError("verifier fixture case 11 (MultipleVanishingsSameRatio) has no altDifferentStatement input"),
+        12 => @compileError("verifier fixture case 12 (MixedRatioVanishings) has no altDifferentStatement input"),
+        13 => @compileError("verifier fixture case 13 (MultiModule) has no altDifferentStatement input"),
+        14 => @compileError("verifier fixture case 14 (ManualCancellation) has no altDifferentStatement input"),
+        15 => @compileError("verifier fixture case 15 (PrecomputedSelector) has no altDifferentStatement input"),
+        16 => @compileError("verifier fixture case 16 (CellLeaf) has no altDifferentStatement input"),
+        17 => @compileError("verifier fixture case 17 (CoinScaled) has no altDifferentStatement input"),
+        18 => @compileError("verifier fixture case 18 (ThreeStepRecurrence) has no altDifferentStatement input"),
+        19 => @compileError("verifier fixture case 19 (Quartic) has no altDifferentStatement input"),
+        20 => @compileError("verifier fixture case 20 (LeftPadDynamic) has no altDifferentStatement input"),
+        21 => @compileError("verifier fixture case 21 (CubicWithBackShift) has no altDifferentStatement input"),
+        22 => @compileError("verifier fixture case 22 (MixedHighRatio) has no altDifferentStatement input"),
+        23 => @compileError("verifier fixture case 23 (MultiModuleHighRatio) has no altDifferentStatement input"),
+        24 => @compileError("verifier fixture case 24 (SizeThirtyTwoCubic) has no altDifferentStatement input"),
+        25 => @compileError("verifier fixture case 25 (LargeForwardShift) has no altDifferentStatement input"),
+        26 => @compileError("verifier fixture case 26 (BackAndForwardShift) has no altDifferentStatement input"),
+        27 => @compileError("verifier fixture case 27 (DynamicQuadratic) has no altDifferentStatement input"),
+        28 => @compileError("verifier fixture case 28 (QuarticWithBackShift) has no altDifferentStatement input"),
+        29 => @compileError("verifier fixture case 29 (DynamicFibonacciMultiSize) has no altDifferentStatement input"),
+        30 => @compileError("verifier fixture case 30 (DynamicFibonacciTwoModules) has no altDifferentStatement input"),
+        31 => @compileError("verifier fixture case 31 (SingleFractionAllOnes) has no altDifferentStatement input"),
+        32 => @compileError("verifier fixture case 32 (PartialFilter) has no altDifferentStatement input"),
+        33 => @compileError("verifier fixture case 33 (AllZeroFilter) has no altDifferentStatement input"),
+        34 => @compileError("verifier fixture case 34 (FilterMasksZeroDenominator) has no altDifferentStatement input"),
+        35 => @compileError("verifier fixture case 35 (Packing4Fractions) has no altDifferentStatement input"),
+        36 => @compileError("verifier fixture case 36 (MultiModuleBucketing) has no altDifferentStatement input"),
+        37 => @compileError("verifier fixture case 37 (SizeOneModule) has no altDifferentStatement input"),
+        38 => @compileError("verifier fixture case 38 (ConditionalLookupShape) has no altDifferentStatement input"),
+        39 => @compileError("verifier fixture case 39 (ManyFractions) has no altDifferentStatement input"),
+        40 => @compileError("verifier fixture case 40 (SizeTwoModule) has no altDifferentStatement input"),
+        41 => @compileError("verifier fixture case 41 (MultipleQueries) has no altDifferentStatement input"),
+        42 => @compileError("verifier fixture case 42 (VectorDenominator) has no altDifferentStatement input"),
+        43 => @compileError("verifier fixture case 43 (AllFiltersOnesPacked) has no altDifferentStatement input"),
+        44 => @compileError("verifier fixture case 44 (SingleColumnNoFilters) has no altDifferentStatement input"),
+        45 => @compileError("verifier fixture case 45 (FilterOnIncluded) has no altDifferentStatement input"),
+        46 => @compileError("verifier fixture case 46 (FilterOnIncluding) has no altDifferentStatement input"),
+        47 => @compileError("verifier fixture case 47 (DoubleConditional) has no altDifferentStatement input"),
+        48 => @compileError("verifier fixture case 48 (MultiColumn) has no altDifferentStatement input"),
+        49 => @compileError("verifier fixture case 49 (SharedTable) has no altDifferentStatement input"),
+        50 => @compileError("verifier fixture case 50 (DistinctTables) has no altDifferentStatement input"),
+        51 => @compileError("verifier fixture case 51 (MultiColumnFilterOnIncluding) has no altDifferentStatement input"),
+        52 => @compileError("verifier fixture case 52 (RepeatedValueInTable) has no altDifferentStatement input"),
+        53 => @compileError("verifier fixture case 53 (ShiftedAColumn) has no altDifferentStatement input"),
+        54 => @compileError("verifier fixture case 54 (ShiftedBColumn) has no altDifferentStatement input"),
+        55 => @compileError("verifier fixture case 55 (MultipleAFragments) has no altDifferentStatement input"),
+        56 => @compileError("verifier fixture case 56 (WidthThree) has no altDifferentStatement input"),
+        57 => @compileError("verifier fixture case 57 (SizeOne) has no altDifferentStatement input"),
+        58 => @compileError("verifier fixture case 58 (PrecomputedTable) has no altDifferentStatement input"),
+        59 => @compileError("verifier fixture case 59 (RepeatedSValues) has no altDifferentStatement input"),
+        60 => @compileError("verifier fixture case 60 (EmptySelected) has no altDifferentStatement input"),
+        61 => @compileError("verifier fixture case 61 (DistinctBounds) has no altDifferentStatement input"),
+        62 => verify_case_62_alt_different_statement_input,
+        63 => @compileError("verifier fixture case 63 (OpenedCellPublicInputDynamic) has no altDifferentStatement input"),
+        64 => @compileError("verifier fixture case 64 (LagrangeSelectorBoundary) has no altDifferentStatement input"),
+        65 => @compileError("verifier fixture case 65 (DynamicLagrangeSelectorBoundary) has no altDifferentStatement input"),
+        66 => @compileError("verifier fixture case 66 (MultiColumnBench) has no altDifferentStatement input"),
+        67 => @compileError("verifier fixture case 67 (GrandProductPermutation) has no altDifferentStatement input"),
+        68 => @compileError("verifier fixture case 68 (SharedRandomnessContribution) has no altDifferentStatement input"),
+        else => @compileError("unknown verifier fixture case index"),
+    };
+}
+
+pub fn hasAltDifferentStatement(comptime index: usize) bool {
+    return switch (index) {
+        0 => false,
+        1 => false,
+        2 => false,
+        3 => false,
+        4 => false,
+        5 => false,
+        6 => false,
+        7 => false,
+        8 => false,
+        9 => false,
+        10 => false,
+        11 => false,
+        12 => false,
+        13 => false,
+        14 => false,
+        15 => false,
+        16 => false,
+        17 => false,
+        18 => false,
+        19 => false,
+        20 => false,
+        21 => false,
+        22 => false,
+        23 => false,
+        24 => false,
+        25 => false,
+        26 => false,
+        27 => false,
+        28 => false,
+        29 => false,
+        30 => false,
         31 => false,
         32 => false,
         33 => false,

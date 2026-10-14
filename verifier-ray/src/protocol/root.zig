@@ -93,9 +93,10 @@ pub fn replayWithTranscript(
     comptime spec: Spec,
     rounds: []const RoundMessage,
     /// Runtime sizes of the protocol's dynamically-sized modules, in the prover's
-    /// module order. The first `spec.dynamic_module_count` entries are absorbed
-    /// into the transcript at every round advance, mirroring prover-ray's
-    /// `AdvanceRound`. May be empty when `spec.dynamic_module_count == 0`.
+    /// module order. Must hold exactly `spec.dynamic_module_count` entries; all
+    /// of them are absorbed into the transcript at every round advance,
+    /// mirroring prover-ray's `AdvanceRound`. Empty when
+    /// `spec.dynamic_module_count == 0`.
     module_sizes: []const usize,
 ) Error![spec.total_round_coins]Coin {
     comptime {
@@ -108,8 +109,8 @@ pub fn replayWithTranscript(
 
     // Dynamic-module sizes are absorbed once per round advance, so the caller
     // must supply exactly `dynamic_module_count` of them. Extra entries would
-    // never reach the transcript, making the proof encoding non-canonical
-    // (and two proofs of one instance spuriously differ in `verifyPair`).
+    // never reach the transcript, so accepting them would give one proof
+    // several wire encodings.
     if (module_sizes.len < spec.dynamic_module_count) return error.MissingDynamicModuleSize;
     if (module_sizes.len > spec.dynamic_module_count) return error.UnexpectedDynamicModuleSize;
 
@@ -125,10 +126,9 @@ pub fn replayWithTranscript(
         // size (as a base-field element) into the transcript. Runs at every round
         // advance, so a size is absorbed once per replayed round — matching the
         // prover exactly, which is what keeps the derived eval coin `r` in sync.
-        if (comptime spec.dynamic_module_count > 0) {
-            for (module_sizes[0..spec.dynamic_module_count]) |size| {
-                transcript.updateElement(field.Element.init(@intCast(size)));
-            }
+        // `module_sizes.len == spec.dynamic_module_count` was checked above.
+        for (module_sizes) |size| {
+            transcript.updateElement(field.Element.init(@intCast(size)));
         }
 
         const message = rounds[round_index - 1];
