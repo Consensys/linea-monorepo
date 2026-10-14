@@ -32,6 +32,10 @@ pub fn build(b: *std.Build) void {
     // guest (or native binary) expects an aggregator pair image (two proofs) as
     // input, verifies both, and checks their public-input consistency.
     const aggregator = b.option(bool, "aggregator", "Build the two-proof aggregator entry point") orelse false;
+    // The aggregator always reads its pair image from the input region; an
+    // embedded single-proof fixture would be silently ignored.
+    if (aggregator and embedded_input != EmbeddedInputType.none)
+        @panic("'-Daggregator=true' cannot be combined with '-Dembedded-input'");
     const test_filter = b.option([]const u8, "test-filter", "Skip tests that do not match this filter");
     const test_filters: []const []const u8 = if (test_filter) |f| &.{f} else &.{};
     const riscv_system_path = b.option(

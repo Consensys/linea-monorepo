@@ -193,10 +193,11 @@ pub const VerifyInput = struct {
 ///
 /// The pointers are absolute addresses written by the encoder
 /// (verifier-ray/codegen's `EncodeAggregatorPair`) for one base, so the image
-/// is only valid at that base. Unlike the single-proof root, the header is
-/// never cast straight out of untrusted memory: both loaders in `main.zig` read
-/// the two words as integers, check range/alignment/ordering and run
-/// `image_relocation.validateImage` on each member, and only then form these
+/// is only valid at that base. The header is never cast straight out of
+/// untrusted memory: both pair loaders in `main.zig` run
+/// `image_relocation.validatePair` on the image at the address it will be read
+/// from, which reads the two words as integers, checks them
+/// (`parsePairHeader`) and validates each member, and only then form these
 /// typed pointers. Layout is pinned in `proof_abi.zig`.
 pub const AggregatorInput = struct {
     a: *const VerifyInput,
@@ -258,9 +259,10 @@ pub fn verifyPairWithWorkspace(
 /// compared through `Scalar.toExt` so a base-encoded scalar equals its lifted
 /// extension encoding — equality is over field values, not wire representation.
 ///
-/// Length inequality is also `InconsistentPublicInputs`: each statement's
-/// length-vs-spec check belongs to `verify` (via `bindRoundMessages`); here two
-/// different lengths simply cannot be the same statement.
+/// Length inequality is also `InconsistentPublicInputs`: two different lengths
+/// cannot be the same statement. Checking each length against the compiled
+/// spec is the caller's job — `verifyPairWithWorkspace` does it before calling
+/// this, and `verify` does it again via `bindRoundMessages`.
 pub fn checkPublicInputConsistency(
     a: PublicInput,
     b: PublicInput,

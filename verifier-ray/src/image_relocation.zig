@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const merkle = @import("crypto/merkle.zig");
 const field = @import("field/koalabear.zig");
 const ext = @import("field/koalabear_ext.zig");
@@ -13,24 +14,23 @@ comptime {
     // address space below; every supported target (x86_64, aarch64, R5/RV64)
     // has a 64-bit usize, so no width-narrowing cast is needed or checked for.
     if (@bitSizeOf(usize) != 64) @compileError("image_relocation assumes a 64-bit usize");
+    // The image is little-endian and `validateElements` reads its limbs as
+    // native words.
+    if (builtin.cpu.arch.endian() != .little) @compileError("image_relocation assumes a little-endian target");
 }
 
 pub const Error = error{
     PointerBeforeImage,
     PointerPastImage,
     AddressOverflow,
+    /// The image does not start at a `VerifyInput`-aligned address.
+    MisalignedImage,
 };
 
 /// Returns an encoded absolute pointer's byte offset within its image.
 pub fn imageOffset(encoded_pointer: u64, encoded_base: usize) Error!usize {
     if (encoded_pointer < encoded_base) return error.PointerBeforeImage;
     return encoded_pointer - encoded_base;
-}
-
-/// Relocates an absolute in-image pointer from encoded_base to mapped_base.
-pub fn relocatePointer(encoded_pointer: u64, encoded_base: usize, mapped_base: usize) Error!usize {
-    const offset = try imageOffset(encoded_pointer, encoded_base);
-    return std.math.add(usize, mapped_base, offset) catch error.AddressOverflow;
 }
 
 /// Strides and offsets of the image layout, derived from the types so that a
@@ -94,151 +94,169 @@ const abi = struct {
 /// Patches every slice-pointer in a VerifyInput image from `encoded_base +
 /// offset` to `mapped_base + offset`, in place.
 ///
-/// The walk is structural, never scanning for pointer-shaped bytes, so lengths
-/// and field values are never touched.
+/// The walk is structural, never scanning for pointer-shaped bytes: it writes
+/// only the pointer words of the headers it reaches.
 ///
 /// Call this after loading an image at an address other than the one it was
 /// encoded for: the native loader in main.zig and the fixture loader in
 /// riscv_proof_image_test.zig both do.
+///
+/// The walk is memory-safe on arbitrary bytes: every read and write is bounded
+/// to the image, every element count is clamped to what fits, and a pointer
+/// that is not inside the encoded image is left as is. It does not make the
+/// result trustworthy — overlapping slices can make a patch land on bytes that
+/// are also read as data or as a length — so an untrusted image must pass
+/// `validateImage(img, img_len, mapped_base)` AFTER this, at the layout the
+/// verifier will actually read.
 pub fn rebase(img: [*]u8, img_len: usize, encoded_base: usize, mapped_base: usize) void {
-    const delta: i64 = @as(i64, @intCast(mapped_base)) - @as(i64, @intCast(encoded_base));
+    const w = Walk{ .img = img, .len = img_len, .encoded_base = encoded_base, .mapped_base = mapped_base };
 
-    // Returns the patched pointer's offset within the image, for walking into
-    // whatever it points at.
-    const patchPtr = struct {
-        fn f(image: [*]u8, len: usize, off: usize, enc_base: usize, d: i64) usize {
-            if (off + abi.slice_hdr > len) return 0;
-            const old_ptr = readU64(image, off);
-            if (old_ptr == 0) return 0; // null / empty-slice sentinel
-            const new_ptr = @as(u64, @intCast(@as(i64, @intCast(old_ptr)) + d));
-            writeU64(image, off, new_ptr);
-            return @intCast(@as(i64, @intCast(old_ptr - enc_base)));
+    _ = w.patch(abi.public_inputs, 0);
+    _ = w.patch(abi.module_sizes, 0);
+
+    if (w.patch(abi.rounds, abi.round_message)) |rounds| {
+        for (0..rounds.len) |i| {
+            _ = w.patch(rounds.offset + i * abi.round_message + abi.round_cells, 0);
         }
-    }.f;
-
-    const sliceLen = struct {
-        fn f(image: [*]u8, hdr: usize) usize {
-            return @intCast(readU64(image, hdr + abi.slice_len_off));
-        }
-    }.f;
-
-    _ = patchPtr(img, img_len, abi.public_inputs, encoded_base, delta);
-
-    const rounds_ptr = patchPtr(img, img_len, abi.rounds, encoded_base, delta);
-    const n_rounds = sliceLen(img, abi.rounds);
-    _ = patchPtr(img, img_len, abi.module_sizes, encoded_base, delta);
-
-    for (0..n_rounds) |i| {
-        const rm = rounds_ptr + i * abi.round_message;
-        _ = patchPtr(img, img_len, rm + abi.round_cells, encoded_base, delta);
     }
 
-    const input_caps_ptr = patchPtr(img, img_len, abi.input_caps, encoded_base, delta);
-    const n_input_caps = sliceLen(img, abi.input_caps);
-    for (0..n_input_caps) |i| {
-        const input_cap = input_caps_ptr + i * abi.input_cap;
-        _ = patchPtr(img, img_len, input_cap + abi.input_cap_nodes, encoded_base, delta);
-
-        const tables_hdr = input_cap + abi.input_cap_tables;
-        const tables_ptr = patchPtr(img, img_len, tables_hdr, encoded_base, delta);
-        const n_tables = sliceLen(img, tables_hdr);
-        for (0..n_tables) |j| {
-            const table = tables_ptr + j * abi.input_cap_table;
-            const rows_hdr = table + abi.input_cap_table_rows;
-            const rows_ptr = patchPtr(img, img_len, rows_hdr, encoded_base, delta);
-            const n_rows = sliceLen(img, rows_hdr);
-            for (0..n_rows) |k| {
-                const row = rows_ptr + k * abi.row_opening;
-                _ = patchPtr(img, img_len, row + abi.row_base, encoded_base, delta);
-                _ = patchPtr(img, img_len, row + abi.row_ext, encoded_base, delta);
+    if (w.patch(abi.input_caps, abi.input_cap)) |caps| {
+        for (0..caps.len) |i| {
+            const cap = caps.offset + i * abi.input_cap;
+            _ = w.patch(cap + abi.input_cap_nodes, 0);
+            const tables = w.patch(cap + abi.input_cap_tables, abi.input_cap_table) orelse continue;
+            for (0..tables.len) |j| {
+                const table = tables.offset + j * abi.input_cap_table;
+                const rows = w.patch(table + abi.input_cap_table_rows, abi.row_opening) orelse continue;
+                for (0..rows.len) |k| w.patchRow(rows.offset + k * abi.row_opening);
             }
         }
     }
 
-    const iq_outer_ptr = patchPtr(img, img_len, abi.input_queries, encoded_base, delta);
-    const n_iq = sliceLen(img, abi.input_queries);
-    for (0..n_iq) |i| {
-        const inner_hdr = iq_outer_ptr + i * abi.slice_hdr;
-        const iq_inner_ptr = patchPtr(img, img_len, inner_hdr, encoded_base, delta);
-        const n_ito = sliceLen(img, inner_hdr);
-        for (0..n_ito) |j| {
-            const ito_off = iq_inner_ptr + j * abi.ito;
-            _ = patchPtr(img, img_len, ito_off + abi.ito_siblings, encoded_base, delta);
+    if (w.patch(abi.input_queries, abi.slice_hdr)) |queries| {
+        for (0..queries.len) |i| {
+            const openings = w.patch(queries.offset + i * abi.slice_hdr, abi.ito) orelse continue;
+            for (0..openings.len) |j| {
+                const opening = openings.offset + j * abi.ito;
+                _ = w.patch(opening + abi.ito_siblings, 0);
 
-            // leaves holds ?RowPair inline, so elements are walked at that
-            // stride rather than dereferenced.
-            const leaves_hdr = ito_off + abi.ito_leaves;
-            const leaves_ptr = patchPtr(img, img_len, leaves_hdr, encoded_base, delta);
-            const n_leaves = sliceLen(img, leaves_hdr);
-            for (0..n_leaves) |k| {
-                const leaf_off = leaves_ptr + k * abi.opt_row_pair;
-                if (leaf_off + abi.row_pair_flag + 1 > img_len) continue;
-                if (img[leaf_off + abi.row_pair_flag] == 0) continue; // absent
-                for (0..2) |r| {
-                    const row = leaf_off + r * abi.row_opening;
-                    _ = patchPtr(img, img_len, row + abi.row_base, encoded_base, delta);
-                    _ = patchPtr(img, img_len, row + abi.row_ext, encoded_base, delta);
+                // leaves holds ?RowPair inline, so elements are walked at that
+                // stride rather than dereferenced.
+                const leaves = w.patch(opening + abi.ito_leaves, abi.opt_row_pair) orelse continue;
+                for (0..leaves.len) |k| {
+                    const leaf = leaves.offset + k * abi.opt_row_pair;
+                    if (img[leaf + abi.row_pair_flag] == 0) continue; // absent
+                    for (0..2) |r| w.patchRow(leaf + r * abi.row_opening);
                 }
             }
         }
     }
 
-    _ = patchPtr(img, img_len, abi.round_roots, encoded_base, delta);
+    _ = w.patch(abi.round_roots, 0);
 
-    const round_caps_ptr = patchPtr(img, img_len, abi.round_caps, encoded_base, delta);
-    const n_round_caps = sliceLen(img, abi.round_caps);
-    for (0..n_round_caps) |i| {
-        const round_cap = round_caps_ptr + i * abi.merkle_cap;
-        _ = patchPtr(img, img_len, round_cap + abi.merkle_cap_nodes, encoded_base, delta);
-        _ = patchPtr(img, img_len, round_cap + abi.merkle_cap_aux, encoded_base, delta);
+    if (w.patch(abi.round_caps, abi.merkle_cap)) |caps| {
+        for (0..caps.len) |i| {
+            const cap = caps.offset + i * abi.merkle_cap;
+            _ = w.patch(cap + abi.merkle_cap_nodes, 0);
+            _ = w.patch(cap + abi.merkle_cap_aux, 0);
+        }
     }
 
-    _ = patchPtr(img, img_len, abi.final_poly, encoded_base, delta);
+    _ = w.patch(abi.final_poly, 0);
 
-    const rq_outer_ptr = patchPtr(img, img_len, abi.running_queries, encoded_base, delta);
-    const n_rq = sliceLen(img, abi.running_queries);
-    for (0..n_rq) |i| {
-        const inner_hdr = rq_outer_ptr + i * abi.slice_hdr;
-        const rq_inner_ptr = patchPtr(img, img_len, inner_hdr, encoded_base, delta);
-        const n_br = sliceLen(img, inner_hdr);
-        for (0..n_br) |j| {
-            const br = rq_inner_ptr + j * abi.branch;
-            _ = patchPtr(img, img_len, br + abi.branch_siblings, encoded_base, delta);
+    if (w.patch(abi.running_queries, abi.slice_hdr)) |queries| {
+        for (0..queries.len) |i| {
+            const branches = w.patch(queries.offset + i * abi.slice_hdr, abi.branch) orelse continue;
+            for (0..branches.len) |j| {
+                _ = w.patch(branches.offset + j * abi.branch + abi.branch_siblings, 0);
+            }
         }
     }
 }
+
+/// One `rebase` pass over one image.
+const Walk = struct {
+    img: [*]u8,
+    len: usize,
+    encoded_base: usize,
+    mapped_base: usize,
+
+    /// Relocates the slice header at `header` and returns its payload region,
+    /// with the element count clamped to whole `stride`-sized elements that
+    /// fit in the image (a `stride` of 0 means the payload is not walked).
+    /// Returns null, leaving the header untouched, when the header is not in
+    /// the image or its pointer is not inside the encoded image — including a
+    /// pointer an earlier visit already relocated, so a header reached twice
+    /// is patched once whenever the two ranges are disjoint.
+    fn patch(w: Walk, header: usize, stride: usize) ?Region {
+        if (header > w.len or w.len - header < abi.slice_hdr) return null;
+        const pointer = readU64(w.img, header);
+        if (pointer < w.encoded_base or pointer - w.encoded_base > w.len) return null;
+        const offset: usize = pointer - w.encoded_base;
+        writeU64(w.img, header, w.mapped_base + offset);
+        if (stride == 0) return null;
+        const count = readU64(w.img, header + abi.slice_len_off);
+        return .{ .offset = offset, .len = @min(count, (w.len - offset) / stride) };
+    }
+
+    /// Relocates both slices of a `merkle.RowOpening` at `row`.
+    fn patchRow(w: Walk, row: usize) void {
+        _ = w.patch(row + abi.row_base, 0);
+        _ = w.patch(row + abi.row_ext, 0);
+    }
+};
 
 /// Byte-for-byte layout of the aggregator pair image header: two absolute
 /// little-endian u64 pointers, matching `EncodeAggregatorPair`'s header write
 /// and `verifier.AggregatorInput`.
 pub const pair_header_len = 2 * @sizeOf(u64);
 
-/// Rebases an aggregator pair image (see `verifier.AggregatorInput`): patches
-/// the two header pointers, then rebases each `VerifyInput` sub-image they
-/// point to. `EncodeAggregatorPair` encodes each sub-image with `Encode` at its
-/// own absolute start address, so each is walked relative to that start rather
-/// than to the pair image's base.
-pub fn rebasePair(img: [*]u8, img_len: usize, encoded_base: usize, mapped_base: usize) Error!void {
-    const root_len = @sizeOf(verifier.VerifyInput);
-    if (img_len < pair_header_len) return error.PointerPastImage;
-    const a_ptr = readU64(img, 0);
-    const b_ptr = readU64(img, @sizeOf(u64));
-    const a_off = try imageOffset(a_ptr, encoded_base);
-    const b_off = try imageOffset(b_ptr, encoded_base);
-    if (img_len < pair_header_len + 2 * root_len or
-        a_off != pair_header_len or b_off < a_off + root_len or
-        b_off % @alignOf(verifier.VerifyInput) != 0 or b_off + root_len > img_len)
-    {
-        return error.PointerPastImage;
-    }
+/// Offsets of an aggregator pair image's two `VerifyInput` members.
+pub const PairOffsets = struct {
+    a: usize,
+    b: usize,
+};
 
-    // The pair encoder validates each member structurally before writing it.
-    // Keep native relocation bounded to each member so malformed roots cannot
-    // make one walk alias the other.
-    writeU64(img, 0, @intCast(try relocatePointer(a_ptr, encoded_base, mapped_base)));
-    writeU64(img, @sizeOf(u64), @intCast(try relocatePointer(b_ptr, encoded_base, mapped_base)));
-    rebase(img + a_off, b_off - a_off, encoded_base + a_off, mapped_base + a_off);
-    rebase(img + b_off, img_len - b_off, encoded_base + b_off, mapped_base + b_off);
+/// Reads and checks an aggregator pair header without trusting it: the one
+/// definition of a well-formed header, shared by `validatePair` and
+/// `rebasePair` (and through them every loader in main.zig).
+///
+/// Proof A starts right after the header, as `EncodeAggregatorPair` writes
+/// it; proof B follows A's root, aligned for a `VerifyInput`, with room for
+/// its own root. Returns the members' offsets within the image.
+pub fn parsePairHeader(img: [*]const u8, img_len: usize, encoded_base: usize) Error!PairOffsets {
+    const root_len = @sizeOf(verifier.VerifyInput);
+    try requireRange(0, pair_header_len, img_len);
+    const a = try imageOffset(readU64(img, 0), encoded_base);
+    const b = try imageOffset(readU64(img, @sizeOf(u64)), encoded_base);
+    if (a != pair_header_len) return error.PointerPastImage;
+    if (b < a + root_len or b % @alignOf(verifier.VerifyInput) != 0) return error.PointerPastImage;
+    try requireRange(b, root_len, img_len);
+    return .{ .a = a, .b = b };
+}
+
+/// Validates an untrusted aggregator pair image: its header
+/// (`parsePairHeader`) and each member with `validateImage`, each bounded to
+/// its own region so neither can reach into the other.
+pub fn validatePair(img: [*]const u8, img_len: usize, encoded_base: usize) Error!PairOffsets {
+    const pair = try parsePairHeader(img, img_len, encoded_base);
+    try validateImage(img + pair.a, pair.b - pair.a, encoded_base + pair.a);
+    try validateImage(img + pair.b, img_len - pair.b, encoded_base + pair.b);
+    return pair;
+}
+
+/// Rebases an aggregator pair image (see `verifier.AggregatorInput`): rebases
+/// each `VerifyInput` member, then patches the two header pointers.
+/// `EncodeAggregatorPair` encodes each member with `Encode` at its own absolute
+/// start address, so each is walked relative to that start rather than to the
+/// pair image's base. Like `rebase`, the result is untrusted: validate it with
+/// `validatePair(img, img_len, mapped_base)` afterwards.
+pub fn rebasePair(img: [*]u8, img_len: usize, encoded_base: usize, mapped_base: usize) Error!void {
+    const pair = try parsePairHeader(img, img_len, encoded_base);
+    rebase(img + pair.a, pair.b - pair.a, encoded_base + pair.a, mapped_base + pair.a);
+    rebase(img + pair.b, img_len - pair.b, encoded_base + pair.b, mapped_base + pair.b);
+    writeU64(img, 0, mapped_base + pair.a);
+    writeU64(img, @sizeOf(u64), mapped_base + pair.b);
 }
 
 const Region = struct {
@@ -249,6 +267,12 @@ const Region = struct {
 /// Validates an encoded VerifyInput without constructing Zig slices or tagged
 /// unions from untrusted bytes.
 pub fn validateImage(img: [*]const u8, img_len: usize, encoded_base: usize) Error!void {
+    // Every offset below is checked against its type's alignment relative to
+    // the image start. An aligned `img` makes the limb reads here aligned; an
+    // aligned `encoded_base` makes the pointers the verifier dereferences
+    // (`encoded_base + offset`) aligned.
+    if (@intFromPtr(img) % @alignOf(verifier.VerifyInput) != 0 or
+        encoded_base % @alignOf(verifier.VerifyInput) != 0) return error.MisalignedImage;
     try requireRange(0, @sizeOf(verifier.VerifyInput), img_len);
     try validateScalars(img, img_len, try resolveSlice(img, img_len, abi.public_inputs, @sizeOf(protocol.Scalar), @alignOf(protocol.Scalar), encoded_base));
     _ = try resolveSlice(img, img_len, abi.module_sizes, @sizeOf(usize), @alignOf(usize), encoded_base);
@@ -344,25 +368,22 @@ fn validateOptionalDigest(img: [*]const u8, img_len: usize, offset: usize) Error
 }
 
 fn validateElements(img: [*]const u8, img_len: usize, values: Region, stride: usize) Error!void {
-    try requireRange(values.offset, values.len * stride, img_len);
-    for (0..values.len) |i| {
-        for (0..stride / @sizeOf(field.Element)) |j| {
-            if (readU32(img, values.offset + i * stride + j * @sizeOf(field.Element)) >= field.modulus)
-                return error.PointerPastImage;
-        }
+    const extent = std.math.mul(usize, values.len, stride) catch return error.AddressOverflow;
+    try requireRange(values.offset, extent, img_len);
+    const count = extent / @sizeOf(field.Element);
+    // Each caller's offset is a `resolveSlice`-checked slice start or a field
+    // offset within one, of a type at least as aligned as `field.Element`, and
+    // `validateImage` checked the image start: one aligned load per limb
+    // rather than four byte loads, on the guest's hottest validation loop.
+    const limbs: [*]const u32 = @ptrCast(@alignCast(img + values.offset));
+    for (limbs[0..count]) |limb| {
+        if (limb >= field.modulus) return error.PointerPastImage;
     }
 }
 
 fn requireRange(offset: usize, len: usize, image_len: usize) Error!void {
     const end = std.math.add(usize, offset, len) catch return error.AddressOverflow;
     if (end > image_len) return error.PointerPastImage;
-}
-
-fn readU32(img: [*]const u8, off: usize) u32 {
-    return @as(u32, img[off]) |
-        (@as(u32, img[off + 1]) << 8) |
-        (@as(u32, img[off + 2]) << 16) |
-        (@as(u32, img[off + 3]) << 24);
 }
 
 fn readU64(img: [*]const u8, off: usize) u64 {

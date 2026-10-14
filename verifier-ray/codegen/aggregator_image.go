@@ -9,8 +9,10 @@ import (
 )
 
 // The aggregator pair image is the two-proof analogue of prover-ray's single
-// proof image: a byte image the aggregator guest casts directly to
-// verifier-ray's `*const AggregatorInput`, relocated for one base address.
+// proof image: the byte image behind verifier-ray's `AggregatorInput`,
+// relocated for one base address. The guest treats it as untrusted: it reads
+// the header as raw integers and validates the header and both proofs
+// (`image_relocation.validatePair`) before forming any typed pointer.
 //
 // Layout (all offsets relative to base):
 //
@@ -22,7 +24,7 @@ import (
 //	 ... +lenB)          proof B's image, encoded at that 8-aligned offset
 //
 // The header pointers are absolute little-endian addresses, matching the
-// single-image philosophy: the guest dereferences with no arithmetic and no
+// single-image philosophy: once validated, the guest uses them with no
 // fix-up pass, at the cost of the image being valid only at this base.
 //
 // Both sub-images are produced by the existing, ABI-agreement-tested

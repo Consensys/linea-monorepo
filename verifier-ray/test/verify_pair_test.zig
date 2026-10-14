@@ -148,11 +148,20 @@ test "consistency: statements of different lengths are rejected" {
     );
 }
 
+/// Index of the first fixture case whose compiled statement has exactly
+/// `count` public inputs, so the tests below do not depend on fixture order.
+fn firstCaseWithPublicInputs(comptime count: usize) usize {
+    @setEvalBranchQuota(100_000);
+    for (0..vf.case_count) |i| {
+        if (vf.get(i).systems.public_input.refs.len == count) return i;
+    }
+    @compileError(std.fmt.comptimePrint("no fixture case has {d} public inputs", .{count}));
+}
+
 test "pair validates both statement lengths before comparing elements" {
-    const no_public_inputs_index = 0;
+    const no_public_inputs_index = comptime firstCaseWithPublicInputs(0);
     const no_public_inputs_case = comptime vf.get(no_public_inputs_index);
     const no_public_inputs = vf.getInput(no_public_inputs_index);
-    try std.testing.expectEqual(@as(usize, 0), no_public_inputs_case.systems.public_input.refs.len);
 
     const one = [_]protocol.Scalar{.{ .base = field.Element.init(1) }};
     const two = [_]protocol.Scalar{.{ .base = field.Element.init(2) }};
@@ -168,10 +177,9 @@ test "pair validates both statement lengths before comparing elements" {
         verifier.verifyPair(no_public_inputs_case.spec, no_public_inputs_case.systems, invalid_a, invalid_b),
     );
 
-    const one_public_input_index = 62;
+    const one_public_input_index = comptime firstCaseWithPublicInputs(1);
     const one_public_input_case = comptime vf.get(one_public_input_index);
     const valid = vf.getInput(one_public_input_index);
-    try std.testing.expectEqual(@as(usize, 1), one_public_input_case.systems.public_input.refs.len);
     var missing = valid;
     missing.public_inputs = &.{};
 

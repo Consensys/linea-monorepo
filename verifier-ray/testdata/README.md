@@ -11,7 +11,8 @@ testdata/generated/verify.zig
 testdata/generated/riscv_system.zig
 ```
 
-The real proof image used by the native and R5 smoke tests lives in:
+The real proof image used by the native and R5 smoke tests is generated (not
+committed) by `codegen/generate-riscv-system`, alongside `riscv_system.zig`:
 
 ```text
 testdata/riscv_proof_image.bin
@@ -30,7 +31,7 @@ real `arithmetization/src/main/riscv/main.zkc` interpreter circuit.
 The two-proof aggregator pair image (the same honest proof encoded twice
 behind a two-pointer header — see `codegen/aggregator_image.go`) is derived
 from `riscv_proof_image.bin` by `codegen/generate-aggregator-image` and is not
-committed (it is ~2x the single image). `make generate-testdata` writes it:
+committed either (it is ~2x the single image). `make generate-testdata` writes it:
 
 ```text
 testdata/riscv_proof_pair_image.bin

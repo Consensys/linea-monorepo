@@ -17,7 +17,7 @@ PROOF_IMAGE := testdata/riscv_proof_image.bin
 PAIR_IMAGE := testdata/riscv_proof_pair_image.bin
 
 # Optional legacy embedded-fixture mode, still used by the profiling targets.
-# The default smoke-test run/zkc path loads the committed real proof image.
+# The default smoke-test run/zkc path loads the generated real proof image.
 EMBEDDED_INPUT ?= valid
 EMBEDDED_SPEC ?= 0
 NATIVE_BIN := zig-out/bin/verifier-ray
@@ -32,7 +32,7 @@ ZKC = go tool zkc
 # Use pinned elf_to_json in go.mod
 ELF_TO_JSON = go tool elf_to_json
 
-ci: fmt build-release build-r5-aggregator run-passing run-failing-expected run-aggregator test zkc-verify-passing zkc-verify-failing-expected
+ci: generate-testdata fmt build-release build-r5-aggregator run-passing run-failing-expected run-aggregator test zkc-verify-passing zkc-verify-failing-expected
 
 help:
 	@printf '%s\n' \
@@ -101,22 +101,31 @@ build-r5:
 build-r5-aggregator:
 	$(ZIG_BUILD) --release=small -Dstrip=true -Dr5=true -Daggregator=true -Ddisable-accelerators=$(DISABLE_ACCELERATORS)
 
+# The single proof image is generated with the RISC-V system (see
+# .gitignore); every target that reads it depends on it, so it is produced
+# when missing. The generator writes this default path only, so an overridden
+# PROOF_IMAGE must already exist.
+testdata/riscv_proof_image.bin:
+	cd codegen/generate-riscv-system && go run .
+
 # The pair image is derived data (see .gitignore), decoded and
 # re-encoded from the single proof image — no proving involved;
 # regenerate it when a target needs it and it is missing.
 $(PAIR_IMAGE): $(PROOF_IMAGE) codegen/aggregator_image.go codegen/generate-aggregator-image/main.go
 	cd codegen/generate-aggregator-image && go run .
 
-run:
+run: $(PROOF_IMAGE)
 	$(ZIG_BUILD) run
 
 run-passing:
 	$(MAKE) run
 
-run-failing:
+run-failing: $(PROOF_IMAGE)
 	$(ZIG_BUILD) run -Dembedded-input=invalid -Dembedded-spec=$(EMBEDDED_SPEC)
 
-run-failing-expected:
+# Generate the input outside the `if`, so a generation failure fails this
+# target instead of counting as the expected rejection.
+run-failing-expected: $(PROOF_IMAGE)
 	@if $(MAKE) run-failing; then \
 		echo "expected run-failing to fail"; \
 		exit 1; \
@@ -159,7 +168,7 @@ profile-large-pcs: generate-large-pcs-benchmark
 verify-testdata: generate-testdata
 	git diff --exit-code -- testdata/generated/*.zig testdata/riscv_proof_image.bin
 
-zkc-build: build-r5
+zkc-build: $(PROOF_IMAGE) build-r5
 	$(ELF_TO_JSON) $(R5_BIN) $(IN_BYTES) > $(R5_JSON)
 
 zkc-verify: zkc-build
@@ -168,14 +177,14 @@ zkc-verify: zkc-build
 zkc-verify-passing:
 	$(MAKE) zkc-verify
 
-zkc-verify-failing:
+zkc-verify-failing: $(PROOF_IMAGE)
 	$(ZIG_BUILD) --release=small -Dstrip=true -Dr5=true \
 		-Dembedded-input=invalid -Dembedded-spec=$(EMBEDDED_SPEC) \
 		-Ddisable-accelerators=$(DISABLE_ACCELERATORS)
 	$(ELF_TO_JSON) $(R5_BIN) $(IN_BYTES) > $(R5_JSON)
 	$(ZKC) exec $(R5_JSON) $(ZKC_MAIN)
 
-zkc-verify-failing-expected:
+zkc-verify-failing-expected: $(PROOF_IMAGE)
 	@if $(MAKE) zkc-verify-failing; then \
 		echo "expected zkc-verify-failing to fail"; \
 		exit 1; \
@@ -184,11 +193,13 @@ zkc-verify-failing-expected:
 	fi
 
 zkc-verify-aggregator: IN_BYTES := @$(PAIR_IMAGE)
-zkc-verify-aggregator: build-r5-aggregator $(PAIR_IMAGE)
+# $(PAIR_IMAGE) first: on a fresh checkout it also generates the RISC-V system
+# the build needs.
+zkc-verify-aggregator: $(PAIR_IMAGE) build-r5-aggregator
 	$(ELF_TO_JSON) $(R5_BIN) $(IN_BYTES) > $(R5_JSON)
 	$(ZKC) exec $(R5_JSON) $(ZKC_MAIN)
 
-profile-zkc-case:
+profile-zkc-case: $(PROOF_IMAGE)
 	@$(ZIG_BUILD) --release=small -Dstrip=true -Dr5=true \
 		-Dembedded-input=$(EMBEDDED_INPUT) -Dembedded-spec=$(EMBEDDED_SPEC) \
 		-Dverifier-profiling=true -Dr5-marks=true

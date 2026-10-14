@@ -1,4 +1,3 @@
-const std = @import("std");
 const builtin = @import("builtin");
 const verifier_ray = @import("verifier_ray");
 const embedded_data = @import("embedded_data");
@@ -178,8 +177,12 @@ fn loadNativeInput() *const verifier.VerifyInput {
         return &embedded_input;
     }
 
+    // The image is untrusted. Relocation is memory-safe on any bytes, and the
+    // result is validated at the layout the verifier will read, exactly as
+    // the R5 loader validates it at `_in_start`.
     const img = mapNativeImage(native_input_path);
     image_relocation.rebase(img.ptr, img.len, input_guest_base, @intFromPtr(img.ptr));
+    image_relocation.validateImage(img.ptr, img.len, @intFromPtr(img.ptr)) catch exitNative(1);
     return @ptrCast(@alignCast(img.ptr));
 }
 
@@ -193,29 +196,12 @@ fn loadNativePairInput() verifier.AggregatorInput {
         @compileError("native verifier libc path currently supports x86_64/aarch64 Linux and macOS only");
     }
 
+    // Relocate, then validate at the mapped layout (see `loadNativeInput`).
     const img = mapNativeImage(native_pair_input_path);
-    if (img.len < image_relocation.pair_header_len) exitNative(1);
-    const a_offset = image_relocation.imageOffset(
-        std.mem.readInt(u64, img[0..8], .little),
-        input_guest_base,
-    ) catch exitNative(1);
-    const b_offset = image_relocation.imageOffset(
-        std.mem.readInt(u64, img[8..16], .little),
-        input_guest_base,
-    ) catch exitNative(1);
-    if (a_offset >= b_offset or b_offset > img.len) exitNative(1);
-    image_relocation.validateImage(img.ptr + a_offset, b_offset - a_offset, input_guest_base + a_offset) catch exitNative(1);
-    image_relocation.validateImage(img.ptr + b_offset, img.len - b_offset, input_guest_base + b_offset) catch exitNative(1);
     image_relocation.rebasePair(img.ptr, img.len, input_guest_base, @intFromPtr(img.ptr)) catch exitNative(1);
-    return readAggregatorInput(img.ptr);
-}
-
-// Reinterprets a mapped/rebased pair image as `AggregatorInput`. The header's
-// two fields are absolute pointers written by the encoder
-// (`EncodeAggregatorPair`), already valid at the image's current address.
-fn readAggregatorInput(base: [*]const u8) verifier.AggregatorInput {
-    const header: *const verifier.AggregatorInput = @ptrCast(@alignCast(base));
-    return header.*;
+    const base = @intFromPtr(img.ptr);
+    const pair = image_relocation.validatePair(img.ptr, img.len, base) catch exitNative(1);
+    return .{ .a = @ptrFromInt(base + pair.a), .b = @ptrFromInt(base + pair.b) };
 }
 
 fn loadR5Input() *const verifier.VerifyInput {
@@ -227,8 +213,12 @@ fn loadR5Input() *const verifier.VerifyInput {
     }
 
     // The zkc JSON input writer places the proof image bytes directly at
-    // `_in_start`, already relocated for GuestBase.
-    return @ptrCast(@alignCast(&_in_start));
+    // `_in_start`, already relocated for GuestBase. The bytes are untrusted:
+    // validate them before casting.
+    const input_start = @intFromPtr(&_in_start);
+    const input: [*]const u8 = @ptrCast(&_in_start);
+    image_relocation.validateImage(input, @intFromPtr(&_in_end) - input_start, input_start) catch exitR5(1);
+    return @ptrCast(@alignCast(input));
 }
 
 fn loadR5PairInput() verifier.AggregatorInput {
@@ -239,26 +229,12 @@ fn loadR5PairInput() verifier.AggregatorInput {
     // The zkc JSON input writer places the pair image bytes directly at
     // `_in_start`, already relocated for GuestBase: a two-pointer
     // `AggregatorInput` header followed by its two `VerifyInput` sub-images.
-    // The header is untrusted, so read it as raw integers and only form the
-    // non-null, aligned `*const VerifyInput` pointers once they are validated.
+    // The header is untrusted, so `validatePair` reads it as raw integers and
+    // validates both members; only then are the typed pointers formed.
     const input_start = @intFromPtr(&_in_start);
-    const input_end = @intFromPtr(&_in_end);
-    const header: [*]const u8 = @ptrCast(&_in_start);
-    const a_address = std.math.cast(usize, std.mem.readInt(u64, header[0..8], .little)) orelse exitR5(1);
-    const b_address = std.math.cast(usize, std.mem.readInt(u64, header[8..16], .little)) orelse exitR5(1);
-
-    // Proof A must start right after the header, matching the native loader
-    // (`rebasePair`) and the encoder (`EncodeAggregatorPair`).
-    if (a_address != input_start + image_relocation.pair_header_len) exitR5(1);
-    if (b_address < a_address + @sizeOf(verifier.VerifyInput) or
-        b_address % @alignOf(verifier.VerifyInput) != 0 or
-        b_address > input_end - @sizeOf(verifier.VerifyInput))
-    {
-        exitR5(1);
-    }
-    image_relocation.validateImage(@ptrFromInt(a_address), b_address - a_address, a_address) catch exitR5(1);
-    image_relocation.validateImage(@ptrFromInt(b_address), input_end - b_address, b_address) catch exitR5(1);
-    return .{ .a = @ptrFromInt(a_address), .b = @ptrFromInt(b_address) };
+    const input: [*]const u8 = @ptrCast(&_in_start);
+    const pair = image_relocation.validatePair(input, @intFromPtr(&_in_end) - input_start, input_start) catch exitR5(1);
+    return .{ .a = @ptrFromInt(input_start + pair.a), .b = @ptrFromInt(input_start + pair.b) };
 }
 
 fn exitNative(code: u8) noreturn {
