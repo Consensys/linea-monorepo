@@ -18,9 +18,11 @@ import maru.test.cluster.MaruCluster
 import maru.test.cluster.NodeRole
 import maru.test.cluster.assertSameCanonicalElChain
 import maru.test.cluster.configureLoggers
+import maru.test.extensions.getBlockByTag
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility.await
 import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
@@ -30,6 +32,7 @@ import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.methods.response.EthBlock
 import testutils.Checks.getMinedBlocks
 import testutils.Checks.verifyBlockTime
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -82,17 +85,12 @@ class MaruConsensusSwitchTest {
 
   @Test
   fun `follower node correctly switches from QBFT to POS after peering with Sequencer validator`() {
-    val clusterStartupMargin = 40UL
+    val clusterStartupMargin = 20.seconds
     val expectedBlocksBeforeSwitch = 5
-    var currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
-    val shanghaiTimestamp = currentTimestamp + clusterStartupMargin + expectedBlocksBeforeSwitch.toULong()
-    val cancunTimestamp = shanghaiTimestamp + 10u
-    val pragueTimestamp = cancunTimestamp + 10u
-
-    // Send one tx per ~1s block from now until shortly past pragueTimestamp so the chain actually
-    // traverses QBFT -> Paris -> Shanghai -> Cancun -> Prague during the test run.
-    val postPragueBuffer = 10UL
-    val totalBlocksToProduce = (pragueTimestamp + postPragueBuffer - currentTimestamp).toInt()
+    var currentTimestamp = Clock.System.now()
+    val shanghaiTimestamp = currentTimestamp + clusterStartupMargin + expectedBlocksBeforeSwitch.seconds
+    val cancunTimestamp = shanghaiTimestamp + 5.seconds
+    val pragueTimestamp = cancunTimestamp + 5.seconds
 
     // QBFT genesis TD = 1 and each QBFT block adds difficulty 1, so block #N has TD = N + 1.
     // Setting TTD = expectedBlocksBeforeSwitch + 1 makes that block the terminal PoW block,
@@ -104,12 +102,13 @@ class MaruConsensusSwitchTest {
     )
 
     cluster = MaruCluster(
+      blockTimeSeconds = 1u,
       terminalTotalDifficulty = ttd,
       chainForks = mapOf(
         Instant.fromEpochSeconds(0) to ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
-        Instant.fromEpochSeconds(shanghaiTimestamp.toLong()) to ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
-        Instant.fromEpochSeconds(cancunTimestamp.toLong()) to ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
-        Instant.fromEpochSeconds(pragueTimestamp.toLong()) to ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
+        shanghaiTimestamp to ChainFork(ClFork.QBFT_PHASE0, ElFork.Shanghai),
+        cancunTimestamp to ChainFork(ClFork.QBFT_PHASE0, ElFork.Cancun),
+        pragueTimestamp to ChainFork(ClFork.QBFT_PHASE0, ElFork.Prague),
       ),
 
     ).addNode(NodeRole.Sequencer, withBesuEl = true) { nodeBuilder ->
@@ -133,34 +132,38 @@ class MaruConsensusSwitchTest {
         assertThat(followerMaruNode.p2pNetwork.peerCount).isGreaterThanOrEqualTo(1)
       }
     log.info("Sending transactions")
-    repeat(totalBlocksToProduce) {
+    do {
       transactionsHelper.run {
         validatorBesuNode.sendTransactionAndAssertExecution(
           logger = log,
           recipient = createAccount("pre-switch account"),
-          amount = Amount.ether(100),
+          amount = Amount.ether(1),
         )
       }
-    }
+    } while (Clock.System.now() < pragueTimestamp + 2.seconds)
 
-    currentTimestamp = (System.currentTimeMillis() / 1000).toULong()
-    log.info("Current timestamp: $currentTimestamp, prague switch timestamp: $pragueTimestamp")
-    assertThat(currentTimestamp).isGreaterThan(pragueTimestamp)
+    await()
+      .atMost(3.seconds.toJavaDuration())
+      .pollInterval(100.milliseconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(Instant.fromEpochSeconds(validatorBesuNode.getBlockByTag("latest").timestamp.toLong()))
+          .isGreaterThanOrEqualTo(pragueTimestamp)
+      }
 
+    val sequencerHead = validatorBesuNode.getBlockByTag("latest").number.toInt()
     // Wait for both nodes to have all blocks before verifying contents.
     // The follower may still be syncing when the validator has already committed all blocks.
-    cluster.assertSameCanonicalElChain(totalBlocksToProduce.toULong(), timeout = 100.seconds)
-    // checkAllNodesHaveSameBlocks(totalBlocksToProduce, validatorBesuNode, followerBesuNode, timeout = 180.seconds)
+    cluster.assertSameCanonicalElChain(sequencerHead.toULong(), timeout = 100.seconds)
 
     verifyConsensusSwitch(
       besuNode = validatorBesuNode,
       expectedBlocksBeforeSwitch = expectedBlocksBeforeSwitch,
-      totalBlocksToProduce = totalBlocksToProduce,
+      totalBlocksToProduce = sequencerHead,
     )
     verifyConsensusSwitch(
       besuNode = followerBesuNode,
       expectedBlocksBeforeSwitch = expectedBlocksBeforeSwitch,
-      totalBlocksToProduce = totalBlocksToProduce,
+      totalBlocksToProduce = sequencerHead,
     )
   }
 
