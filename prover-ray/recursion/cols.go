@@ -150,3 +150,24 @@ func cellLanes(lanes []wiop.Expression) [CellWidth]wiop.Expression {
 	}
 	return [CellWidth]wiop.Expression(lanes)
 }
+
+// elemConst returns the constant v, as a scalar expression.
+func elemConst(v field.Element) wiop.Expression { return wiop.NewConstantField(v) }
+
+// sum returns the sum of exprs (at least one).
+func sum(exprs ...wiop.Expression) wiop.Expression {
+	res := exprs[0]
+	for _, e := range exprs[1:] {
+		res = wiop.Add(res, e)
+	}
+	return res
+}
+
+// prod returns the product of exprs (at least one).
+func prod(exprs ...wiop.Expression) wiop.Expression {
+	res := exprs[0]
+	for _, e := range exprs[1:] {
+		res = wiop.Mul(res, e)
+	}
+	return res
+}
