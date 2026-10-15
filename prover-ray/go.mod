@@ -6,7 +6,7 @@ require (
 	github.com/LFDT-Lineth/lineth-monorepo/arithmetization v0.0.0-20261008190112-dc78b74915f1
 	github.com/LFDT-Lineth/zkc v1.2.33
 	github.com/consensys/gnark v0.14.1-0.20260219004710-bbfb2f70a565
-	github.com/consensys/gnark-crypto v0.22.0
+	github.com/consensys/gnark-crypto v0.22.1-0.20261014224656-bf76cc82bdd1
 	github.com/ethereum/go-ethereum v1.17.0
 	github.com/go-playground/assert/v2 v2.2.0
 	github.com/holiman/uint256 v1.3.2
@@ -62,5 +62,3 @@ require (
 )
 
 tool github.com/LFDT-Lineth/zkc/cmd/zkc
-
-replace github.com/consensys/gnark-crypto => github.com/YaoJGalteland/gnark-crypto v0.0.0-20261012132424-5a677ef13522

@@ -6,8 +6,6 @@ github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20251001021608
 github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20251001021608-1fe7b43fc4d6/go.mod h1:ioLG6R+5bUSO1oeGSDxOV3FADARuMoytZCSX6MEMQkI=
 github.com/StackExchange/wmi v1.2.1 h1:VIkavFPXSjcnS+O8yTq7NI32k0R5Aj+v39y29VYDOSA=
 github.com/StackExchange/wmi v1.2.1/go.mod h1:rcmrprowKIVzvc+NUiLncP2uuArMWLCbu9SBzvHz7e8=
-github.com/YaoJGalteland/gnark-crypto v0.0.0-20261012132424-5a677ef13522 h1:aecccZvANu4919gcizoLKb766rwM1Azdc3pFRo118oQ=
-github.com/YaoJGalteland/gnark-crypto v0.0.0-20261012132424-5a677ef13522/go.mod h1:HL8XflRG4cvau1PEG3CWBTD2kkzUzdlqZF6BBgy57F8=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/bits-and-blooms/bitset v1.25.0 h1:0Ro0qF4abCkM6SqWPVj29sFhAbMPAZpaDD7xhJ10beM=
@@ -25,6 +23,8 @@ github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMn
 github.com/chzyer/test v1.0.0/go.mod h1:2JlltgoNkt4TW/z9V/IzDdFaMTM2JPIi26O1pF38GC8=
 github.com/consensys/gnark v0.14.1-0.20260219004710-bbfb2f70a565 h1:NlOAmbLYsVb/hcuOBxza6CAA+233tB0eFiunGVEMyv4=
 github.com/consensys/gnark v0.14.1-0.20260219004710-bbfb2f70a565/go.mod h1:EoWWbEboQRydCqJDSA7zrFxucIeoy/5R+MDx04oFpF4=
+github.com/consensys/gnark-crypto v0.22.1-0.20261014224656-bf76cc82bdd1 h1:ZVblfiooUoGIMGnjzIUkhNC+n0c64B6EoYvwBjejxDw=
+github.com/consensys/gnark-crypto v0.22.1-0.20261014224656-bf76cc82bdd1/go.mod h1:HL8XflRG4cvau1PEG3CWBTD2kkzUzdlqZF6BBgy57F8=
 github.com/cpuguy83/go-md2man/v2 v2.0.6/go.mod h1:oOW0eioCTA6cOiMLiUPZOpcVxMig6NIQQ7OS05n1F4g=
 github.com/crate-crypto/go-eth-kzg v1.4.0 h1:WzDGjHk4gFg6YzV0rJOAsTK4z3Qkz5jd4RE3DAvPFkg=
 github.com/crate-crypto/go-eth-kzg v1.4.0/go.mod h1:J9/u5sWfznSObptgfa92Jq8rTswn6ahQWEuiLHOjCUI=
