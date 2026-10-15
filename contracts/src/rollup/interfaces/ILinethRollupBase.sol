@@ -43,18 +43,6 @@ interface ILinethRollupBase {
   }
 
   /**
-   * @notice Data-availability stream position supplied during finalization.
-   * @dev DEPRECATED: the position is now tracked on-chain via `currentDataRollingHash`/
-   *   `currentDataAvailabilityOffset`; this struct is retained only for documentation.
-   * @param prevDataRollingHash The previously-finalized end dataRollingHash (parent position accumulator).
-   * @param prevOffset The previously-finalized end offset within its chunk (0 == fresh-start sentinel).
-   */
-  struct StreamPosition {
-    bytes32 prevDataRollingHash;
-    uint256 prevOffset;
-  }
-
-  /**
    * @notice Supporting data for finalization with proof.
    * @dev Dynamic-sized fields are placed last for efficient keccaking on public input.
    * @param parentBlockHash The expected L2 parent block hash at the start of this finalization. Execution-rooting continuity check.
@@ -73,10 +61,12 @@ interface ILinethRollupBase {
    * @param parentDataRollingHash The parent dataRollingHash this finalization range starts from. Must match
    *   the on-chain `currentDataRollingHash`.
    * @param endDataRollingHash The end dataRollingHash this finalization range finishes at. Must have been anchored by a prior submission.
-   * @param startOffset The starting stream offset of this finalization range. Must match the on-chain
-   *   `currentDataAvailabilityOffset`, and must lie in `[0, MAX_OFFSET]`.
-   * @param endOffset The ending stream offset of this finalization range (bytes consumed of the last chunk).
-   *   Must lie in `[0, MAX_OFFSET]`. Calldata-based submissions are open-ended in length and always use 0.
+   * @param parentDataTailTakeBytes Bytes taken from the tail of the first chunk's payload to start this
+   *   range. Must match the on-chain `currentDataTailBytes` and lie in `[0, MAX_DATA_TAIL_BYTES]`.
+   * @param finalDataTailDiscardBytes Bytes left unconsumed at the tail of the last chunk's payload after
+   *   this range. Must lie in `[0, MAX_DATA_TAIL_BYTES]`; always 0 for calldata submissions. If
+   *   `parentDataRollingHash == endDataRollingHash` (same shared chunk, no new chunk anchored),
+   *   `parentDataTailTakeBytes` must be strictly greater than `finalDataTailDiscardBytes`.
    * @param l2MerkleRoots is an array of L2 message Merkle roots of depth l2MerkleTreesDepth between last finalized block and finalSubmissionData.finalBlockNumber.
    * @param filteredAddresses is an array of addresses that are filtered from forced transactions.
    * @param verifierKeys is an array of guest-program verifier keys used in this finalization batch.
@@ -99,8 +89,8 @@ interface ILinethRollupBase {
     bytes32 finalBlockHash;
     bytes32 parentDataRollingHash;
     bytes32 endDataRollingHash;
-    uint256 startOffset;
-    uint256 endOffset;
+    uint256 parentDataTailTakeBytes;
+    uint256 finalDataTailDiscardBytes;
     bytes32[] l2MerkleRoots;
     address[] filteredAddresses;
     bytes32[] verifierKeys;
@@ -148,7 +138,8 @@ interface ILinethRollupBase {
    * @param startBlockNumber The indexed L2 block number indicating which block the finalization the data starts from.
    * @param endBlockNumber The indexed L2 block number indicating which block the finalization the data ends on.
    * @param endDataRollingHash The indexed end dataRollingHash of the finalized DA stream position.
-   * @param endOffset The end offset within the last-folded chunk of the finalized DA stream position.
+   * @param finalDataTailDiscardBytes The number of bytes left unconsumed at the tail of the last-folded
+   *   chunk of the finalized DA stream position.
    * @param parentBlockHash The parent L2 block hash that the current finalization starts from.
    *   Will be EMPTY_HASH on the first post-upgrade finalization (migration marker).
    * @param finalBlockHash The L2 block hash that the current finalization ends on.
@@ -157,7 +148,7 @@ interface ILinethRollupBase {
     uint256 indexed startBlockNumber,
     uint256 indexed endBlockNumber,
     bytes32 indexed endDataRollingHash,
-    uint256 endOffset,
+    uint256 finalDataTailDiscardBytes,
     bytes32 parentBlockHash,
     bytes32 finalBlockHash
   );
@@ -245,14 +236,23 @@ interface ILinethRollupBase {
   error DataRollingHashNotContinuous(bytes32 expected, bytes32 value);
 
   /**
-   * @dev Thrown when the start offset does not equal `currentDataAvailabilityOffset`.
+   * @dev Thrown when `parentDataTailTakeBytes` does not equal `currentDataTailBytes`.
    */
-  error StartOffsetNotContinuous(uint256 previousOffset, uint256 startOffset);
+  error ParentDataTailTakeBytesNotContinuous(uint256 previousDataTailBytes, uint256 parentDataTailTakeBytes);
 
   /**
-   * @dev Thrown when a start or end offset is outside the valid range `[0, MAX_OFFSET]`.
+   * @dev Thrown when `parentDataTailTakeBytes` or `finalDataTailDiscardBytes` is outside the valid range
+   *   `[0, MAX_DATA_TAIL_BYTES]`.
    */
-  error OffsetOutOfRange(uint256 offset);
+  error DataTailBytesOutOfRange(uint256 dataTailBytes);
+
+  /**
+   * @dev Thrown when `parentDataRollingHash == endDataRollingHash` (this finalization does not anchor a new
+   *   chunk — it only advances further into an already-anchored, still-shared chunk) but
+   *   `parentDataTailTakeBytes` is not strictly greater than `finalDataTailDiscardBytes`, i.e. this
+   *   finalization would make no forward progress within that chunk.
+   */
+  error InvalidDataTailProgression(uint256 parentDataTailTakeBytes, uint256 finalDataTailDiscardBytes);
 
   /**
    * @dev Thrown when the rollup is missing a forced transaction in the finalization block range.

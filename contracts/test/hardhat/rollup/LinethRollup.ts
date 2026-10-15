@@ -370,7 +370,7 @@ describe("Lineth Rollup contract", () => {
 
       expect(await linethRollup.currentFinalizedShnarf_DEPRECATED()).to.equal(HASH_ZERO);
       expect(await linethRollup.currentDataRollingHash()).to.equal(legacyFinalizedShnarf);
-      expect(await linethRollup.currentDataAvailabilityOffset()).to.equal(0n);
+      expect(await linethRollup.currentDataTailBytes()).to.equal(0n);
       expect(await linethRollup.dataRollingHashExists(legacyFinalizedShnarf)).to.equal(1n);
     });
 

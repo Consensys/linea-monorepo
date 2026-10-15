@@ -334,8 +334,8 @@ export function proofDataToFinalizationParams(context: ProofFinalizationContext)
     // Fresh-start stream position: continue from the live currentDataRollingHash (0 == genesis) and span to the end.
     parentDataRollingHash: stream?.parentDataRollingHash ?? GENESIS_DATA_ROLLING_HASH,
     endDataRollingHash: stream?.endDataRollingHash ?? GENESIS_DATA_ROLLING_HASH,
-    startOffset: 0n,
-    endOffset: 0n,
+    parentDataTailTakeBytes: 0n,
+    finalDataTailDiscardBytes: 0n,
     verifierKeys: [],
   };
 }
@@ -361,8 +361,8 @@ export async function generateFinalizationData(overrides?: Partial<FinalizationD
     finalBlockHash: generateRandomBytes(32),
     parentDataRollingHash: GENESIS_DATA_ROLLING_HASH,
     endDataRollingHash: HASH_ZERO,
-    startOffset: 0n,
-    endOffset: 0n,
+    parentDataTailTakeBytes: 0n,
+    finalDataTailDiscardBytes: 0n,
     verifierKeys: [],
     ...overrides,
   };

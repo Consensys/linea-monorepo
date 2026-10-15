@@ -48,8 +48,8 @@ export type FinalizationData = {
   finalBlockHash: string;
   parentDataRollingHash: string;
   endDataRollingHash: string;
-  startOffset: bigint;
-  endOffset: bigint;
+  parentDataTailTakeBytes: bigint;
+  finalDataTailDiscardBytes: bigint;
   verifierKeys: string[];
 };
 

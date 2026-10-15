@@ -20,7 +20,9 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   using FinalizedStateHashing for *;
 
   /// @notice Contains the minimum gas allowed for a forced transaction.
-  uint256 private constant MIN_GAS_LIMIT = 21000;
+  /// @dev Configurable at deployment so it can be raised for future L2 gas cost increases.
+  ///   TODO(Glamsterdam): raise by ~189k gas ahead of that fork.
+  uint256 public immutable MIN_GAS_LIMIT;
 
   /// @notice Contains the destination address to store the forced transactions on.
   IAcceptForcedTransactions public immutable LINEA_ROLLUP;
@@ -58,6 +60,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     address _rollup,
     uint256 _destinationChainId,
     uint256 _l2BlockBuffer,
+    uint256 _minGasLimit,
     uint256 _maxGasLimit,
     uint256 _maxInputLengthBuffer,
     address _defaultAdmin,
@@ -68,7 +71,9 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     require(_rollup != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_destinationChainId != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_l2BlockBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_minGasLimit != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_maxGasLimit != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_minGasLimit <= _maxGasLimit, MinGasLimitExceedsMaxGasLimit(_minGasLimit, _maxGasLimit));
     require(_maxInputLengthBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_defaultAdmin != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());
@@ -78,6 +83,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     LINEA_ROLLUP = IAcceptForcedTransactions(_rollup);
     DESTINATION_CHAIN_ID = _destinationChainId;
     L2_BLOCK_BUFFER = _l2BlockBuffer;
+    MIN_GAS_LIMIT = _minGasLimit;
     MAX_GAS_LIMIT = _maxGasLimit;
     MAX_INPUT_LENGTH_LIMIT = _maxInputLengthBuffer;
     ADDRESS_FILTER = IAddressFilter(_addressFilter);

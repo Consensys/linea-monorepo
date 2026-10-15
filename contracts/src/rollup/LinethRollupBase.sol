@@ -52,10 +52,9 @@ abstract contract LinethRollupBase is
   /// @notice The empty hash value.
   bytes32 internal constant EMPTY_HASH = 0x0;
 
-  /// @notice Maximum valid DA stream offset within a single EIP-4844 blob chunk (blob byte length - 1).
-  /// @dev `startOffset`/`endOffset` on finalization must lie in `[0, MAX_OFFSET]`. Calldata-based
-  ///   submissions are open-ended in length and so always carry offset 0 (see `_finalizeBlocks`).
-  uint256 internal constant MAX_OFFSET = 131071;
+  /// @notice Maximum valid `parentDataTailTakeBytes`/`finalDataTailDiscardBytes` value: a blob's
+  ///   254-bit-packed usable payload length, minus one. Calldata submissions always use 0.
+  uint256 internal constant MAX_DATA_TAIL_BYTES = 130046;
 
   /// @notice This is the ABI version and not the reinitialize version.
   string private constant _CONTRACT_VERSION = "9.0";
@@ -129,20 +128,18 @@ abstract contract LinethRollupBase is
   /**
    * @notice The current live end dataRollingHash of the finalized DA stream position.
    * @dev Directly readable on-chain so the coordinator can determine where to build the next
-   *   submission/finalization from. EMPTY_HASH with `currentDataAvailabilityOffset == 0` marks a
+   *   submission/finalization from. EMPTY_HASH with `currentDataTailBytes == 0` marks a
    *   fresh network or one awaiting the one-time legacy-shnarf bridge (see `currentFinalizedShnarf_DEPRECATED`).
    * @dev Appended at the end of the layout (two slots from `__gap_LineaRollup`) to avoid shifting existing slots.
    */
   bytes32 public currentDataRollingHash;
 
   /**
-   * @notice The current live end offset (bytes consumed of the last-folded chunk) of the finalized
-   *   DA stream position, paired with `currentDataRollingHash`.
-   * @dev Calldata-based submissions are open-ended in length (not bound to a fixed blob size), so
-   *   their stream position always carries offset 0; only EIP-4844 blob submissions advance a
-   *   non-zero offset within a chunk.
+   * @notice The last finalization's `finalDataTailDiscardBytes`, paired with `currentDataRollingHash`.
+   *   The next finalization's `parentDataTailTakeBytes` must equal this value.
+   * @dev Always 0 for calldata-based submissions; only EIP-4844 blob submissions advance it.
    */
-  uint256 public currentDataAvailabilityOffset;
+  uint256 public currentDataTailBytes;
 
   /// @dev Keep 46 free storage slots for inheriting contracts (reduced from 48 for the two new slots above).
   uint256[46] private __gap_LineaRollup;
@@ -155,7 +152,7 @@ abstract contract LinethRollupBase is
   /**
    * @notice Initializes LinethRollup and underlying service dependencies - used for new networks only.
    * @dev `currentDataRollingHash` is deterministically seeded from `initialBlockHash` and anchored into
-   *   `_dataRollingHashExists`. `currentDataAvailabilityOffset`/`currentFinalizedShnarf_DEPRECATED` are
+   *   `_dataRollingHashExists`. `currentDataTailBytes`/`currentFinalizedShnarf_DEPRECATED` are
    *   left at zero — fresh networks have no legacy shnarf to migrate from.
    * @param _initializationData The initial data used for contract initialization.
    */
@@ -508,23 +505,42 @@ abstract contract LinethRollupBase is
 
     require(_finalizationData.finalBlockHash != EMPTY_HASH, FinalizationBlockHashIsZeroHash());
 
-    // Checked as a pair against currentDataRollingHash/currentDataAvailabilityOffset: the same
-    // dataRollingHash can recur at different offsets, so both must match exactly.
+    // Checked as a pair against currentDataRollingHash/currentDataTailBytes: the same
+    // dataRollingHash can recur at different tail-byte counts, so both must match exactly.
     require(
       _finalizationData.parentDataRollingHash == currentDataRollingHash,
       DataRollingHashNotContinuous(currentDataRollingHash, _finalizationData.parentDataRollingHash)
     );
 
     require(
-      _finalizationData.startOffset == currentDataAvailabilityOffset,
-      StartOffsetNotContinuous(currentDataAvailabilityOffset, _finalizationData.startOffset)
+      _finalizationData.parentDataTailTakeBytes == currentDataTailBytes,
+      ParentDataTailTakeBytesNotContinuous(currentDataTailBytes, _finalizationData.parentDataTailTakeBytes)
     );
 
-    // Both offsets must lie within a single blob chunk. Calldata-based submissions are open-ended
-    // in length and always carry offset 0, so they satisfy this trivially; blob submissions are
-    // bounded by the EIP-4844 blob byte length.
-    require(_finalizationData.startOffset <= MAX_OFFSET, OffsetOutOfRange(_finalizationData.startOffset));
-    require(_finalizationData.endOffset <= MAX_OFFSET, OffsetOutOfRange(_finalizationData.endOffset));
+    // Both tail-byte counts must lie within a single blob chunk's unpacked payload. Calldata-based
+    // submissions are open-ended in length and always carry a tail-byte count of 0, so they satisfy
+    // this trivially; blob submissions are bounded by the blob's 254-bit-packed usable byte length.
+    require(
+      _finalizationData.parentDataTailTakeBytes <= MAX_DATA_TAIL_BYTES,
+      DataTailBytesOutOfRange(_finalizationData.parentDataTailTakeBytes)
+    );
+    require(
+      _finalizationData.finalDataTailDiscardBytes <= MAX_DATA_TAIL_BYTES,
+      DataTailBytesOutOfRange(_finalizationData.finalDataTailDiscardBytes)
+    );
+
+    // Same-dataRollingHash guard: no new chunk anchored, so this finalization only advances further
+    // into an already-shared chunk. Forward progress requires parentDataTailTakeBytes >
+    // finalDataTailDiscardBytes (both measure bytes from the same chunk's tail).
+    if (_finalizationData.parentDataRollingHash == _finalizationData.endDataRollingHash) {
+      require(
+        _finalizationData.parentDataTailTakeBytes > _finalizationData.finalDataTailDiscardBytes,
+        InvalidDataTailProgression(
+          _finalizationData.parentDataTailTakeBytes,
+          _finalizationData.finalDataTailDiscardBytes
+        )
+      );
+    }
 
     // DA anchoring: the end dataRollingHash must have been anchored by a prior submission.
     require(
@@ -540,7 +556,7 @@ abstract contract LinethRollupBase is
 
     currentL2BlockNumber = _finalizationData.endBlockNumber;
     currentDataRollingHash = _finalizationData.endDataRollingHash;
-    currentDataAvailabilityOffset = _finalizationData.endOffset;
+    currentDataTailBytes = _finalizationData.finalDataTailDiscardBytes;
     currentFinalizedState = FinalizedStateHashing._computeLastFinalizedState(
       _finalizationData.l1RollingHashMessageNumber,
       _finalizationData.l1RollingHash,
@@ -561,7 +577,7 @@ abstract contract LinethRollupBase is
         ++_lastFinalizedBlock,
         _finalizationData.endBlockNumber,
         _finalizationData.endDataRollingHash,
-        _finalizationData.endOffset,
+        _finalizationData.finalDataTailDiscardBytes,
         parentBlockHash,
         _finalizationData.finalBlockHash
       );
@@ -622,8 +638,8 @@ abstract contract LinethRollupBase is
    *   to optimise hashing ranges.
    * @dev Binds the blob-spanning public-input surface (see
    *   `docs/workflows/operations/blobSubmissionAndFinalization.md`) directly from the plain
-   *   `parentDataRollingHash`/`endDataRollingHash`/`startOffset`/`endOffset` fields, rather than the
-   *   opaque shnarf commitments used previously. Execution continuity is bound via
+   *   `parentDataRollingHash`/`endDataRollingHash`/`parentDataTailTakeBytes`/`finalDataTailDiscardBytes`
+   *   fields, rather than the opaque shnarf commitments used previously. Execution continuity is bound via
    *   `parentBlockHash`/`finalBlockHash`, occupying the position the shnarf pair previously held.
    * @dev IMPORTANT: this changes the public input byte layout vs. the prior version and MUST be
    *   mirrored bit-for-bit by the off-chain prover/circuit — a required, coordinated follow-up
@@ -646,8 +662,8 @@ abstract contract LinethRollupBase is
    *     _finalizationData.l2MerkleTreesDepth,
    *     _finalizationData.parentDataRollingHash,
    *     _finalizationData.endDataRollingHash,
-   *     _finalizationData.startOffset,
-   *     _finalizationData.endOffset,
+   *     _finalizationData.parentDataTailTakeBytes,
+   *     _finalizationData.finalDataTailDiscardBytes,
    *     keccak256(
    *         abi.encodePacked(_finalizationData.l2MerkleRoots)
    *     ),
@@ -673,8 +689,8 @@ abstract contract LinethRollupBase is
    * 0x180   finalBlockHash
    * 0x1a0   parentDataRollingHash
    * 0x1c0   endDataRollingHash
-   * 0x1e0   startOffset
-   * 0x200   endOffset
+   * 0x1e0   parentDataTailTakeBytes
+   * 0x200   finalDataTailDiscardBytes
    * 0x220   l2MerkleRootsLengthLocation
    * 0x240   filteredAddressesLengthLocation
    * 0x260   verifierKeysLengthLocation
@@ -745,8 +761,8 @@ abstract contract LinethRollupBase is
       /**
        * _finalizationData.parentDataRollingHash
        * _finalizationData.endDataRollingHash
-       * _finalizationData.startOffset
-       * _finalizationData.endOffset
+       * _finalizationData.parentDataTailTakeBytes
+       * _finalizationData.finalDataTailDiscardBytes
        */
       calldatacopy(add(mPtr, 0x1a0), add(_finalizationData, 0x1a0), 0x80)
 

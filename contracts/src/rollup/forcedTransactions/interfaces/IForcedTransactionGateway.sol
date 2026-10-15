@@ -78,9 +78,14 @@ interface IForcedTransactionGateway {
   error MaxGasLimitExceeded();
 
   /**
-   * @dev Thrown when the gas limit configured is less than the minimum 21000.
+   * @dev Thrown when the gas limit configured on the transaction is less than `MIN_GAS_LIMIT`.
    */
   error GasLimitTooLow();
+
+  /**
+   * @dev Thrown at construction when `_minGasLimit` is greater than `_maxGasLimit`.
+   */
+  error MinGasLimitExceedsMaxGasLimit(uint256 minGasLimit, uint256 maxGasLimit);
 
   /**
    * @dev Thrown when the input length on the transaction is too long.

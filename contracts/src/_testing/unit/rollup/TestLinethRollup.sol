@@ -44,9 +44,9 @@ contract TestLinethRollup is LinethRollup, CalldataBlobAcceptor {
     currentFinalizedShnarf_DEPRECATED = _legacyShnarf;
   }
 
-  function setCurrentDataPosition(bytes32 _dataRollingHash, uint256 _offset) external {
+  function setCurrentDataPosition(bytes32 _dataRollingHash, uint256 _dataTailBytes) external {
     currentDataRollingHash = _dataRollingHash;
-    currentDataAvailabilityOffset = _offset;
+    currentDataTailBytes = _dataTailBytes;
   }
 
   function setDataRollingHashExistenceValue(bytes32 _dataRollingHash, uint256 _value) external {

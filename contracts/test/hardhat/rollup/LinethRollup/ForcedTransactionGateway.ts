@@ -31,6 +31,7 @@ import {
   LINEA_MAINNET_CHAIN_ID,
   MAX_GAS_LIMIT,
   MAX_INPUT_LENGTH_LIMIT,
+  MIN_FORCED_TRANSACTION_GAS_LIMIT,
   THREE_DAYS_IN_SECONDS,
   DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
   FORCED_TRANSACTION_FEE,
@@ -94,6 +95,7 @@ describe("Lineth Rollup contract: Forced Transactions", () => {
       linethRollupAddr: string;
       chainId: bigint | number;
       blockBuffer: bigint | number;
+      minGasLimit: bigint | number;
       maxGasLimit: bigint | number;
       maxInputLengthLimit: bigint | number;
       securityCouncilAddr: string;
@@ -111,6 +113,7 @@ describe("Lineth Rollup contract: Forced Transactions", () => {
       bigint | number,
       bigint | number,
       bigint | number,
+      bigint | number,
       string,
       string,
       bigint | number,
@@ -119,6 +122,7 @@ describe("Lineth Rollup contract: Forced Transactions", () => {
       config.linethRollupAddr,
       config.chainId,
       config.blockBuffer,
+      config.minGasLimit,
       config.maxGasLimit,
       config.maxInputLengthLimit,
       config.securityCouncilAddr,
@@ -147,6 +151,16 @@ describe("Lineth Rollup contract: Forced Transactions", () => {
         description: "block buffer is set to zero",
         override: { blockBuffer: 0 },
         expectedError: "ZeroValueNotAllowed",
+      },
+      {
+        description: "min gas limit is set to zero",
+        override: { minGasLimit: 0 },
+        expectedError: "ZeroValueNotAllowed",
+      },
+      {
+        description: "min gas limit exceeds max gas limit",
+        override: { minGasLimit: BigInt(MAX_GAS_LIMIT) + 1n },
+        expectedError: "MinGasLimitExceedsMaxGasLimit",
       },
       {
         description: "max gas limit is set to zero",
@@ -188,6 +202,7 @@ describe("Lineth Rollup contract: Forced Transactions", () => {
           linethRollupAddr: await linethRollup.getAddress(),
           chainId: LINEA_MAINNET_CHAIN_ID,
           blockBuffer: THREE_DAYS_IN_SECONDS,
+          minGasLimit: MIN_FORCED_TRANSACTION_GAS_LIMIT,
           maxGasLimit: MAX_GAS_LIMIT,
           maxInputLengthLimit: MAX_INPUT_LENGTH_LIMIT,
           securityCouncilAddr: securityCouncil.address,
@@ -215,6 +230,7 @@ describe("Lineth Rollup contract: Forced Transactions", () => {
           await linethRollup.getAddress(),
           LINEA_MAINNET_CHAIN_ID,
           THREE_DAYS_IN_SECONDS,
+          MIN_FORCED_TRANSACTION_GAS_LIMIT,
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
@@ -235,6 +251,7 @@ describe("Lineth Rollup contract: Forced Transactions", () => {
           await linethRollup.getAddress(),
           LINEA_MAINNET_CHAIN_ID,
           THREE_DAYS_IN_SECONDS,
+          MIN_FORCED_TRANSACTION_GAS_LIMIT,
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
@@ -371,6 +388,39 @@ describe("Lineth Rollup contract: Forced Transactions", () => {
 
       const sendCall = forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
       await expectRevertWithCustomError(forcedTransactionGateway, sendCall, "GasLimitTooLow");
+    });
+
+    it("Should fail if the gas limit is below a configured higher minimum", async () => {
+      // Deploy a gateway with a higher MIN_GAS_LIMIT than the default to demonstrate configurability.
+      const higherMinGasLimit = 50_000n;
+      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway");
+      const forcedTransactionGatewayWithHigherMinGasLimit = (await forcedTransactionGatewayFactory.deploy(
+        await linethRollup.getAddress(),
+        LINEA_MAINNET_CHAIN_ID,
+        THREE_DAYS_IN_SECONDS,
+        higherMinGasLimit,
+        MAX_GAS_LIMIT,
+        MAX_INPUT_LENGTH_LIMIT,
+        securityCouncil.address,
+        await addressFilter.getAddress(),
+        L2_BLOCK_DURATION_SECONDS,
+        BLOCK_NUMBER_DEADLINE_BUFFER,
+      )) as unknown as ForcedTransactionGateway;
+
+      await linethRollup
+        .connect(securityCouncil)
+        .grantRole(FORCED_TRANSACTION_SENDER_ROLE, await forcedTransactionGatewayWithHigherMinGasLimit.getAddress());
+
+      // A gas limit between the default MIN_GAS_LIMIT (21_000) and the new higher minimum (50_000)
+      // succeeds against the default gateway but must now revert against the reconfigured one.
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+      forcedTransaction.gasLimit = MIN_FORCED_TRANSACTION_GAS_LIMIT + 1_000n;
+
+      const sendCall = forcedTransactionGatewayWithHigherMinGasLimit.submitForcedTransaction(
+        forcedTransaction,
+        defaultFinalizedState,
+      );
+      await expectRevertWithCustomError(forcedTransactionGatewayWithHigherMinGasLimit, sendCall, "GasLimitTooLow");
     });
 
     it("Should fail if the calldata input is too long", async () => {
@@ -716,6 +766,7 @@ describe("Lineth Rollup contract: Forced Transactions", () => {
           await linethRollup.getAddress(),
           LINEA_MAINNET_CHAIN_ID,
           THREE_DAYS_IN_SECONDS,
+          MIN_FORCED_TRANSACTION_GAS_LIMIT,
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
@@ -780,6 +831,7 @@ describe("Lineth Rollup contract: Forced Transactions", () => {
           await linethRollup.getAddress(),
           LINEA_MAINNET_CHAIN_ID,
           THREE_DAYS_IN_SECONDS,
+          MIN_FORCED_TRANSACTION_GAS_LIMIT,
           MAX_GAS_LIMIT,
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,

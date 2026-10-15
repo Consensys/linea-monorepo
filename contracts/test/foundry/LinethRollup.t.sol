@@ -34,9 +34,9 @@ contract LinethRollupTestHelper is LinethRollup, CalldataBlobAcceptor {
     currentFinalizedShnarf_DEPRECATED = _legacyShnarf;
   }
 
-  function setCurrentDataPosition(bytes32 _dataRollingHash, uint256 _offset) external {
+  function setCurrentDataPosition(bytes32 _dataRollingHash, uint256 _dataTailBytes) external {
     currentDataRollingHash = _dataRollingHash;
-    currentDataAvailabilityOffset = _offset;
+    currentDataTailBytes = _dataTailBytes;
   }
 
   function renounceRole(
@@ -162,8 +162,8 @@ contract LinethRollupTest is Test {
     finalizationData.finalBlockHash = finalBlockHash;
     finalizationData.parentDataRollingHash = parentDataRollingHash;
     finalizationData.endDataRollingHash = endDataRollingHash;
-    finalizationData.startOffset = 0;
-    finalizationData.endOffset = 100;
+    finalizationData.parentDataTailTakeBytes = 0;
+    finalizationData.finalDataTailDiscardBytes = 100;
     finalizationData.l2MerkleRoots = new bytes32[](0);
     finalizationData.filteredAddresses = new address[](0);
     finalizationData.verifierKeys = new bytes32[](0);
@@ -176,7 +176,7 @@ contract LinethRollupTest is Test {
     assertEq(linethRollup.blockHashes(10), finalBlockHash, "Final block hash not anchored");
     assertEq(linethRollup.currentL2BlockNumber(), 10, "Current L2 block not updated");
     assertEq(linethRollup.currentDataRollingHash(), endDataRollingHash, "currentDataRollingHash not updated");
-    assertEq(linethRollup.currentDataAvailabilityOffset(), 100, "currentDataAvailabilityOffset not updated");
+    assertEq(linethRollup.currentDataTailBytes(), 100, "currentDataTailBytes not updated");
     assertEq(linethRollup.dataRollingHashExists(GENESIS_DATA_ROLLING_HASH), 1, "genesis dataRollingHash not anchored");
   }
 
@@ -231,8 +231,8 @@ contract LinethRollupTest is Test {
     finalizationData.finalBlockHash = keccak256("final-block-hash");
     finalizationData.parentDataRollingHash = parentDataRollingHash;
     finalizationData.endDataRollingHash = keccak256("never-anchored");
-    finalizationData.startOffset = 0;
-    finalizationData.endOffset = 100;
+    finalizationData.parentDataTailTakeBytes = 0;
+    finalizationData.finalDataTailDiscardBytes = 100;
     finalizationData.l2MerkleRoots = new bytes32[](0);
     finalizationData.filteredAddresses = new address[](0);
     finalizationData.verifierKeys = new bytes32[](0);
@@ -265,8 +265,8 @@ contract LinethRollupTest is Test {
     // Wrong parent: does not match the live currentDataRollingHash (deliberately wrong value).
     finalizationData.parentDataRollingHash = keccak256("wrong-prev");
     finalizationData.endDataRollingHash = endDataRollingHash;
-    finalizationData.startOffset = 0;
-    finalizationData.endOffset = 100;
+    finalizationData.parentDataTailTakeBytes = 0;
+    finalizationData.finalDataTailDiscardBytes = 100;
     finalizationData.l2MerkleRoots = new bytes32[](0);
     finalizationData.filteredAddresses = new address[](0);
     finalizationData.verifierKeys = new bytes32[](0);

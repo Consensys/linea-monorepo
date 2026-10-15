@@ -567,6 +567,131 @@ describe("Lineth Rollup contract: Finalization", () => {
       });
     });
 
+    describe("Tail-byte boundary and same-dataRollingHash progression checks", () => {
+      // Mirrors the on-chain `MAX_DATA_TAIL_BYTES` constant (130_046) in LinethRollupBase.sol.
+      const MAX_DATA_TAIL_BYTES = 130_046n;
+
+      // Directly wires up the live DA stream position (via the TestLinethRollup test-only setters)
+      // rather than going through a real submission + finalization, so these checks are independent
+      // of any particular proof/compressed-data fixture. `sameEndDataRollingHash` controls whether
+      // this finalization lands in the same-dataRollingHash branch (triggers InvalidDataTailProgression)
+      // or a normal continuity branch (only the range checks apply).
+      // These checks only exercise storage-level guards (continuity/range/progression) independent of
+      // the actual proof contents, so a verifier that always succeeds is used in place of the real
+      // PLONK verifier (which only accepts a proof matching the exact public input it was generated
+      // for) to avoid coupling these tests to any specific compressed-data/proof fixture.
+      const TRUE_VERIFIER_INDEX = 1;
+
+      async function setUpTailBytesFixture(
+        parentDataTailTakeBytes: bigint,
+        options: { sameEndDataRollingHash?: boolean } = {},
+      ) {
+        const { sameEndDataRollingHash = false } = options;
+
+        const trueVerifierFactory = await ethers.getContractFactory("IntegrationTestTrueVerifier");
+        const trueVerifier = await trueVerifierFactory.deploy();
+        await trueVerifier.waitForDeployment();
+        await linethRollup
+          .connect(securityCouncil)
+          .setVerifierAddress(await trueVerifier.getAddress(), TRUE_VERIFIER_INDEX);
+
+        const parentDataRollingHash = generateRandomBytes(32);
+        const endDataRollingHash = sameEndDataRollingHash ? parentDataRollingHash : generateRandomBytes(32);
+
+        await linethRollup.setCurrentDataPosition(parentDataRollingHash, parentDataTailTakeBytes);
+        await linethRollup.setupParentDataRollingHash(endDataRollingHash);
+
+        const parentBlockHash = await linethRollup.blockHashes(await linethRollup.currentL2BlockNumber());
+
+        const finalizationData = await generateFinalizationData({
+          parentBlockHash,
+          parentDataRollingHash,
+          endDataRollingHash,
+          parentDataTailTakeBytes,
+        });
+
+        await linethRollup.setRollingHash(finalizationData.l1RollingHashMessageNumber, finalizationData.l1RollingHash);
+
+        await linethRollup.setLastFinalizedState(
+          finalizationData.lastFinalizedL1RollingHashMessageNumber,
+          finalizationData.lastFinalizedL1RollingHash,
+          finalizationData.lastFinalizedForcedTransactionNumber,
+          finalizationData.lastFinalizedForcedTransactionRollingHash,
+          finalizationData.lastFinalizedTimestamp,
+        );
+
+        return finalizationData;
+      }
+
+      function finalize(finalizationData: Awaited<ReturnType<typeof setUpTailBytesFixture>>) {
+        return linethRollup
+          .connect(operator)
+          .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TRUE_VERIFIER_INDEX, finalizationData);
+      }
+
+      it("Should accept parentDataTailTakeBytes at the MAX_DATA_TAIL_BYTES boundary", async () => {
+        const finalizationData = await setUpTailBytesFixture(MAX_DATA_TAIL_BYTES);
+        finalizationData.finalDataTailDiscardBytes = 0n;
+
+        await expect(finalize(finalizationData)).to.not.be.reverted;
+        expect(await linethRollup.currentDataTailBytes()).to.equal(0n);
+      });
+
+      it("Should revert with DataTailBytesOutOfRange when parentDataTailTakeBytes exceeds the MAX_DATA_TAIL_BYTES boundary", async () => {
+        const finalizationData = await setUpTailBytesFixture(MAX_DATA_TAIL_BYTES + 1n);
+        finalizationData.finalDataTailDiscardBytes = 0n;
+
+        await expectRevertWithCustomError(linethRollup, finalize(finalizationData), "DataTailBytesOutOfRange", [
+          MAX_DATA_TAIL_BYTES + 1n,
+        ]);
+      });
+
+      it("Should accept finalDataTailDiscardBytes at the MAX_DATA_TAIL_BYTES boundary", async () => {
+        const finalizationData = await setUpTailBytesFixture(0n);
+        finalizationData.finalDataTailDiscardBytes = MAX_DATA_TAIL_BYTES;
+
+        await expect(finalize(finalizationData)).to.not.be.reverted;
+        expect(await linethRollup.currentDataTailBytes()).to.equal(MAX_DATA_TAIL_BYTES);
+      });
+
+      it("Should revert with DataTailBytesOutOfRange when finalDataTailDiscardBytes exceeds the MAX_DATA_TAIL_BYTES boundary", async () => {
+        const finalizationData = await setUpTailBytesFixture(0n);
+        finalizationData.finalDataTailDiscardBytes = MAX_DATA_TAIL_BYTES + 1n;
+
+        await expectRevertWithCustomError(linethRollup, finalize(finalizationData), "DataTailBytesOutOfRange", [
+          MAX_DATA_TAIL_BYTES + 1n,
+        ]);
+      });
+
+      it("Should revert with InvalidDataTailProgression when parentDataTailTakeBytes does not exceed finalDataTailDiscardBytes on a same-dataRollingHash finalization", async () => {
+        const finalizationData = await setUpTailBytesFixture(50n, { sameEndDataRollingHash: true });
+        finalizationData.finalDataTailDiscardBytes = 50n;
+
+        await expectRevertWithCustomError(linethRollup, finalize(finalizationData), "InvalidDataTailProgression", [
+          50n,
+          50n,
+        ]);
+      });
+
+      it("Should revert with InvalidDataTailProgression when parentDataTailTakeBytes is less than finalDataTailDiscardBytes on a same-dataRollingHash finalization", async () => {
+        const finalizationData = await setUpTailBytesFixture(50n, { sameEndDataRollingHash: true });
+        finalizationData.finalDataTailDiscardBytes = 60n;
+
+        await expectRevertWithCustomError(linethRollup, finalize(finalizationData), "InvalidDataTailProgression", [
+          50n,
+          60n,
+        ]);
+      });
+
+      it("Should succeed and advance currentDataTailBytes when parentDataTailTakeBytes exceeds finalDataTailDiscardBytes on a same-dataRollingHash finalization", async () => {
+        const finalizationData = await setUpTailBytesFixture(50n, { sameEndDataRollingHash: true });
+        finalizationData.finalDataTailDiscardBytes = 10n;
+
+        await expect(finalize(finalizationData)).to.not.be.reverted;
+        expect(await linethRollup.currentDataTailBytes()).to.equal(10n);
+      });
+    });
+
     it("Should succeed when sending with pure calldata", async () => {
       await submitCalldataBeforeFinalization(linethRollup.connect(operator), {
         startIndex: 0,
