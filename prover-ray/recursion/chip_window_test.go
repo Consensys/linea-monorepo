@@ -18,7 +18,7 @@ var packKinds = []int{KindScalar, KindE6, KindDigest, KindE6, KindScalar}
 func packProgram(copies bool) (m *Machine, stream []int, length int, lanes [2]int) {
 	m = &Machine{}
 	cp := withCopy(m)
-	items := []int{m.Input(), m.Input(), m.Input(), m.Input(), m.Const(ScalarCell(field.NewElement(3)))}
+	items := []int{m.InputScalar(), m.InputE6(), m.InputDigest(), m.InputE6(), m.Const(ScalarCell(field.NewElement(3)))}
 	stream, length = m.Pack(items, packKinds)
 	lanes = [2]int{m.Lanes(items[2], 2, KindE6), m.Lanes(items[2], 7, KindScalar)}
 	if copies {
@@ -75,7 +75,7 @@ func TestWindowChip(t *testing.T) {
 
 // TestWindowChipRejects: a wrong hint — a stream cell or a Lanes output —
 // written and read consistently, so that the bus balances, is rejected by
-// its windows. Nothing but the windows reads the stream and the lanes. The
+// its windows, or beyond a Lanes output's kind by the witness chip. Nothing but the windows reads the stream and the lanes. The
 // stream's padding lanes are left to its hasher (see Pack).
 func TestWindowChipRejects(t *testing.T) {
 	for name, tamper := range map[string]struct {
@@ -93,6 +93,10 @@ func TestWindowChipRejects(t *testing.T) {
 		"constant item":     {func(s []int, _ [2]int) int { return s[2] }, 5},
 		"lanes output, E6":  {func(_ []int, l [2]int) int { return l[0] }, 3},
 		"lanes output, one": {func(_ []int, l [2]int) int { return l[1] }, 0},
+		// beyond the output's kind, which the windows do not check (only
+		// the witness chip's kind constraints do)
+		"lanes output, E6, lane 6":     {func(_ []int, l [2]int) int { return l[0] }, 6},
+		"lanes output, scalar, lane 3": {func(_ []int, l [2]int) int { return l[1] }, 3},
 	} {
 		t.Run(name, func(t *testing.T) {
 			m, stream, _, lanes := packProgram(false)

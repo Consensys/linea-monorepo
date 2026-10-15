@@ -52,7 +52,7 @@ func PackElements(xs []field.Element) []Cell {
 func (m *Machine) InputStream(length int) []int {
 	res := make([]int, streamCells(length))
 	for i := range res {
-		res[i] = m.Input()
+		res[i] = m.InputDigest()
 	}
 	return res
 }
@@ -75,7 +75,9 @@ type windowInst struct {
 // contiguously as a stream, written by the witness chip as hints, checks every
 // item against its window of the stream, and returns the stream cells and its
 // length in elements. Hashing the stream's first length elements hashes the
-// items.
+// items. An item's kind must cover its cell's kind (KindE6 for an E6 cell, not
+// KindScalar): the lanes beyond the item's kind are not hashed, and only the
+// cell's kind zeroes them.
 func (m *Machine) Pack(items, kinds []int) ([]int, int) {
 	if len(items) != len(kinds) {
 		panic(fmt.Sprintf("Pack: %d items, %d kinds", len(items), len(kinds)))
@@ -87,9 +89,8 @@ func (m *Machine) Pack(items, kinds []int) ([]int, int) {
 	}
 	stream := make([]int, streamCells(length))
 	for i := range stream {
-		stream[i] = m.alloc()
+		stream[i] = m.hint(KindDigest)
 	}
-	m.hints = append(m.hints, stream...)
 	m.packs = append(m.packs, packInst{items: items, kinds: kinds, stream: stream})
 	m.record(instrPack, len(m.packs)-1)
 	g := 0
@@ -110,17 +111,17 @@ func (m *Machine) execPack(p packInst, r *Run) {
 	}
 }
 
-// Lanes returns a cell holding lanes off..off+kind−1 of the cell src, in its
-// lanes 0..kind−1 and zero elsewhere: for instance the E6 value of a
-// challenge digest (Lanes(d, 0, KindE6)), or one of its lanes as a scalar.
-// The witness chip writes it as a hint, and a window checks it against src.
+// Lanes returns a cell of the given kind (scalar or E6) holding lanes
+// off..off+kind−1 of the cell src, in its lanes 0..kind−1 and zero elsewhere:
+// for instance the E6 value of a challenge digest (Lanes(d, 0, KindE6)), or
+// one of its lanes as a scalar. The witness chip writes it as a hint of that
+// kind, which zeroes its other lanes, and a window checks it against src.
 func (m *Machine) Lanes(src, off, kind int) int {
-	checkKind(kind)
+	checkCellKind(kind)
 	if off < 0 || off+kind > CellWidth {
 		panic(fmt.Sprintf("Lanes: lanes %d..%d out of a cell", off, off+kind-1))
 	}
-	out := m.alloc()
-	m.hints = append(m.hints, out)
+	out := m.hint(kind)
 	m.lanes = append(m.lanes, lanesInst{src, off, kind, out})
 	m.record(instrLanes, len(m.lanes)-1)
 	m.Window([]int{src}, off, kind, out)
@@ -163,8 +164,8 @@ func checkKind(k int) {
 //
 //	len_k·(i_k − Σ_o off_o·W_(o+k)) = 0,
 //
-// with len_0 = 1. The item's other lanes are left to its readers: their
-// tuples fix them to zero, or they do not use them. Bus: reads p, q (if
+// with len_0 = 1. The item's other lanes are not checked: they are zero by its
+// writer, when the item's kind covers its cell's kind. Bus: reads p, q (if
 // sel_q) and the item.
 type windowChip struct{ m *Machine }
 

@@ -19,7 +19,7 @@ func bitsProgram(check bool) (*Machine, []Bits) {
 	cp := withCopy(m)
 	var outs []Bits
 	for range bitsValues {
-		out := m.Bits(m.Input(), bitsN)
+		out := m.Bits(m.InputScalar(), bitsN)
 		if check {
 			cp.Copy(out.Shr[3])
 			cp.Copy(out.Bit[2])
