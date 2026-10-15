@@ -64,9 +64,7 @@ class BlobSubmitterAsEIP4844MultipleBlobsPerTx(
             val blobSubmittedEvent = BlobSubmittedEvent(
               endBlockNumber = blobs.last().endBlockNumber,
               endBlockTimestamp = blobs.last().endBlockTime,
-              lastShnarf = blobs.last().expectedShnarf,
               submissionTimestamp = clock.now(),
-              transactionHash = transactionHash.toByteArray(),
             )
             blobSubmittedEventConsumer.accept(blobSubmittedEvent)
           }

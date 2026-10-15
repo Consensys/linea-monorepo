@@ -69,6 +69,6 @@ class LatestBlobSubmittedBlockNumberTracker(initialLatestBlockNumber: ULong) :
 class LatestFinalizationSubmittedBlockNumberTracker(initialLatestBlockNumber: ULong) :
   MaxLongTracker<FinalizationSubmittedEvent>(initialLatestBlockNumber.toLong()) {
   override fun convertToLong(trackable: FinalizationSubmittedEvent): Long {
-    return trackable.aggregationProof.finalBlockNumber
+    return trackable.endBlockNumber.toLong()
   }
 }

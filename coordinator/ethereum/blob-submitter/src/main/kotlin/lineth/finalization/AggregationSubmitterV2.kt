@@ -61,15 +61,12 @@ class AggregationSubmitterV2Impl(
           nonce,
           gasPriceCaps,
         )
-        // val aggregationSubmittedEvent = FinalizationSubmittedEvent(
-        // aggregationProof = finalizationData.aggregationProof,
-        // parentShnarf = parentShnarf,
-        // parentL1RollingHash = parentL1RollingHash,
-        // parentL1RollingHashMessageNumber = parentL1RollingHashMessageNumber,
-        // submissionTimestamp = clock.now(),
-        // transactionHash = transactionHash.toByteArray(),
-        // )
-        // aggregationSubmittedEventConsumer.accept(aggregationSubmittedEvent)
+        val aggregationSubmittedEvent = FinalizationSubmittedEvent(
+          endBlockNumber = finalizationData.endBlockNumber,
+          endBlockTimestamp = finalizationData.finalTimestamp,
+          submissionTimestamp = clock.now(),
+        )
+        aggregationSubmittedEventConsumer.accept(aggregationSubmittedEvent)
       }
     }.whenException { th ->
       logAggregationSubmissionError(blockInterval, th)

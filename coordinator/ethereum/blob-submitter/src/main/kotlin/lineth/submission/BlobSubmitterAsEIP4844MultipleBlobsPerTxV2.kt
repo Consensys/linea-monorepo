@@ -72,6 +72,16 @@ class BlobSubmitterAsEIP4844MultipleBlobsPerTxV2(
             newChainOfFutures
           }
       }
+      .thenPeek {
+        if (!isEthCall) {
+          val blobSubmittedEvent = BlobSubmittedEvent(
+            endBlockNumber = blobRecord.endBlockNumber,
+            endBlockTimestamp = blobRecord.endBlockTimestamp,
+            submissionTimestamp = clock.now(),
+          )
+          blobSubmittedEventConsumer.accept(blobSubmittedEvent)
+        }
+      }
   }
 
   private fun submitBlobsInSingleTx(
@@ -120,16 +130,6 @@ class BlobSubmitterAsEIP4844MultipleBlobsPerTxV2(
           nonce,
           gasPriceCaps,
         )
-        // if (!isEthCall) {
-        //  val blobSubmittedEvent = BlobSubmittedEvent(
-        //    endBlockNumber = blobRecord.endBlockNumber,
-        //    endBlockTimestamp = blobRecord.endBlockTimestamp,
-        //    lastShnarf = storedDataRollingHash, // does anyone consume this variable?
-        //    submissionTimestamp = clock.now(),
-        //    transactionHash = transactionHash.toByteArray(), // or decodeHex()?
-        //  )
-        //  blobSubmittedEventConsumer.accept(blobSubmittedEvent)
-        // }
       }
   }
 

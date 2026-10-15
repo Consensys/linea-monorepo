@@ -64,14 +64,12 @@ class ValidiumBlobSubmitterV2(
               nonce,
               gasPriceCaps,
             )
-            // val blobSubmittedEvent = BlobSubmittedEvent(
-            //  endBlockNumber = blobRecord.endBlockNumber,
-            //  endBlockTimestamp = blobRecord.endBlockTimestamp,
-            //  lastShnarf = blobRecord.dataRollingHash,
-            //  submissionTimestamp = clock.now(),
-            //  transactionHash = transactionHash.toByteArray(),
-            // )
-            // blobSubmittedEventConsumer.accept(blobSubmittedEvent)
+            val blobSubmittedEvent = BlobSubmittedEvent(
+              endBlockNumber = blobRecord.endBlockNumber,
+              endBlockTimestamp = blobRecord.endBlockTimestamp,
+              submissionTimestamp = clock.now(),
+            )
+            blobSubmittedEventConsumer.accept(blobSubmittedEvent)
           }
       }
   }
