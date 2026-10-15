@@ -98,7 +98,8 @@ func (c bitsChip) name() string { return bitsMod }
 func (c bitsChip) rows() int { return BitsWidth * len(c.m.bits) }
 
 func (c bitsChip) setup(cs *cols) {
-	cs.declare(bitsFirst, bitsLast, bitsActive, bitsPow, bitsInlow, bitsChk, bitsAddrV, bitsRAddr, bitsRMult, bitsBAddr, bitsBMult)
+	cs.declare(bitsFirst, bitsLast, bitsActive, bitsPow, bitsInlow, bitsChk,
+		bitsAddrV, bitsRAddr, bitsRMult, bitsBAddr, bitsBMult)
 	for k, inst := range c.m.bits {
 		for i := range BitsWidth {
 			row := k*BitsWidth + i

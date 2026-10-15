@@ -17,7 +17,7 @@ const bitsN = 10
 func bitsProgram(check bool) (*Machine, []Bits) {
 	m := &Machine{}
 	cp := withCopy(m)
-	var outs []Bits
+	outs := make([]Bits, 0, len(bitsValues))
 	for range bitsValues {
 		out := m.Bits(m.InputScalar(), bitsN)
 		if check {
