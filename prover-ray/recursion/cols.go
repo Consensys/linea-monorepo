@@ -8,10 +8,13 @@ import (
 )
 
 // cols holds the values of a chip's columns, by name: its setup columns (from
-// the program) or its witness columns (from an execution).
+// the program) or its witness columns (from an execution). names lists the
+// columns in declaration order, so that the setup columns are created in a
+// deterministic order.
 type cols struct {
-	n    int
-	vals map[string][]field.Element
+	n     int
+	vals  map[string][]field.Element
+	names []string
 }
 
 func newCols(n int) *cols { return &cols{n: n, vals: map[string][]field.Element{}} }
@@ -33,6 +36,7 @@ func (c *cols) get(name string) []field.Element {
 	if !ok {
 		v = make([]field.Element, c.n)
 		c.vals[name] = v
+		c.names = append(c.names, name)
 	}
 	return v
 }
@@ -54,15 +58,17 @@ func laneName(prefix string, i int) string { return fmt.Sprintf("%s%d", prefix, 
 
 // module is a chip's wiop module while the chip defines its constraints: its
 // setup columns (precomputed, from the program's setup values) and its
-// witness columns, created in the witness round on first use.
+// witness columns, created in the witness round on first use (witnessNames
+// lists them in creation order).
 type module struct {
-	name    string
-	sys     *wiop.System
-	mod     *wiop.Module
-	round   *wiop.Round
-	setup   map[string]*wiop.Column
-	witness map[string]*wiop.Column
-	nAssert int
+	name         string
+	sys          *wiop.System
+	mod          *wiop.Module
+	round        *wiop.Round
+	setup        map[string]*wiop.Column
+	witness      map[string]*wiop.Column
+	witnessNames []string
+	nAssert      int
 }
 
 func newModule(sys *wiop.System, round *wiop.Round, name string, n int, setup *cols) *module {
@@ -72,7 +78,8 @@ func newModule(sys *wiop.System, round *wiop.Round, name string, n int, setup *c
 		setup:   map[string]*wiop.Column{},
 		witness: map[string]*wiop.Column{},
 	}
-	for colName, v := range setup.vals {
+	for _, colName := range setup.names {
+		v := setup.vals[colName]
 		m.setup[colName] = m.mod.NewPrecomputedColumn(sys.Context.Childf("%s.%s", name, colName), &wiop.ConcreteVector{Plain: field.VecFromBase(v)})
 	}
 	return m
@@ -93,6 +100,7 @@ func (m *module) w(name string) *wiop.ColumnView {
 	if !ok {
 		c = m.mod.NewColumn(m.sys.Context.Childf("%s.%s", m.name, name), m.round)
 		m.witness[name] = c
+		m.witnessNames = append(m.witnessNames, name)
 	}
 	return c.View()
 }

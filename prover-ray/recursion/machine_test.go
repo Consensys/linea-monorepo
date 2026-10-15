@@ -197,3 +197,24 @@ func TestMachineConstraints(t *testing.T) {
 		})
 	}
 }
+
+// TestCompileDeterministic: compiling the same program twice declares the
+// same columns, in the same order (their IDs are their positions).
+func TestCompileDeterministic(t *testing.T) {
+	columns := func() []string {
+		m, _ := busProgram()
+		p, err := m.Compile()
+		require.NoError(t, err)
+		var res []string
+		for _, mod := range p.modules {
+			for _, c := range mod.mod.Columns {
+				res = append(res, c.Context.Path())
+			}
+		}
+		return res
+	}
+	want := columns()
+	for range 5 {
+		require.Equal(t, want, columns())
+	}
+}

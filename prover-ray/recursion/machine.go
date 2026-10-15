@@ -218,7 +218,8 @@ func (m *Machine) exec(in instr, r *Run) error {
 func (p *Program) Prove(r *Run) (wiop.Proof, wiop.PublicInput) {
 	return p.Sys.Prove(func(rt *wiop.Runtime) {
 		for i, mod := range p.modules {
-			for name, col := range mod.witness {
+			for _, name := range mod.witnessNames {
+				col := mod.witness[name]
 				v, ok := r.witness[i].vals[name]
 				if !ok {
 					v = make([]field.Element, mod.mod.Size())
