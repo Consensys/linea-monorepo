@@ -49,6 +49,9 @@ func TestWindowChip(t *testing.T) {
 	m, stream, length, lanes := packProgram(true)
 	require.Equal(t, 22, length)
 	require.Len(t, stream, 3)
+	// the window rows write the Lanes outputs: the witness chip only writes
+	// the inputs and the stream
+	require.Equal(t, len(m.inputs)+len(stream), witnessChip{m}.rows())
 	p, err := m.Compile()
 	require.NoError(t, err)
 	for _, seed := range []uint64{1, 2} {
@@ -73,10 +76,11 @@ func TestWindowChip(t *testing.T) {
 	}
 }
 
-// TestWindowChipRejects: a wrong hint — a stream cell or a Lanes output —
-// written and read consistently, so that the bus balances, is rejected by
-// its windows, or beyond a Lanes output's kind by the witness chip. Nothing but the windows reads the stream and the lanes. The
-// stream's padding lanes are left to its hasher (see Pack).
+// TestWindowChipRejects: a wrong stream cell (a hint) or Lanes output (written
+// by its window row), consistent on the bus, is rejected by the windows,
+// beyond a Lanes output's kind included. Nothing but the windows reads the
+// stream and the lanes. The stream's padding lanes are left to its hasher
+// (see Pack).
 func TestWindowChipRejects(t *testing.T) {
 	for name, tamper := range map[string]struct {
 		cell func(stream []int, lanes [2]int) int
@@ -93,8 +97,7 @@ func TestWindowChipRejects(t *testing.T) {
 		"constant item":     {func(s []int, _ [2]int) int { return s[2] }, 5},
 		"lanes output, E6":  {func(_ []int, l [2]int) int { return l[0] }, 3},
 		"lanes output, one": {func(_ []int, l [2]int) int { return l[1] }, 0},
-		// beyond the output's kind, which the windows do not check (only
-		// the witness chip's kind constraints do)
+		// beyond the output's kind, zero by its row's strict form
 		"lanes output, E6, lane 6":     {func(_ []int, l [2]int) int { return l[0] }, 6},
 		"lanes output, scalar, lane 3": {func(_ []int, l [2]int) int { return l[1] }, 3},
 	} {
@@ -107,7 +110,29 @@ func TestWindowChipRejects(t *testing.T) {
 			c := tamper.cell(stream, lanes)
 			r.values[c][tamper.lane].SetUint64(5)
 			require.NoError(t, p.trace(r))
-			require.Error(t, proveAndVerify(p, r), "wrong hint accepted")
+			require.Error(t, proveAndVerify(p, r), "wrong cell accepted")
 		})
 	}
+}
+
+// TestPackItemKind: an E6 cell packed as a scalar proves only if its lanes
+// 1..5 are zero: its window reads it zero beyond the packed kind, since the
+// stream (and its hash) holds lane 0 only.
+func TestPackItemKind(t *testing.T) {
+	m := &Machine{}
+	e := m.InputE6()
+	m.Pack([]int{e}, []int{KindScalar})
+	p, err := m.Compile()
+	require.NoError(t, err)
+
+	var x Cell
+	x[0].SetUint64(3)
+	r, err := p.Execute([]Cell{x})
+	require.NoError(t, err)
+	require.NoError(t, proveAndVerify(p, r), "an E6 value in the base field")
+
+	x[1].SetUint64(4)
+	r, err = p.Execute([]Cell{x})
+	require.NoError(t, err)
+	require.Error(t, proveAndVerify(p, r), "lane 1 of an E6 cell packed as a scalar")
 }
