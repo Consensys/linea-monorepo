@@ -8,8 +8,9 @@ import (
 )
 
 // Field keys for the rollup request. Keys in request.go (guestProgramIDKey,
-// chainIDKey, proofRequestKey, the byte sizes) are reused. startOffsetKey,
-// filteredAddressesKey, l2L1MessagesKey, endBlockNumberKey, publicInputsKey,
+// chainIDKey, proofRequestKey, the byte sizes) are reused. parentDataRollingHashKey,
+// parentDataTailTakeBytesKey, filteredAddressesKey, l2L1MessagesKey,
+// endBlockNumberKey, blockCountKey, l2MessagingBlocksOffsetsKey, publicInputsKey,
 // proofKey, and startBlockNumberKey are also used by aggregation_request.go.
 const (
 	decodeRollupOp = "DecodeRollupRequest"
@@ -19,7 +20,6 @@ const (
 	l2ExecutionProofsKey           = "l2ExecutionProofs"
 	parentDataRollingHashKey       = "parentDataRollingHash"
 	parentDataTailTakeBytesKey     = "parentDataTailTakeBytes"
-	startOffsetKey                 = "startOffset"
 	boundaryPrevDataRollingHashKey = "boundaryPrevDataRollingHash"
 
 	blockRlpsKey     = "blockRlps"

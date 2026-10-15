@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const aggregationResponseFixture = "10-18-getZkRollupAggregationProofV1.response.json"
-
 // TestNewRollupResponse_MatchesReferenceShape verifies the placeholder rollup
 // response has the exact V1 field shape (including the 22-field PI) and echoes
 // the routing programVk. Values stay placeholder until the guest lands.

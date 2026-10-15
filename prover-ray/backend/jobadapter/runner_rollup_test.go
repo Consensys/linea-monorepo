@@ -85,7 +85,7 @@ func TestRunner_RunAggregation(t *testing.T) {
 	result := runner.Run(context.Background(), RunRequest{
 		ID:   "agg-1",
 		Type: backend.ProofTypeRollupAggregation,
-		Body: readFixture(t, aggregationRequestFixture),
+		Body: readSpecFixture(t, referenceAggregationRequest),
 	})
 
 	require.Equal(t, RunStatusSuccess, result.Status)
