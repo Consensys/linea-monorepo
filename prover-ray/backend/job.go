@@ -67,7 +67,6 @@ type PublicInputs struct {
 	EndBlockHash                             [32]byte
 	EndBlockNumber                           uint64
 	EndBlockTimestamp                        uint64
-	L2L1MessagesHash                         [32]byte
 	ParentL1L2BridgeRollingHash              [32]byte
 	ParentL1L2BridgeRollingHashMessageNumber uint64
 	EndL1L2BridgeRollingHash                 [32]byte
@@ -79,6 +78,9 @@ type PublicInputs struct {
 	EndProcessedFtxNumber                    uint64
 	FilteredAddressesHash                    [32]byte
 	TxFromsHash                              [32]byte
+	BlockCount                               uint64
+	L2MessagingBlocksOffsets                 []uint16
+	L2L1Messages                             [][32]byte
 }
 
 // Result is the backend's response for a completed [Job].

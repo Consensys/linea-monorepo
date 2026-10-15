@@ -38,7 +38,7 @@ func TestParse_RealOutput(t *testing.T) {
 	assert.Equal(t, hexTo(t, "0x463172c05a4d389f66ba68c6bc3beab68b6d5d6ce143bb6aa536b9ac49469f1b"),
 		got.PublicInputs.TxFromsHash[:])
 
-	assert.Empty(t, got.L2L1Messages)
+	assert.Empty(t, got.PublicInputs.L2L1Messages)
 	assert.Empty(t, got.FilteredAddresses)
 	require.Len(t, got.TxFroms, 1)
 	assert.Equal(t, hexTo(t, "0xd66f224cbd2fabb21b17bb53c56118f32f62ebd6"), got.TxFroms[0][:])
