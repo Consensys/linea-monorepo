@@ -26,41 +26,51 @@ const (
 	windowI = "i" // lanes
 )
 
-// Streams. A stream is a sequence of elements laid out CellWidth per cell,
-// zero padded to whole cells: hashing it absorbs one cell per block (ray's
-// Merkle–Damgård hash absorbs 8-element blocks). The padding lanes of a
-// packed stream are not checked by its windows: its hasher must ignore them
-// (or fix them to zero), knowing the stream's length.
+// Streams. Pack lays items out as the blocks ray's Merkle–Damgård hash
+// (poseidon2.MDHasher, and fiatshamir.FiatShamir on top of it) compresses:
+// the hasher's buffer holds start elements already (0 for a fresh hasher, 1
+// after a Fiat–Shamir challenge: its safeguard zero), the items' elements
+// follow, 8 per block, and the last partial block is left-padded with zeros
+// (as MDHasher.SumDigest does). Pack pins every lane that is not an item's to
+// zero, so the hasher compresses the blocks as they are, from its chained
+// state (zero, or the previous digest), with no padding to handle.
 
 // streamCells is the number of cells of a stream of length elements.
 func streamCells(length int) int { return (length + CellWidth - 1) / CellWidth }
 
-// PackElements returns the cells of a stream of elements.
-func PackElements(xs []field.Element) []Cell {
-	res := make([]Cell, streamCells(len(xs)))
+// MDBlocks returns the blocks Pack lays out for the elements xs after start
+// buffered zeros: those MDHasher compresses (see Streams).
+func MDBlocks(start int, xs []field.Element) []Cell {
+	flat := append(make([]field.Element, start), xs...)
+	res := make([]Cell, streamCells(len(flat)))
 	for c := range res {
 		for j := range CellWidth {
-			if p := c*CellWidth + j; p < len(xs) {
-				res[c][j] = xs[p]
+			if p := c*CellWidth + j; p < len(flat) {
+				res[c][j] = flat[p]
 			}
 		}
+	}
+	if rem := len(flat) % CellWidth; rem != 0 {
+		res[len(res)-1] = rotate(res[len(res)-1], rem)
 	}
 	return res
 }
 
-// InputStream allocates the input cells of a stream of length elements (see
-// PackElements for their values) and returns their addresses.
-func (m *Machine) InputStream(length int) []int {
-	res := make([]int, streamCells(length))
-	for i := range res {
-		res[i] = m.InputDigest()
+// rotate returns the cell whose lane j is lane (j + r) mod 8 of c: the last
+// partial block, its r elements right-aligned.
+func rotate(c Cell, r int) Cell {
+	var res Cell
+	for j := range CellWidth {
+		res[j] = c[(j+r)%CellWidth]
 	}
 	return res
 }
 
 type packInst struct {
+	start        int
 	items, kinds []int
-	stream       []int // the stream cells, written by the witness chip
+	stream       []int // the stream cells, right-padded, written by the witness chip
+	last         int   // the left-aligned last block (rotation of the last stream cell), or -1
 }
 
 type lanesInst struct {
@@ -74,17 +84,31 @@ type windowInst struct {
 }
 
 // Pack lays the items (cells of the given kinds: their first kind lanes) out
-// contiguously as a stream, written by the witness chip as hints, checks every
-// item against its window of the stream, and returns the stream cells and its
-// length in elements. Hashing the stream's first length elements hashes the
-// items. An item's kind must cover its cell's kind (KindE6 for an E6 cell, not
-// KindScalar): its window reads it with zero lanes beyond the item's kind,
-// which are not hashed, so proving fails otherwise.
-func (m *Machine) Pack(items, kinds []int) ([]int, int) {
+// as a fresh hasher's blocks (see Streams), and returns them: hashing them
+// from the zero state hashes the items' elements, as MDHasher does. An item's
+// kind must cover its cell's kind (KindE6 for an E6 cell, not KindScalar):
+// its window reads it with zero lanes beyond the item's kind, which are not
+// hashed, so proving fails otherwise.
+func (m *Machine) Pack(items, kinds []int) []int { return m.PackAt(0, items, kinds) }
+
+// PackAt is Pack after start elements already in the hasher's buffer, zero:
+// PackAt(1, …) lays out the elements a Fiat–Shamir transcript absorbs after a
+// challenge, following its safeguard zero, to compress from the challenge's
+// digest.
+//
+// The items are laid out contiguously, after start zero lanes, in stream cells
+// (hints) checked against them by window rows. Zero-pin window rows (reading
+// the zero constant) pin the start lanes and the right padding of the last
+// cell; one more window row writes the last block, the last cell rotated so
+// that its elements are right-aligned (it reads the cell twice: W = L‖L).
+func (m *Machine) PackAt(start int, items, kinds []int) []int {
 	if len(items) != len(kinds) {
 		panic(fmt.Sprintf("Pack: %d items, %d kinds", len(items), len(kinds)))
 	}
-	length := 0
+	if start < 0 || start >= CellWidth {
+		panic(fmt.Sprintf("Pack: start %d", start))
+	}
+	length := start
 	for _, k := range kinds {
 		checkKind(k)
 		length += k
@@ -93,23 +117,51 @@ func (m *Machine) Pack(items, kinds []int) ([]int, int) {
 	for i := range stream {
 		stream[i] = m.hint(KindDigest)
 	}
-	m.packs = append(m.packs, packInst{items: items, kinds: kinds, stream: stream})
+	in := packInst{start: start, items: items, kinds: kinds, stream: stream, last: -1}
+	blocks := append([]int(nil), stream...)
+	rem := length % CellWidth
+	var last slot
+	if rem != 0 {
+		last = m.wr()
+		in.last = last.addr
+		blocks[len(blocks)-1] = last.addr
+	}
+	m.packs = append(m.packs, in)
 	m.record(instrPack, len(m.packs)-1)
-	g := 0
+
+	zero := m.Const(Cell{})
+	if start > 0 {
+		m.window(stream, 0, start, m.rd(zero))
+	}
+	g := start
 	for i, it := range items {
 		m.window(stream, g, kinds[i], m.rd(it))
 		g += kinds[i]
 	}
-	return stream, length
+	if rem != 0 {
+		l := stream[len(stream)-1]
+		m.window([]int{l}, rem, CellWidth-rem, m.rd(zero))
+		m.window([]int{l, l}, rem, CellWidth, last)
+	}
+	return blocks
 }
 
 func (m *Machine) execPack(p packInst, r *Run) {
-	var xs []field.Element
+	flat := make([]field.Element, p.start)
 	for i, it := range p.items {
-		xs = append(xs, r.values[it][:p.kinds[i]]...)
+		flat = append(flat, r.values[it][:p.kinds[i]]...)
 	}
-	for c, v := range PackElements(xs) {
+	for c := range p.stream {
+		var v Cell
+		for j := range CellWidth {
+			if q := c*CellWidth + j; q < len(flat) {
+				v[j] = flat[q]
+			}
+		}
 		r.values[p.stream[c]] = v
+	}
+	if p.last >= 0 {
+		r.values[p.last] = rotate(r.values[p.stream[len(p.stream)-1]], len(flat)%CellWidth)
 	}
 }
 
@@ -156,8 +208,9 @@ func checkKind(k int) {
 	}
 }
 
-// windowChip: one row per item of a packed stream (read), and per Lanes
-// output (written).
+// windowChip: one row per item of a packed stream (read), per zero pin of a
+// stream (reading the zero constant), per last block of a stream (written:
+// W = L‖L, the last cell twice), and per Lanes output (written).
 //
 // Witness: p0..7, q0..7 (two consecutive stream cells, the window W = p‖q),
 // i0..7 (the item). Setup: active, addr_p, addr_q, sel_q (q is read), addr_i,
