@@ -84,7 +84,7 @@ func cell(seed uint64) Cell {
 func busProgram() (*Machine, []int) {
 	m := &Machine{}
 	cp := withCopy(m)
-	a, b, u := m.Input(), m.Input(), m.Input()
+	a, b, u := m.InputDigest(), m.InputDigest(), m.InputDigest()
 	k := m.Const(cell(9))
 	outs := []int{cp.Copy(a), cp.Copy(cp.Copy(b)), cp.Copy(k), cp.Copy(a)}
 	_ = u
@@ -217,4 +217,74 @@ func TestCompileDeterministic(t *testing.T) {
 	for range 5 {
 		require.Equal(t, want, columns())
 	}
+}
+
+// kindsProgram: one input of each kind, and an E6 hint (the E6 input's
+// lanes, computed during execution), each copied (the copy chip reads all 8
+// lanes, so that nothing but the witness chip types them). It returns the
+// inputs and the hint's address.
+func kindsProgram() (*Machine, []Cell, int) {
+	m := &Machine{}
+	cp := withCopy(m)
+	ins := []int{m.InputScalar(), m.InputE6(), m.InputDigest()}
+	for _, a := range ins {
+		cp.Copy(a)
+	}
+	h := m.hint(KindE6)
+	m.recordFunc(func(r *Run) error {
+		r.values[h] = r.values[ins[1]]
+		return nil
+	})
+	cp.Copy(h)
+	c := cell(1)
+	var e6 Cell
+	copy(e6[:KindE6], c[:KindE6])
+	return m, []Cell{ScalarCell(c[0]), e6, c}, h
+}
+
+// TestWitnessKinds: typed inputs and hints prove; an input with a nonzero
+// lane beyond its kind does not execute, and a prover writing one anyway (or a
+// mistyped hint), consistently on the bus, is rejected.
+func TestWitnessKinds(t *testing.T) {
+	m, in, _ := kindsProgram()
+	p, err := m.Compile()
+	require.NoError(t, err)
+	r, err := p.Execute(in)
+	require.NoError(t, err)
+	require.NoError(t, proveAndVerify(p, r))
+
+	for name, tamper := range map[string]struct{ input, lane int }{
+		"scalar, lane 1": {0, 1},
+		"scalar, lane 5": {0, 5},
+		"scalar, lane 7": {0, 7},
+		"E6, lane 6":     {1, 6},
+		"E6, lane 7":     {1, 7},
+	} {
+		t.Run(name, func(t *testing.T) {
+			m, in, _ := kindsProgram()
+			p, err := m.Compile()
+			require.NoError(t, err)
+			bad := append([]Cell(nil), in...)
+			bad[tamper.input][tamper.lane].SetUint64(5)
+			_, err = p.Execute(bad)
+			require.Error(t, err, "mistyped input executed")
+
+			r, err := p.Execute(in)
+			require.NoError(t, err)
+			r.values[m.inputs[tamper.input].addr] = bad[tamper.input]
+			require.NoError(t, p.trace(r))
+			require.Error(t, proveAndVerify(p, r), "mistyped input accepted")
+		})
+	}
+
+	t.Run("E6 hint, lane 6", func(t *testing.T) {
+		m, in, h := kindsProgram()
+		p, err := m.Compile()
+		require.NoError(t, err)
+		r, err := p.Execute(in)
+		require.NoError(t, err)
+		r.values[h][6].SetUint64(5)
+		require.NoError(t, p.trace(r))
+		require.Error(t, proveAndVerify(p, r), "mistyped hint accepted")
+	})
 }

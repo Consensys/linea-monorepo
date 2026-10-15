@@ -9,6 +9,8 @@
 package recursion
 
 import (
+	"fmt"
+
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
 )
 
@@ -20,9 +22,15 @@ const CellWidth = 8
 type Cell [CellWidth]field.Element
 
 // Cell layouts: an E6 value in lanes 0..5 (B0.A0, B0.A1, B1.A0, B1.A1, B2.A0,
-// B2.A1), a scalar in lane 0. The other lanes are zero, which every reader
-// enforces through the constants of its tuple. A scalar cell is also the E6
-// cell of its base-field embedding.
+// B2.A1), a scalar in lane 0. A scalar cell is also the E6 cell of its
+// base-field embedding.
+//
+// Every cell has a kind (scalar, E6 or digest), and its lanes from its kind on
+// are zero, enforced by its writer, whatever reads it: a reader may use more
+// lanes than the kind it reads (an E6 operation reads lanes 0..5 of a scalar),
+// and the bus only balances a read against the write's exact 8 lanes. The
+// witness chip constrains the lanes of the cells the prover writes, the other
+// chips write their kind's tuple (zero constants beyond it).
 
 // E6Cell returns the cell of x.
 func E6Cell(x field.Ext) Cell {
@@ -39,12 +47,26 @@ func CellE6(c Cell) field.Ext {
 // ScalarCell returns the cell of v.
 func ScalarCell(v field.Element) Cell { return Cell{v} }
 
-// Item kinds: the number of lanes of an item; these are the usual ones.
+// Kinds: the number of lanes of a cell or of an item. Cells are of the three
+// kinds below; an item (a window of a stream) may have any kind from 1 to
+// CellWidth.
 const (
 	KindScalar = 1
 	KindE6     = 6
 	KindDigest = 8
 )
+
+// checkCellKind panics unless k is the kind of a cell.
+func checkCellKind(k int) {
+	if k != KindScalar && k != KindE6 && k != KindDigest {
+		panic(fmt.Sprintf("cell kind %d", k))
+	}
+}
+
+// typedCell is a cell the witness chip writes, with its kind.
+type typedCell struct {
+	addr, kind int
+}
 
 const (
 	roleNone = iota

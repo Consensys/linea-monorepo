@@ -28,8 +28,8 @@ type Machine struct {
 	nCells int
 	reads  []int // read count of every address
 
-	inputs    []int // input cells, in input order
-	hints     []int // cells the witness chip writes with a computed value, checked by their readers
+	inputs    []typedCell // input cells, in input order
+	hints     []typedCell // cells the witness chip writes with a computed value, checked by their readers
 	consts    map[Cell]int
 	constList []int        // addresses written by the const chip
 	constVal  map[int]Cell // value of every constant
@@ -62,11 +62,27 @@ func (m *Machine) read(addr int) { m.reads[addr]++ }
 
 func (m *Machine) record(kind, idx int) { m.instrs = append(m.instrs, instr{kind, idx}) }
 
-// Input allocates a cell whose value is the next input of every execution
-// (proof values, indices) and returns its address.
-func (m *Machine) Input() int {
+// InputScalar, InputE6 and InputDigest allocate a cell of their kind whose
+// value is the next input of every execution (proof values, indices) and
+// return its address. The witness chip constrains its lanes beyond the kind to
+// zero.
+func (m *Machine) InputScalar() int { return m.input(KindScalar) }
+func (m *Machine) InputE6() int     { return m.input(KindE6) }
+func (m *Machine) InputDigest() int { return m.input(KindDigest) }
+
+func (m *Machine) input(kind int) int {
+	checkCellKind(kind)
 	a := m.alloc()
-	m.inputs = append(m.inputs, a)
+	m.inputs = append(m.inputs, typedCell{a, kind})
+	return a
+}
+
+// hint allocates a cell of the given kind that the witness chip writes with a
+// value computed during execution, which its readers check.
+func (m *Machine) hint(kind int) int {
+	checkCellKind(kind)
+	a := m.alloc()
+	m.hints = append(m.hints, typedCell{a, kind})
 	return a
 }
 
@@ -183,8 +199,13 @@ func (p *Program) Execute(inputs []Cell) (*Run, error) {
 		return nil, fmt.Errorf("Execute: %d inputs, want %d", len(inputs), len(m.inputs))
 	}
 	r := &Run{values: make([]Cell, m.nCells)}
-	for i, a := range m.inputs {
-		r.values[a] = inputs[i]
+	for i, in := range m.inputs {
+		for k := in.kind; k < CellWidth; k++ {
+			if !inputs[i][k].IsZero() {
+				return nil, fmt.Errorf("Execute: input %d has kind %d but a nonzero lane %d", i, in.kind, k)
+			}
+		}
+		r.values[in.addr] = inputs[i]
 	}
 	for a, v := range m.constVal {
 		r.values[a] = v
@@ -194,14 +215,23 @@ func (p *Program) Execute(inputs []Cell) (*Run, error) {
 			return nil, err
 		}
 	}
+	if err := p.trace(r); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+// trace computes the chips' witness columns from the cells' values.
+func (p *Program) trace(r *Run) error {
+	r.witness = r.witness[:0]
 	for i, c := range p.chips {
 		w := newCols(p.modules[i].mod.Size())
 		if err := c.trace(w, r); err != nil {
-			return nil, fmt.Errorf("chip %s: %w", c.name(), err)
+			return fmt.Errorf("chip %s: %w", c.name(), err)
 		}
 		r.witness = append(r.witness, w)
 	}
-	return r, nil
+	return nil
 }
 
 // exec computes the cells an instruction writes.
