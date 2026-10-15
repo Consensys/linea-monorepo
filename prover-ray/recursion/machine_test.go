@@ -15,6 +15,9 @@ func init() {
 	pcs.SetFRINumQueriesForTest(2)
 }
 
+// copyMod is the module name of copyChip.
+const copyMod = "copy"
+
 // copyChip is a chip for these tests: Copy(src) returns a new cell holding
 // src's value, one row per copy, reading src and writing the copy on the bus.
 //
@@ -35,7 +38,7 @@ func (c copyChip) Copy(src int) int {
 	return d.addr
 }
 
-func (c copyChip) name() string { return "copy" }
+func (c copyChip) name() string { return copyMod }
 func (c copyChip) rows() int    { return len(*c.copies) }
 
 func (c copyChip) setup(cs *cols) {
@@ -127,9 +130,9 @@ func TestMachineBusRejects(t *testing.T) {
 	}{
 		"input value":           {witnessMod, "v0", 0},
 		"input value, lane 7":   {witnessMod, "v7", 1},
-		"copied value":          {"copy", "v3", 2},
+		"copied value":          {copyMod, "v3", 2},
 		"input read twice (a)":  {witnessMod, "v2", 0},
-		"copy of a copy (read)": {"copy", "v0", 1},
+		"copy of a copy (read)": {copyMod, "v0", 1},
 	} {
 		t.Run(name, func(t *testing.T) {
 			m, _ := busProgram()

@@ -79,8 +79,8 @@ func newModule(sys *wiop.System, round *wiop.Round, name string, n int, setup *c
 		witness: map[string]*wiop.Column{},
 	}
 	for _, colName := range setup.names {
-		v := setup.vals[colName]
-		m.setup[colName] = m.mod.NewPrecomputedColumn(sys.Context.Childf("%s.%s", name, colName), &wiop.ConcreteVector{Plain: field.VecFromBase(v)})
+		v := &wiop.ConcreteVector{Plain: field.VecFromBase(setup.vals[colName])}
+		m.setup[colName] = m.mod.NewPrecomputedColumn(sys.Context.Childf("%s.%s", name, colName), v)
 	}
 	return m
 }
@@ -141,19 +141,6 @@ func constant(v int64) wiop.Expression {
 	var x field.Element
 	x.SetInt64(v)
 	return wiop.NewConstantField(x)
-}
-
-// cellOf pads lanes to a cell tuple with zero lanes.
-func cellOf(lanes ...wiop.Expression) [CellWidth]wiop.Expression {
-	var res [CellWidth]wiop.Expression
-	for i := range res {
-		if i < len(lanes) {
-			res[i] = lanes[i]
-		} else {
-			res[i] = constant(0)
-		}
-	}
-	return res
 }
 
 // cellLanes returns a cell tuple of the 8 given lanes.
