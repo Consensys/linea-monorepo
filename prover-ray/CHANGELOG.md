@@ -6,14 +6,20 @@
 - *(prover-ray)* Reduce Poseidon2 row authentication cost  (#4115)
 - *(prover-ray)* Update ZkC for LazyTrace API (#4170)
 - *(prover-ray)* Cyclic logderivativesum running sums (#4171)
+- *(prover-ray)* Strictly decode native-runner --json output (#4231)
 
 ### 🐛 Bug Fixes
 
 - *(prover-ray)* Round arrengment for  program and trace (#4154)
 
+### 🚜 Refactor
+
+- *(prover-ray)* Align request/response decoding with the current spec (#4229)
+
 ### ⚙️ Miscellaneous Tasks
 
 - *(prover-ray)* Use minimal-elf guests in R5 tests instead of the verifier-ray (#4118)
+- *(riscv-guest)* Bump zesu to a72dec7 (#4221)
 ## [0.1.1] - 2026-10-06
 
 ### 🐛 Bug Fixes
