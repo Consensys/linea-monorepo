@@ -63,7 +63,7 @@ component_include_path() {
       printf '%s\n' \
         "tracer/**" \
         "tracer-constraints/**" \
-        "linea-besu/plugins/linea-sequencer/**" \
+        "linea-besu/plugins/**" \
         "linea-besu/besu/**" \
         "linea-besu/package/**" \
         "gradle/libs.versions.toml"
