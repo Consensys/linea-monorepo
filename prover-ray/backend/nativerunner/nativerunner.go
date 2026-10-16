@@ -19,7 +19,6 @@ import (
 type Output struct {
 	StartBlockNumber  uint64
 	PublicInputs      backend.PublicInputs
-	L2L1Messages      [][32]byte
 	TxFroms           [][20]byte
 	FilteredAddresses [][20]byte
 }
@@ -81,7 +80,6 @@ type jsonPublicInputs struct {
 	EndBlockHash                             string `json:"endBlockHash"`
 	EndBlockNumber                           uint64 `json:"endBlockNumber"`
 	EndBlockTimestamp                        uint64 `json:"endBlockTimestamp"`
-	L2L1MessagesHash                         string `json:"l2L1MessagesHash"`
 	ParentL1L2BridgeRollingHash              string `json:"parentL1L2BridgeRollingHash"`
 	ParentL1L2BridgeRollingHashMessageNumber uint64 `json:"parentL1L2BridgeRollingHashMessageNumber"`
 	EndL1L2BridgeRollingHash                 string `json:"endL1L2BridgeRollingHash"`
@@ -119,7 +117,6 @@ func Parse(data []byte) (Output, error) {
 	}{
 		{pi.ParentBlockHash, &out.PublicInputs.ParentBlockHash, "parentBlockHash"},
 		{pi.EndBlockHash, &out.PublicInputs.EndBlockHash, "endBlockHash"},
-		{pi.L2L1MessagesHash, &out.PublicInputs.L2L1MessagesHash, "l2L1MessagesHash"},
 		{pi.ParentL1L2BridgeRollingHash, &out.PublicInputs.ParentL1L2BridgeRollingHash, "parentL1L2BridgeRollingHash"},
 		{pi.EndL1L2BridgeRollingHash, &out.PublicInputs.EndL1L2BridgeRollingHash, "endL1L2BridgeRollingHash"},
 		{pi.DynamicChainConfigHash, &out.PublicInputs.DynamicChainConfigHash, "dynamicChainConfigHash"},
@@ -137,7 +134,8 @@ func Parse(data []byte) (Output, error) {
 	}
 
 	var err error
-	if out.L2L1Messages, err = decodeHash32List(j.L2L1Messages, "l2L1Messages"); err != nil {
+	// blockCount and l2MessagingBlocksOffsets are not in the runner output.
+	if out.PublicInputs.L2L1Messages, err = decodeHash32List(j.L2L1Messages, "l2L1Messages"); err != nil {
 		return Output{}, err
 	}
 	if out.TxFroms, err = decodeAddressList(j.TxFroms, "txFroms"); err != nil {
