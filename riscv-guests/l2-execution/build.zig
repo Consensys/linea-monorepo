@@ -558,6 +558,7 @@ pub fn build(b: *std.Build) void {
             });
             stateless_input_encode_tests.root_module.addImport("zesu_input", native_imports.input);
             stateless_input_encode_tests.root_module.addImport("zesu_ssz_decode", native_imports.ssz_decode);
+            stateless_input_encode_tests.root_module.addImport("zesu_rlp_decode", native_imports.rlp_decode);
             stateless_input_encode_tests.root_module.addImport("evm_execution_fixtures", fixtures_mod);
             stateless_input_encode_tests.root_module.addImport("stateless_input_encode", stateless_input_encode_mod);
             stateless_input_encode_tests.root_module.addImport("tx_fixtures", tx_fixtures_mod);
