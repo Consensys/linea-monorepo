@@ -6,6 +6,7 @@ import (
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop"
 )
 
+
 // Setup columns of the table chip.
 const (
 	tableActive  = "active"
@@ -111,11 +112,15 @@ func (m *Machine) execLookup(l lookupInst, r *Run) error {
 //
 // Witness: v0..7 (the value), cnt (its number of reads). Setup: active,
 // src_addr (the copied cell), tag, idx (the entry's table and index). Bus:
+<<<<<<< HEAD
 // reads v at src_addr; writes the entry (tag, idx, v) with multiplicity
 // active·cnt. The gating matters: on the module's padding rows the setup is
 // zero, so the source read is off and v is free, while cnt is a witness;
 // ungated, a padding row would write any value as the entry (tag 0, idx 0),
 // with any multiplicity.
+=======
+// reads v at src_addr; writes the entry (tag, idx, v) with multiplicity cnt.
+>>>>>>> e0dde654d (feat: dynamic table read chip)
 type tableChip struct{ m *Machine }
 
 func (c tableChip) name() string { return tableMod }
@@ -145,7 +150,11 @@ func (c tableChip) setup(cs *cols) {
 func (c tableChip) define(m *module, bus *Bus) error {
 	v := cellLanes(m.lanes(tableV, CellWidth))
 	bus.Read(m, m.s(tableSrcAddr), v, m.s(tableActive))
+<<<<<<< HEAD
 	bus.WriteEntry(m, m.s(tableTag), m.s(tableIdx), v, wiop.Mul(m.s(tableActive), m.w(tableCnt)))
+=======
+	bus.WriteEntry(m, m.s(tableTag), m.s(tableIdx), v, m.w(tableCnt))
+>>>>>>> e0dde654d (feat: dynamic table read chip)
 	return nil
 }
 

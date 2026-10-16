@@ -75,6 +75,7 @@ func (s *logSum) build(sys *wiop.System, coinRound *wiop.Round) *wiop.LogDerivat
 // own: a fraction of one sum cannot balance a fraction of the other, whatever
 // their coins (they need not differ). In a single sum, a table entry
 // (tag, i, v0..v7) could balance a memory tuple of the same elements.
+
 type Bus struct {
 	mem    logSum
 	tables logSum
