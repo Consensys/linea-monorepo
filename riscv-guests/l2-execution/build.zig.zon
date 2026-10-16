@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
         .zesu = .{
-            .url = "https://github.com/Consensys-Incorporated/zesu/archive/9547b29f9bca8d92051047b0de96aaeff02d2ea4.tar.gz",
-            .hash = "zesu-0.1.0-UtqpAJQeRgDxayJXXOM3Wic5xVTTRUx0u1eiNYSQixEz",
+            .url = "https://github.com/Consensys-Incorporated/zesu/archive/a72dec70a80f3d1d15f8e48f1582f7000f38a48c.tar.gz",
+            .hash = "zesu-0.1.0-UtqpABAjRgBjvgOXfBNrsZEs62jtOSKbG09CoLEPpYDP",
         },
         .execution_spec_tests_zkevm = .{
             .url = "https://github.com/ethereum/execution-specs/releases/download/tests-zkevm%40v21.0.5/fixtures_zkevm.tar.gz",
