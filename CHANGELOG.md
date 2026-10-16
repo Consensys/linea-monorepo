@@ -43,6 +43,7 @@
 - *(coordinator)* Extension config sections and deprecated key aliases (#4162)
 - *(coordinator)* Inline pluggable signer types and per-proof-type prover transport (#4164)
 - *(coordinator)* RISC-V rollup proof coordinator — chunk assembly + proof submission (#3967)
+- *(coordinator)* Added BlobSubmitterV2 interface and implementation (#3673)
 
 ### 🐛 Bug Fixes
 
