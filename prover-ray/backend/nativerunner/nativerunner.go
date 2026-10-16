@@ -4,6 +4,7 @@
 package nativerunner
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -65,8 +66,11 @@ func run(ctx context.Context, binPath string, extendedInput []byte, flag string)
 	return out, nil
 }
 
-// jsonOutput mirrors the runner's --json shape: getZkL2ExecutionProofV1.response
-// minus the prover-attached proverVersion/proof/programVk fields.
+// jsonOutput mirrors the current runner --json shape: getZkL2ExecutionProofV1
+// response minus the prover-attached proverVersion/proof/programVk fields. The
+// runner is behind the spec, so this models what it emits today. Parse() decodes
+// it strictly: when the runner moves to the spec shape, decoding fails here,
+// which signals that Parse() and the captured test data must be updated.
 type jsonOutput struct {
 	StartBlockNumber  uint64           `json:"startBlockNumber"`
 	PublicInputs      jsonPublicInputs `json:"publicInputs"`
@@ -91,12 +95,21 @@ type jsonPublicInputs struct {
 	EndProcessedFtxNumber                    uint64 `json:"endProcessedFtxNumber"`
 	FilteredAddressesHash                    string `json:"filteredAddressesHash"`
 	TxFromsHash                              string `json:"txFromsHash"`
+
+	// Emitted by the current runner but not used by the backend. Listed here
+	// only so the strict decoding in Parse() accepts today's output, because
+	// strict decoding rejects any field not listed in this struct. Remove this
+	// field (and re-capture the test data) once the runner is updated to the
+	// spec shape and no longer emits it.
+	L2L1MessagesHash string `json:"l2L1MessagesHash"`
 }
 
 // Parse converts the runner's --json output into an Output.
 func Parse(data []byte) (Output, error) {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
 	var j jsonOutput
-	if err := json.Unmarshal(data, &j); err != nil {
+	if err := dec.Decode(&j); err != nil {
 		return Output{}, fmt.Errorf("parsing runner output: %w", err)
 	}
 
@@ -131,6 +144,12 @@ func Parse(data []byte) (Output, error) {
 			return Output{}, err
 		}
 		copy(h.dst[:], b)
+	}
+
+	// l2L1MessagesHash is an unused runner field (see jsonPublicInputs). It is
+	// validated for shape, then discarded.
+	if _, err := decodeFixed(pi.L2L1MessagesHash, 32, "publicInputs.l2L1MessagesHash"); err != nil {
+		return Output{}, err
 	}
 
 	var err error
