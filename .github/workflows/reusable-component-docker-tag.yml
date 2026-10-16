@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       image-tag-suffix:
-        description: 'Custom image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDD]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDD]-[commit]'
+        description: 'Custom docker image tag suffix, i.e. docker image tag would be [semver]-[YYYYMMDD]-[commit]-[suffix], if not given, would be [semver]-[YYYYMMDD]-[commit]'
         required: false
         type: string
         default: ''
