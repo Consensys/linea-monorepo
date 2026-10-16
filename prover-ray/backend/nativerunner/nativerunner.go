@@ -4,6 +4,7 @@
 package nativerunner
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -19,7 +20,6 @@ import (
 type Output struct {
 	StartBlockNumber  uint64
 	PublicInputs      backend.PublicInputs
-	L2L1Messages      [][32]byte
 	TxFroms           [][20]byte
 	FilteredAddresses [][20]byte
 }
@@ -66,8 +66,11 @@ func run(ctx context.Context, binPath string, extendedInput []byte, flag string)
 	return out, nil
 }
 
-// jsonOutput mirrors the runner's --json shape: getZkL2ExecutionProofV1.response
-// minus the prover-attached proverVersion/proof/programVk fields.
+// jsonOutput mirrors the current runner --json shape: getZkL2ExecutionProofV1
+// response minus the prover-attached proverVersion/proof/programVk fields. The
+// runner is behind the spec, so this models what it emits today. Parse() decodes
+// it strictly: when the runner moves to the spec shape, decoding fails here,
+// which signals that Parse() and the captured test data must be updated.
 type jsonOutput struct {
 	StartBlockNumber  uint64           `json:"startBlockNumber"`
 	PublicInputs      jsonPublicInputs `json:"publicInputs"`
@@ -81,7 +84,6 @@ type jsonPublicInputs struct {
 	EndBlockHash                             string `json:"endBlockHash"`
 	EndBlockNumber                           uint64 `json:"endBlockNumber"`
 	EndBlockTimestamp                        uint64 `json:"endBlockTimestamp"`
-	L2L1MessagesHash                         string `json:"l2L1MessagesHash"`
 	ParentL1L2BridgeRollingHash              string `json:"parentL1L2BridgeRollingHash"`
 	ParentL1L2BridgeRollingHashMessageNumber uint64 `json:"parentL1L2BridgeRollingHashMessageNumber"`
 	EndL1L2BridgeRollingHash                 string `json:"endL1L2BridgeRollingHash"`
@@ -93,12 +95,21 @@ type jsonPublicInputs struct {
 	EndProcessedFtxNumber                    uint64 `json:"endProcessedFtxNumber"`
 	FilteredAddressesHash                    string `json:"filteredAddressesHash"`
 	TxFromsHash                              string `json:"txFromsHash"`
+
+	// Emitted by the current runner but not used by the backend. Listed here
+	// only so the strict decoding in Parse() accepts today's output, because
+	// strict decoding rejects any field not listed in this struct. Remove this
+	// field (and re-capture the test data) once the runner is updated to the
+	// spec shape and no longer emits it.
+	L2L1MessagesHash string `json:"l2L1MessagesHash"`
 }
 
 // Parse converts the runner's --json output into an Output.
 func Parse(data []byte) (Output, error) {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
 	var j jsonOutput
-	if err := json.Unmarshal(data, &j); err != nil {
+	if err := dec.Decode(&j); err != nil {
 		return Output{}, fmt.Errorf("parsing runner output: %w", err)
 	}
 
@@ -119,7 +130,6 @@ func Parse(data []byte) (Output, error) {
 	}{
 		{pi.ParentBlockHash, &out.PublicInputs.ParentBlockHash, "parentBlockHash"},
 		{pi.EndBlockHash, &out.PublicInputs.EndBlockHash, "endBlockHash"},
-		{pi.L2L1MessagesHash, &out.PublicInputs.L2L1MessagesHash, "l2L1MessagesHash"},
 		{pi.ParentL1L2BridgeRollingHash, &out.PublicInputs.ParentL1L2BridgeRollingHash, "parentL1L2BridgeRollingHash"},
 		{pi.EndL1L2BridgeRollingHash, &out.PublicInputs.EndL1L2BridgeRollingHash, "endL1L2BridgeRollingHash"},
 		{pi.DynamicChainConfigHash, &out.PublicInputs.DynamicChainConfigHash, "dynamicChainConfigHash"},
@@ -136,8 +146,15 @@ func Parse(data []byte) (Output, error) {
 		copy(h.dst[:], b)
 	}
 
+	// l2L1MessagesHash is an unused runner field (see jsonPublicInputs). It is
+	// validated for shape, then discarded.
+	if _, err := decodeFixed(pi.L2L1MessagesHash, 32, "publicInputs.l2L1MessagesHash"); err != nil {
+		return Output{}, err
+	}
+
 	var err error
-	if out.L2L1Messages, err = decodeHash32List(j.L2L1Messages, "l2L1Messages"); err != nil {
+	// blockCount and l2MessagingBlocksOffsets are not in the runner output.
+	if out.PublicInputs.L2L1Messages, err = decodeHash32List(j.L2L1Messages, "l2L1Messages"); err != nil {
 		return Output{}, err
 	}
 	if out.TxFroms, err = decodeAddressList(j.TxFroms, "txFroms"); err != nil {

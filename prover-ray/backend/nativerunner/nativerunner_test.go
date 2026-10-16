@@ -14,7 +14,8 @@ import (
 )
 
 // realOutput is a verbatim capture of `l2-execution-runner --json` on
-// test/testdata/stateless_input.ssz (after the parentFtxNumber name fix).
+// test/testdata/stateless_input.ssz. It is the current runner shape, which is
+// behind the spec; re-capture it when the runner is updated.
 const realOutput = `{"startBlockNumber":1,"publicInputs":{"parentBlockHash":"0x3e92984e1569f7296de4776ac738531c3a602df8cf2b1734a56f3adb3e111972","endBlockHash":"0x74560e963ebefb718fb712ec6a9b8e37672c85d8e6120898e6018734bc72f842","endBlockNumber":1,"endBlockTimestamp":1000,"l2L1MessagesHash":"0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470","parentL1L2BridgeRollingHash":"0x0000000000000000000000000000000000000000000000000000000000000000","parentL1L2BridgeRollingHashMessageNumber":0,"endL1L2BridgeRollingHash":"0x0000000000000000000000000000000000000000000000000000000000000000","endL1L2BridgeRollingHashMessageNumber":0,"dynamicChainConfigHash":"0x0bf5347e375f112c245569da023a5abf696fa9e2af3dff33b0a085ab2757dd28","parentFtxRollingHash":"0x0000000000000000000000000000000000000000000000000000000000000000","parentFtxNumber":0,"endFtxRollingHash":"0x0000000000000000000000000000000000000000000000000000000000000000","endProcessedFtxNumber":0,"filteredAddressesHash":"0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470","txFromsHash":"0x463172c05a4d389f66ba68c6bc3beab68b6d5d6ce143bb6aa536b9ac49469f1b"},"l2L1Messages":[],"txFroms":["0xd66f224cbd2fabb21b17bb53c56118f32f62ebd6"],"filteredAddresses":[]}`
 
 func hexTo(t *testing.T, s string) []byte {
@@ -38,7 +39,7 @@ func TestParse_RealOutput(t *testing.T) {
 	assert.Equal(t, hexTo(t, "0x463172c05a4d389f66ba68c6bc3beab68b6d5d6ce143bb6aa536b9ac49469f1b"),
 		got.PublicInputs.TxFromsHash[:])
 
-	assert.Empty(t, got.L2L1Messages)
+	assert.Empty(t, got.PublicInputs.L2L1Messages)
 	assert.Empty(t, got.FilteredAddresses)
 	require.Len(t, got.TxFroms, 1)
 	assert.Equal(t, hexTo(t, "0xd66f224cbd2fabb21b17bb53c56118f32f62ebd6"), got.TxFroms[0][:])
@@ -51,6 +52,18 @@ func TestParse_Errors(t *testing.T) {
 	_, err = Parse([]byte(`{"startBlockNumber":1,"publicInputs":{"parentBlockHash":"0x1234"},"l2L1Messages":[],"txFroms":[],"filteredAddresses":[]}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parentBlockHash")
+}
+
+// TestParse_RejectsUnknownField locks in strict decoding: a field the runner
+// does not emit today (such as a future spec field) must fail parsing, not be
+// silently ignored.
+func TestParse_RejectsUnknownField(t *testing.T) {
+	withExtra := strings.Replace(realOutput,
+		`"endBlockTimestamp":1000,`,
+		`"endBlockTimestamp":1000,"blockCount":1,`, 1)
+	_, err := Parse([]byte(withExtra))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "blockCount")
 }
 
 // TestRun_FakeBinary exercises the temp-file + exec + parse pipeline with a stub

@@ -4,6 +4,12 @@
 
 - *(riscv-guest)* Changing the output of the guest program to include the plain PI + its hash (#4092)
 - *(prover-ray)* Reduce Poseidon2 row authentication cost  (#4115)
+- *(prover-ray)* Update ZkC for LazyTrace API (#4170)
+- *(prover-ray)* Cyclic logderivativesum running sums (#4171)
+
+### 🐛 Bug Fixes
+
+- *(prover-ray)* Round arrengment for  program and trace (#4154)
 
 ### ⚙️ Miscellaneous Tasks
 
