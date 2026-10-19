@@ -196,3 +196,4 @@
 - *(coordinator)* Remove unsupported invalidity proof client (#4101)
 - *(coordinator)* Simplify Risc5 prover DTO mappers (#4121)
 - *(coordinator)* Make RISC-V rollup prover clients transport-agnostic (#4140)
+- *(maru)* Refactor MaruClForkUpgradeTest to use new MaruCluster test (#4214)

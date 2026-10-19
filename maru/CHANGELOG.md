@@ -7,6 +7,7 @@
 - *(misc)* Fix gradle build correctness bugs (#4044)
 - *(misc)* Decrease vertx threadpool sizes for testing (#4047)
 - *(misc)* Maru break down integration tests into smaller chunks (#4049)
+- *(maru)* Refactor MaruClForkUpgradeTest to use new MaruCluster test (#4214)
 ## [1.4.0] - 2026-09-23
 
 ### 🚀 Features
