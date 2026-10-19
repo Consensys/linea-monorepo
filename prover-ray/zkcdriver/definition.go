@@ -13,6 +13,7 @@ import (
 	"github.com/LFDT-Lineth/zkc/pkg/schema"
 	"github.com/LFDT-Lineth/zkc/pkg/schema/register"
 	"github.com/LFDT-Lineth/zkc/pkg/util/field/koalabear"
+	ctrace "github.com/LFDT-Lineth/zkc/pkg/zkc/constraints/trace"
 )
 
 const (
@@ -22,9 +23,9 @@ const (
 	// publicOutputsAnnotationKey is an annotation holding the arithmetization's
 	// [PublicOutput].
 	publicOutputsAnnotationKey = "corset-public-outputs"
-	// guestOutputHashModule is the one public output the prover binds: the memory
-	// holding the keccak digest of the guest program's output.
-	guestOutputHashModule = "guest_output_hash"
+	// guestOutputModule is the one public output the prover binds: the memory
+	// holding the guest program's output, one byte per address.
+	guestOutputModule = "guest_output"
 	// programModule is the module committed in [ProgramRound]: the memory
 	// holding the pre-decoded instruction table of the guest program.
 	programModule = "decoded"
@@ -45,19 +46,23 @@ func (s *schemaScanner) roundOf(moduleName string) int {
 }
 
 // PublicOutput locates the columns of the arithmetization's public output memory
-// — the memory named [guestOutputHashModule], declared with `pub output` and
+// — the memory named [guestOutputModule], declared with `pub output` and
 // flagged by the schema via IsPublicOutput see [schemaScanner.collectPublicOutputs].
 type PublicOutput struct {
 	// Name is the corset name of the memory. It is empty when the
 	// arithmetization exposes no public output of the described shape.
 	Name string
-	// Address is the memory's address column. The memory's own constraints make
-	// it vanish on padding rows, be zero on the first row carrying an element and
-	// increment from there, so the address on the last row is one less than the
-	// number of elements the memory holds.
-	Address wiop.ObjectID
-	// Data holds the memory's data columns for one address.
-	Data []wiop.ObjectID
+	// Address holds the limbs of the memory's address, most significant first:
+	// an address wider than the field's register width is split by the schema.
+	// The memory's own constraints make it vanish on padding rows, be zero on the
+	// first row carrying an element and increment from there, so the elements
+	// are laid out in address order on the last rows of the module.
+	Address []wiop.ObjectID
+	// Data is the memory's data column, holding one byte per address.
+	Data wiop.ObjectID
+	// AccessBit is the memory's access bit: zero on padding rows and one on the
+	// rows carrying an element.
+	AccessBit wiop.ObjectID
 }
 
 // PublicOutputs returns the public output memory [Define] found in the
@@ -151,7 +156,11 @@ func (s *schemaScanner) collectPublicOutputs() PublicOutput {
 			)
 		}
 
-		var address, data []wiop.ObjectID
+		var (
+			address, data []wiop.ObjectID
+			accessBit     wiop.ObjectID
+			hasAccessBit  bool
+		)
 
 		for _, reg := range modDecl.Registers() {
 
@@ -162,34 +171,37 @@ func (s *schemaScanner) collectPublicOutputs() PublicOutput {
 
 			// A memory's address lines are exactly its input registers and its data
 			// lines exactly its output registers, so the two are told apart by
-			// register kind rather than by name. Everything else the memory carries
-			// (the access bit, the address selectors) is computed and of no use here.
+			// register kind rather than by name. Of the computed registers, only the
+			// access bit is of use here; the address selectors are not.
 			//
-			// Only [guestOutputHashModule] is collected. Any other public output
-			// leaves both lists empty and is skipped just below, so no memory becomes
-			// a public input merely by being declared `pub output`.
+			// Only [guestOutputModule] is collected. Any other public output leaves
+			// the lists empty and is skipped just below, so no memory becomes a
+			// public input merely by being declared `pub output`.
 			switch {
-			case reg.IsInput() && moduleName == guestOutputHashModule:
+			case moduleName != guestOutputModule:
+			case reg.IsInput():
 				address = append(address, id)
-			case reg.IsOutput() && moduleName == guestOutputHashModule:
+			case reg.IsOutput():
 				data = append(data, id)
+			case reg.Name() == ctrace.ACCESS_BIT_NAME:
+				accessBit, hasAccessBit = id, true
 			}
 		}
 
-		// A memory addressed by several limbs, or holding nothing at all, is not
-		// describable by [PublicOutput], so it is reported and skipped rather than
-		// half-described. Several data columns are expected: that is a value wider
-		// than the field's register width, split into limbs.
-		if len(address) != 1 || len(data) == 0 {
+		// A memory holding anything other than a single byte column, or lacking
+		// an address or an access bit, is not describable by [PublicOutput], so it
+		// is reported and skipped rather than half-described.
+		if len(address) == 0 || len(data) != 1 || !hasAccessBit {
 			logrus.Warnf(
 				"zkcdriver: collectPublicOutputs: skipping public output %q: "+
-					"has %d address and %d data columns, expected one address and at least one datum",
-				moduleName, len(address), len(data),
+					"has %d address and %d data columns (access bit found: %v), "+
+					"expected at least one address, one datum and an access bit",
+				moduleName, len(address), len(data), hasAccessBit,
 			)
 			continue
 		}
 
-		output = PublicOutput{Name: moduleName, Address: address[0], Data: data}
+		output = PublicOutput{Name: moduleName, Address: address, Data: data[0], AccessBit: accessBit}
 	}
 
 	return output
