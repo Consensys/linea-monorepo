@@ -1,7 +1,9 @@
 package backend
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"maps"
@@ -17,6 +19,7 @@ import (
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/zkcdriver/risc5"
 	"github.com/LFDT-Lineth/zkc/pkg/zkc/vm"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/sha3"
 )
 
 // ErrNotImplemented is returned by stubs that are not yet wired up.
@@ -29,9 +32,12 @@ const wiopSystemName = "lineth-riscv"
 // wire output.
 const guestOutputMemory = "guest_output"
 
-// guestOutputSize is the fixed 0x0003 wire-output length: a 2-byte schema id
-// plus a 32-byte keccak256(SSZ(public inputs)).
-const guestOutputSize = 34
+// Spec frame of the l2-execution guest output.
+const (
+	guestOutputSchemaID     = 0x0003
+	guestOutputSchemaIDSize = 2
+	guestOutputHashSize     = 32
+)
 
 // Core is the shared proving kernel. Initialize once via [New]; it is
 // safe for concurrent use after that; each [Prove] call gets its own
@@ -213,9 +219,9 @@ func (c *Core) proveDevMock(job Job) Result {
 	}
 }
 
-// proveDevZkVM runs the guest under ZkC Execute and returns its 0x0003 wire
-// output as [Result.ProofBytes], so the runner can cross-check it against the
-// native runner. It runs no real proof; Payload is the whole extended (0x0002)
+// proveDevZkVM runs the guest under ZkC Execute and returns its 0x0003 output
+// as [Result.ProofBytes], so the runner can cross-check it against the native
+// runner. It runs no real proof; Payload is the whole extended (0x0002)
 // input, the same bytes the native runner consumes.
 func (c *Core) proveDevZkVM(job Job) Result {
 	inputs, err := c.encodeGuestInputs(job)
@@ -236,7 +242,7 @@ func (c *Core) proveDevZkVM(job Job) Result {
 }
 
 // executeGuest runs the guest under ZkC Execute (the no-trace path) and returns
-// its validated 0x0003 wire output.
+// its validated 0x0003 output.
 func executeGuest(binf *zkcdriver.BinaryFile, inputs map[string][]byte) ([]byte, error) {
 	output, errs := binf.Execute(inputs)
 	return classifyGuestOutput(output, errs)
@@ -246,7 +252,7 @@ func executeGuest(binf *zkcdriver.BinaryFile, inputs map[string][]byte) ([]byte,
 // validated 0x0003 output or an error that distinguishes a guest block rejection
 // (a recognized [vm.Failure], the guest's own exit on an invalid block) from an
 // internal VM failure (a prover-side bug). A guest that rejects the block writes
-// no output, so a missing or malformed guest_output is also a rejection.
+// no output, so a missing guest_output is also a rejection.
 func classifyGuestOutput(output map[string][]byte, errs []error) ([]byte, error) {
 	if len(errs) > 0 {
 		var failure *vm.Failure
@@ -260,13 +266,51 @@ func classifyGuestOutput(output map[string][]byte, errs []error) ([]byte, error)
 	if !ok {
 		return nil, fmt.Errorf("guest wrote no %s output (block likely invalid)", guestOutputMemory)
 	}
-	if len(out) != guestOutputSize {
-		return nil, fmt.Errorf("guest output is %d bytes, want %d", len(out), guestOutputSize)
-	}
-	if out[0] != 0x00 || out[1] != 0x03 {
-		return nil, fmt.Errorf("guest output schema id is 0x%04x, want 0x0003", uint16(out[0])<<8|uint16(out[1]))
+	if err := checkGuestOutputFrame(out); err != nil {
+		return nil, fmt.Errorf("%s does not follow the spec: %w", guestOutputMemory, err)
 	}
 	return out, nil
+}
+
+// checkGuestOutputFrame checks the spec frame of the guest output,
+// keccak256(0x0003 || public inputs) || 0x0003 || public inputs. The public
+// inputs themselves are checked by the byte-for-byte comparison with the
+// native runner.
+func checkGuestOutputFrame(out []byte) error {
+	if len(out) >= guestOutputHashSize+guestOutputSchemaIDSize {
+		framed := out[guestOutputHashSize:]
+		if bytes.Equal(out[:guestOutputHashSize], keccak256(framed)) {
+			if got := binary.BigEndian.Uint16(framed); got != guestOutputSchemaID {
+				return fmt.Errorf("schema id is 0x%04x, want 0x%04x", got, guestOutputSchemaID)
+			}
+			return nil
+		}
+	}
+	if hasPreSpecGuestOutputLayout(out) {
+		return errors.New("got 0x0003 || public inputs || keccak256(public inputs), " +
+			"the spec expects keccak256(0x0003 || public inputs) || 0x0003 || public inputs")
+	}
+	if len(out) < guestOutputHashSize+guestOutputSchemaIDSize {
+		return fmt.Errorf("%d bytes, shorter than the hash and schema id", len(out))
+	}
+	return errors.New("hash does not match keccak256(0x0003 || public inputs)")
+}
+
+// hasPreSpecGuestOutputLayout reports whether out is 0x0003 || x || keccak256(x),
+// the layout the guest wrote before the spec put the hash first.
+func hasPreSpecGuestOutputLayout(out []byte) bool {
+	if len(out) < guestOutputSchemaIDSize+guestOutputHashSize ||
+		binary.BigEndian.Uint16(out) != guestOutputSchemaID {
+		return false
+	}
+	body := out[guestOutputSchemaIDSize : len(out)-guestOutputHashSize]
+	return bytes.Equal(out[len(out)-guestOutputHashSize:], keccak256(body))
+}
+
+func keccak256(b []byte) []byte {
+	h := sha3.NewLegacyKeccak256()
+	h.Write(b)
+	return h.Sum(nil)
 }
 
 // proveFull is the real proving path; it is blocked at SerializeProof today.

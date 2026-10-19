@@ -16,6 +16,14 @@ import (
 const (
 	witnessMod = "witness"
 	constMod   = "const"
+	windowMod  = "window"
+	bitsMod    = "bits"
+	e6Mod      = "e6"
+	selectMod  = "select"
+	tableMod   = "table"
+	lookupMod  = "lookup"
+	p2Mod      = "p2"
+	mdMod      = "md"
 )
 
 // Machine builds a program for the chips: it allocates addresses, counts the
@@ -34,6 +42,16 @@ type Machine struct {
 	constList []int        // addresses written by the const chip
 	constVal  map[int]Cell // value of every constant
 
+	packs   []packInst
+	lanes   []lanesInst
+	windows []windowInst // the window chip's rows
+	bits    []bitsInst
+	e6Insts []e6Inst
+	selects []selectInst
+	tables  []tableInst
+	lookups []lookupInst
+	mds     []mdInst
+
 	instrs []instr // every instruction, in execution order
 
 	// extra are chips added by tests (a chip of their own, with its
@@ -49,7 +67,14 @@ type instr struct {
 }
 
 const (
-	instrFunc = iota // a function of the run (tests' chips)
+	instrFunc   = iota // a function of the run (tests' chips)
+	instrPack          // Pack: the stream cells
+	instrLanes         // Lanes: the output cell
+	instrBits          // Bits: the shifted values and the bits
+	instrE6            // an E6 operation: its result
+	instrSelect        // Select: the selected cell
+	instrLookup        // Lookup: the entry read
+	instrMD            // MDHash: the digest (and the compressions, for the P2 core)
 )
 
 func (m *Machine) alloc() int {
@@ -109,7 +134,11 @@ type chip interface {
 }
 
 func (m *Machine) chips() []chip {
-	return append([]chip{witnessChip{m}, constChip{m}}, m.extra...)
+	return append([]chip{
+		witnessChip{m}, constChip{m}, windowChip{m}, bitsChip{m},
+		e6Chip{m}, selectChip{m}, tableChip{m}, lookupChip{m},
+		p2Chip{m}, mdChip{m},
+	}, m.extra...)
 }
 
 // height returns the number of rows of a chip's module: a power of two, at
@@ -128,6 +157,8 @@ func height(n int) int {
 type Program struct {
 	Sys     *wiop.System
 	Bus     *wiop.LogDerivativeSum // nil if no chip accesses the memory
+	Tables  *wiop.LogDerivativeSum // nil if the program has no table
+	P2      *wiop.LogDerivativeSum // nil if the program hashes nothing
 	m       *Machine
 	modules []*module // the chips with rows, in Machine.chips order
 	chips   []chip
@@ -137,15 +168,16 @@ type Program struct {
 // constraints and bus accesses, the bus, and runs prover-ray's compiler
 // passes down to the PCS. The machine must not be modified afterwards.
 //
-// Rounds: the chips' witness columns are committed in round 0; the bus's
-// coins α and γ are drawn in round 1; its sum is claimed in round 2.
+// Rounds: the chips' witness columns are committed in round 0; the coins α
+// and γ of the memory, the tables and the permutations are drawn in round 1;
+// their sums are claimed in round 2.
 func (m *Machine) Compile() (*Program, error) {
 	sys := wiop.NewSystemf("recursion")
 	witnessRound := sys.NewRound()
 	coinRound := witnessRound.EnsureNext()
 	coinRound.EnsureNext()
 	p := &Program{Sys: sys, m: m}
-	bus := &Bus{}
+	bus := newBus()
 	for _, c := range m.chips() {
 		if c.rows() == 0 {
 			continue
@@ -160,7 +192,9 @@ func (m *Machine) Compile() (*Program, error) {
 		p.modules = append(p.modules, mod)
 		p.chips = append(p.chips, c)
 	}
-	p.Bus = bus.build(sys, coinRound)
+	p.Bus = bus.mem.build(sys, coinRound)
+	p.Tables = bus.tables.build(sys, coinRound)
+	p.P2 = bus.p2.build(sys, coinRound)
 
 	lookuptologderivsum.Compile(sys)
 	logderivativesum.Compile(sys)
@@ -174,7 +208,8 @@ func (m *Machine) Compile() (*Program, error) {
 // witness columns.
 type Run struct {
 	values  []Cell
-	witness []*cols // the witness columns of Program.modules[i]
+	witness []*cols                  // the witness columns of Program.modules[i]
+	p2      [][P2Width]field.Element // the permutations' inputs, in P2 core row order
 }
 
 // Value returns the value of the cell at addr.
@@ -239,6 +274,24 @@ func (m *Machine) exec(in instr, r *Run) error {
 	switch in.kind {
 	case instrFunc:
 		return m.funcs[in.idx](r)
+	case instrPack:
+		m.execPack(m.packs[in.idx], r)
+		return nil
+	case instrLanes:
+		m.execLanes(m.lanes[in.idx], r)
+		return nil
+	case instrBits:
+		m.execBits(m.bits[in.idx], r)
+		return nil
+	case instrE6:
+		return m.execE6(m.e6Insts[in.idx], r)
+	case instrSelect:
+		return m.execSelect(m.selects[in.idx], r)
+	case instrLookup:
+		return m.execLookup(m.lookups[in.idx], r)
+	case instrMD:
+		m.execMD(m.mds[in.idx], r)
+		return nil
 	}
 	return fmt.Errorf("unknown instruction kind %d", in.kind)
 }
