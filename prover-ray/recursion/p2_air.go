@@ -29,8 +29,46 @@ const (
 	p2SBox = "sbox"
 )
 
-func p2PostName(r, i int) string { return fmt.Sprintf("%s%d_%d", p2Post, r, i) }
-func p2SBoxName(r int) string    { return fmt.Sprintf("%s%d", p2SBox, r) }
+func p2PostName(r, i int) string { return p2PostNames[r][i] }
+func p2SBoxName(r int) string    { return p2SBoxNames[r] }
+
+// The AIR's column names, formatted once, and their order: p2Cols lists them
+// (in0..15, the full rounds' posts, the partial S-boxes, out0..15), and the
+// *Idx tables give a column's position in it, which p2Trace fills.
+var (
+	p2PostNames [P2FullRounds + P2PartialRounds][P2Width]string
+	p2SBoxNames [P2FullRounds + P2PartialRounds]string
+	p2Cols      []string
+	p2InIdx     [P2Width]int
+	p2OutIdx    [P2Width]int
+	p2PostIdx   [P2FullRounds + P2PartialRounds][P2Width]int
+	p2SBoxIdx   [P2FullRounds + P2PartialRounds]int
+)
+
+func init() {
+	add := func(name string) int {
+		p2Cols = append(p2Cols, name)
+		return len(p2Cols) - 1
+	}
+	for i := range P2Width {
+		p2InIdx[i] = add(laneName(p2In, i))
+	}
+	last := P2FullRounds + P2PartialRounds - 1
+	for r := range last {
+		if isFullRound(r) {
+			for i := range P2Width {
+				p2PostNames[r][i] = fmt.Sprintf("%s%d_%d", p2Post, r, i)
+				p2PostIdx[r][i] = add(p2PostNames[r][i])
+			}
+		} else {
+			p2SBoxNames[r] = fmt.Sprintf("%s%d", p2SBox, r)
+			p2SBoxIdx[r] = add(p2SBoxNames[r])
+		}
+	}
+	for i := range P2Width {
+		p2OutIdx[i] = add(laneName(p2Out, i))
+	}
+}
 
 // linForm is a linear form over witness columns: Σ coef·column.
 type linForm struct {
@@ -140,11 +178,11 @@ func defineP2(m *module) {
 	}
 }
 
-// p2Trace returns the AIR's columns for the permutation of in, by name.
-func p2Trace(in [P2Width]field.Element) map[string]field.Element {
-	res := map[string]field.Element{}
+// p2Trace writes into res (of length len(p2Cols)) the AIR's columns for the
+// permutation of in, in p2Cols order.
+func p2Trace(in [P2Width]field.Element, res []field.Element) {
 	for i := range in {
-		res[laneName(p2In, i)] = in[i]
+		res[p2InIdx[i]] = in[i]
 	}
 	state := in
 	matExternal(state[:])
@@ -160,9 +198,9 @@ func p2Trace(in [P2Width]field.Element) map[string]field.Element {
 			matExternal(state[:])
 			for i := range state {
 				if r == last {
-					res[laneName(p2Out, i)] = state[i]
+					res[p2OutIdx[i]] = state[i]
 				} else {
-					res[p2PostName(r, i)] = state[i]
+					res[p2PostIdx[r][i]] = state[i]
 				}
 			}
 			continue
@@ -170,8 +208,7 @@ func p2Trace(in [P2Width]field.Element) map[string]field.Element {
 		state[0].Add(&state[0], &rk[0])
 		t := state[0]
 		state[0].Square(&state[0]).Mul(&state[0], &t)
-		res[p2SBoxName(r)] = state[0]
+		res[p2SBoxIdx[r]] = state[0]
 		matInternal(state[:])
 	}
-	return res
 }

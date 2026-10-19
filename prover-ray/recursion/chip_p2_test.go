@@ -22,9 +22,10 @@ func TestPoseidon2AIR(t *testing.T) {
 		}
 		want := in
 		require.NoError(t, p2Perm.Permutation(want[:]))
-		tr := p2Trace(in)
+		tr := make([]field.Element, len(p2Cols))
+		p2Trace(in, tr)
 		for i := range P2Width {
-			require.Equal(t, want[i], tr[laneName(p2Out, i)], "out%d", i)
+			require.Equal(t, want[i], tr[p2OutIdx[i]], "out%d", i)
 		}
 		var st, blk field.Octuplet
 		copy(st[:], in[:p2Half])
@@ -175,4 +176,25 @@ func cellAt(r *Run, p *Program, chip, prefix string, row int) Cell {
 		c[i] = r.Witness(p, chip, laneName(prefix, i))[row]
 	}
 	return c
+}
+
+// BenchmarkP2Execute: executing (and tracing) one MDHash of 4096 blocks, so
+// 4096 rows of the P2 core.
+func BenchmarkP2Execute(b *testing.B) {
+	const n = 4096
+	m := &Machine{}
+	blocks := make([]int, n)
+	in := make([]Cell, n)
+	for i := range blocks {
+		blocks[i] = m.InputDigest()
+		in[i] = cell(uint64(i))
+	}
+	m.MDHash(blocks)
+	p, err := m.Compile()
+	require.NoError(b, err)
+	for b.Loop() {
+		if _, err := p.Execute(in); err != nil {
+			b.Fatal(err)
+		}
+	}
 }

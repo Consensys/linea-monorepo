@@ -56,18 +56,24 @@ func (c p2Chip) trace(cs *cols, r *Run) error {
 	if len(r.p2) != c.rows() {
 		return fmt.Errorf("%d compressions recorded, want %d", len(r.p2), c.rows())
 	}
+	columns := make([][]field.Element, len(p2Cols))
+	for k, name := range p2Cols {
+		columns[k] = cs.get(name)
+	}
+	cnt := cs.get(p2Cnt)
 	var zero [P2Width]field.Element
-	padding := p2Trace(zero)
+	padding, vals := make([]field.Element, len(p2Cols)), make([]field.Element, len(p2Cols))
+	p2Trace(zero, padding)
 	for row := range cs.n {
-		vals := padding
+		v := padding
 		if row < len(r.p2) {
-			vals = p2Trace(r.p2[row])
-			cs.set(p2Cnt, row, 1)
+			p2Trace(r.p2[row], vals)
+			v = vals
+			cnt[row].SetOne()
 		}
-		for name, v := range vals {
-			cs.setElem(name, row, v)
+		for k, x := range v {
+			columns[k][row] = x
 		}
 	}
-	cs.declare(p2Cnt)
 	return nil
 }

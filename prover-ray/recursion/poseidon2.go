@@ -66,6 +66,10 @@ func p2Diag16() [P2Width]field.Element {
 	return d
 }
 
+// p2Diag is the internal matrix's diagonal, computed once (matInternal runs
+// 21 times per permutation).
+var p2Diag = p2Diag16()
+
 // matExternal applies circ(2·M4, M4, …, M4) in place (gnark-crypto's
 // matMulExternalInPlace), M4 = [[2 3 1 1] [1 2 3 1] [1 1 2 3] [3 1 1 2]].
 func matExternal(s []field.Element) {
@@ -100,7 +104,7 @@ func matInternal(s []field.Element) {
 	for i := range s {
 		sum.Add(&sum, &s[i])
 	}
-	for i, d := range p2Diag16() {
+	for i, d := range p2Diag {
 		var t field.Element
 		t.Mul(&s[i], &d)
 		s[i].Add(&sum, &t)
