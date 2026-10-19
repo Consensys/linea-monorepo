@@ -71,17 +71,33 @@ func (s *logSum) build(sys *wiop.System, coinRound *wiop.Round) *wiop.LogDerivat
 // of a table has an index below its length, so a read at another index, or
 // with another table's tag, balances against no entry.
 //
-// The two sums are kept apart because each is checked against zero on its
-// own: a fraction of one sum cannot balance a fraction of the other, whatever
+// The permutations are looked up in the P2 core: each of its rows writes the
+// tuple (in0..15, c0..7) of a compression, c = P(in)[8..15] + in[8..15],
+// with a witness multiplicity, its number of reads; a chip hashing reads the
+// tuple of each compression it needs.
+//
+// The three sums are kept apart because each is checked against zero on its
+// own: a fraction of one sum cannot balance a fraction of another, whatever
 // their coins (they need not differ). In a single sum, a table entry
 // (tag, i, v0..v7) could balance a memory tuple of the same elements.
 type Bus struct {
 	mem    logSum
 	tables logSum
+	p2     logSum
 }
 
 func newBus() *Bus {
-	return &Bus{mem: logSum{name: "bus"}, tables: logSum{name: "tables"}}
+	return &Bus{mem: logSum{name: "bus"}, tables: logSum{name: "tables"}, p2: logSum{name: "p2"}}
+}
+
+// WriteP2 adds the write of the compression in → c, with multiplicity mult.
+func (b *Bus) WriteP2(m *module, in [P2Width]wiop.Expression, c [p2Half]wiop.Expression, mult wiop.Expression) {
+	b.p2.add(m, append(append([]wiop.Expression(nil), in[:]...), c[:]...), mult)
+}
+
+// ReadP2 adds a read of the compression in → c, active when sel is 1.
+func (b *Bus) ReadP2(m *module, in [P2Width]wiop.Expression, c [p2Half]wiop.Expression, sel wiop.Expression) {
+	b.p2.add(m, append(append([]wiop.Expression(nil), in[:]...), c[:]...), wiop.Negate(sel))
 }
 
 // Write adds a write of vals at addr with multiplicity mult.
