@@ -38,8 +38,9 @@ func RegisterGuestPublicOutputs(sys *wiop.System) {
 	// The address limbs of row k: k in the least significant limb and zero in
 	// the others. k is below any limb's bound, so it needs no carry.
 	var (
-		addresses       = make([]*wiop.ColumnView, len(output.Address))
-		targetAddresses = make([]*wiop.ColumnView, len(output.Address))
+		// One extra slot each for the data column appended below.
+		addresses       = make([]*wiop.ColumnView, len(output.Address), len(output.Address)+1)
+		targetAddresses = make([]*wiop.ColumnView, len(output.Address), len(output.Address)+1)
 	)
 	for i, id := range output.Address {
 		limb := make([]field.Element, NumGuestPublicOutputs)
