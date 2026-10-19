@@ -4,8 +4,8 @@
 # Checks three things:
 #   1. dev-mock turns a dropped request file into a valid response file.
 #   2. the native runner and its shared libraries run inside the image.
-#   3. dev-zkvm proves a real request: the bundled guest ELF and native runner
-#      emit the same commitment.
+#   3. dev-zkvm proves a real request: the guest output follows the spec, and the
+#      bundled guest ELF and native runner emit the same output.
 #
 # Usage: scripts/docker-smoke.sh [image]
 set -euo pipefail
@@ -67,11 +67,10 @@ if ! grep -q '"proverVersion": "smoke-dev-mock"' "$WORK/responses/req.json"; the
 fi
 echo "    ok: response written with proverVersion smoke-dev-mock"
 
-echo "==> native runner: emits the dev-zkvm commitment from an extended input"
-# Run the bundled native execution runner on an extended (0x0002) input and check
-# it emits a 34-byte 0x0003 commitment (schema id + keccak256(SSZ(public inputs))).
-# This is the commitment dev-zkvm cross-checks the guest against, and it confirms
-# the runner and its shared libraries (glibc) run in the image.
+echo "==> native runner: runs in the image"
+# Run the bundled native runner on an extended (0x0002) input. This confirms the
+# runner and its shared libraries (glibc) run in the image. Step 3 checks the
+# output format.
 FIXTURE_DIR="$SCRIPT_DIR/../../riscv-guests/l2-execution/test/testdata"
 if ! $DOCKER run --rm \
         --entrypoint /opt/linea/prover-ray/l2-execution-runner \
@@ -80,13 +79,11 @@ if ! $DOCKER run --rm \
     echo "FAIL: native runner failed to run (missing library or exec error)"
     exit 1
 fi
-sz=$(wc -c < "$WORK/commitment.bin")
-prefix=$(head -c 2 "$WORK/commitment.bin" | od -An -tx1 | tr -d ' \n')
-if [ "$sz" -ne 34 ] || [ "$prefix" != "0003" ]; then
-    echo "FAIL: native runner output is not a 34-byte 0x0003 commitment (size=$sz prefix=$prefix)"
+if [ ! -s "$WORK/commitment.bin" ]; then
+    echo "FAIL: native runner wrote no output"
     exit 1
 fi
-echo "    ok: native runner emitted a valid 0x0003 commitment (runner + libs OK)"
+echo "    ok: native runner ran and wrote its output"
 
 echo "==> dev-zkvm: bundled guest and native runner agree on a real request"
 # Runs one dev-zkvm prove: the bundled guest ELF under ZkC Execute, cross-checked

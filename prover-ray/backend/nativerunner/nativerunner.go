@@ -34,8 +34,7 @@ func Run(ctx context.Context, binPath string, extendedInput []byte) (Output, err
 	return Parse(out)
 }
 
-// RunSSZ runs `<binPath> <file> --ssz` and returns the raw 0x0003 wire output
-// (the 2-byte schema id followed by keccak256(SSZ(public inputs))). It is
+// RunSSZ runs `<binPath> <file> --ssz` and returns the raw 0x0003 output. It is
 // byte-identical to what the guest writes to guest_output, so dev-zkvm compares
 // it against the ZkC Execute output to cross-check the native runner.
 func RunSSZ(ctx context.Context, binPath string, extendedInput []byte) ([]byte, error) {
