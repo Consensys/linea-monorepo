@@ -69,8 +69,12 @@ func (s *logSum) build(sys *wiop.System, coinRound *wiop.Round) *wiop.LogDerivat
 // entry is written once, with the tuple (tag, i, v0..v7) for the i-th entry of
 // the table tag, and a witness multiplicity, its number of reads. Every entry
 // of a table has an index below its length, so a read at another index, or
-// with another table's tag, balances against no entry. The tuples of the two
-// sums have different shapes, hence their separate coins.
+// with another table's tag, balances against no entry.
+//
+// The two sums are kept apart because each is checked against zero on its
+// own: a fraction of one sum cannot balance a fraction of the other, whatever
+// their coins (they need not differ). In a single sum, a table entry
+// (tag, i, v0..v7) could balance a memory tuple of the same elements.
 type Bus struct {
 	mem    logSum
 	tables logSum

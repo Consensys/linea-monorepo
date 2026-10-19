@@ -173,3 +173,27 @@ func TestLookupOutOfTable(t *testing.T) {
 	moveLookup(p, r, 0, 1, 8)
 	require.Error(t, proveAndVerify(p, r), "A[8] read as B[0]")
 }
+
+// TestTablePaddingEntry: a lookup of A[0] returning a forged value, A[0]'s
+// read count moved to a padding row of the table module, which writes the
+// forged value as the entry (tag 0, idx 0) — its setup is zero, so its source
+// read is off. The entries' multiplicity is gated by active: rejected.
+func TestTablePaddingEntry(t *testing.T) {
+	tp := tableProgram(false)
+	p, err := tp.m.Compile()
+	require.NoError(t, err)
+	r, err := p.Execute(tp.in)
+	require.NoError(t, err)
+
+	out := tp.lookups[4] // A[8 & 7] = A[0]
+	r.values[out][3].SetUint64(5)
+	require.NoError(t, p.trace(r))
+	const pad = 12 // A: rows 0..7, B: 8..11
+	cnt := r.Witness(p, tableMod, tableCnt)
+	addElem(&cnt[0], -1)
+	addElem(&cnt[pad], 1)
+	for j := range CellWidth {
+		r.Witness(p, tableMod, laneName(tableV, j))[pad] = r.values[out][j]
+	}
+	require.Error(t, proveAndVerify(p, r), "forged entry on a padding row accepted")
+}
