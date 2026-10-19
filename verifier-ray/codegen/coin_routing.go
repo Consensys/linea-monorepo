@@ -24,9 +24,9 @@ type CoinRouting struct {
 	TotalRoundCoins int
 	// DynamicModuleCount is the number of distinct dynamically-sized modules
 	// whose runtime sizes the prover absorbs into the transcript at each round
-	// advance (prover-ray's AdvanceRound). The Zig verifier's replay absorbs the
-	// first DynamicModuleCount entries of module_sizes at every round to stay
-	// byte-exact with the prover. Counted in the same order as the proof's
+	// advance (prover-ray's AdvanceRound). The Zig verifier requires exactly
+	// DynamicModuleCount entries in module_sizes and absorbs all of them at
+	// every round to stay byte-exact with the prover. Counted in the same order as the proof's
 	// module_sizes (VanishingSystem dynamic-module order).
 	DynamicModuleCount int
 }

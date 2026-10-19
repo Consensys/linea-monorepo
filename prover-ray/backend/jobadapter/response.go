@@ -59,7 +59,7 @@ func newExecutionResponse(
 		ProverVersion:     proverVersion,
 		ProofHex:          hexBytes(result.ProofBytes),
 		StartBlockNumber:  startBlockNumber,
-		PublicInputs:      publicInputs(result.PublicInputs, []string{}, 0),
+		PublicInputs:      publicInputs(result.PublicInputs),
 		FilteredAddresses: []string{},
 		ProgramVk:         hexBytes(programVk),
 	}
@@ -73,12 +73,14 @@ func newExecutionResponse(
 func newExecutionResponseFromNative(
 	out nativerunner.Output, proverVersion string, programVk []byte,
 ) executionResponse {
+	pi := out.PublicInputs
+	// blockCount is not in the runner output; derive it from the range.
+	pi.BlockCount = out.PublicInputs.EndBlockNumber - out.StartBlockNumber + 1
 	return executionResponse{
-		ProverVersion:    proverVersion,
-		ProofHex:         hexBytes(backend.DevMarkerProof(backend.ProverModeDevZkVM)),
-		StartBlockNumber: out.StartBlockNumber,
-		PublicInputs: publicInputs(out.PublicInputs, hexHashList(out.L2L1Messages),
-			out.PublicInputs.EndBlockNumber-out.StartBlockNumber+1),
+		ProverVersion:     proverVersion,
+		ProofHex:          hexBytes(backend.DevMarkerProof(backend.ProverModeDevZkVM)),
+		StartBlockNumber:  out.StartBlockNumber,
+		PublicInputs:      publicInputs(pi),
 		FilteredAddresses: hexAddressList(out.FilteredAddresses),
 		ProgramVk:         hexBytes(programVk),
 	}
@@ -100,13 +102,13 @@ func hexAddressList(as [][20]byte) []string {
 	return out
 }
 
-func publicInputs(pi backend.PublicInputs, l2L1Messages []string, blockCount uint64) executionPublicInputs {
+func publicInputs(pi backend.PublicInputs) executionPublicInputs {
 	return executionPublicInputs{
 		ParentBlockHash:                          hexHash(pi.ParentBlockHash),
 		EndBlockHash:                             hexHash(pi.EndBlockHash),
 		EndBlockNumber:                           pi.EndBlockNumber,
 		EndBlockTimestamp:                        pi.EndBlockTimestamp,
-		L2L1Messages:                             l2L1Messages,
+		L2L1Messages:                             hexHashList(pi.L2L1Messages),
 		ParentL1L2BridgeRollingHash:              hexHash(pi.ParentL1L2BridgeRollingHash),
 		ParentL1L2BridgeRollingHashMessageNumber: pi.ParentL1L2BridgeRollingHashMessageNumber,
 		EndL1L2BridgeRollingHash:                 hexHash(pi.EndL1L2BridgeRollingHash),
@@ -118,8 +120,9 @@ func publicInputs(pi backend.PublicInputs, l2L1Messages []string, blockCount uin
 		EndProcessedFtxNumber:                    pi.EndProcessedFtxNumber,
 		FilteredAddressesHash:                    hexHash(pi.FilteredAddressesHash),
 		TxFromsHash:                              hexHash(pi.TxFromsHash),
-		BlockCount:                               blockCount,
-		L2MessagingBlocksOffsets:                 []uint16{},
+		BlockCount:                               pi.BlockCount,
+		// non-nil so an empty list marshals to [] not null.
+		L2MessagingBlocksOffsets: append([]uint16{}, pi.L2MessagingBlocksOffsets...),
 	}
 }
 
