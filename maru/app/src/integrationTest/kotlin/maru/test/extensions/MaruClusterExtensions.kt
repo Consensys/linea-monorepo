@@ -26,11 +26,19 @@ fun MaruCluster.nodesHeadBlockNumbers(): Map<String, Pair<ULong, ULong?>> =
     it.label to (it.maru.headBeaconBlockNumber() to it.elNode?.headBlockNumber())
   }
 
-fun MaruCluster.assertNodesAreSyncedUpTo(targetBlockNumber: ULong, expectBeaconChain: Boolean = true) {
+/**
+ * @param targetBlockNumber min block height to assert nodes are in sync
+ * @param assertBeaconChainHeight false is necessary nodes transition from Per-Merge to Maru, where beacon cahin starts
+ *    later
+ */
+fun MaruCluster.assertNodesAreSyncedUpTo(
+  targetBlockNumber: ULong,
+  assertBeaconChainHeight: Boolean = true,
+) {
   val nodesHeadBlockNumbers = nodesHeadBlockNumbers()
   val inSync =
     nodesHeadBlockNumbers.values.all { (maruHead, besuHead) ->
-      var nodeInSync = if (expectBeaconChain) maruHead >= targetBlockNumber else true
+      var nodeInSync = if (assertBeaconChainHeight) maruHead >= targetBlockNumber else true
       nodeInSync = nodeInSync && besuHead?.let { it >= targetBlockNumber } ?: true
       nodeInSync
     }

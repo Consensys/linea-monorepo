@@ -21,10 +21,10 @@ fun MaruCluster.assertSameCanonicalElChain(
   pollingInterval: Duration = 1.seconds,
 ) {
   await
-    .pollDelay(pollingInterval.toJavaDuration())
+    .pollInterval(pollingInterval.toJavaDuration())
     .timeout(timeout.toJavaDuration())
     .untilAsserted {
-      this.assertNodesAreSyncedUpTo(targetBlockNumber = chainHeight, expectBeaconChain = false)
+      this.assertNodesAreSyncedUpTo(targetBlockNumber = chainHeight, assertBeaconChainHeight = false)
 
       val expectedChainHead = referenceElNode.getBlockByNumber(chainHeight)
 
