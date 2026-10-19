@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Docker smoke test for the prover-ray image (reusable by CI).
 #
-# Checks three things:
-#   1. dev-mock turns a dropped request file into a valid response file.
+# Checks four things:
+#   1. dev-mock turns a dropped request file into a valid response file (the
+#      supervisor runs each request in a child over stdin/stdout).
 #   2. the native runner and its shared libraries run inside the image.
 #   3. dev-zkvm proves a real request: the guest output follows the spec, and the
 #      bundled guest ELF and native runner emit the same output.
+#   4. the same dev-zkvm request over stdin/stdout leaves only the response on
+#      stdout.
 #
 # Usage: scripts/docker-smoke.sh [image]
 set -euo pipefail
@@ -117,5 +120,26 @@ if ! grep -q '"proverVersion": "smoke-dev-zkvm"' "$WORK/zkvm/response.json"; the
     exit 1
 fi
 echo "    ok: guest commitment matches the native runner"
+
+echo "==> dev-zkvm over stdin/stdout: the way the supervisor runs every child"
+# Same request, but piped in and out as the shared subprocess spawn does. Fails
+# if anything besides the response reaches stdout (for example ZkC DEBUG output).
+if ! $DOCKER run --rm -i \
+        "${run_opts[@]}" \
+        --entrypoint /opt/linea/prover-ray/prover \
+        -v "$WORK/zkvm:/data" \
+        "$IMAGE" prove --config /data/config.toml --type l2-execution --id smoke \
+        --in - --out - < "$ZKVM_FIXTURE" > "$WORK/zkvm/stdout.json"; then
+    echo "FAIL: dev-zkvm prove over stdin/stdout failed"
+    cat "$WORK/zkvm/stdout.json" 2>/dev/null || true
+    exit 1
+fi
+if ! python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["proverVersion"]=="smoke-dev-zkvm", d["proverVersion"]' \
+        "$WORK/zkvm/stdout.json"; then
+    echo "FAIL: stdout is not exactly the dev-zkvm response JSON"
+    head -c 2000 "$WORK/zkvm/stdout.json"
+    exit 1
+fi
+echo "    ok: stdout carries only the response JSON"
 
 echo "SMOKE PASSED"
