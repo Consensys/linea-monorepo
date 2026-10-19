@@ -22,6 +22,8 @@ const (
 	selectMod  = "select"
 	tableMod   = "table"
 	lookupMod  = "lookup"
+	p2Mod      = "p2"
+	mdMod      = "md"
 )
 
 // Machine builds a program for the chips: it allocates addresses, counts the
@@ -48,6 +50,7 @@ type Machine struct {
 	selects []selectInst
 	tables  []tableInst
 	lookups []lookupInst
+	mds     []mdInst
 
 	instrs []instr // every instruction, in execution order
 
@@ -71,6 +74,7 @@ const (
 	instrE6            // an E6 operation: its result
 	instrSelect        // Select: the selected cell
 	instrLookup        // Lookup: the entry read
+	instrMD            // MDHash: the digest (and the compressions, for the P2 core)
 )
 
 func (m *Machine) alloc() int {
@@ -133,6 +137,7 @@ func (m *Machine) chips() []chip {
 	return append([]chip{
 		witnessChip{m}, constChip{m}, windowChip{m}, bitsChip{m},
 		e6Chip{m}, selectChip{m}, tableChip{m}, lookupChip{m},
+		p2Chip{m}, mdChip{m},
 	}, m.extra...)
 }
 
@@ -153,6 +158,7 @@ type Program struct {
 	Sys     *wiop.System
 	Bus     *wiop.LogDerivativeSum // nil if no chip accesses the memory
 	Tables  *wiop.LogDerivativeSum // nil if the program has no table
+	P2      *wiop.LogDerivativeSum // nil if the program hashes nothing
 	m       *Machine
 	modules []*module // the chips with rows, in Machine.chips order
 	chips   []chip
@@ -163,8 +169,8 @@ type Program struct {
 // passes down to the PCS. The machine must not be modified afterwards.
 //
 // Rounds: the chips' witness columns are committed in round 0; the coins α
-// and γ of the memory and of the tables are drawn in round 1; their sums are
-// claimed in round 2.
+// and γ of the memory, the tables and the permutations are drawn in round 1;
+// their sums are claimed in round 2.
 func (m *Machine) Compile() (*Program, error) {
 	sys := wiop.NewSystemf("recursion")
 	witnessRound := sys.NewRound()
@@ -188,6 +194,7 @@ func (m *Machine) Compile() (*Program, error) {
 	}
 	p.Bus = bus.mem.build(sys, coinRound)
 	p.Tables = bus.tables.build(sys, coinRound)
+	p.P2 = bus.p2.build(sys, coinRound)
 
 	lookuptologderivsum.Compile(sys)
 	logderivativesum.Compile(sys)
@@ -201,7 +208,8 @@ func (m *Machine) Compile() (*Program, error) {
 // witness columns.
 type Run struct {
 	values  []Cell
-	witness []*cols // the witness columns of Program.modules[i]
+	witness []*cols                  // the witness columns of Program.modules[i]
+	p2      [][P2Width]field.Element // the permutations' inputs, in P2 core row order
 }
 
 // Value returns the value of the cell at addr.
@@ -281,6 +289,9 @@ func (m *Machine) exec(in instr, r *Run) error {
 		return m.execSelect(m.selects[in.idx], r)
 	case instrLookup:
 		return m.execLookup(m.lookups[in.idx], r)
+	case instrMD:
+		m.execMD(m.mds[in.idx], r)
+		return nil
 	}
 	return fmt.Errorf("unknown instruction kind %d", in.kind)
 }
