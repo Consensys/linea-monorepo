@@ -169,7 +169,7 @@ jobs:
               - '.github/workflows/main.yml'
             prover-ray:
               - 'prover-ray/**'
-              - 'rollup_spec/src/rollup_spec/prover_io/testdata/**'
+              - 'rollup_spec/src/**'
               - 'riscv-guests/l2-execution/test/testdata/**'
               - 'riscv-guests/build_common/linker_script.ld'
               - '.github/workflows/prover-ray-testing.yml'
@@ -206,6 +206,7 @@ jobs:
               - '.github/workflows/run-smc-tests.yml'
             linea-sequencer-plugin:
               - 'linea-besu/plugins/linea-sequencer/**'
+              - 'linea-besu/plugins/sequencer-interfaces/**'
               - '.github/workflows/linea-sequencer-plugin-testing.yml'
               - 'buildSrc/**'
               - 'gradle/**'

@@ -2,6 +2,7 @@ package codegen
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/LFDT-Lineth/lineth-monorepo/arithmetization/gopkg/embedded"
@@ -20,6 +21,7 @@ import (
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/proofserialization"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/zkcdriver"
 	minimalelf "github.com/LFDT-Lineth/lineth-monorepo/prover-ray/zkcdriver/minimal-elf"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/zkcdriver/risc5"
 )
 
 // HonestRiscvArtifacts are the verifier-facing outputs from compiling the real
@@ -70,6 +72,7 @@ func BuildAllInOneHonestRiscvArtifacts() (HonestRiscvArtifacts, error) {
 	sys := wiop.NewSystemf("zkc-riscv-system")
 	sys.NewRound()
 	driver := zkcdriver.NewZkCDriver(sys, zkcdriver.Settings{}, bytes.NewReader(compiledConstraints))
+	risc5.RegisterGuestPublicOutputs(sys)
 	runCompilePipeline(sys)
 
 	compiledSystem, err := BuildCompiledSystem(sys)
@@ -90,13 +93,20 @@ func BuildAllInOneHonestRiscvArtifacts() (HonestRiscvArtifacts, error) {
 	// Tracing is hoisted out of the assignment closure: it depends only on the
 	// inputs, not on the runtime. This guest fits a single shard.
 	traces := driver.TraceZkcInputs(inputs)
-	if len(traces) != 1 {
-		return HonestRiscvArtifacts{}, fmt.Errorf("expected a single trace shard, got %d", len(traces))
+	if traces.Len() != 1 {
+		return HonestRiscvArtifacts{}, fmt.Errorf("expected a single trace shard, got %d", traces.Len())
+	}
+	shard, errs := traces.Get(0)
+	if len(errs) > 0 {
+		return HonestRiscvArtifacts{}, fmt.Errorf("tracing shard 0: %w", errors.Join(errs...))
+	}
+	if shard.IsEmpty() {
+		return HonestRiscvArtifacts{}, fmt.Errorf("tracing shard 0: no shard")
 	}
 
 	proof, pub := sys.Prove(
 		func(assignRt *wiop.Runtime) {
-			driver.AssignTraceShard(assignRt, traces[0], honestSharedRandomness)
+			driver.AssignTraceShard(assignRt, shard.Unwrap(), honestSharedRandomness)
 		},
 		wiop.ProveOptions{CheckUnreducedQueries: true},
 	)
