@@ -547,8 +547,19 @@ type fixtureCase struct {
 	invalidVerifyError string
 	// alt is a second honest proof of the same compiled protocol at a
 	// different dynamic-module size, verified against the same baked
-	// PcsSystem.
+	// PcsSystem. Multi-size cases only: hasAlt is the multi-size predicate.
 	alt *proofFixture
+	// altDifferentStatement is a second honest proof of the same compiled
+	// protocol, at the SAME size, whose public-input statement deliberately
+	// differs from honest's — the one fixture that exercises verifyPair's
+	// "two individually valid proofs, different statements" rejection.
+	altDifferentStatement *proofFixture
+	// altSameStatement is a second honest proof of the same compiled protocol
+	// carrying the SAME public-input statement as honest (as opposed to
+	// altDifferentStatement) — the positive counterpart, pinning that
+	// verifyPair accepts two independently-proven proofs whose statements
+	// genuinely agree, not just when both happen to be empty.
+	altSameStatement *proofFixture
 }
 
 type vanishingProofView struct {
@@ -756,6 +767,33 @@ func buildCompiledFixtureCases() ([]fixtureCase, []codegen.CompiledSystem, error
 		invalid.view.publicInputs = append([]runtimeTraceCell(nil), invalid.view.publicInputs...)
 		invalid.view.publicInputs[0] = baseTraceCell(elem(99))
 		cases[last].invalid = &invalid
+
+		// altDifferentStatement is a SECOND HONEST proof — genuinely reproven,
+		// not tampered — whose opened cell is 31 instead of 30. verifyPair's
+		// consistency check must reject (honest, altDifferentStatement) even
+		// though each individually verifies: this is the only fixture that
+		// exercises the "two individually valid proofs, different statements"
+		// rejection path (see verify_pair_test.zig). It is NOT stored in `alt`:
+		// that slot means "different size", and this proof has the same size.
+		altDifferentAssign := func(rt *wiop.Runtime) { rt.AssignColumn(col, concreteBase(elems(10, 20, 31, 40))) }
+		altDifferentFixture, err := buildProofFixture(sys, altDifferentAssign, "PublicInput", "OpenedCellPublicInput", "altDifferentStatement")
+		if err != nil {
+			return nil, nil, err
+		}
+		cases[last].altDifferentStatement = &altDifferentFixture
+
+		// altSameStatement is a THIRD independently-proven proof — different
+		// witness rounds/openings from honest (a distinct proving run, not a
+		// copy), but assigned to open the SAME cell value (30). Pins that
+		// verifyPair accepts a pair of genuinely different proofs whose public
+		// statements happen to agree, closing the gap the empty-statement
+		// multi-size cases (which agree only trivially) cannot cover.
+		altSameAssign := func(rt *wiop.Runtime) { rt.AssignColumn(col, concreteBase(elems(11, 21, 30, 41))) }
+		altSameFixture, err := buildProofFixture(sys, altSameAssign, "PublicInput", "OpenedCellPublicInput", "altSameStatement")
+		if err != nil {
+			return nil, nil, err
+		}
+		cases[last].altSameStatement = &altSameFixture
 	}
 	// Dynamic-module twin of the public-input scenario. The opened cell is still
 	// carried only in `public_inputs`, but the module size now round-trips
@@ -961,10 +999,16 @@ type messageBusFixtureCase struct {
 func buildMessageBusSharedRandomnessSystem() (*wiop.System, *wiop.Column, *wiop.Column) {
 	sys := wiop.NewSystemf("mb-shared-randomness")
 	r0 := sys.NewRound()
+	// Bus columns live on the coin round, not on r0. SharedRandomness requires
+	// it: the coin round's commitment is hashed into this shard's contribution to
+	// γ, so a column on any other round would not be bound by the γ that seeds
+	// the α and β the bus is evaluated with. r0 carries γ itself, which is why
+	// the coin round is r0's successor.
+	coinRound := r0.EnsureNext()
 	modA := sys.NewSizedModule(sys.Context.Childf("modA"), 4, wiop.PaddingDirectionNone)
 	modB := sys.NewSizedModule(sys.Context.Childf("modB"), 4, wiop.PaddingDirectionNone)
-	colA := modA.NewColumn(sys.Context.Childf("A"), r0)
-	colB := modB.NewColumn(sys.Context.Childf("B"), r0)
+	colA := modA.NewColumn(sys.Context.Childf("A"), coinRound)
+	colB := modB.NewColumn(sys.Context.Childf("B"), coinRound)
 
 	sys.NewMessageBusSend(sys.Context.Childf("send"), "shard", "route", wiop.NewTable(colA.View()))
 	sys.NewMessageBusReceive(sys.Context.Childf("recv"), "shard", "route", wiop.NewTable(colB.View()))
@@ -1004,7 +1048,13 @@ func flippedExtTraceCell(cell runtimeTraceCell) runtimeTraceCell {
 func addMessageBusSharedRandomness(reg func(name string, sys *wiop.System, honest assignFn) error) error {
 	sys, colA, colB := buildMessageBusSharedRandomnessSystem()
 	honest := func(rt *wiop.Runtime) {
+		// γ lives on round 0 and must be written while the runtime is still there.
 		messagebus.AssignSharedRandomnessSeed(rt, octuplet(11, 22, 33, 44, 55, 66, 77, 88))
+		// The bus columns live on the coin round, so step onto it before assigning
+		// them: AssignColumn requires the runtime's current round to be the
+		// column's own. Advancing here is what absorbs γ into the transcript that
+		// α and β are then drawn from.
+		rt.AdvanceRound()
 		rt.AssignColumn(colA, concreteBase(elems(1, 2, 3, 4)))
 		rt.AssignColumn(colB, concreteBase(elems(1, 2, 3, 4)))
 	}
@@ -1611,6 +1661,17 @@ func writeVerifyCase(out *bytes.Buffer, idx int, tc fixtureCase) {
 	if tc.alt != nil {
 		writeVerifyProof(out, fmt.Sprintf("verify_case_%d_alt", idx), *tc.alt)
 	}
+	// The altDifferentStatement honest proof: same size, different public-input
+	// statement, verified against the SAME System's .pcs.
+	if tc.altDifferentStatement != nil {
+		writeVerifyProof(out, fmt.Sprintf("verify_case_%d_alt_different_statement", idx), *tc.altDifferentStatement)
+	}
+	// The altSameStatement honest proof: an independent proving run whose
+	// public-input statement matches honest's, verified against the SAME
+	// System's .pcs.
+	if tc.altSameStatement != nil {
+		writeVerifyProof(out, fmt.Sprintf("verify_case_%d_alt_same_statement", idx), *tc.altSameStatement)
+	}
 	fmt.Fprintf(
 		out,
 		"const verify_case_%d_systems = verifier.Systems{ .public_input = system_%d_public_input, .vanishing = system_%d, .logderivativesum = system_%d_logderiv, .grandproduct = system_%d_grandproduct, .rowlimit = system_%d_rowlimit, .shared_randomness = system_%d_shared_randomness, .pcs = %s };\n",
@@ -1822,18 +1883,33 @@ func writeVerifyFailingInputSwitch(out *bytes.Buffer, cases []fixtureCase) {
 	fmt.Fprintln(out, "}")
 	fmt.Fprintln(out)
 
-	// getInputAlt returns a case's SECOND-size honest verifier input (multi-size
-	// cases
-	// only); hasAlt gates it. The alt verifier input is checked against the SAME
-	// case systems (verify_case_i_systems.pcs) as the primary proof — the
-	// runtime-size-reconstructed-layout property: one baked System, two sizes.
-	fmt.Fprintln(out, "pub fn getInputAlt(comptime index: usize) verifier.VerifyInput {")
+	// Three optional second-proof getters, each gated by its has<suffix>:
+	//   getInputAlt                   — different dynamic-module SIZE (multi-size
+	//                                   cases only; hasAlt is the multi-size
+	//                                   predicate)
+	//   getInputAltDifferentStatement — same size, different public-input
+	//                                   statement (OpenedCellPublicInput)
+	//   getInputAltSameStatement      — independently re-proven, same statement
+	// All are checked against the SAME case systems (verify_case_i_systems.pcs)
+	// as the primary proof — one baked System verifying a second,
+	// differently-shaped or differently-witnessed proof.
+	writeAltGetter(out, cases, "Alt", "alt", "alt input", func(tc fixtureCase) *proofFixture { return tc.alt })
+	writeAltGetter(out, cases, "AltDifferentStatement", "alt_different_statement", "altDifferentStatement input", func(tc fixtureCase) *proofFixture { return tc.altDifferentStatement })
+	writeAltGetter(out, cases, "AltSameStatement", "alt_same_statement", "altSameStatement input", func(tc fixtureCase) *proofFixture { return tc.altSameStatement })
+}
+
+// writeAltGetter emits a `getInput<suffix>`/`has<suffix>` pair gated by
+// whether `get(tc)` is non-nil for each case. The three pairs differ only in
+// the suffix, the zig identifier field prefix baked into their `_input` const
+// names (written by writeVerifyProof), and the compile-error label.
+func writeAltGetter(out *bytes.Buffer, cases []fixtureCase, suffix, fieldPrefix, missingLabel string, get func(fixtureCase) *proofFixture) {
+	fmt.Fprintf(out, "pub fn getInput%s(comptime index: usize) verifier.VerifyInput {\n", suffix)
 	fmt.Fprintln(out, "    return switch (index) {")
 	for i, tc := range cases {
-		if tc.alt != nil {
-			fmt.Fprintf(out, "        %d => verify_case_%d_alt_input,\n", i, i)
+		if get(tc) != nil {
+			fmt.Fprintf(out, "        %d => verify_case_%d_%s_input,\n", i, i, fieldPrefix)
 		} else {
-			fmt.Fprintf(out, "        %d => @compileError(\"verifier fixture case %d (%s) has no alt input\"),\n", i, i, codegen.ZigString(tc.name))
+			fmt.Fprintf(out, "        %d => @compileError(\"verifier fixture case %d (%s) has no %s\"),\n", i, i, codegen.ZigString(tc.name), missingLabel)
 		}
 	}
 	fmt.Fprintln(out, "        else => @compileError(\"unknown verifier fixture case index\"),")
@@ -1841,14 +1917,15 @@ func writeVerifyFailingInputSwitch(out *bytes.Buffer, cases []fixtureCase) {
 	fmt.Fprintln(out, "}")
 	fmt.Fprintln(out)
 
-	fmt.Fprintln(out, "pub fn hasAlt(comptime index: usize) bool {")
+	fmt.Fprintf(out, "pub fn has%s(comptime index: usize) bool {\n", suffix)
 	fmt.Fprintln(out, "    return switch (index) {")
 	for i, tc := range cases {
-		fmt.Fprintf(out, "        %d => %t,\n", i, tc.alt != nil)
+		fmt.Fprintf(out, "        %d => %t,\n", i, get(tc) != nil)
 	}
 	fmt.Fprintln(out, "        else => false,")
 	fmt.Fprintln(out, "    };")
 	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
 }
 
 func vanishingBenchCounts(system codegen.VanishingSystem) (expressionCount, bucketCount, vanishingCount int) {

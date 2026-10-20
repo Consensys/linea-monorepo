@@ -173,7 +173,7 @@ class RollupProofGeneratingCoordinator(
     return synchronized(this) {
       val next = lastHandleFuture
         .thenCompose { ensureStreamPositionInitialized() }
-        .thenCompose {
+        .thenApply {
           synchronized(this) {
             require(conflation.conflationResult.startBlockNumber == lastHandledBlockNumber + 1u) {
               "Conflation out of order: expected startBlockNumber=${lastHandledBlockNumber + 1u}, " +
@@ -182,7 +182,6 @@ class RollupProofGeneratingCoordinator(
             val segmentBytes = conflationSegmentBuilder.buildSegment(conflation.blocks, chainId)
             pendingConflations += PendingConflation(conflation.conflationResult, conflation.blocks, segmentBytes)
             lastHandledBlockNumber = conflation.conflationResult.endBlockNumber
-            SafeFuture.completedFuture(Unit)
           }
         }.toSafeFuture()
       lastHandleFuture = next
@@ -278,9 +277,9 @@ class RollupProofGeneratingCoordinator(
       windowPending.first().startBlockNumber.toLong(),
       windowPending.last().endBlockNumber.toLong(),
     ).thenApply { batches ->
-      val batchesByStart = batches.associateBy { it.startBlockNumber }
+      val batchesByStartAndEnd = batches.associateBy { Pair(it.startBlockNumber, it.endBlockNumber) }
       windowPending.map { pending ->
-        val batch = batchesByStart[pending.startBlockNumber]
+        val batch = batchesByStartAndEnd[Pair(pending.startBlockNumber, pending.endBlockNumber)]
           ?: error("Batch not found for conflation ${pending.intervalString()}")
         val hash = batch.proofIndexHash
           ?: error("proofIndexHash is null for batch ${pending.intervalString()}")
