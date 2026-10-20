@@ -1,4 +1,4 @@
-include "../poseidon2/compress.zkc"
+include "../poseidon2/compress_native.zkc"
 include "e6.zkc"
 
 // ===================================================================================
@@ -10,32 +10,69 @@ include "e6.zkc"
 // into the chaining value whenever it holds 8. The transcript adds a flag that tells
 // whether anything was absorbed since the last squeeze.
 //
-// The chaining value lives in lanes 0–7 of poseidon2_state and the pending block in
-// lanes 8–15. Between the transcript's operations nothing else may write poseidon2_state or
-// compress_rho, so a program using the transcript must not compress or permute in between.
-// Lanes of the block beyond the pending count hold stale values.
+// The chaining value lives in lanes 0–7 of the memory transcript_state and the pending block
+// in lanes 8–15. A compression calls the native function poseidon2_compress on the 16 lanes
+// and writes its 8 results to lanes 0–7. Lanes of the block beyond the pending count hold
+// stale values.
 //
 // The transcript starts in the state all-zero memories give it and cannot be reset.
 // ===================================================================================
 
+// The number of elements in a block of the hasher.
+const TRANSCRIPT_BLOCK:u5 = 8
+
+memory transcript_state[u32](address:u5) -> (felt:𝔽)
+
 // The pending count and the flag.
 memory transcript_meta[u32](address:u1) -> (count:u5, absorbed:u1)
+
+// transcript_compress compresses the 16 lanes, the chaining value and the pending block, into the
+// chaining value.
+fn transcript_compress<transcript_state>() {
+    var x0:𝔽, x1:𝔽, x2:𝔽, x3:𝔽, x4:𝔽, x5:𝔽, x6:𝔽, x7:𝔽, x8:𝔽, x9:𝔽, x10:𝔽, x11:𝔽, x12:𝔽, x13:𝔽, x14:𝔽, x15:𝔽
+    var y0:𝔽, y1:𝔽, y2:𝔽, y3:𝔽, y4:𝔽, y5:𝔽, y6:𝔽, y7:𝔽
+    x0 = transcript_state[0]
+    x1 = transcript_state[1]
+    x2 = transcript_state[2]
+    x3 = transcript_state[3]
+    x4 = transcript_state[4]
+    x5 = transcript_state[5]
+    x6 = transcript_state[6]
+    x7 = transcript_state[7]
+    x8 = transcript_state[8]
+    x9 = transcript_state[9]
+    x10 = transcript_state[10]
+    x11 = transcript_state[11]
+    x12 = transcript_state[12]
+    x13 = transcript_state[13]
+    x14 = transcript_state[14]
+    x15 = transcript_state[15]
+    y0, y1, y2, y3, y4, y5, y6, y7 = poseidon2_compress(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15)
+    transcript_state[0] = y0
+    transcript_state[1] = y1
+    transcript_state[2] = y2
+    transcript_state[3] = y3
+    transcript_state[4] = y4
+    transcript_state[5] = y5
+    transcript_state[6] = y6
+    transcript_state[7] = y7
+}
 
 // push appends x to the pending block, which holds count < 8 elements, and compresses it
 // into the chaining value if it is full. It returns the new count.
 #[inline]
-fn push<poseidon2_state, compress_rho>(count:u5, x:𝔽) -> (next:u5) {
-    poseidon2_state[count + COMPRESS_BLOCK] = x
+fn push<transcript_state>(count:u5, x:𝔽) -> (next:u5) {
+    transcript_state[count + TRANSCRIPT_BLOCK] = x
     next = count + 1
-    if next == COMPRESS_BLOCK {
-        compress()
+    if next == TRANSCRIPT_BLOCK {
+        transcript_compress()
         next = 0
     }
 }
 
 // write_elements writes the len elements of E₆ at e6[addr], … to the hasher, and sets the
 // flag if mark is 1 and len is not 0.
-fn write_elements<e6, poseidon2_state, compress_rho, transcript_meta>(addr:u16, len:u16, mark:u1) {
+fn write_elements<e6, transcript_state, transcript_meta>(addr:u16, len:u16, mark:u1) {
     var count:u5, absorbed:u1
     var c0:𝔽, c1:𝔽, c2:𝔽, c3:𝔽, c4:𝔽, c5:𝔽
     count, absorbed = transcript_meta[0]
@@ -55,20 +92,20 @@ fn write_elements<e6, poseidon2_state, compress_rho, transcript_meta>(addr:u16, 
 }
 
 // write_seed writes the len elements at e6[addr], … to the hasher without setting the flag.
-fn write_seed<e6, poseidon2_state, compress_rho, transcript_meta>(addr:u16, len:u16) {
+fn write_seed<e6, transcript_state, transcript_meta>(addr:u16, len:u16) {
     write_elements(addr, len, 0)
 }
 
 // absorb writes the len elements at e6[addr], … to the hasher and sets the flag, unless
 // len is 0.
-fn absorb<e6, poseidon2_state, compress_rho, transcript_meta>(addr:u16, len:u16) {
+fn absorb<e6, transcript_state, transcript_meta>(addr:u16, len:u16) {
     write_elements(addr, len, 1)
 }
 
 // squeeze derives a challenge into e6[dst]. If nothing was absorbed since the last squeeze,
 // the zero element is written first. The pending block is then padded on the left with zeros
 // and compressed, and the challenge is the first 6 elements of the chaining value.
-fn squeeze<e6, poseidon2_state, compress_rho, transcript_meta>(dst:u16) {
+fn squeeze<e6, transcript_state, transcript_meta>(dst:u16) {
     var count:u5, absorbed:u1
     var pad:u5, j:u5
     var c0:𝔽, c1:𝔽, c2:𝔽, c3:𝔽, c4:𝔽, c5:𝔽
@@ -81,23 +118,23 @@ fn squeeze<e6, poseidon2_state, compress_rho, transcript_meta>(dst:u16) {
     }
 
     if count != 0 {
-        pad = COMPRESS_BLOCK - count
+        pad = TRANSCRIPT_BLOCK - count
         for k:u5 = 0; k<count; k = k + 1 {
             j = (count - 1) - k
-            poseidon2_state[(COMPRESS_BLOCK + pad) + j] = poseidon2_state[COMPRESS_BLOCK + j]
+            transcript_state[(TRANSCRIPT_BLOCK + pad) + j] = transcript_state[TRANSCRIPT_BLOCK + j]
         }
         for i:u5 = 0; i<pad; i = i + 1 {
-            poseidon2_state[COMPRESS_BLOCK + i] = 0
+            transcript_state[TRANSCRIPT_BLOCK + i] = 0
         }
-        compress()
+        transcript_compress()
     }
 
-    c0 = poseidon2_state[0]
-    c1 = poseidon2_state[1]
-    c2 = poseidon2_state[2]
-    c3 = poseidon2_state[3]
-    c4 = poseidon2_state[4]
-    c5 = poseidon2_state[5]
+    c0 = transcript_state[0]
+    c1 = transcript_state[1]
+    c2 = transcript_state[2]
+    c3 = transcript_state[3]
+    c4 = transcript_state[4]
+    c5 = transcript_state[5]
     e6[dst] = (c0, c1, c2, c3, c4, c5)
     transcript_meta[0] = (0, 0)
 }

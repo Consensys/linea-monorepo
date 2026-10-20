@@ -86,7 +86,7 @@ fn eval_wire<e6>(wire_row:u16, finals:u16, nb_out:u16, k:u16) {
 }
 
 // absorb_ranges absorbs the runs of the level's final evaluations that are to be absorbed.
-fn absorb_ranges<e6, poseidon2_state, compress_rho, transcript_meta>(level:u16, n:u16) {
+fn absorb_ranges<e6, transcript_state, transcript_meta>(level:u16, n:u16) {
     var first_range:u16, nb_ranges:u16
     var a:u16, b:u16, len:u16
     _, _, _, _, _, _, _, _, _, _, _, first_range, nb_ranges = level_info[level]
@@ -121,7 +121,7 @@ fn verify_skip_level<e6>(level:u16, n:u16) {
 // verify_zero_check_level verifies a level whose proof is a sumcheck, or a single-source one:
 // it reduces the batch of the level's claims to the claims on the final evaluations, which it
 // checks against the wires' gates, and the challenges of its rounds are the level's point.
-fn verify_zero_check_level<e6, poseidon2_state, compress_rho, transcript_meta>(level:u16, n:u16) {
+fn verify_zero_check_level<e6, transcript_state, transcript_meta>(level:u16, n:u16) {
     var kind:u16, degree:u16, point:u16, source_point:u16
     var first_wire:u16, nb_wires:u16, first_claim:u16, nb_claims:u16, first_eq:u16, nb_eq:u16
     var start_a:u16, start_b:u16, finals_a:u16
@@ -191,7 +191,7 @@ fn verify_zero_check_level<e6, poseidon2_state, compress_rho, transcript_meta>(l
 }
 
 // verify_level verifies the level, then absorbs its final evaluations that are to be absorbed.
-fn verify_level<e6, poseidon2_state, compress_rho, transcript_meta>(level:u16, n:u16) {
+fn verify_level<e6, transcript_state, transcript_meta>(level:u16, n:u16) {
     var kind:u16
     kind, _, _, _, _, _, _, _, _, _, _, _, _ = level_info[level]
     if kind == GKR_LEVEL_SKIP {
@@ -221,7 +221,7 @@ fn check_claims<e6>(n:u16) {
 }
 
 // gkr_verify verifies the proof in gkr_proof, and that gkr_claims are its claims.
-fn gkr_verify<e6, poseidon2_state, compress_rho, transcript_meta>() {
+fn gkr_verify<e6, transcript_state, transcript_meta>() {
     var n32:u32 = gkr_n[0]
     var n:u16
     if n32<1 {

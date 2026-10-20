@@ -35,7 +35,7 @@ fn load_elements<e6>(start:u16, len:u16) {
     }
 }
 
-fn main<e6, poseidon2_state, compress_rho, transcript_meta>() {
+fn main<e6, transcript_state, transcript_meta>() {
     var elementI:u16 = 0
     var expectedI:u16 = 0
     var op:u32, len:u16

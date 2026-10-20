@@ -9,6 +9,6 @@
 
 include "../../../main/lib/gkr/verifier.zkc"
 
-fn main<e6, poseidon2_state, compress_rho, transcript_meta>() {
+fn main<e6, transcript_state, transcript_meta>() {
     gkr_verify()
 }

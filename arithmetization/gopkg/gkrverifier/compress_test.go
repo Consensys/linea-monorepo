@@ -1,6 +1,7 @@
 package gkrverifier
 
 import (
+	"fmt"
 	"math/rand/v2"
 	"testing"
 
@@ -19,6 +20,7 @@ func words(es []koalabear.Element) zkcInput {
 }
 
 func TestCompress(t *testing.T) {
+	t.Parallel()
 	compressor := poseidon2.NewCompressor(poseidon2.NewDefaultPermutation())
 	rng := rand.New(rand.NewPCG(1, 2))
 
@@ -30,7 +32,7 @@ func TestCompress(t *testing.T) {
 		return b
 	}
 
-	run := func(left, right, expected zkcInput) bool {
+	run := func(t *testing.T, left, right, expected zkcInput) bool {
 		return runZkc(t, map[string]zkcInput{"left": left, "right": right, "expected": expected}, compressDriver)
 	}
 
@@ -42,15 +44,18 @@ func TestCompress(t *testing.T) {
 	for i, p := range pairs {
 		out := make([]koalabear.Element, 8)
 		compressor.CompressField(out, p[0], p[1])
-		if !run(words(p[0]), words(p[1]), words(out)) {
-			t.Errorf("pair %d: correct output rejected", i)
-		}
+		t.Run(fmt.Sprintf("pair %d", i), func(t *testing.T) {
+			t.Parallel()
+			if !run(t, words(p[0]), words(p[1]), words(out)) {
+				t.Error("correct output rejected")
+			}
 
-		var one koalabear.Element
-		one.SetOne()
-		out[i%8].Add(&out[i%8], &one)
-		if run(words(p[0]), words(p[1]), words(out)) {
-			t.Errorf("pair %d: corrupted output accepted", i)
-		}
+			var one koalabear.Element
+			one.SetOne()
+			out[i%8].Add(&out[i%8], &one)
+			if run(t, words(p[0]), words(p[1]), words(out)) {
+				t.Error("corrupted output accepted")
+			}
+		})
 	}
 }

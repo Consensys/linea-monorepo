@@ -1,6 +1,7 @@
 package gkrverifier
 
 import (
+	"fmt"
 	"math/big"
 	"math/rand/v2"
 	"os"
@@ -148,24 +149,31 @@ func testGateChecks(t *testing.T, tables string, checks []gateCheck) {
 	if !runGateChecks(t, tables, checks, nil) {
 		t.Fatal("correct evaluations rejected")
 	}
-	for _, i := range []int{0, len(checks) / 2, len(checks) - 1} {
-		corruptedCheck := func(coordinate int) func(map[string]zkcInput, []int) {
-			return func(inputs map[string]zkcInput, expectedAt []int) {
-				w := &inputs["checks"][expectedAt[i]+coordinate]
-				*w = (*w + 1) % modulusU32
+	// the group returns once all of its parallel subtests have
+	t.Run("corrupted", func(t *testing.T) {
+		for _, i := range []int{0, len(checks) / 2, len(checks) - 1} {
+			corruptedCheck := func(coordinate int) func(map[string]zkcInput, []int) {
+				return func(inputs map[string]zkcInput, expectedAt []int) {
+					w := &inputs["checks"][expectedAt[i]+coordinate]
+					*w = (*w + 1) % modulusU32
+				}
+			}
+			for _, coordinate := range []int{0, 5} {
+				t.Run(fmt.Sprintf("check %d coordinate %d", i, coordinate), func(t *testing.T) {
+					t.Parallel()
+					if runGateChecks(t, tables, checks, corruptedCheck(coordinate)) {
+						t.Error("accepted")
+					}
+				})
 			}
 		}
-		for _, coordinate := range []int{0, 5} {
-			if runGateChecks(t, tables, checks, corruptedCheck(coordinate)) {
-				t.Errorf("corrupted check %d, coordinate %d, accepted", i, coordinate)
-			}
-		}
-	}
+	})
 }
 
 // TestGates checks the gate interpreter against the gates of the Poseidon2 compression circuit,
 // on the values gnark computes for its wires and on random elements of E₆.
 func TestGates(t *testing.T) {
+	t.Parallel()
 	rng := rand.New(rand.NewPCG(7, 8))
 
 	compressor, err := gkrposeidon2.NewCompressor(poseidon2.GetDefaultParameters())
@@ -181,7 +189,10 @@ func TestGates(t *testing.T) {
 	}
 	t.Logf("%d wires, %d distinct gates", len(circuit), nbGates)
 
+	eChecks := randomGateChecks(rng, circuit, gateOfWire)
+
 	t.Run("wire values", func(t *testing.T) {
+		t.Parallel()
 		const nbInstances = 2
 		assignment := make(gkrkoalabear.WireAssignment, len(circuit))
 		for _, in := range circuit.Inputs() {
@@ -205,7 +216,8 @@ func TestGates(t *testing.T) {
 		}
 		testGateChecks(t, tables, checks)
 
-		// zkc execute compiles and runs; a run of no checks is the compilation alone.
+		// zkc execute compiles and runs; a run of no checks is the compilation alone. The times are
+		// those of runs that share the machine with the other tests.
 		start := time.Now()
 		if !runGateChecks(t, tables, nil, nil) {
 			t.Fatal("no checks rejected")
@@ -219,13 +231,15 @@ func TestGates(t *testing.T) {
 	})
 
 	t.Run("E6 inputs", func(t *testing.T) {
-		testGateChecks(t, tables, randomGateChecks(rng, circuit, gateOfWire))
+		t.Parallel()
+		testGateChecks(t, tables, eChecks)
 	})
 }
 
 // TestGateOperations checks every operation of gkr.GateOp, most of which the compression circuit
 // does not use.
 func TestGateOperations(t *testing.T) {
+	t.Parallel()
 	rng := rand.New(rand.NewPCG(9, 10))
 
 	gate := func(nbConsts int, instructions ...gkr.GateInstruction) gkr.GateBytecode {

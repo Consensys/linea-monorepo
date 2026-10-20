@@ -60,7 +60,7 @@ fn lagrange_eval<e6>(vals:u16, d:u16, r:u16, dst:u16, scratch:u16) {
 // sumcheck_round performs a round of a sumcheck on the running claim e6[claim]: it absorbs the d
 // values g(1), …, g(d) at e6[g], …, squeezes the challenge e6[rj], recovers g(0) = claim − g(1), and
 // sets the claim to g(rj). It uses 3d + 6 scratch addresses.
-fn sumcheck_round<e6, poseidon2_state, compress_rho, transcript_meta>(g:u16, d:u16, claim:u16, rj:u16, scratch:u16) {
+fn sumcheck_round<e6, transcript_state, transcript_meta>(g:u16, d:u16, claim:u16, rj:u16, scratch:u16) {
     absorb(g, d)
     squeeze(rj)
 
@@ -80,7 +80,7 @@ fn sumcheck_round<e6, poseidon2_state, compress_rho, transcript_meta>(g:u16, d:u
 //     den ← m,    num ← m g'(rj),    where m g'(0) = num − den q g'(1).
 //
 // It uses 3d + 8 scratch addresses.
-fn single_source_round<e6, poseidon2_state, compress_rho, transcript_meta>(g:u16, d:u16, num:u16, den:u16, q:u16, rj:u16, scratch:u16) {
+fn single_source_round<e6, transcript_state, transcript_meta>(g:u16, d:u16, num:u16, den:u16, q:u16, rj:u16, scratch:u16) {
     var m:u16 = scratch + (d + 1)
     var t:u16 = m + 1
 

@@ -1,6 +1,7 @@
 package gkrverifier
 
 import (
+	"fmt"
 	"math/rand/v2"
 	"testing"
 
@@ -18,6 +19,7 @@ func e6Words(x *extensions.E6) zkcInput {
 }
 
 func TestE6(t *testing.T) {
+	t.Parallel()
 	rng := rand.New(rand.NewPCG(3, 4))
 
 	randomE6 := func() (x extensions.E6) {
@@ -59,26 +61,35 @@ func TestE6(t *testing.T) {
 	}
 
 	for i, c := range cases {
-		if !runZkc(t, inputsOf(c), e6Driver) {
-			t.Errorf("case %d: correct values rejected", i)
-		}
+		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
+			t.Parallel()
+			if !runZkc(t, inputsOf(c), e6Driver) {
+				t.Error("correct values rejected")
+			}
+		})
 	}
 
 	c := cases[2]
 	for _, name := range []string{"sum", "diff", "prod", "scaled", "square"} {
-		in := inputsOf(c)
-		in[name][5] = (in[name][5] + 1) % modulusU32
-		if runZkc(t, in, e6Driver) {
-			t.Errorf("corrupted %q accepted", name)
-		}
+		t.Run("corrupted "+name, func(t *testing.T) {
+			t.Parallel()
+			in := inputsOf(c)
+			in[name][5] = (in[name][5] + 1) % modulusU32
+			if runZkc(t, in, e6Driver) {
+				t.Error("accepted")
+			}
+		})
 	}
 
 	// a word >= p, even one that is congruent to the right value, must be rejected
 	for _, name := range []string{"a", "b", "k", "sum"} {
-		in := inputsOf(c)
-		in[name][0] += modulusU32
-		if runZkc(t, in, e6Driver) {
-			t.Errorf("non-canonical word in %q accepted", name)
-		}
+		t.Run("non-canonical word in "+name, func(t *testing.T) {
+			t.Parallel()
+			in := inputsOf(c)
+			in[name][0] += modulusU32
+			if runZkc(t, in, e6Driver) {
+				t.Error("accepted")
+			}
+		})
 	}
 }

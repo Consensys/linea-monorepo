@@ -107,6 +107,7 @@ func (v *verifyInstance) inputs() map[string]zkcInput {
 }
 
 func TestVerify(t *testing.T) {
+	t.Parallel()
 	compressor, err := gkrposeidon2.NewCompressor(poseidon2.GetDefaultParameters())
 	if err != nil {
 		t.Fatal(err)
@@ -121,7 +122,7 @@ func TestVerify(t *testing.T) {
 	}
 	rng := rand.New(rand.NewPCG(13, 14))
 	paths := writeAllTables(t, circuit, schedule)
-	run := func(inputs map[string]zkcInput) bool { return runZkc(t, inputs, verifyDriver, paths...) }
+	run := func(t *testing.T, inputs map[string]zkcInput) bool { return runZkc(t, inputs, verifyDriver, paths...) }
 
 	newInstance := func(n int) *verifyInstance {
 		v := &verifyInstance{n: n, seed: make([]extensions.E6, 3)}
@@ -152,26 +153,23 @@ func TestVerify(t *testing.T) {
 	if !testing.Short() {
 		sizes = append(sizes, 16)
 	}
+	// the instances are drawn before the subtests, which run in parallel, so that they do not
+	// depend on the order of the runs
+	instances := make(map[int]*verifyInstance)
+	for _, n := range sizes {
+		instances[n] = newInstance(n)
+	}
+
 	for _, n := range sizes {
 		t.Run(fmt.Sprintf("n=%d", n), func(t *testing.T) {
-			v := newInstance(n)
-			if !run(v.inputs()) {
+			t.Parallel()
+			v := instances[n]
+			if !run(t, v.inputs()) {
 				t.Fatal("correct proof rejected")
 			}
 			if n == 16 {
 				return
 			}
-
-			// reject runs the verifier on inputs with the word number word of the input array
-			// changed to value, and reports whether it was rejected.
-			rejects := func(name, array string, word int, change func(uint32) uint32) {
-				inputs := v.inputs()
-				inputs[array][word] = change(inputs[array][word])
-				if run(inputs) {
-					t.Errorf("%s: accepted", name)
-				}
-			}
-			addOne := func(w uint32) uint32 { return (w + 1) % modulusU32 }
 
 			firstOf := func(kind int) *levelTable {
 				for i := range tables.levels {
@@ -183,49 +181,71 @@ func TestVerify(t *testing.T) {
 				return nil
 			}
 			proofWord := func(p position) int { return 6 * p.at(n) }
+			addOne := func(w uint32) uint32 { return (w + 1) % modulusU32 }
 
-			rejects("a round polynomial value at a sumcheck level", "gkr_proof", proofWord(firstOf(levelSumcheck).start), addOne)
-			rejects("a round polynomial value at a single-source level", "gkr_proof", proofWord(firstOf(levelSingleSource).start)+6*n, addOne)
-			rejects("a final evaluation at a skip level", "gkr_proof", proofWord(firstOf(levelSkip).finals), addOne)
-			rejects("an output evaluation", "gkr_proof", proofWord(tables.levels[len(schedule)].start), addOne)
-			rejects("a final evaluation at level 0", "gkr_proof", proofWord(tables.levels[0].finals), addOne)
-
-			// Changing a final evaluation of level 0 and the claims that return it leaves only the
-			// level's own final check to reject.
-			consistent := v.inputs()
-			element := tables.levels[0].finals.at(n)
-			consistent["gkr_proof"][6*element] = addOne(consistent["gkr_proof"][6*element])
-			for i, r := range tables.returned {
-				if r.value.at(n) == element {
-					word := 6 * (i*(n+1) + n)
-					consistent["gkr_claims"][word] = addOne(consistent["gkr_claims"][word])
+			t.Run("rejections", func(t *testing.T) {
+				// rejects runs the verifier on inputs with the word number word of the input array
+				// changed, and checks that it rejects.
+				rejects := func(name, array string, word int, change func(uint32) uint32) {
+					t.Run(name, func(t *testing.T) {
+						t.Parallel()
+						inputs := v.inputs()
+						inputs[array][word] = change(inputs[array][word])
+						if run(t, inputs) {
+							t.Error("accepted")
+						}
+					})
 				}
-			}
-			if run(consistent) {
-				t.Error("a final evaluation at level 0, with the claims changed along: accepted")
-			}
 
-			rejects("the seed", "gkr_seed", 7, addOne)
-			rejects("a coordinate of a claimed point", "gkr_claims", 3, addOne)
-			rejects("a claimed value", "gkr_claims", 6*n, addOne)
-			rejects("a non-canonical proof word", "gkr_proof", 0, func(w uint32) uint32 { return w + modulusU32 })
-			rejects("a non-canonical seed word", "gkr_seed", 0, func(w uint32) uint32 { return w + modulusU32 })
-			rejects("a non-canonical claim word", "gkr_claims", 0, func(w uint32) uint32 { return w + modulusU32 })
-			rejects("n - 1", "gkr_n", 0, func(w uint32) uint32 { return w - 1 })
+				rejects("a round polynomial value at a sumcheck level", "gkr_proof", proofWord(firstOf(levelSumcheck).start), addOne)
+				rejects("a round polynomial value at a single-source level", "gkr_proof", proofWord(firstOf(levelSingleSource).start)+6*n, addOne)
+				rejects("a final evaluation at a skip level", "gkr_proof", proofWord(firstOf(levelSkip).finals), addOne)
+				rejects("an output evaluation", "gkr_proof", proofWord(tables.levels[len(schedule)].start), addOne)
+				rejects("a final evaluation at level 0", "gkr_proof", proofWord(tables.levels[0].finals), addOne)
 
-			// With n + 1 the verifier reads more of the proof and the claims than they hold, and zkc
-			// panics on a read of an input past its end, so they are padded with zeros.
-			padded := v.inputs()
-			padded["gkr_n"][0]++
-			for array, length := range map[string]int{
-				"gkr_proof":  6 * (tables.proof.a*(n+1) + tables.proof.b),
-				"gkr_claims": 6 * len(tables.returned) * (n + 2),
-			} {
-				padded[array] = append(padded[array], make(zkcInput, length-len(padded[array]))...)
-			}
-			if run(padded) {
-				t.Error("n + 1: accepted")
-			}
+				// Changing a final evaluation of level 0 and the claims that return it leaves only the
+				// level's own final check to reject.
+				t.Run("a final evaluation at level 0, with the claims changed along", func(t *testing.T) {
+					t.Parallel()
+					consistent := v.inputs()
+					element := tables.levels[0].finals.at(n)
+					consistent["gkr_proof"][6*element] = addOne(consistent["gkr_proof"][6*element])
+					for i, r := range tables.returned {
+						if r.value.at(n) == element {
+							word := 6 * (i*(n+1) + n)
+							consistent["gkr_claims"][word] = addOne(consistent["gkr_claims"][word])
+						}
+					}
+					if run(t, consistent) {
+						t.Error("accepted")
+					}
+				})
+
+				rejects("the seed", "gkr_seed", 7, addOne)
+				rejects("a coordinate of a claimed point", "gkr_claims", 3, addOne)
+				rejects("a claimed value", "gkr_claims", 6*n, addOne)
+				rejects("a non-canonical proof word", "gkr_proof", 0, func(w uint32) uint32 { return w + modulusU32 })
+				rejects("a non-canonical seed word", "gkr_seed", 0, func(w uint32) uint32 { return w + modulusU32 })
+				rejects("a non-canonical claim word", "gkr_claims", 0, func(w uint32) uint32 { return w + modulusU32 })
+				rejects("n - 1", "gkr_n", 0, func(w uint32) uint32 { return w - 1 })
+
+				// With n + 1 the verifier reads more of the proof and the claims than they hold, and zkc
+				// panics on a read of an input past its end, so they are padded with zeros.
+				t.Run("n + 1", func(t *testing.T) {
+					t.Parallel()
+					padded := v.inputs()
+					padded["gkr_n"][0]++
+					for array, length := range map[string]int{
+						"gkr_proof":  6 * (tables.proof.a*(n+1) + tables.proof.b),
+						"gkr_claims": 6 * len(tables.returned) * (n + 2),
+					} {
+						padded[array] = append(padded[array], make(zkcInput, length-len(padded[array]))...)
+					}
+					if run(t, padded) {
+						t.Error("accepted")
+					}
+				})
+			})
 		})
 	}
 }

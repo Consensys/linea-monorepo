@@ -89,6 +89,7 @@ func transcriptInputs(rng *rand.Rand, script []step) map[string]zkcInput {
 }
 
 func TestTranscript(t *testing.T) {
+	t.Parallel()
 	rng := rand.New(rand.NewPCG(5, 6))
 
 	var allSizes []step
@@ -122,14 +123,15 @@ func TestTranscript(t *testing.T) {
 	}
 
 	for _, sc := range scripts {
+		inputs := transcriptInputs(rng, sc.script)
+		bad := transcriptInputs(rng, sc.script)
 		t.Run(sc.name, func(t *testing.T) {
-			inputs := transcriptInputs(rng, sc.script)
+			t.Parallel()
 			if !runZkc(t, inputs, transcriptDriver) {
 				t.Fatal("correct challenges rejected")
 			}
 
 			last := len(inputs["expected"]) - 1
-			bad := transcriptInputs(rng, sc.script)
 			bad["expected"][last] = (bad["expected"][last] + 1) % modulusU32
 			if runZkc(t, bad, transcriptDriver) {
 				t.Error("corrupted challenge accepted")
@@ -137,18 +139,20 @@ func TestTranscript(t *testing.T) {
 		})
 	}
 
+	nonCanonical := transcriptInputs(rng, []step{{opAbsorb, 2}, {opSqueeze, 0}})
+	nonCanonical["elements"][3] += modulusU32
 	t.Run("non-canonical word", func(t *testing.T) {
-		inputs := transcriptInputs(rng, []step{{opAbsorb, 2}, {opSqueeze, 0}})
-		inputs["elements"][3] += modulusU32
-		if runZkc(t, inputs, transcriptDriver) {
+		t.Parallel()
+		if runZkc(t, nonCanonical, transcriptDriver) {
 			t.Error("non-canonical word accepted")
 		}
 	})
 
+	unknown := transcriptInputs(rng, []step{{opSqueeze, 0}})
+	unknown["ops"][0] = 3
 	t.Run("unknown operation", func(t *testing.T) {
-		inputs := transcriptInputs(rng, []step{{opSqueeze, 0}})
-		inputs["ops"][0] = 3
-		if runZkc(t, inputs, transcriptDriver) {
+		t.Parallel()
+		if runZkc(t, unknown, transcriptDriver) {
 			t.Error("unknown operation accepted")
 		}
 	})
