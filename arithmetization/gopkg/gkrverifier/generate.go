@@ -22,31 +22,56 @@ type gateTables struct {
 	gateOfWire []int // the index of each wire's gate; -1 for an input wire
 	gates      []gkr.GateBytecode
 	nbIns      []int
+	index      map[string]int
 }
 
-// newGateTables deduplicates the gates of the non-input wires of the circuit. Gates are the same if they
-// have the same bytecode and number of inputs.
+// gateKey identifies a gate: gates are the same if they have the same bytecode and number of inputs.
+func gateKey(gate gkr.GateBytecode, nbIn int) string {
+	return fmt.Sprint(nbIn, gate.Constants, gate.Instructions)
+}
+
+// register returns the index of the gate, adding it if it is new.
+func (t *gateTables) register(gate gkr.GateBytecode, nbIn int) (int, error) {
+	if frame := gate.EvaluatorSize(nbIn); frame > maxGateFrame {
+		return 0, fmt.Errorf("a gate needs a frame of %d slots, at most %d are available", frame, maxGateFrame)
+	}
+	key := gateKey(gate, nbIn)
+	gateI, found := t.index[key]
+	if !found {
+		gateI = len(t.gates)
+		t.index[key] = gateI
+		t.gates = append(t.gates, gate)
+		t.nbIns = append(t.nbIns, nbIn)
+	}
+	return gateI, nil
+}
+
+// indexOf returns the index of a gate that newGateTables has registered.
+func (t *gateTables) indexOf(gate gkr.GateBytecode, nbIn int) int {
+	gateI, found := t.index[gateKey(gate, nbIn)]
+	if !found {
+		panic("unregistered gate")
+	}
+	return gateI
+}
+
+// newGateTables deduplicates the gates of the non-input wires of the circuit, and adds the identity
+// gate that the view of the circuit at level 0 uses, if no wire has it.
 func newGateTables(circuit gkr.SerializableCircuit) (*gateTables, error) {
-	t := &gateTables{gateOfWire: make([]int, len(circuit))}
-	index := make(map[string]int)
+	t := &gateTables{gateOfWire: make([]int, len(circuit)), index: make(map[string]int)}
 	for wireI, wire := range circuit {
 		if wire.IsInput() {
 			t.gateOfWire[wireI] = -1
 			continue
 		}
-		gate, nbIn := wire.Gate.Evaluate, len(wire.Inputs)
-		if frame := gate.EvaluatorSize(nbIn); frame > maxGateFrame {
-			return nil, fmt.Errorf("wire %d: the gate needs a frame of %d slots, at most %d are available", wireI, frame, maxGateFrame)
-		}
-		key := fmt.Sprint(nbIn, gate.Constants, gate.Instructions)
-		gateI, found := index[key]
-		if !found {
-			gateI = len(t.gates)
-			index[key] = gateI
-			t.gates = append(t.gates, gate)
-			t.nbIns = append(t.nbIns, nbIn)
+		gateI, err := t.register(wire.Gate.Evaluate, len(wire.Inputs))
+		if err != nil {
+			return nil, fmt.Errorf("wire %d: %w", wireI, err)
 		}
 		t.gateOfWire[wireI] = gateI
+	}
+	if _, err := t.register(gkr.IdentityBytecode(), 1); err != nil {
+		return nil, err
 	}
 	return t, nil
 }
@@ -65,7 +90,8 @@ func felt(c *big.Int) uint32 {
 // A gate's instructions are the rows first_inst, …, first_inst + nb_inst - 1 of gate_inst, each
 // giving the operation (a gkr.GateOp), the number of arguments and the first of its rows of gate_arg.
 // An argument is a slot of the gate's frame: the constants, then the inputs, then the results of the
-// instructions, as in gkr.GateInstruction.
+// instructions, as in gkr.GateInstruction. The last gate is the identity gate, which the view of the
+// circuit at level 0 uses, unless a wire has it.
 func WriteGateTables(w io.Writer, circuit gkr.SerializableCircuit) ([]int, error) {
 	t, err := newGateTables(circuit)
 	if err != nil {
@@ -173,5 +199,315 @@ func WriteLagrangeTables(w io.Writer, circuit gkr.SerializableCircuit, schedule 
 	}
 	sb.WriteString("}\n")
 	_, err := io.WriteString(w, sb.String())
+	return err
+}
+
+// The kinds of level, as the column kind of level_info has them.
+const (
+	levelSkip = iota
+	levelSumcheck
+	levelSingleSource
+	levelOutput
+)
+
+// fixedMemory is the number of addresses of e6 that the verifier keeps for its scratch values,
+// below the points and the proof.
+const fixedMemory = 1024
+
+// position is the position of a proof element, a·n + b for n variables.
+type position struct{ a, b int }
+
+// levelTable describes a level of the schedule, or the output level, which comes after them.
+type levelTable struct {
+	kind, degree, nbOut int
+	start, finals       position // of the level's first round polynomial value, and its first final evaluation
+	point               int      // identifier of the level's challenge point; of the initial challenge for the output level
+	sourcePoint         int      // identifier of the point of a single-source level's claim source
+	firstWire, nbWires  int      // rows of the wire table
+	firstClaim, nbClaim int      // rows of the claim table
+	firstEq, nbEq       int      // rows of the eq table
+	firstRange, nbRange int      // rows of the absorbed ranges
+}
+
+// wireRow is a wire of a level, in the order of the level's claim groups.
+type wireRow struct {
+	gate, nbIn, firstInput int // gate index; nb of gate inputs; first row of the input table
+	nbSources              int
+}
+
+// rangeRow is a run of consecutive proof elements.
+type rangeRow struct {
+	start position
+	len   int
+}
+
+// claimRow is a claim of a level on one wire, from one claim source: the position of its claimed
+// value in the proof, and, at a sumcheck level, the level's eq entry for the claim's source.
+type claimRow struct {
+	value position
+	eq    int
+}
+
+// returnedRow is a claim that the verifier returns.
+type returnedRow struct {
+	wire, point int
+	value       position
+}
+
+// scheduleTables is the data of the verifier that comes from the schedule, in the layout of the
+// tables of the generated file.
+type scheduleTables struct {
+	gates    *gateTables
+	levels   []levelTable // one per level of the schedule, then the output level
+	wires    []wireRow
+	inputs   []int      // for each wire row, the index among the level's unique gate inputs of each of the gate's inputs
+	claims   []claimRow // for each wire row, one per claim source
+	eqs      []int      // the point identifier of the claim source of each eq entry; within a level, in order
+	ranges   []rangeRow
+	returned []returnedRow
+	nbPoints int
+	proof    position // the length of the proof
+	nMax     int
+}
+
+// newScheduleTables derives the tables from the circuit and its schedule. Points are identified by
+// 0 for the initial challenge, then, from the highest level down, one for each level that is not a
+// skip level. The position of a proof element in a level, with the level's n round polynomials of
+// degree d, then its final evaluations, is that of Proof.Flatten.
+func newScheduleTables(circuit gkr.SerializableCircuit, schedule constraint.GkrProvingSchedule) (*scheduleTables, error) {
+	gates, err := newGateTables(circuit)
+	if err != nil {
+		return nil, err
+	}
+	nbLevels := len(schedule)
+	identity := gkr.SerializableGate{Evaluate: gkr.IdentityBytecode(), NbIn: 1, Degree: 1}
+	t := &scheduleTables{gates: gates, levels: make([]levelTable, nbLevels+1), nbPoints: 1}
+
+	consolidated := make([]bool, len(circuit))
+	for _, group := range schedule[0].ClaimGroups() {
+		for _, wI := range group.Wires {
+			consolidated[wI] = true
+		}
+	}
+	outputs := circuit.Outputs()
+	claimValueIndices := circuit.ClaimValueIndices(schedule)
+
+	// the level circuits, their unique inputs, and the layout of the proof
+	levelCircuits := make([]gkr.SerializableCircuit, nbLevels)
+	uniqueInputs := make([][]int, nbLevels)
+	inputIndices := make([][][]int, nbLevels)
+	var next position
+	for levelI, level := range schedule {
+		levelCircuits[levelI] = circuit.LevelCircuit(schedule, levelI, identity)
+		uniqueInputs[levelI], inputIndices[levelI] = levelCircuits[levelI].InputMapping(level)
+		l := &t.levels[levelI]
+		l.degree, l.nbOut = levelCircuits[levelI].ZeroCheckDegree(level), level.NbOutgoingEvalPoints()
+		switch level.(type) {
+		case *constraint.GkrSkipLevel:
+			l.kind = levelSkip
+		case *constraint.GkrSumcheckLevel:
+			l.kind = levelSumcheck
+		case *constraint.GkrSingleSourceZeroCheckLevel:
+			l.kind = levelSingleSource
+		default:
+			return nil, fmt.Errorf("level %d: unknown level type %T", levelI, level)
+		}
+		l.start = next
+		l.finals = position{next.a + l.degree, next.b}
+		next = position{next.a + l.degree, next.b + len(uniqueInputs[levelI])*l.nbOut}
+	}
+	t.levels[nbLevels] = levelTable{kind: levelOutput, nbOut: 1, start: next, finals: next}
+	t.proof = position{next.a, next.b + len(outputs)}
+
+	// the points
+	for levelI := nbLevels - 1; levelI >= 0; levelI-- {
+		if t.levels[levelI].kind != levelSkip {
+			t.levels[levelI].point = t.nbPoints
+			t.nbPoints++
+		}
+	}
+	var pointOf func(src constraint.GkrClaimSource) int // the identifier of the point of a claim source
+	pointOf = func(src constraint.GkrClaimSource) int {
+		switch {
+		case src.Level == nbLevels:
+			return 0
+		case t.levels[src.Level].kind == levelSkip:
+			return pointOf(schedule[src.Level].(*constraint.GkrSkipLevel).ClaimSources[src.OutgoingClaimIndex])
+		}
+		return t.levels[src.Level].point
+	}
+
+	// the wires, claims and ranges of each level
+	addRange := func(levelI int, start position, length int) {
+		l := &t.levels[levelI]
+		if last := len(t.ranges) - 1; l.nbRange != 0 && t.ranges[last].start.a == start.a && t.ranges[last].start.b+t.ranges[last].len == start.b {
+			t.ranges[last].len += length
+			return
+		}
+		t.ranges = append(t.ranges, rangeRow{start, length})
+		l.nbRange++
+	}
+	for levelI, level := range schedule {
+		l := &t.levels[levelI]
+		l.firstWire, l.firstClaim, l.firstEq, l.firstRange = len(t.wires), len(t.claims), len(t.eqs), len(t.ranges)
+
+		if l.kind == levelSingleSource {
+			l.sourcePoint = pointOf(level.ClaimGroups()[0].ClaimSources[0])
+		}
+		levelWireI := 0
+		for _, group := range level.ClaimGroups() {
+			firstEq := len(t.eqs) - l.firstEq
+			if l.kind == levelSumcheck {
+				for _, src := range group.ClaimSources {
+					t.eqs = append(t.eqs, pointOf(src))
+				}
+			}
+			for _, wI := range group.Wires {
+				wire := levelCircuits[levelI][wI]
+				gateI := gates.indexOf(wire.Gate.Evaluate, len(wire.Inputs))
+				t.wires = append(t.wires, wireRow{gateI, len(wire.Inputs), len(t.inputs), len(group.ClaimSources)})
+				t.inputs = append(t.inputs, inputIndices[levelI][levelWireI]...)
+				levelWireI++
+				for claimI, src := range group.ClaimSources {
+					value := position{t.levels[src.Level].finals.a, t.levels[src.Level].finals.b + claimValueIndices[wI][claimI]}
+					row := claimRow{value: value}
+					if l.kind == levelSumcheck {
+						row.eq = firstEq + claimI
+					}
+					t.claims = append(t.claims, row)
+				}
+			}
+		}
+		l.nbWires, l.nbClaim, l.nbEq = len(t.wires)-l.firstWire, len(t.claims)-l.firstClaim, len(t.eqs)-l.firstEq
+
+		// the final evaluations that are absorbed, and, at level 0, the ones that are returned
+		if levelI != 0 {
+			for uI, wI := range uniqueInputs[levelI] {
+				if !circuit.IsInput(wI) || consolidated[wI] {
+					first := level.FinalEvalProofIndex(uI, 0)
+					addRange(levelI, position{l.finals.a, l.finals.b + first}, level.FinalEvalProofIndex(uI+1, 0)-first)
+				}
+			}
+		}
+		l.nbRange = len(t.ranges) - l.firstRange
+	}
+
+	// the output level
+	out := &t.levels[nbLevels]
+	out.point, out.firstRange = 0, len(t.ranges)
+	for i, wI := range outputs {
+		if consolidated[wI] {
+			addRange(nbLevels, position{out.finals.a, out.finals.b + i}, 1)
+		} else {
+			t.returned = append(t.returned, returnedRow{wI, 0, position{out.finals.a, out.finals.b + i}})
+		}
+	}
+	out.nbRange = len(t.ranges) - out.firstRange
+
+	// the returned claims
+	for levelI := nbLevels - 1; levelI >= 0; levelI-- {
+		level, l := schedule[levelI], &t.levels[levelI]
+		for uI, wI := range uniqueInputs[levelI] {
+			if levelI != 0 && (!circuit.IsInput(wI) || consolidated[wI]) {
+				continue
+			}
+			for k := range l.nbOut {
+				point := l.point
+				if l.kind == levelSkip {
+					point = pointOf(level.(*constraint.GkrSkipLevel).ClaimSources[k])
+				}
+				t.returned = append(t.returned, returnedRow{wI, point, position{l.finals.a, l.finals.b + level.FinalEvalProofIndex(uI, k)}})
+			}
+		}
+	}
+
+	t.nMax = (1<<16 - fixedMemory - t.proof.b) / (t.nbPoints + t.proof.a)
+	if t.nMax < 1 {
+		return nil, fmt.Errorf("the proof does not fit in 16-bit addresses for one variable")
+	}
+	return t, nil
+}
+
+// WriteScheduleTables writes the tables of the verifier that come from the circuit's schedule, and
+// the constants that describe them; the gates are in the tables WriteGateTables writes, and the
+// gate of each wire row is its index among them. Everything is in terms of the number n of
+// variables, and addresses of the memory e6, with the verifier's layout:
+//
+//   - the first GKR_FIXED addresses are scratch;
+//   - then come the GKR_NB_POINTS points of n elements each; the point with identifier p is at
+//     GKR_FIXED + p·n. Point 0 is the initial challenge, and the others are the challenges of the
+//     levels that are not skip levels, from the highest level down;
+//   - then comes the proof, of GKR_PROOF_A·n + GKR_PROOF_B elements, in the order of Proof.Flatten:
+//     for each level, then the output level, its round polynomials' values g_j(1), …, g_j(d) for
+//     j < n, then its final evaluations.
+//
+// A position is a pair (a, b), for the proof element number a·n + b. GKR_N_MAX is the largest n for
+// which this fits in the 16-bit addresses.
+//
+// The levels 0, …, GKR_NB_LEVELS - 1 of the schedule and the output level GKR_NB_LEVELS are the rows
+// of level_info and level_proof. A level has d·n round polynomial values, then its final
+// evaluations, one per unique gate input and outgoing point. level_proof gives the position (a, b) of
+// the level's first element, and the a of the position of its first final evaluation, (a + d, b).
+//
+// A level's wires, in the order of its claim groups, are the rows first_wire, … of level_wire: the
+// wire's gate, its number of gate inputs, the first row of gate_input, which lists the position
+// of each gate input among the level's unique gate inputs, and the number of claim sources of the
+// wire's claim group. A wire has one claim per source; the rows first_claim, … of level_claim list
+// them, wire by wire: the position of the claimed value, and, at a sumcheck level, the entry
+// of eq at the level, whose rows first_eq, … of level_eq give the point of the claim source.
+// There is one eq entry per claim group and claim source.
+//
+// The rows first_range, … of absorb_range are the runs of the level's final evaluations that are
+// absorbed, in order, each as a position and a length; those of the output level are the output
+// evaluations that are absorbed.
+//
+// return_claim lists the GKR_NB_RETURNED claims that the verifier returns, in the order in which
+// gnark's Verify appends them: the unconsolidated outputs, then, from the highest level down, the
+// level's unique gate inputs that it returns and, for each, its outgoing points. A claim is the
+// wire, the identifier of its point, and the position of its value.
+func WriteScheduleTables(w io.Writer, circuit gkr.SerializableCircuit, schedule constraint.GkrProvingSchedule) error {
+	t, err := newScheduleTables(circuit, schedule)
+	if err != nil {
+		return err
+	}
+
+	var info, proof, wires, inputs, claims, eqs, ranges, returned []string
+	for levelI, l := range t.levels {
+		info = append(info, fmt.Sprintf("(%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d) // level %d", l.kind, l.degree, l.nbOut, l.point, l.sourcePoint, l.firstWire, l.nbWires, l.firstClaim, l.nbClaim, l.firstEq, l.nbEq, l.firstRange, l.nbRange, levelI))
+		proof = append(proof, fmt.Sprintf("(%d, %d, %d) // level %d", l.start.a, l.start.b, l.finals.a, levelI))
+	}
+	for _, r := range t.wires {
+		wires = append(wires, fmt.Sprintf("(%d, %d, %d, %d)", r.gate, r.nbIn, r.firstInput, r.nbSources))
+	}
+	for _, u := range t.inputs {
+		inputs = append(inputs, fmt.Sprint(u))
+	}
+	for _, r := range t.claims {
+		claims = append(claims, fmt.Sprintf("(%d, %d, %d)", r.value.a, r.value.b, r.eq))
+	}
+	for _, p := range t.eqs {
+		eqs = append(eqs, fmt.Sprint(p))
+	}
+	for _, r := range t.ranges {
+		ranges = append(ranges, fmt.Sprintf("(%d, %d, %d)", r.start.a, r.start.b, r.len))
+	}
+	for _, r := range t.returned {
+		returned = append(returned, fmt.Sprintf("(%d, %d, %d, %d)", r.wire, r.point, r.value.a, r.value.b))
+	}
+
+	var sb strings.Builder
+	sb.WriteString("// Code generated by gopkg/gkrverifier. DO NOT EDIT.\n\n")
+	fmt.Fprintf(&sb, "const GKR_LEVEL_SKIP:u16 = %d\nconst GKR_LEVEL_SUMCHECK:u16 = %d\nconst GKR_LEVEL_SINGLE_SOURCE:u16 = %d\nconst GKR_LEVEL_OUTPUT:u16 = %d\n\n", levelSkip, levelSumcheck, levelSingleSource, levelOutput)
+	fmt.Fprintf(&sb, "const GKR_NB_LEVELS:u16 = %d\nconst GKR_NB_POINTS:u16 = %d\nconst GKR_NB_RETURNED:u16 = %d\n", len(schedule), t.nbPoints, len(t.returned))
+	fmt.Fprintf(&sb, "const GKR_FIXED:u16 = %d\nconst GKR_PROOF_A:u16 = %d\nconst GKR_PROOF_B:u16 = %d\nconst GKR_N_MAX:u16 = %d\n\n", fixedMemory, t.proof.a, t.proof.b, t.nMax)
+	writeTable(&sb, "level_info", "(kind:u16, degree:u16, nb_out:u16, point:u16, source_point:u16, first_wire:u16, nb_wires:u16, first_claim:u16, nb_claims:u16, first_eq:u16, nb_eq:u16, first_range:u16, nb_ranges:u16)", "(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)", info)
+	writeTable(&sb, "level_proof", "(a:u16, b:u16, finals_a:u16)", "(0, 0, 0)", proof)
+	writeTable(&sb, "level_wire", "(gate:u16, nb_in:u16, first_input:u16, nb_sources:u16)", "(0, 0, 0, 0)", wires)
+	writeTable(&sb, "gate_input", "(unique:u16)", "0", inputs)
+	writeTable(&sb, "level_claim", "(a:u16, b:u16, eq:u16)", "(0, 0, 0)", claims)
+	writeTable(&sb, "level_eq", "(point:u16)", "0", eqs)
+	writeTable(&sb, "absorb_range", "(a:u16, b:u16, len:u16)", "(0, 0, 0)", ranges)
+	writeTable(&sb, "return_claim", "(wire:u16, point:u16, a:u16, b:u16)", "(0, 0, 0, 0)", returned)
+	_, err = io.WriteString(w, sb.String())
 	return err
 }
