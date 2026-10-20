@@ -278,3 +278,60 @@ func TestConfigurePCS_RequiresOption(t *testing.T) {
 	require.Panics(t, func() { compilers.ConfigurePCS() }, "ConfigurePCS needs at least one option")
 	require.Panics(t, func() { compilers.ConfigureMessageBus() }, "ConfigureMessageBus needs at least one option")
 }
+
+// TestCompileFull_AuditReduced checks the pipeline's final integrity check: a
+// query registered after its reducing pass ran — the hook-contract violation —
+// makes CompileFull fail, while a normal compile reduces every query.
+func TestCompileFull_AuditReduced(t *testing.T) {
+	t.Run("clean compile reduces everything", func(t *testing.T) {
+		sc := wioptest.NewFibonacciVanishingScenario()
+		require.NoError(t, compilers.CompileFull(sc.Sys, wioptest.TestingCompileOptions()...))
+		require.Empty(t, sc.Sys.UnreducedQueries(), "no query may be left unreduced after CompileFull")
+	})
+
+	t.Run("hook registering a range check after its pass", func(t *testing.T) {
+		sc := wioptest.NewFibonacciVanishingScenario()
+		mod := sc.Sys.Modules[0]
+		col := mod.Columns[0]
+		err := compilers.CompileFull(sc.Sys,
+			append(wioptest.TestingCompileOptions(),
+				compilers.WithPostHook(compilers.Global, func(sys *wiop.System) error {
+					// The rangecheck pass has already run: this query is never
+					// reduced to an inclusion relation, so no verifier action
+					// would ever enforce it.
+					mod.NewRangeCheck(sys.Context.Childf("late-rc"), col, 8)
+					return nil
+				}))...,
+		)
+		require.ErrorContains(t, err, "unreduced queries after the full pipeline")
+		require.ErrorContains(t, err, "*wiop.RangeCheck")
+		require.ErrorContains(t, err, "late-rc")
+	})
+
+	t.Run("hook registering a LagrangeEval after the PCS pass", func(t *testing.T) {
+		sc := wioptest.NewFibonacciVanishingScenario()
+		mod := sc.Sys.Modules[0]
+		col := mod.Columns[0]
+		err := compilers.CompileFull(sc.Sys,
+			append(wioptest.TestingCompileOptions(),
+				compilers.WithPostHook(compilers.PCS, func(sys *wiop.System) error {
+					// The PCS pass has already run: this evaluation would never
+					// be opened.
+					zeta := sys.Rounds[0].NewCoinField(sys.Context.Childf("late-coin"))
+					sys.NewLagrangeEval(sys.Context.Childf("late-le"), []*wiop.ColumnView{col.View()}, zeta)
+					return nil
+				}))...,
+		)
+		require.ErrorContains(t, err, "unreduced queries after the full pipeline")
+		require.ErrorContains(t, err, "*wiop.LagrangeEval")
+	})
+
+	t.Run("no-PCS compile exempts the retained LagrangeEvals", func(t *testing.T) {
+		sc := wioptest.NewFibonacciVanishingScenario()
+		require.NoError(t, compilers.CompileFull(sc.Sys, compilers.WithoutPCS()))
+		require.NotEmpty(t, sc.Sys.UnreducedQueries(), "LagrangeEvals stay pending without the PCS pass")
+		for _, q := range sc.Sys.UnreducedQueries() {
+			require.IsType(t, &wiop.LagrangeEval{}, q, "only LagrangeEvals may be exempt")
+		}
+	})
+}

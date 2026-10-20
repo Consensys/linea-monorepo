@@ -356,6 +356,13 @@ func Compile(sys *wiop.System, opts ...Option) {
 	setConfig(sys, config{compileOptions: cfg, consumed: true})
 	sys.SelectPCS()
 
+	// The pass opens every LagrangeEval of the system: RecoverBatchClaims walks
+	// them all and binds their claim cells to the committed columns. Mark them
+	// consumed so the pipeline's final audit flags only queries no pass reduced.
+	for _, eval := range sys.LagrangeEvals {
+		eval.MarkAsReduced()
+	}
+
 	c := &compiled{
 		manifestCells:   make(map[int][]*wiop.Cell),
 		colShifts:       collectColumnShifts(sys),

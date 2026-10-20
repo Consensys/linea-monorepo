@@ -116,6 +116,10 @@ func WithoutPCS() Option { return func(o *options) { o.withoutPCS = true } }
 
 // WithPreHook runs hook immediately before pass, even if the pass is a no-op.
 // PCS hooks are skipped when WithoutPCS is set.
+//
+// Hook contract: a hook may register only queries whose reducing pass has not
+// run yet. CompileFull rejects the system on return if any query is left
+// unreduced.
 func WithPreHook(pass Pass, h func(*wiop.System) error) Option {
 	return func(o *options) {
 		o.hooks = append(o.hooks, hookRegistration{pass: pass, phase: "pre", hook: h})
@@ -124,6 +128,10 @@ func WithPreHook(pass Pass, h func(*wiop.System) error) Option {
 
 // WithPostHook runs hook immediately after pass, even if the pass is a no-op.
 // PCS hooks are skipped when WithoutPCS is set.
+//
+// Hook contract: a hook may register only queries whose reducing pass has not
+// run yet. CompileFull rejects the system on return if any query is left
+// unreduced.
 func WithPostHook(pass Pass, h func(*wiop.System) error) Option {
 	return func(o *options) {
 		o.hooks = append(o.hooks, hookRegistration{pass: pass, phase: "post", hook: h})
@@ -229,7 +237,9 @@ func Configure(sys *wiop.System, opts ...Option) error {
 // options are recorded on sys as by [Configure] before the first pass runs;
 // invalid options, including contradictions with an earlier [Configure], are
 // rejected before any pass runs. A failing hook stops the pipeline, leaving
-// mutations from preceding passes intact.
+// mutations from preceding passes intact. Before returning, CompileFull
+// audits that every query was consumed by its reducing pass and rejects the
+// system otherwise (see the hook contract on [WithPreHook]).
 func CompileFull(sys *wiop.System, opts ...Option) error {
 	cfg, hooks, err := resolve(opts, true)
 	if err != nil {
@@ -268,5 +278,32 @@ func CompileFull(sys *wiop.System, opts ...Option) error {
 			}
 		}
 	}
-	return nil
+	return auditReduced(sys)
+}
+
+// auditReduced is the pipeline's final integrity check: every query declared
+// on sys must have been consumed by its reducing pass. A query registered
+// after its pass ran — e.g. by a hook — is never constrained by any verifier
+// action: the PCS commits its columns without enforcing the predicate, a
+// silent soundness hole.
+//
+// In no-PCS mode the PCS pass is skipped, so the LagrangeEvals it would have
+// opened stay pending by design (their claims are verified in the clear) and
+// are exempt.
+func auditReduced(sys *wiop.System) error {
+	var pending []wiop.Query
+	for _, q := range sys.UnreducedQueries() {
+		if _, isEval := q.(*wiop.LagrangeEval); isEval && sys.PCSMode() == 0 {
+			continue
+		}
+		pending = append(pending, q)
+	}
+	if len(pending) == 0 {
+		return nil
+	}
+	msg := fmt.Sprintf("compilers: %d unreduced queries after the full pipeline:", len(pending))
+	for _, q := range pending {
+		msg += fmt.Sprintf("\n  %T at %s", q, q.Context().Path())
+	}
+	return fmt.Errorf("%s", msg)
 }
