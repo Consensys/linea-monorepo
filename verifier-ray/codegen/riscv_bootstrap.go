@@ -11,6 +11,7 @@ import (
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/messagebus"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/compilers/pcs"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/proofserialization"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/zkcdriver"
 	minimalelf "github.com/LFDT-Lineth/lineth-monorepo/prover-ray/zkcdriver/minimal-elf"
@@ -85,7 +86,8 @@ func BuildAllInOneHonestRiscvArtifacts() (HonestRiscvArtifacts, error) {
 	// dynamic module's size from its round-0 assignment and panics if a later round
 	// grows it, because the sizes go into round 0's Fiat-Shamir transcript.
 	if err := compilers.CompileFull(sys,
-		compilers.ConfigureMessageBus(messagebus.WithoutSharedRandomness())); err != nil {
+		compilers.ConfigureMessageBus(messagebus.WithoutSharedRandomness()),
+		compilers.ConfigurePCS(pcs.WithColumnElision())); err != nil {
 		return HonestRiscvArtifacts{}, fmt.Errorf("compiling pipeline: %w", err)
 	}
 
