@@ -1,0 +1,59 @@
+// ===================================================================
+// Unit test for the E₆ arithmetic (arithmetization/src/main/lib/gkr/e6.zkc).
+//
+// The driver loads a, b ∈ E₆ and k ∈ 𝔽 from the inputs, computes a + b,
+// a − b, ab, ka and a² (the last in place), and checks each against its
+// expected value, failing on any mismatch. An input word that is not
+// the canonical encoding of a field element is rejected as well.
+//
+// Run it with --field KOALABEAR_16.
+// ===================================================================
+
+include "../../../main/lib/gkr/e6.zkc"
+
+pub input a(address:u3) -> (word:u32)
+pub input b(address:u3) -> (word:u32)
+pub input k(address:u1) -> (word:u32)
+pub input sum(address:u3) -> (word:u32)
+pub input diff(address:u3) -> (word:u32)
+pub input prod(address:u3) -> (word:u32)
+pub input scaled(address:u3) -> (word:u32)
+pub input square(address:u3) -> (word:u32)
+
+const A:u16 = 0
+const B:u16 = 1
+const SUM:u16 = 2
+const DIFF:u16 = 3
+const PROD:u16 = 4
+const SCALED:u16 = 5
+const SQUARE:u16 = 6
+const EXPECTED_SUM:u16 = 7
+const EXPECTED_DIFF:u16 = 8
+const EXPECTED_PROD:u16 = 9
+const EXPECTED_SCALED:u16 = 10
+const EXPECTED_SQUARE:u16 = 11
+
+fn main<e6>() {
+    var kk:𝔽 = felt_of_word(k[0])
+
+    e6[A] = (felt_of_word(a[0]), felt_of_word(a[1]), felt_of_word(a[2]), felt_of_word(a[3]), felt_of_word(a[4]), felt_of_word(a[5]))
+    e6[B] = (felt_of_word(b[0]), felt_of_word(b[1]), felt_of_word(b[2]), felt_of_word(b[3]), felt_of_word(b[4]), felt_of_word(b[5]))
+    e6[EXPECTED_SUM] = (felt_of_word(sum[0]), felt_of_word(sum[1]), felt_of_word(sum[2]), felt_of_word(sum[3]), felt_of_word(sum[4]), felt_of_word(sum[5]))
+    e6[EXPECTED_DIFF] = (felt_of_word(diff[0]), felt_of_word(diff[1]), felt_of_word(diff[2]), felt_of_word(diff[3]), felt_of_word(diff[4]), felt_of_word(diff[5]))
+    e6[EXPECTED_PROD] = (felt_of_word(prod[0]), felt_of_word(prod[1]), felt_of_word(prod[2]), felt_of_word(prod[3]), felt_of_word(prod[4]), felt_of_word(prod[5]))
+    e6[EXPECTED_SCALED] = (felt_of_word(scaled[0]), felt_of_word(scaled[1]), felt_of_word(scaled[2]), felt_of_word(scaled[3]), felt_of_word(scaled[4]), felt_of_word(scaled[5]))
+    e6[EXPECTED_SQUARE] = (felt_of_word(square[0]), felt_of_word(square[1]), felt_of_word(square[2]), felt_of_word(square[3]), felt_of_word(square[4]), felt_of_word(square[5]))
+
+    e6_add(SUM, A, B)
+    e6_sub(DIFF, A, B)
+    e6_mul_at(PROD, A, B)
+    e6_scale(SCALED, A, kk)
+    e6_copy(SQUARE, A)
+    e6_mul_at(SQUARE, SQUARE, SQUARE)
+
+    e6_assert_eq(SUM, EXPECTED_SUM)
+    e6_assert_eq(DIFF, EXPECTED_DIFF)
+    e6_assert_eq(PROD, EXPECTED_PROD)
+    e6_assert_eq(SCALED, EXPECTED_SCALED)
+    e6_assert_eq(SQUARE, EXPECTED_SQUARE)
+}

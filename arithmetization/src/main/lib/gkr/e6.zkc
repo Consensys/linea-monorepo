@@ -1,0 +1,143 @@
+// ===================================================================================
+// Arithmetic in the sextic extension E₆ of KoalaBear, as used by gnark-crypto's
+// GKR prover:
+//
+//     E₂ = 𝔽[u] / (u² − 3),    E₆ = E₂[v] / (v³ − ξ),    ξ = 1 + u.
+//
+// An element is A₀ + A₁v + A₂v² with Aₖ = c₂ₖ + c₂ₖ₊₁u, stored as the six
+// coordinates (c₀, …, c₅), the order of gnark-crypto's E6.AppendBase.
+//
+// Elements live in the memory `e6`, one element per address, and the functions
+// above the atomic level take addresses.
+// ===================================================================================
+
+// The KoalaBear modulus.
+const KOALABEAR_P:u32 = 0x7f000001
+
+memory e6[u32](address:u16) -> (c0:𝔽, c1:𝔽, c2:𝔽, c3:𝔽, c4:𝔽, c5:𝔽)
+
+// felt_of_word converts an input word to its field element, failing on a word
+// that is not the canonical encoding.
+fn felt_of_word(word:u32) -> (x:𝔽) {
+    if word >= KOALABEAR_P {
+        fail
+    }
+    x = word as 𝔽
+}
+
+// e2_mul returns (a₀ + a₁u)(b₀ + b₁u).
+#[inline]
+fn e2_mul(a0:𝔽, a1:𝔽, b0:𝔽, b1:𝔽) -> (c0:𝔽, c1:𝔽) {
+    c0 = (a0 * b0) + ((a1 * b1) * 3)
+    c1 = (a0 * b1) + (a1 * b0)
+}
+
+// e2_mul_xi returns (a₀ + a₁u)ξ.
+#[inline]
+fn e2_mul_xi(a0:𝔽, a1:𝔽) -> (c0:𝔽, c1:𝔽) {
+    c0 = a0 + (a1 * 3)
+    c1 = a0 + a1
+}
+
+// e6_mul returns the product of two elements given by their coordinates:
+//
+//     C₀ = A₀B₀ + ξ(A₁B₂ + A₂B₁)
+//     C₁ = A₀B₁ + A₁B₀ + ξA₂B₂
+//     C₂ = A₀B₂ + A₁B₁ + A₂B₀
+fn e6_mul(a0:𝔽, a1:𝔽, a2:𝔽, a3:𝔽, a4:𝔽, a5:𝔽, b0:𝔽, b1:𝔽, b2:𝔽, b3:𝔽, b4:𝔽, b5:𝔽) -> (c0:𝔽, c1:𝔽, c2:𝔽, c3:𝔽, c4:𝔽, c5:𝔽) {
+    var p00r:𝔽, p00i:𝔽, p01r:𝔽, p01i:𝔽, p02r:𝔽, p02i:𝔽, p10r:𝔽, p10i:𝔽, p11r:𝔽, p11i:𝔽, p12r:𝔽, p12i:𝔽, p20r:𝔽, p20i:𝔽, p21r:𝔽, p21i:𝔽, p22r:𝔽, p22i:𝔽, xr:𝔽, xi:𝔽, yr:𝔽, yi:𝔽
+
+    p00r, p00i = e2_mul(a0, a1, b0, b1)
+    p01r, p01i = e2_mul(a0, a1, b2, b3)
+    p02r, p02i = e2_mul(a0, a1, b4, b5)
+    p10r, p10i = e2_mul(a2, a3, b0, b1)
+    p11r, p11i = e2_mul(a2, a3, b2, b3)
+    p12r, p12i = e2_mul(a2, a3, b4, b5)
+    p20r, p20i = e2_mul(a4, a5, b0, b1)
+    p21r, p21i = e2_mul(a4, a5, b2, b3)
+    p22r, p22i = e2_mul(a4, a5, b4, b5)
+
+    xr, xi = e2_mul_xi(p12r + p21r, p12i + p21i)
+    yr, yi = e2_mul_xi(p22r, p22i)
+
+    c0 = p00r + xr
+    c1 = p00i + xi
+    c2 = (p01r + p10r) + yr
+    c3 = (p01i + p10i) + yi
+    c4 = (p02r + p11r) + p20r
+    c5 = (p02i + p11i) + p20i
+}
+
+// e6_add sets e6[dst] = e6[a] + e6[b]. The addresses may coincide.
+fn e6_add<e6>(dst:u16, a:u16, b:u16) {
+    var a0:𝔽, a1:𝔽, a2:𝔽, a3:𝔽, a4:𝔽, a5:𝔽, b0:𝔽, b1:𝔽, b2:𝔽, b3:𝔽, b4:𝔽, b5:𝔽
+    a0, a1, a2, a3, a4, a5 = e6[a]
+    b0, b1, b2, b3, b4, b5 = e6[b]
+    e6[dst] = (a0 + b0, a1 + b1, a2 + b2, a3 + b3, a4 + b4, a5 + b5)
+}
+
+// e6_sub sets e6[dst] = e6[a] − e6[b]. The addresses may coincide.
+fn e6_sub<e6>(dst:u16, a:u16, b:u16) {
+    var a0:𝔽, a1:𝔽, a2:𝔽, a3:𝔽, a4:𝔽, a5:𝔽, b0:𝔽, b1:𝔽, b2:𝔽, b3:𝔽, b4:𝔽, b5:𝔽
+    a0, a1, a2, a3, a4, a5 = e6[a]
+    b0, b1, b2, b3, b4, b5 = e6[b]
+    e6[dst] = (a0 - b0, a1 - b1, a2 - b2, a3 - b3, a4 - b4, a5 - b5)
+}
+
+// e6_mul_at sets e6[dst] = e6[a] · e6[b]. The addresses may coincide.
+fn e6_mul_at<e6>(dst:u16, a:u16, b:u16) {
+    var a0:𝔽, a1:𝔽, a2:𝔽, a3:𝔽, a4:𝔽, a5:𝔽, b0:𝔽, b1:𝔽, b2:𝔽, b3:𝔽, b4:𝔽, b5:𝔽, c0:𝔽, c1:𝔽, c2:𝔽, c3:𝔽, c4:𝔽, c5:𝔽
+    a0, a1, a2, a3, a4, a5 = e6[a]
+    b0, b1, b2, b3, b4, b5 = e6[b]
+    c0, c1, c2, c3, c4, c5 = e6_mul(a0, a1, a2, a3, a4, a5, b0, b1, b2, b3, b4, b5)
+    e6[dst] = (c0, c1, c2, c3, c4, c5)
+}
+
+// e6_scale sets e6[dst] = k · e6[a] for a base-field element k.
+fn e6_scale<e6>(dst:u16, a:u16, k:𝔽) {
+    var a0:𝔽, a1:𝔽, a2:𝔽, a3:𝔽, a4:𝔽, a5:𝔽
+    a0, a1, a2, a3, a4, a5 = e6[a]
+    e6[dst] = (k * a0, k * a1, k * a2, k * a3, k * a4, k * a5)
+}
+
+// e6_copy sets e6[dst] = e6[src].
+fn e6_copy<e6>(dst:u16, src:u16) {
+    var a0:𝔽, a1:𝔽, a2:𝔽, a3:𝔽, a4:𝔽, a5:𝔽
+    a0, a1, a2, a3, a4, a5 = e6[src]
+    e6[dst] = (a0, a1, a2, a3, a4, a5)
+}
+
+// e6_zero sets e6[dst] = 0.
+fn e6_zero<e6>(dst:u16) {
+    e6[dst] = (0, 0, 0, 0, 0, 0)
+}
+
+// e6_one sets e6[dst] = 1.
+fn e6_one<e6>(dst:u16) {
+    e6[dst] = (1, 0, 0, 0, 0, 0)
+}
+
+// e6_assert_eq fails unless e6[a] = e6[b].
+fn e6_assert_eq<e6>(a:u16, b:u16) {
+    var a0:𝔽, a1:𝔽, a2:𝔽, a3:𝔽, a4:𝔽, a5:𝔽, b0:𝔽, b1:𝔽, b2:𝔽, b3:𝔽, b4:𝔽, b5:𝔽
+    a0, a1, a2, a3, a4, a5 = e6[a]
+    b0, b1, b2, b3, b4, b5 = e6[b]
+    if a0 != b0 {
+        fail
+    }
+    if a1 != b1 {
+        fail
+    }
+    if a2 != b2 {
+        fail
+    }
+    if a3 != b3 {
+        fail
+    }
+    if a4 != b4 {
+        fail
+    }
+    if a5 != b5 {
+        fail
+    }
+}
