@@ -117,13 +117,17 @@ func TestBuildLogDerivSystemMarksLookupResultZero(t *testing.T) {
 
 // TestBuildLogDerivSystemDynamicModuleSize: the column total is n·C with n a
 // dynamic module's runtime size, so the entry must reference the
-// proof-supplied size by the module's dynamic index, not a static size.
+// proof-supplied size by the module's dynamic index, not a static size. Two
+// dynamic modules are declared and only the second one is in the sum, so the
+// expected index is the literal 1: a mix-up in the dynamic indices fails.
 func TestBuildLogDerivSystemDynamicModuleSize(t *testing.T) {
 	sys := wiop.NewSystemf("ld-codegen-dyn")
 	r0 := sys.NewRound()
 	sys.NewRound()
 	static := sys.NewSizedModule(sys.Context.Childf("static"), 4, wiop.PaddingDirectionNone)
-	dyn := sys.NewDynamicModule(sys.Context.Childf("dyn"), wiop.PaddingDirectionRight)
+	unused := sys.NewDynamicModule(sys.Context.Childf("dyn0"), wiop.PaddingDirectionRight)
+	unused.NewColumn(sys.Context.Childf("u"), r0)
+	dyn := sys.NewDynamicModule(sys.Context.Childf("dyn1"), wiop.PaddingDirectionRight)
 	colS := static.NewColumn(sys.Context.Childf("s"), r0)
 	colD := dyn.NewColumn(sys.Context.Childf("d"), r0)
 	sys.NewLogDerivativeSum(sys.Context.Childf("ld"), []wiop.Fraction{
@@ -140,7 +144,7 @@ func TestBuildLogDerivSystemDynamicModuleSize(t *testing.T) {
 	if len(ld.Queries) != 1 || len(ld.Queries[0].Entries) != 2 {
 		t.Fatalf("want one query with one Z column per module, got %+v", ld.Queries)
 	}
-	want := ModuleSize{Dynamic: true, DynamicIndex: DynamicModuleIndex(sys)[dyn]}
+	want := ModuleSize{Dynamic: true, DynamicIndex: 1}
 	if got := ld.Queries[0].Entries[1].Size; got != want {
 		t.Fatalf("the dynamic module's Z column must use its proof-supplied size: got %+v, want %+v", got, want)
 	}

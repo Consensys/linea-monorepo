@@ -6,26 +6,26 @@ const ext = verifier_ray.field.koalabear_ext;
 const protocol = verifier_ray.protocol;
 const verifier = verifier_ray.verifier;
 
-// Soundness gate for the LogDerivativeSum AVERAGE CELL binding.
+// End-to-end rejection of a corrupted LogDerivativeSum AVERAGE CELL.
 //
 // The average cell C of a Z column (read by logderivativesum's entries, which
-// check Σ n·C == Result) is a RAW transcript cell — Fiat-Shamir-absorbed but not
-// itself PCS-authenticated. It is sound only because C is a `cell_value` leaf of
-// the cyclic recurrence vanishing constraint
+// check Σ n·C == Result) is a RAW transcript cell: Fiat-Shamir-absorbed, but
+// not itself PCS-authenticated. It is defended in two layers:
+//   1. Fiat-Shamir: C is absorbed into the transcript, so changing it
+//      re-derives different challenges and query positions, and the PCS
+//      Merkle authentication fails (MerkleProofInvalid) before any query
+//      sub-verifier runs.
+//   2. The cyclic recurrence zNum − (Z − Z_shifted + C)·zDen == 0, whose column
+//      claims ARE PCS-authenticated: summed over the rows, it makes n·C the
+//      column's total, so a C that is not would fail the quotient identity
+//      (QuotientIdentityMismatch).
 //
-//     zNum − (Z − Z_shifted + C)·zDen == 0
-//
-// whose column claims (Z at zeta and at its −1 rotation) ARE PCS-authenticated.
-// Summed over the rows, that constraint makes n·C the column's total, so C is
-// pinned to the authenticated columns, not trusted on its own.
-//
-// This test proves that binding is present and enforced end-to-end: it takes a
-// REAL protocol carrying PCS + the recurrence + a LogDerivativeSum (verify
-// fixture case "SingleFractionAllOnes"), leaves every PCS-authenticated
-// entry_claim HONEST, and corrupts ONLY the raw average cell. verifier.verify
-// must still reject — because the recurrence no longer holds. Without the
-// binding, a corrupted C (with Result adjusted to match) would slip past every
-// check and this test would accept.
+// This test takes a REAL protocol (verify fixture case
+// "SingleFractionAllOnes"), corrupts ONLY the raw average cell, and checks
+// that the full verifier rejects. In practice layer 1 rejects first, so this
+// test does not exercise layer 2: it would pass even if the recurrence did not
+// read C. Layer 2 is checked in isolation, with the honest coins, by
+// vanishing_test.zig ("average cell is bound by the cyclic recurrence").
 //
 // Resolve the fixture index by NAME so fixture regeneration (which shifts case
 // ordering) never silently points this test at the wrong scenario; a missing
@@ -70,25 +70,15 @@ test "average cell binding: corrupting the raw average cell is rejected" {
     const cells_buf = try a.dupe(protocol.Scalar, input.proof.rounds[ref.round].cells);
 
     // Flip the average cell to a value that is NOT the column's total over n.
-    // entry_claims stay honest, so PCS still authenticates; only the
-    // recurrence, which reads C, is now violated.
+    // Every other proof value stays honest; the changed cell alters the
+    // transcript, and the recurrence that reads it no longer holds.
     cells_buf[ref.index] = .{ .ext = cells_buf[ref.index].toExt().add(ext.Ext.one()) };
     rounds_buf[ref.round].cells = cells_buf;
 
     var bad = input;
     bad.proof.rounds = rounds_buf;
 
-    // The average cell is defended in TWO layers, and corrupting it trips the
-    // first one reached:
-    //   1. Fiat-Shamir: the cell is absorbed into the shared transcript, so
-    //      changing it re-derives different FRI query positions/challenges and
-    //      the PCS Merkle authentication fails (MerkleProofInvalid) before any
-    //      query sub-verifier runs.
-    //   2. Vanishing: even if a corruption somehow survived FS, the recurrence
-    //      ties C to the PCS-authenticated Z column, so the quotient identity
-    //      would fail (QuotientIdentityMismatch).
-    // The soundness claim is that the corruption CANNOT be accepted. Assert
-    // rejection via either layer — the average cell is not a free value.
+    // Either layer may reject (see the header); in practice Fiat–Shamir does.
     const err = verifier.verify(spec, systems, bad.proof, bad.public_inputs);
     try std.testing.expect(std.meta.isError(err));
     if (err) |_| unreachable else |e| switch (e) {

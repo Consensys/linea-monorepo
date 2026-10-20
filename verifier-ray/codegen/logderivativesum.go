@@ -110,15 +110,9 @@ func BuildLogDerivSystem(sys *wiop.System) (LogDerivSystem, error) {
 				if err := checkNotLastSlot("average", e.Average.Context.Path(), cSlot, lastSlot); err != nil {
 					return LogDerivSystem{}, err
 				}
-				var size ModuleSize
-				if m := e.Module(); m.IsDynamic() {
-					idx, ok := dynamicIndices[m]
-					if !ok {
-						return LogDerivSystem{}, fmt.Errorf("codegen: dynamic module %q not found in sys.Modules order", m.Context.Path())
-					}
-					size = ModuleSize{Dynamic: true, DynamicIndex: idx}
-				} else {
-					size = ModuleSize{StaticSize: m.Size()}
+				size, err := moduleSizeOf(e.Module(), dynamicIndices)
+				if err != nil {
+					return LogDerivSystem{}, err
 				}
 				query.Entries[i] = LogDerivEntry{
 					AverageRef: ScalarCellRef{Round: cSlot, Index: e.Average.Context.ID.Position()},
