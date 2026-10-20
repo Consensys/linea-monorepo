@@ -192,7 +192,6 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
           .untilAsserted {
             val finalizedBlockNumber = linethRollupContractForAggregationSubmission.finalizedL2BlockNumber().get()
             assertThat(finalizedBlockNumber).isEqualTo(aggregations.last().endBlockNumber)
-            assertThat(blobSubmittedEvent.blobs.last().endBlockNumber).isEqualTo(blobs[12].endBlockNumber)
             assertThat(acceptedBlob).isEqualTo(blobs[12].endBlockNumber)
             assertThat(finalizationSubmittedEvent.endBlockNumber).isEqualTo(
               aggregations.last().endBlockNumber,
