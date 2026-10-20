@@ -1,0 +1,257 @@
+include "gate.zkc"
+include "round.zkc"
+
+// ===================================================================================
+// The GKR verifier: gnark's gkr/koalabear Verify for the circuit and schedule whose
+// tables gopkg/gkrverifier generates (see its WriteGateTables, WriteLagrangeTables
+// and WriteScheduleTables, whose documentation describes the layout of the proof and
+// of the points in e6).
+//
+// gkr_verify reads
+//
+//   gkr_n        the number n of variables;
+//   gkr_nb_seed  the number of elements of E₆ in the seed;
+//   gkr_seed     the seed elements, 6 words each: they are written to the transcript
+//                before anything else, without setting its flag;
+//   gkr_proof    the proof's elements, 6 words each, in the order of Proof.Flatten;
+//   gkr_claims   the claims that Verify returns, in the order of return_claim: for each,
+//                its point of n elements, then its value, 6 words each.
+//
+// It fails unless the proof verifies and the claims are the ones it derives. Every word
+// must be the canonical encoding of an element of the field.
+//
+// The verifier keeps its scratch values in the first GKR_FIXED addresses of e6, then the
+// points, then the proof.
+// ===================================================================================
+
+pub input gkr_n(address:u1) -> (n:u32)
+pub input gkr_nb_seed(address:u1) -> (n:u32)
+pub input gkr_seed(address:u32) -> (word:u32)
+pub input gkr_proof(address:u32) -> (word:u32)
+pub input gkr_claims(address:u32) -> (word:u32)
+
+// The layout of the first GKR_FIXED addresses of e6. A gate's frame is at 0, …, 127, the values
+// of eq at a level are at VFY_EQ, …, VFY_EQ + 127, and round.zkc's scratch is at VFY_SCRATCH.
+const VFY_FRAME:u16 = 0
+const VFY_EQ:u16 = 128
+const VFY_SCRATCH:u16 = 256
+const VFY_FOLD:u16 = 320
+const VFY_CLAIM:u16 = 322
+const VFY_DEN:u16 = 323
+const VFY_TOTAL:u16 = 324
+const VFY_TERM:u16 = 325
+const VFY_LOADED:u16 = 326
+
+// The address of the point with the identifier id.
+#[inline]
+fn point_at(id:u16, n:u16) -> (address:u16) {
+    address = GKR_FIXED + (id * n)
+}
+
+// The address of the proof element at the position a·n + b.
+#[inline]
+fn proof_at(a:u16, b:u16, n:u16) -> (address:u16) {
+    address = ((GKR_FIXED + (GKR_NB_POINTS * n)) + (a * n)) + b
+}
+
+// load_proof_element loads the element number i of gkr_proof to e6[dst].
+fn load_proof_element<e6>(dst:u16, i:u16) {
+    var word:u32 = (i as u32) * 6
+    e6[dst] = (felt_of_word(gkr_proof[word]), felt_of_word(gkr_proof[word + 1]), felt_of_word(gkr_proof[word + 2]), felt_of_word(gkr_proof[word + 3]), felt_of_word(gkr_proof[word + 4]), felt_of_word(gkr_proof[word + 5]))
+}
+
+// load_seed_element loads the element number i of gkr_seed to e6[dst].
+fn load_seed_element<e6>(dst:u16, i:u16) {
+    var word:u32 = (i as u32) * 6
+    e6[dst] = (felt_of_word(gkr_seed[word]), felt_of_word(gkr_seed[word + 1]), felt_of_word(gkr_seed[word + 2]), felt_of_word(gkr_seed[word + 3]), felt_of_word(gkr_seed[word + 4]), felt_of_word(gkr_seed[word + 5]))
+}
+
+// load_claim_element loads the element number i of gkr_claims to e6[dst].
+fn load_claim_element<e6>(dst:u16, i:u32) {
+    var word:u32 = i * 6
+    e6[dst] = (felt_of_word(gkr_claims[word]), felt_of_word(gkr_claims[word + 1]), felt_of_word(gkr_claims[word + 2]), felt_of_word(gkr_claims[word + 3]), felt_of_word(gkr_claims[word + 4]), felt_of_word(gkr_claims[word + 5]))
+}
+
+// eval_wire evaluates the gate of the level's wire row wire_row on the final evaluations at
+// e6[finals], …, whose unique gate input u and outgoing point k are at finals + u·nb_out + k, and
+// leaves the result in the frame's slot GATE_RESULT.
+fn eval_wire<e6>(wire_row:u16, finals:u16, nb_out:u16, k:u16) {
+    var gate:u16, nb_in:u16, first_input:u16, nb_consts:u16
+    gate, nb_in, first_input, _ = level_wire[wire_row]
+    nb_consts, _, _, _, _ = gate_info[gate]
+    for i:u16 = 0; i<nb_in; i = i + 1 {
+        e6_copy((VFY_FRAME + nb_consts) + i, (finals + (gate_input[first_input + i] * nb_out)) + k)
+    }
+    eval_gate(gate, VFY_FRAME)
+}
+
+// absorb_ranges absorbs the runs of the level's final evaluations that are to be absorbed.
+fn absorb_ranges<e6, poseidon2_state, compress_rho, transcript_meta>(level:u16, n:u16) {
+    var first_range:u16, nb_ranges:u16
+    var a:u16, b:u16, len:u16
+    _, _, _, _, _, _, _, _, _, _, _, first_range, nb_ranges = level_info[level]
+    for i:u16 = 0; i<nb_ranges; i = i + 1 {
+        a, b, len = absorb_range[first_range + i]
+        absorb(proof_at(a, b, n), len)
+    }
+}
+
+// verify_skip_level checks, for each wire of a skip level and each of its claims, that the
+// wire's gate on the final evaluations at the claim's point is the claimed value.
+fn verify_skip_level<e6>(level:u16, n:u16) {
+    var nb_out:u16, first_wire:u16, nb_wires:u16, first_claim:u16
+    var finals_a:u16, b:u16
+    var nb_sources:u16, a:u16, claim_b:u16
+    var claim_row:u16
+    _, _, nb_out, _, _, first_wire, nb_wires, first_claim, _, _, _, _, _ = level_info[level]
+    _, b, finals_a = level_proof[level]
+
+    claim_row = first_claim
+    for w:u16 = 0; w<nb_wires; w = w + 1 {
+        _, _, _, nb_sources = level_wire[first_wire + w]
+        for k:u16 = 0; k<nb_sources; k = k + 1 {
+            eval_wire(first_wire + w, proof_at(finals_a, b, n), nb_out, k)
+            a, claim_b, _ = level_claim[claim_row]
+            e6_assert_eq(VFY_FRAME + GATE_RESULT, proof_at(a, claim_b, n))
+            claim_row = claim_row + 1
+        }
+    }
+}
+
+// verify_zero_check_level verifies a level whose proof is a sumcheck, or a single-source one:
+// it reduces the batch of the level's claims to the claims on the final evaluations, which it
+// checks against the wires' gates, and the challenges of its rounds are the level's point.
+fn verify_zero_check_level<e6, poseidon2_state, compress_rho, transcript_meta>(level:u16, n:u16) {
+    var kind:u16, degree:u16, point:u16, source_point:u16
+    var first_wire:u16, nb_wires:u16, first_claim:u16, nb_claims:u16, first_eq:u16, nb_eq:u16
+    var start_a:u16, start_b:u16, finals_a:u16
+    var nb_sources:u16, a:u16, b:u16, eq:u16
+    var claim_row:u16, w:u16
+    kind, degree, _, point, source_point, first_wire, nb_wires, first_claim, nb_claims, first_eq, nb_eq, _, _ = level_info[level]
+    start_a, start_b, finals_a = level_proof[level]
+
+    // the folding coefficient, and the claimed sum Σᵢ cⁱ claimedᵢ, by Horner's rule
+    if nb_claims >= 2 {
+        squeeze(VFY_FOLD)
+    } else {
+        e6_zero(VFY_FOLD)
+    }
+    e6_zero(VFY_CLAIM)
+    for z:u16 = 0; z<nb_claims; z = z + 1 {
+        a, b, _ = level_claim[(first_claim + nb_claims) - (z + 1)]
+        e6_mul_at(VFY_CLAIM, VFY_CLAIM, VFY_FOLD)
+        e6_add(VFY_CLAIM, VFY_CLAIM, proof_at(a, b, n))
+    }
+
+    // the rounds
+    if kind == GKR_LEVEL_SUMCHECK {
+        for j:u16 = 0; j<n; j = j + 1 {
+            sumcheck_round(proof_at(start_a, start_b, n) + (j * degree), degree, VFY_CLAIM, point_at(point, n) + j, VFY_SCRATCH)
+        }
+    } else {
+        e6_one(VFY_DEN)
+        for j:u16 = 0; j<n; j = j + 1 {
+            single_source_round(proof_at(start_a, start_b, n) + (j * degree), degree, VFY_CLAIM, VFY_DEN, point_at(source_point, n) + j, point_at(point, n) + j, VFY_SCRATCH)
+        }
+    }
+
+    // the final check: Σᵢ cⁱ termᵢ is the claim, by Horner's rule, from the last claim to the first,
+    // where a term is the gate's value on the final evaluations, times eq of the claim's point and
+    // the level's at a sumcheck level
+    if kind == GKR_LEVEL_SUMCHECK {
+        for i:u16 = 0; i<nb_eq; i = i + 1 {
+            eq_point(point_at(level_eq[first_eq + i], n), point_at(point, n), n, VFY_EQ + i)
+        }
+    }
+    e6_zero(VFY_TOTAL)
+    claim_row = first_claim + nb_claims
+    for z:u16 = 0; z<nb_wires; z = z + 1 {
+        w = (nb_wires - 1) - z
+        _, _, _, nb_sources = level_wire[first_wire + w]
+        eval_wire(first_wire + w, proof_at(finals_a, start_b, n), 1, 0)
+        for k:u16 = 0; k<nb_sources; k = k + 1 {
+            claim_row = claim_row - 1
+            if kind == GKR_LEVEL_SUMCHECK {
+                _, _, eq = level_claim[claim_row]
+                e6_mul_at(VFY_TERM, VFY_EQ + eq, VFY_FRAME + GATE_RESULT)
+            } else {
+                e6_copy(VFY_TERM, VFY_FRAME + GATE_RESULT)
+            }
+            e6_mul_at(VFY_TOTAL, VFY_TOTAL, VFY_FOLD)
+            e6_add(VFY_TOTAL, VFY_TOTAL, VFY_TERM)
+        }
+    }
+    if kind == GKR_LEVEL_SUMCHECK {
+        e6_assert_eq(VFY_CLAIM, VFY_TOTAL)
+    } else {
+        // the claim is a fraction: VFY_CLAIM / VFY_DEN
+        e6_mul_at(VFY_TERM, VFY_DEN, VFY_TOTAL)
+        e6_assert_eq(VFY_CLAIM, VFY_TERM)
+    }
+}
+
+// verify_level verifies the level, then absorbs its final evaluations that are to be absorbed.
+fn verify_level<e6, poseidon2_state, compress_rho, transcript_meta>(level:u16, n:u16) {
+    var kind:u16
+    kind, _, _, _, _, _, _, _, _, _, _, _, _ = level_info[level]
+    if kind == GKR_LEVEL_SKIP {
+        verify_skip_level(level, n)
+    } else {
+        verify_zero_check_level(level, n)
+    }
+    absorb_ranges(level, n)
+}
+
+// check_claims fails unless gkr_claims holds the claims of return_claim: for each, its point and
+// its value.
+fn check_claims<e6>(n:u16) {
+    var point:u16, a:u16, b:u16
+    var word:u32 = 0
+    for c:u16 = 0; c<GKR_NB_RETURNED; c = c + 1 {
+        _, point, a, b = return_claim[c]
+        for j:u16 = 0; j<n; j = j + 1 {
+            load_claim_element(VFY_LOADED, word)
+            e6_assert_eq(VFY_LOADED, point_at(point, n) + j)
+            word = word + 1
+        }
+        load_claim_element(VFY_LOADED, word)
+        e6_assert_eq(VFY_LOADED, proof_at(a, b, n))
+        word = word + 1
+    }
+}
+
+// gkr_verify verifies the proof in gkr_proof, and that gkr_claims are its claims.
+fn gkr_verify<e6, poseidon2_state, compress_rho, transcript_meta>() {
+    var n32:u32 = gkr_n[0]
+    var n:u16
+    if n32<1 {
+        fail
+    }
+    if n32>(GKR_N_MAX as u32) {
+        fail
+    }
+    n = n32 as u16
+
+    var proof_len:u16 = (GKR_PROOF_A * n) + GKR_PROOF_B
+    for i:u16 = 0; i<proof_len; i = i + 1 {
+        load_proof_element(proof_at(0, 0, n) + i, i)
+    }
+
+    var nb_seed:u16 = gkr_nb_seed[0] as u16
+    for i:u16 = 0; i<nb_seed; i = i + 1 {
+        load_seed_element(VFY_LOADED, i)
+        write_seed(VFY_LOADED, 1)
+    }
+
+    // the initial challenge, and the output evaluations
+    for j:u16 = 0; j<n; j = j + 1 {
+        squeeze(point_at(0, n) + j)
+    }
+    absorb_ranges(GKR_NB_LEVELS, n)
+
+    for z:u16 = 0; z<GKR_NB_LEVELS; z = z + 1 {
+        verify_level((GKR_NB_LEVELS - 1) - z, n)
+    }
+
+    check_claims(n)
+}

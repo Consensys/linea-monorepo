@@ -214,6 +214,9 @@ const (
 // below the points and the proof.
 const fixedMemory = 1024
 
+// maxEqPerLevel is the number of eq values that verifier.zkc keeps for a level.
+const maxEqPerLevel = 128
+
 // position is the position of a proof element, a·n + b for n variables.
 type position struct{ a, b int }
 
@@ -379,6 +382,9 @@ func newScheduleTables(circuit gkr.SerializableCircuit, schedule constraint.GkrP
 			}
 		}
 		l.nbWires, l.nbClaim, l.nbEq = len(t.wires)-l.firstWire, len(t.claims)-l.firstClaim, len(t.eqs)-l.firstEq
+		if l.nbEq > maxEqPerLevel {
+			return nil, fmt.Errorf("level %d has %d eq entries, at most %d are supported", levelI, l.nbEq, maxEqPerLevel)
+		}
 
 		// the final evaluations that are absorbed, and, at level 0, the ones that are returned
 		if levelI != 0 {

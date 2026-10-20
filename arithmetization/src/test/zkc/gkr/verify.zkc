@@ -1,0 +1,14 @@
+// ===================================================================
+// Test of the GKR verifier (arithmetization/src/main/lib/gkr/verifier.zkc).
+//
+// It runs with the tables that gopkg/gkrverifier generates for a circuit:
+// the gates, the Lagrange denominators and the schedule.
+//
+// Run it with --field KOALABEAR_16.
+// ===================================================================
+
+include "../../../main/lib/gkr/verifier.zkc"
+
+fn main<e6, poseidon2_state, compress_rho, transcript_meta>() {
+    gkr_verify()
+}
