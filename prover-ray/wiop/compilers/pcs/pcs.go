@@ -58,8 +58,8 @@ const defaultFRINumQueries = 229
 const configAnnotationKey = "compiler.pcs.config"
 
 type compileOptions struct {
-	friNumQueries   int
-	elisionDisabled bool
+	friNumQueries  int
+	elisionEnabled bool
 }
 
 // config is the PCS configuration recorded on a System. Zero option fields
@@ -108,12 +108,16 @@ func WithFRINumQueries(n int) Option {
 	}
 }
 
-// WithoutColumnElision commits every column as Present. The manifest cells are
-// still declared and transported (all zero), so the protocol shape does not
-// depend on the option; only the committed rows do. Useful to measure the
-// effect of elision or to isolate a regression.
-func WithoutColumnElision() Option {
-	return func(o *compileOptions) { o.elisionDisabled = true }
+// WithColumnElision lets the commit actions drop all-zero columns and exact
+// duplicates of earlier committed columns from the FRI commitment, committing
+// them as Zero/Alias manifest entries instead of Present. Off by default: the
+// gnark (recursive) verifier supports only all-Present manifests, and elision
+// complicates the manifest verification every verifier must do. The manifest
+// cells are declared and transported either way (all-Present without the
+// option), so the protocol shape does not depend on it; only the committed
+// rows do.
+func WithColumnElision() Option {
+	return func(o *compileOptions) { o.elisionEnabled = true }
 }
 
 // merge resolves opts against sys's recorded PCS configuration without
@@ -135,13 +139,13 @@ func merge(sys *wiop.System, opts []Option) (compileOptions, error) {
 		return cfg, fmt.Errorf("pcs: FRI query count %d conflicts with preconfigured %d",
 			cfg.friNumQueries, pre.friNumQueries)
 	}
-	if cfg.elisionDisabled && state.consumed && !pre.elisionDisabled {
-		return cfg, fmt.Errorf("pcs: WithoutColumnElision conflicts with the consumed column elision")
+	if cfg.elisionEnabled && state.consumed && !pre.elisionEnabled {
+		return cfg, fmt.Errorf("pcs: WithColumnElision conflicts with the consumed compile without column elision")
 	}
 	if cfg.friNumQueries == 0 {
 		cfg.friNumQueries = pre.friNumQueries
 	}
-	cfg.elisionDisabled = cfg.elisionDisabled || pre.elisionDisabled
+	cfg.elisionEnabled = cfg.elisionEnabled || pre.elisionEnabled
 	return cfg, nil
 }
 
@@ -317,9 +321,10 @@ type compiled struct {
 	// opened at (from every LagrangeEval), collected once at compile time. The
 	// alias rule normalizes them at the runtime padded size.
 	colShifts map[wiop.ObjectID][]int
-	// elisionDisabled forces every manifest to all-Present.
-	elisionDisabled bool
-	friNumQueries   int
+	// elisionEnabled lets the commit actions classify all-zero and duplicate
+	// columns as Zero/Alias instead of committing them as Present.
+	elisionEnabled bool
+	friNumQueries  int
 }
 
 // BatchRef identifies one FRI batch: an interactive round, or the precomputed
@@ -364,10 +369,10 @@ func Compile(sys *wiop.System, opts ...Option) {
 	}
 
 	c := &compiled{
-		manifestCells:   make(map[int][]*wiop.Cell),
-		colShifts:       collectColumnShifts(sys),
-		elisionDisabled: cfg.elisionDisabled,
-		friNumQueries:   cfg.friNumQueries,
+		manifestCells:  make(map[int][]*wiop.Cell),
+		colShifts:      collectColumnShifts(sys),
+		elisionEnabled: cfg.elisionEnabled,
+		friNumQueries:  cfg.friNumQueries,
 	}
 
 	// Commit the static precomputed round once, if it owns columns. A throwaway

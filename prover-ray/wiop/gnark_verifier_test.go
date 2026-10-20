@@ -24,10 +24,11 @@ import (
 // Merkle authentication and the algebraic identities, not by query sampling.
 const testFRINumQueries = 2
 
-// testPCSOptions compiles a test system with column elision disabled (the
-// circuit supports only all-Present manifests) at the small test query count.
+// testPCSOptions compiles a test system at the small test query count. Column
+// elision stays off (the default): the circuit supports only all-Present
+// manifests.
 func testPCSOptions() []pcs.Option {
-	return []pcs.Option{pcs.WithoutColumnElision(), pcs.WithFRINumQueries(testFRINumQueries)}
+	return []pcs.Option{pcs.WithFRINumQueries(testFRINumQueries)}
 }
 
 type selfAssignLagrange struct{ le *wiop.LagrangeEval }

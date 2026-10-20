@@ -23,8 +23,8 @@ func (a *OpeningVerifierAction) CheckGnark(api frontend.API, run *wiop.GnarkRunt
 	}
 	// The circuit's FRI layout is structural, while column manifests are
 	// prover-chosen witness data: only all-Present manifests are supported.
-	if !a.c.elisionDisabled {
-		panic("pcs: CheckGnark: requires Compile with WithoutColumnElision")
+	if a.c.elisionEnabled {
+		panic("pcs: CheckGnark: all-Present manifests only: compile without WithColumnElision")
 	}
 	proof := run.PCSOpeningProof
 	batches := CommittedBatches(run.System)
