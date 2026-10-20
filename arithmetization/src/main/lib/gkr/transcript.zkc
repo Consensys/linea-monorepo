@@ -1,0 +1,102 @@
+include "../poseidon2/compress.zkc"
+include "e6.zkc"
+
+// ===================================================================================
+// The Fiat–Shamir transcript of the GKR verifier: gnark's gkrcore.HashTranscript over
+// poseidon2.NewMerkleDamgardHasher, wrapped by NewBaseFieldHashAdapterE6.
+//
+// The hasher keeps a chaining value of 8 elements, initially zero, and a pending block.
+// Writing an element of E₆ appends its 6 coordinates to the block, which is compressed
+// into the chaining value whenever it holds 8. The transcript adds a flag that tells
+// whether anything was absorbed since the last squeeze.
+//
+// The chaining value lives in lanes 0–7 of poseidon2_state and the pending block in
+// lanes 8–15, so that compressing the block is a call to compress() and nothing else.
+// Lanes of the block beyond the pending count hold stale values.
+//
+// The transcript starts in the state all-zero memories give it and cannot be reset.
+// ===================================================================================
+
+// The pending count and the flag.
+memory transcript_meta[u32](address:u1) -> (count:u5, absorbed:u1)
+
+// push appends x to the pending block, which holds count < 8 elements, and compresses it
+// into the chaining value if it is full. It returns the new count.
+#[inline]
+fn push<poseidon2_state, compress_rho>(count:u5, x:𝔽) -> (next:u5) {
+    poseidon2_state[count + COMPRESS_BLOCK] = x
+    next = count + 1
+    if next == COMPRESS_BLOCK {
+        compress()
+        next = 0
+    }
+}
+
+// write_elements writes the len elements of E₆ at e6[addr], … to the hasher, and sets the
+// flag if mark is 1 and len is not 0.
+fn write_elements<e6, poseidon2_state, compress_rho, transcript_meta>(addr:u16, len:u16, mark:u1) {
+    var count:u5, absorbed:u1
+    var c0:𝔽, c1:𝔽, c2:𝔽, c3:𝔽, c4:𝔽, c5:𝔽
+    count, absorbed = transcript_meta[0]
+    if len != 0 {
+        absorbed = absorbed | mark
+    }
+    for i:u16 = 0; i<len; i = i + 1 {
+        c0, c1, c2, c3, c4, c5 = e6[addr + i]
+        count = push(count, c0)
+        count = push(count, c1)
+        count = push(count, c2)
+        count = push(count, c3)
+        count = push(count, c4)
+        count = push(count, c5)
+    }
+    transcript_meta[0] = (count, absorbed)
+}
+
+// write_seed writes the len elements at e6[addr], … to the hasher without setting the flag.
+fn write_seed<e6, poseidon2_state, compress_rho, transcript_meta>(addr:u16, len:u16) {
+    write_elements(addr, len, 0)
+}
+
+// absorb writes the len elements at e6[addr], … to the hasher and sets the flag, unless
+// len is 0.
+fn absorb<e6, poseidon2_state, compress_rho, transcript_meta>(addr:u16, len:u16) {
+    write_elements(addr, len, 1)
+}
+
+// squeeze derives a challenge into e6[dst]. If nothing was absorbed since the last squeeze,
+// the zero element is written first. The pending block is then padded on the left with zeros
+// and compressed, and the challenge is the first 6 elements of the chaining value.
+fn squeeze<e6, poseidon2_state, compress_rho, transcript_meta>(dst:u16) {
+    var count:u5, absorbed:u1
+    var pad:u5, j:u5
+    var c0:𝔽, c1:𝔽, c2:𝔽, c3:𝔽, c4:𝔽, c5:𝔽
+    count, absorbed = transcript_meta[0]
+
+    if absorbed == 0 {
+        for z:u3 = 0; z<6; z = z + 1 {
+            count = push(count, 0)
+        }
+    }
+
+    if count != 0 {
+        pad = COMPRESS_BLOCK - count
+        for k:u5 = 0; k<count; k = k + 1 {
+            j = (count - 1) - k
+            poseidon2_state[(COMPRESS_BLOCK + pad) + j] = poseidon2_state[COMPRESS_BLOCK + j]
+        }
+        for i:u5 = 0; i<pad; i = i + 1 {
+            poseidon2_state[COMPRESS_BLOCK + i] = 0
+        }
+        compress()
+    }
+
+    c0 = poseidon2_state[0]
+    c1 = poseidon2_state[1]
+    c2 = poseidon2_state[2]
+    c3 = poseidon2_state[3]
+    c4 = poseidon2_state[4]
+    c5 = poseidon2_state[5]
+    e6[dst] = (c0, c1, c2, c3, c4, c5)
+    transcript_meta[0] = (0, 0)
+}

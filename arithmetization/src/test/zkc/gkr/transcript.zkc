@@ -1,0 +1,63 @@
+// ===================================================================
+// Unit test for the GKR transcript
+// (arithmetization/src/main/lib/gkr/transcript.zkc).
+//
+// The driver runs a script of operations: `ops` holds pairs (op, len),
+// where op is 0 to write the seed, 1 to absorb and 2 to squeeze, and len
+// is the number of elements the seed write or absorption takes from
+// `elements`, 6 words each. Each squeeze is checked against the next
+// 6 words of `expected`, failing on any mismatch.
+//
+// Run it with --field KOALABEAR_16.
+// ===================================================================
+
+include "../../../main/lib/gkr/transcript.zkc"
+
+pub input nb_ops(address:u1) -> (n:u32)
+pub input ops(address:u16) -> (word:u32)
+pub input elements(address:u16) -> (word:u32)
+pub input expected(address:u16) -> (word:u32)
+
+const OP_SEED:u32 = 0
+const OP_ABSORB:u32 = 1
+const OP_SQUEEZE:u32 = 2
+
+const CHALLENGE:u16 = 100
+const EXPECTED_CHALLENGE:u16 = 101
+
+// load_elements loads len elements, from the words of `elements` starting at start, to
+// e6[0], e6[1], ….
+fn load_elements<e6>(start:u16, len:u16) {
+    var word:u16 = start
+    for i:u16 = 0; i<len; i = i + 1 {
+        e6[i] = (felt_of_word(elements[word]), felt_of_word(elements[word + 1]), felt_of_word(elements[word + 2]), felt_of_word(elements[word + 3]), felt_of_word(elements[word + 4]), felt_of_word(elements[word + 5]))
+        word = word + 6
+    }
+}
+
+fn main<e6, poseidon2_state, compress_rho, transcript_meta>() {
+    var elementI:u16 = 0
+    var expectedI:u16 = 0
+    var op:u32, len:u16
+
+    for i:u16 = 0; i<(nb_ops[0] as u16); i = i + 1 {
+        op = ops[i + i]
+        len = ops[(i + i) + 1] as u16
+        if op == OP_SEED {
+            load_elements(elementI, len)
+            elementI = elementI + (len * 6)
+            write_seed(0, len)
+        } else if op == OP_ABSORB {
+            load_elements(elementI, len)
+            elementI = elementI + (len * 6)
+            absorb(0, len)
+        } else if op == OP_SQUEEZE {
+            squeeze(CHALLENGE)
+            e6[EXPECTED_CHALLENGE] = (felt_of_word(expected[expectedI]), felt_of_word(expected[expectedI + 1]), felt_of_word(expected[expectedI + 2]), felt_of_word(expected[expectedI + 3]), felt_of_word(expected[expectedI + 4]), felt_of_word(expected[expectedI + 5]))
+            expectedI = expectedI + 6
+            e6_assert_eq(CHALLENGE, EXPECTED_CHALLENGE)
+        } else {
+            fail
+        }
+    }
+}
