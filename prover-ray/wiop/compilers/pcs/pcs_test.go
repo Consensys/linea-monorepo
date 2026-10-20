@@ -6,9 +6,18 @@ import (
 
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/maths/koalabear/field"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop"
-	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/wioptest"
 	"github.com/stretchr/testify/require"
 )
+
+func baseVec(n int, val uint64) *wiop.ConcreteVector {
+	elems := make([]field.Element, n)
+	var e field.Element
+	e.SetUint64(val)
+	for i := range elems {
+		elems[i] = e
+	}
+	return &wiop.ConcreteVector{Plain: field.VecFromBase(elems)}
+}
 
 // selfAssignLagrange is a prover action that fills a LagrangeEval's claim cells
 // from the committed column assignments. In the real pipeline the global pass
@@ -40,7 +49,7 @@ func TestCompileEndToEnd(t *testing.T) {
 	Compile(sys)
 
 	proof, pub := sys.Prove(func(rt *wiop.Runtime) {
-		rt.AssignColumn(col, wioptest.ConstVec(4, 3))
+		rt.AssignColumn(col, baseVec(4, 3))
 	})
 
 	// The committed column must not survive as raw data in the proof.
@@ -57,7 +66,7 @@ func TestCompileRejectsWrongClaim(t *testing.T) {
 	Compile(sys)
 
 	proof, pub := sys.Prove(func(rt *wiop.Runtime) {
-		rt.AssignColumn(col, wioptest.ConstVec(4, 3))
+		rt.AssignColumn(col, baseVec(4, 3))
 	})
 
 	// The true evaluation of the constant-3 column is 3; claim 0 instead.
@@ -82,7 +91,7 @@ func TestCompileDynamicModule(t *testing.T) {
 	Compile(sys)
 
 	proof, pub := sys.Prove(func(rt *wiop.Runtime) {
-		rt.AssignColumn(col, wioptest.ConstVec(8, 5)) // size fixed to 8 at prove time
+		rt.AssignColumn(col, baseVec(8, 5)) // size fixed to 8 at prove time
 	})
 	require.Equal(t, 8, proof.DynamicSizes[0], "dynamic size must travel in the proof")
 	require.NoError(t, sys.Verify(proof, pub), "honest dynamic-module witness must verify")
@@ -133,7 +142,7 @@ func TestCompileRejectsTamperedCommitment(t *testing.T) {
 	Compile(sys)
 
 	proof, pub := sys.Prove(func(rt *wiop.Runtime) {
-		rt.AssignColumn(col, wioptest.ConstVec(4, 3))
+		rt.AssignColumn(col, baseVec(4, 3))
 	})
 
 	// Round 0 owns the only committed batch; flip a byte of its root.

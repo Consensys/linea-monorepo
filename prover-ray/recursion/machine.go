@@ -171,7 +171,7 @@ type Program struct {
 // Rounds: the chips' witness columns are committed in round 0; the coins α
 // and γ of the memory, the tables and the permutations are drawn in round 1;
 // their sums are claimed in round 2.
-func (m *Machine) Compile() (*Program, error) {
+func (m *Machine) Compile(pcsOpts ...pcs.Option) (*Program, error) {
 	sys := wiop.NewSystemf("recursion")
 	witnessRound := sys.NewRound()
 	coinRound := witnessRound.EnsureNext()
@@ -200,7 +200,7 @@ func (m *Machine) Compile() (*Program, error) {
 	logderivativesum.Compile(sys)
 	localvanishing.Compile(sys)
 	global.Compile(sys)
-	pcs.Compile(sys)
+	pcs.Compile(sys, pcsOpts...)
 	return p, nil
 }
 
