@@ -1,0 +1,109 @@
+// ===================================================================
+// Unit test for the arithmetic of the sumcheck rounds
+// (arithmetization/src/main/lib/gkr/round.zkc).
+//
+// It runs with the Lagrange table that gopkg/gkrverifier generates for a
+// circuit. `cases` holds nb_cases triples (mode, d, n), and `data` the
+// elements of E₆ the cases consume, 6 words each, in order. The driver fails
+// unless the results are the expected ones, the last elements of each case:
+//
+//   mode 0: the polynomial of degree d with values y₀, …, y_d on {0, …, d}, a
+//           point r, and the value of the polynomial at r;
+//   mode 1: n rounds of degree d of a sumcheck: the claim, the values
+//           g_j(1), …, g_j(d) of each round, and the claim after each round;
+//   mode 2: n single-source rounds of degree d: the claim, the n coordinates
+//           of the point, the values g'_j(1), …, g'_j(d) of each round, and
+//           the claim g'_j(r_j) after each round;
+//   mode 3: two points p and r of n elements, and eq(p, r).
+//
+// A transcript, which the sumcheck rounds use, runs through all the cases.
+//
+// Run it with --field KOALABEAR_16.
+// ===================================================================
+
+include "../../../main/lib/gkr/round.zkc"
+
+pub input nb_cases(address:u1) -> (n:u32)
+pub input cases(address:u16) -> (word:u32)
+pub input data(address:u32) -> (word:u32)
+
+const MODE_EVAL:u32 = 0
+const MODE_SUMCHECK:u32 = 1
+const MODE_SINGLE_SOURCE:u32 = 2
+const MODE_EQ:u32 = 3
+
+const VALUES:u16 = 0
+const POLYS:u16 = 32
+const POINT_P:u16 = 128
+const POINT_R:u16 = 160
+const CLAIM:u16 = 192
+const DEN:u16 = 193
+const CHALLENGE:u16 = 194
+const EXPECTED:u16 = 195
+const RESULT:u16 = 196
+const SCRATCH:u16 = 256
+
+// load_elements loads len elements, from the words of `data` starting at word, to e6[dst], ….
+fn load_elements<e6>(dst:u16, word:u32, len:u16) {
+    var w:u32 = word
+    for i:u16 = 0; i<len; i = i + 1 {
+        e6[dst + i] = (felt_of_word(data[w]), felt_of_word(data[w + 1]), felt_of_word(data[w + 2]), felt_of_word(data[w + 3]), felt_of_word(data[w + 4]), felt_of_word(data[w + 5]))
+        w = w + 6
+    }
+}
+
+fn main<e6, poseidon2_state, compress_rho, transcript_meta>() {
+    var word:u32 = 0
+    var mode:u32, d:u16, n:u16, d32:u32, n32:u32
+
+    for c:u16 = 0; c<(nb_cases[0] as u16); c = c + 1 {
+        mode = cases[(c + c) + c]
+        d = cases[((c + c) + c) + 1] as u16
+        n = cases[((c + c) + c) + 2] as u16
+        d32 = d as u32
+        n32 = n as u32
+
+        if mode == MODE_EVAL {
+            load_elements(VALUES, word, d + 1)
+            word = word + ((d32 + 1) * 6)
+            load_elements(POINT_R, word, 1)
+            load_elements(EXPECTED, word + 6, 1)
+            word = word + 12
+            lagrange_eval(VALUES, d, POINT_R, RESULT, SCRATCH)
+            e6_assert_eq(RESULT, EXPECTED)
+        } else if mode == MODE_SUMCHECK {
+            load_elements(CLAIM, word, 1)
+            load_elements(POLYS, word + 6, n * d)
+            word = word + ((1 + (n32 * d32)) * 6)
+            for j:u16 = 0; j<n; j = j + 1 {
+                sumcheck_round(POLYS + (j * d), d, CLAIM, CHALLENGE, SCRATCH)
+                load_elements(EXPECTED, word, 1)
+                word = word + 6
+                e6_assert_eq(CLAIM, EXPECTED)
+            }
+        } else if mode == MODE_SINGLE_SOURCE {
+            load_elements(CLAIM, word, 1)
+            e6_one(DEN)
+            load_elements(POINT_P, word + 6, n)
+            load_elements(POLYS, (word + 6) + (n32 * 6), n * d)
+            word = word + ((1 + (n32 + (n32 * d32))) * 6)
+            for j:u16 = 0; j<n; j = j + 1 {
+                single_source_round(POLYS + (j * d), d, CLAIM, DEN, POINT_P + j, CHALLENGE, SCRATCH)
+                load_elements(EXPECTED, word, 1)
+                word = word + 6
+                // CLAIM / DEN = EXPECTED
+                e6_mul_at(RESULT, EXPECTED, DEN)
+                e6_assert_eq(CLAIM, RESULT)
+            }
+        } else if mode == MODE_EQ {
+            load_elements(POINT_P, word, n)
+            load_elements(POINT_R, word + (n32 * 6), n)
+            load_elements(EXPECTED, word + ((n32 + n32) * 6), 1)
+            word = word + (((n32 + n32) + 1) * 6)
+            eq_point(POINT_P, POINT_R, n, RESULT)
+            e6_assert_eq(RESULT, EXPECTED)
+        } else {
+            fail
+        }
+    }
+}
