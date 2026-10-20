@@ -111,6 +111,10 @@ func HasSharedRandomness(sys *wiop.System) bool {
 // value to each shard; feeding two shards different values desynchronizes their
 // α and β and breaks the cross-shard permutation.
 //
+// No verifier action checks γ: it is an unconstrained public input of the
+// proof, so whoever verifies it must establish γ externally — see the package
+// documentation for the soundness precondition of the seeded mode.
+//
 // It must be called while the runtime is on round 0, which is where the cells
 // live ([wiop.Runtime.AssignCell] rejects a cell from any other round).
 //

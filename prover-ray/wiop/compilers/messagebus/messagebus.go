@@ -30,6 +30,17 @@
 // challenges across shards and bus columns must live on the coin round.
 // [WithoutSharedRandomness] opts an unsharded protocol out of that layout.
 //
+// Soundness precondition of the default (seeded) mode: γ is an unconstrained
+// public input of each shard's proof — the contribution checker binds only
+// the shard's contribution to its commitment, not γ itself. A proof compiled
+// with shared randomness is therefore sound only if γ is verified externally:
+// for a standalone-verified single shard, against its own contribution
+// (γ = ToSeed of the contribution; both are public inputs); for a shard
+// conglomeration, against every shard's contribution (the preflight
+// aggregation — see preflight.Run). Absent that check a prover may grind γ
+// for favourable α, β. Systems whose proofs are verified entirely on their
+// own should use [WithoutSharedRandomness] instead.
+//
 // Caller order: invoke messagebus.Compile(sys) BEFORE
 // grandproduct.Compile(sys); the latter discharges the GrandProducts this
 // pass emits.
@@ -84,8 +95,10 @@ func recordedOptions(sys *wiop.System) (compileOptions, bool) {
 type Option func(*compileOptions)
 
 // WithoutSharedRandomness derives α and β from the System's own transcript,
-// without a γ public input or a coin-round placement requirement. Use it for
-// unsharded protocols whose bus columns are assigned on round 0.
+// without a γ public input or a coin-round placement requirement. Proofs
+// compiled this way are sound standalone: the transcript alone binds the
+// challenges. Use it for unsharded protocols whose bus columns are assigned
+// on round 0.
 func WithoutSharedRandomness() Option {
 	return func(o *compileOptions) { o.sharedRandomness = false }
 }
