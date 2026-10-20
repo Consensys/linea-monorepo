@@ -11,7 +11,8 @@ include "e6.zkc"
 // whether anything was absorbed since the last squeeze.
 //
 // The chaining value lives in lanes 0–7 of poseidon2_state and the pending block in
-// lanes 8–15, so that compressing the block is a call to compress() and nothing else.
+// lanes 8–15. Between the transcript's operations nothing else may write poseidon2_state or
+// compress_rho, so a program using the transcript must not compress or permute in between.
 // Lanes of the block beyond the pending count hold stale values.
 //
 // The transcript starts in the state all-zero memories give it and cannot be reset.

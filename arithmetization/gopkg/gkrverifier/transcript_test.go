@@ -106,28 +106,30 @@ func TestTranscript(t *testing.T) {
 		}
 	}
 
-	scripts := map[string][]step{
-		"squeeze right after the seed":  {{opSeed, 1}, {opSqueeze, 0}},
-		"squeeze without any seed":      {{opSqueeze, 0}},
-		"consecutive squeezes":          {{opSeed, 2}, {opAbsorb, 1}, {opSqueeze, 0}, {opSqueeze, 0}, {opSqueeze, 0}},
-		"absorptions of every size":     allSizes,
-		"empty absorption sets no flag": {{opSeed, 3}, {opAbsorb, 0}, {opSqueeze, 0}, {opAbsorb, 0}, {opSqueeze, 0}},
-		"block boundary":                {{opAbsorb, 4}, {opSqueeze, 0}, {opAbsorb, 8}, {opSqueeze, 0}, {opSeed, 4}, {opAbsorb, 4}, {opSqueeze, 0}},
-		"block boundary across writes":  {{opAbsorb, 2}, {opAbsorb, 2}, {opSqueeze, 0}, {opSeed, 1}, {opAbsorb, 3}, {opSqueeze, 0}},
-		"seed split from absorption":    {{opSeed, 5}, {opSeed, 2}, {opAbsorb, 6}, {opSqueeze, 0}, {opAbsorb, 1}, {opSqueeze, 0}},
-		"random operations":             randomScript,
+	scripts := []struct {
+		name   string
+		script []step
+	}{
+		{"squeeze right after the seed", []step{{opSeed, 1}, {opSqueeze, 0}}},
+		{"squeeze without any seed", []step{{opSqueeze, 0}}},
+		{"consecutive squeezes", []step{{opSeed, 2}, {opAbsorb, 1}, {opSqueeze, 0}, {opSqueeze, 0}, {opSqueeze, 0}}},
+		{"absorptions of every size", allSizes},
+		{"empty absorption sets no flag", []step{{opSeed, 3}, {opAbsorb, 0}, {opSqueeze, 0}, {opAbsorb, 0}, {opSqueeze, 0}}},
+		{"block boundary", []step{{opAbsorb, 4}, {opSqueeze, 0}, {opAbsorb, 8}, {opSqueeze, 0}, {opSeed, 4}, {opAbsorb, 4}, {opSqueeze, 0}}},
+		{"block boundary across writes", []step{{opAbsorb, 2}, {opAbsorb, 2}, {opSqueeze, 0}, {opSeed, 1}, {opAbsorb, 3}, {opSqueeze, 0}}},
+		{"seed split from absorption", []step{{opSeed, 5}, {opSeed, 2}, {opAbsorb, 6}, {opSqueeze, 0}, {opAbsorb, 1}, {opSqueeze, 0}}},
+		{"random operations", randomScript},
 	}
 
-	for name, script := range scripts {
-		t.Run(name, func(t *testing.T) {
-			inputs := transcriptInputs(rng, script)
+	for _, sc := range scripts {
+		t.Run(sc.name, func(t *testing.T) {
+			inputs := transcriptInputs(rng, sc.script)
 			if !runZkc(t, inputs, transcriptDriver) {
 				t.Fatal("correct challenges rejected")
 			}
 
-			// the last challenge depends on everything before it
 			last := len(inputs["expected"]) - 1
-			bad := transcriptInputs(rng, script)
+			bad := transcriptInputs(rng, sc.script)
 			bad["expected"][last] = (bad["expected"][last] + 1) % modulusU32
 			if runZkc(t, bad, transcriptDriver) {
 				t.Error("corrupted challenge accepted")

@@ -1,0 +1,46 @@
+// ===================================================================
+// Unit test for the gate interpreter
+// (arithmetization/src/main/lib/gkr/gate.zkc).
+//
+// It runs with the gate tables that gopkg/gkrverifier generates for a
+// circuit. `checks` holds a sequence of checks, `nb_checks` many. A check
+// is the index of a gate, then its inputs and the expected result, each
+// an element of E₆ of 6 words. The driver evaluates the gate on the
+// inputs and fails unless the result is the expected one.
+//
+// Run it with --field KOALABEAR_16.
+// ===================================================================
+
+include "../../../main/lib/gkr/gate.zkc"
+
+pub input nb_checks(address:u1) -> (n:u32)
+pub input checks(address:u32) -> (word:u32)
+
+const FRAME:u16 = 0
+const EXPECTED:u16 = 128
+
+// load_e6 loads the 6 words of `checks` at word to e6[dst].
+fn load_e6<e6>(dst:u16, word:u32) {
+    e6[dst] = (felt_of_word(checks[word]), felt_of_word(checks[word + 1]), felt_of_word(checks[word + 2]), felt_of_word(checks[word + 3]), felt_of_word(checks[word + 4]), felt_of_word(checks[word + 5]))
+}
+
+fn main<e6>() {
+    var word:u32 = 0
+    var gate:u16, nb_consts:u16, nb_in:u16
+
+    for c:u32 = 0; c<nb_checks[0]; c = c + 1 {
+        gate = checks[word] as u16
+        word = word + 1
+        nb_consts, nb_in, _, _, _ = gate_info[gate]
+
+        for i:u16 = 0; i<nb_in; i = i + 1 {
+            load_e6(FRAME + (nb_consts + i), word)
+            word = word + 6
+        }
+        load_e6(EXPECTED, word)
+        word = word + 6
+
+        eval_gate(gate, FRAME)
+        e6_assert_eq(FRAME + GATE_RESULT, EXPECTED)
+    }
+}

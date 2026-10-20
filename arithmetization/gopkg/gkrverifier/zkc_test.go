@@ -2,6 +2,7 @@ package gkrverifier
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,19 +23,9 @@ func (in zkcInput) MarshalJSON() ([]byte, error) {
 		if i != 0 {
 			sb.WriteByte('_')
 		}
-		sb.WriteString(strings.ToLower(hex8(w)))
+		sb.WriteString(fmt.Sprintf("%08x", w))
 	}
 	return json.Marshal(sb.String())
-}
-
-func hex8(w uint32) string {
-	const digits = "0123456789abcdef"
-	var b [8]byte
-	for i := 7; i >= 0; i-- {
-		b[i] = digits[w&0xf]
-		w >>= 4
-	}
-	return string(b[:])
 }
 
 // runZkc executes the ZkC program main, with the given library files, on
