@@ -42,6 +42,8 @@
 - *(coordinator)* Bundle smart-contract errors in jar and make --smart-contract-errors optional (#4161)
 - *(coordinator)* Extension config sections and deprecated key aliases (#4162)
 - *(coordinator)* Inline pluggable signer types and per-proof-type prover transport (#4164)
+- *(coordinator)* RISC-V rollup proof coordinator — chunk assembly + proof submission (#3967)
+- *(coordinator)* Added BlobSubmitterV2 interface and implementation (#3673)
 
 ### 🐛 Bug Fixes
 
@@ -194,3 +196,4 @@
 - *(coordinator)* Remove unsupported invalidity proof client (#4101)
 - *(coordinator)* Simplify Risc5 prover DTO mappers (#4121)
 - *(coordinator)* Make RISC-V rollup prover clients transport-agnostic (#4140)
+- *(maru)* Refactor MaruClForkUpgradeTest to use new MaruCluster test (#4214)

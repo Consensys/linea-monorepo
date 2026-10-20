@@ -21,6 +21,7 @@ import (
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/wiop/proofserialization"
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/zkcdriver"
 	minimalelf "github.com/LFDT-Lineth/lineth-monorepo/prover-ray/zkcdriver/minimal-elf"
+	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/zkcdriver/risc5"
 )
 
 // HonestRiscvArtifacts are the verifier-facing outputs from compiling the real
@@ -71,6 +72,7 @@ func BuildAllInOneHonestRiscvArtifacts() (HonestRiscvArtifacts, error) {
 	sys := wiop.NewSystemf("zkc-riscv-system")
 	sys.NewRound()
 	driver := zkcdriver.NewZkCDriver(sys, zkcdriver.Settings{}, bytes.NewReader(compiledConstraints))
+	risc5.RegisterGuestPublicOutputs(sys)
 	runCompilePipeline(sys)
 
 	compiledSystem, err := BuildCompiledSystem(sys)

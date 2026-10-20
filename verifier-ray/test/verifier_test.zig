@@ -114,8 +114,11 @@ test "multi-size: one baked System verifies proofs of two dynamic sizes" {
                 std.debug.print("multi-size case {d} ({s}) primary failed: {s}\n", .{ i, case.name, @errorName(err) });
                 return err;
             };
-            // Alternate size — SAME System.
+            // Alternate size — SAME System. hasAlt means "different size", so
+            // pin that the fixture really is one: a same-size proof here would
+            // let this sweep pass without exercising layout reconstruction.
             const alt_input = vf.getInputAlt(i);
+            try std.testing.expect(!std.mem.eql(usize, input.proof.module_sizes, alt_input.proof.module_sizes));
             verifier.verify(case.spec, case.systems, alt_input.proof, alt_input.public_inputs) catch |err| {
                 std.debug.print("multi-size case {d} ({s}) alt size failed: {s}\n", .{ i, case.name, @errorName(err) });
                 return err;
