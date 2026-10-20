@@ -1,0 +1,30 @@
+// ===================================================================
+// Unit test for the Poseidon2 compression function
+// (arithmetization/src/main/lib/poseidon2/compress.zkc).
+//
+// The driver loads ℓ and ρ from `left` and `right`, compresses them,
+// and checks the result against `expected`, failing on any mismatch.
+//
+// Run it with --field KOALABEAR_16.
+// ===================================================================
+
+include "../../../main/lib/poseidon2/compress.zkc"
+
+pub input left(address:u5) -> (word:u32)
+pub input right(address:u5) -> (word:u32)
+pub input expected(address:u5) -> (word:u32)
+
+fn main<poseidon2_state, compress_rho>() {
+    for i:u5 = 0; i<COMPRESS_BLOCK; i = i + 1 {
+        write_to_state(i, left[i] as 𝔽)
+        write_to_state(i + COMPRESS_BLOCK, right[i] as 𝔽)
+    }
+
+    compress()
+
+    for i:u5 = 0; i<COMPRESS_BLOCK; i = i + 1 {
+        if read_from_state(i) != (expected[i] as 𝔽) {
+            fail
+        }
+    }
+}

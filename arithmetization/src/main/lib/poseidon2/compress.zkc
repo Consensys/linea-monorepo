@@ -1,0 +1,32 @@
+include "poseidon2.zkc"
+
+// ===================================================================================
+// zkc implementation of the Poseidon2 compression function over KoalaBear.
+//
+// The compression of a pair (ℓ, ρ) of 8-element blocks is
+//
+//     C(ℓ, ρ) = P(ℓ ‖ ρ)[8..16] + ρ
+//
+// where P is the width-16 permutation of poseidon2.zkc, as in gnark-crypto's
+// poseidon2.Compressor.
+// ===================================================================================
+
+// Number of elements in each of the two compression inputs and in its output.
+const COMPRESS_BLOCK:u5 = 8
+
+// Holds ρ while the permutation overwrites the state.
+memory compress_rho[u32](address:u5) -> (felt:𝔽)
+
+// compress reads ℓ from lanes 0–7 and ρ from lanes 8–15 of poseidon2_state, and
+// leaves C(ℓ, ρ) in lanes 0–7. Lanes 8–15 are left holding P(ℓ ‖ ρ)[8..16].
+fn compress<poseidon2_state, compress_rho>() {
+    for i:u5 = 0; i<COMPRESS_BLOCK; i = i + 1 {
+        compress_rho[i] = poseidon2_state[i + COMPRESS_BLOCK]
+    }
+
+    permutation()
+
+    for i:u5 = 0; i<COMPRESS_BLOCK; i = i + 1 {
+        poseidon2_state[i] = poseidon2_state[i + COMPRESS_BLOCK] + compress_rho[i]
+    }
+}
