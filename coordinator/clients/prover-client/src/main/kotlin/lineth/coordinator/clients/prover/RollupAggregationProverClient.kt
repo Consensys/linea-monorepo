@@ -46,8 +46,8 @@ class RollupAggregationProofRequestDtoMapper(
       .collectAll(rollupProofFutures.stream())
       .thenApply { rollupResponseDtos ->
         FileBasedRollupAggregationProofRequestDto(
-          programId = programId,
-          provingSystemVersion = provingSystemVersion,
+          guestProgramId = programId,
+          provingSystem = provingSystemVersion,
           proofRequest = FileBasedRollupAggregationProofRequestParamsDto(
             rollupProofs = rollupResponseDtos.ifEmpty { null },
             rollupProofsIndexes = rollupProofsIndexes,
@@ -78,9 +78,6 @@ object RollupAggregationProofResponseDtoMapper :
       endBlockNumber = responseDto.publicInputs.endBlockNumber.toULong(),
       proof = responseDto.proof.decodeHex(),
       publicInputs = responseDto.publicInputs.toDomainObject(),
-      l2L1Roots = responseDto.l2L1Roots.map { it.decodeHex() },
-      filteredAddresses = responseDto.filteredAddresses.map { it.decodeHex() },
-      l2MessagingBlocksOffsets = responseDto.l2MessagingBlocksOffsets.map { it.toULong() },
     )
   }
 }

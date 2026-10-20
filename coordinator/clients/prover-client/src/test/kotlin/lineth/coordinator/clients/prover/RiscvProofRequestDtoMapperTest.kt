@@ -5,8 +5,10 @@ import linea.clients.ExecutionInfo
 import linea.clients.ForcedTransaction
 import linea.clients.L2ExecutionProofRequestV1
 import linea.clients.RollupAggregationProofRequestV1
+import linea.clients.RollupChunk
 import linea.clients.RollupProofRequestV1
 import linea.domain.BlockIntervalProofIndex
+import linea.domain.Constants
 import linea.domain.ExecutionPayload
 import linea.domain.Withdrawal
 import linea.ethapi.ExecutionWitness
@@ -57,8 +59,8 @@ class RiscvProofRequestDtoMapperTest {
 
     assertThat(dto).isEqualTo(
       L2ExecutionProofRequestDto(
-        programId = RiscvProverClientTestFixtures.L2_EXECUTION_PROGRAM_ID,
-        provingSystemVersion = RiscvProverClientTestFixtures.PROVING_SYSTEM_VERSION,
+        guestProgramId = RiscvProverClientTestFixtures.L2_EXECUTION_PROGRAM_ID,
+        provingSystem = RiscvProverClientTestFixtures.PROVING_SYSTEM_VERSION,
         proofRequest = L2ExecutionProofRequestParamsDto(
           parentFtxRollingHash = request.parentFtxRollingHash.encodeHex(),
           parentFtxNumber = request.parentFtxNumber.toLong(),
@@ -133,13 +135,18 @@ class RiscvProofRequestDtoMapperTest {
     val conflation = ConflationWitness(
       blockRlps = listOf(byteArrayOf(0x0c), byteArrayOf(0x0d)),
     )
-    val chunks = listOf(ByteArray(32) { 0x1e })
+    val blobBytes = ByteArray(Constants.Eip4844BlobSize) { 0x1f }
+    val calldataBytes = byteArrayOf(0x01, 0x02, 0x03)
+    val chunks = listOf(
+      RollupChunk.blob(chunkHash = ByteArray(32) { 0x1e }, blobBytes = blobBytes),
+      RollupChunk.calldata(chunkHash = ByteArray(32) { 0x2e }, calldataBytes = calldataBytes),
+    )
     val request = RollupProofRequestV1(
       conflations = listOf(conflation),
       l2Executions = l2Executions,
       chunks = chunks,
       parentDataRollingHash = ByteArray(32) { 0x1c },
-      startOffset = 0,
+      parentDataTailTakeBytes = 0,
     )
     val l2ExecutionProofTransport = FakeL2ExecutionProofTransport()
 
@@ -152,8 +159,8 @@ class RiscvProofRequestDtoMapperTest {
 
     assertThat(dto).isEqualTo(
       FileBasedRollupProofRequestDto(
-        programId = RiscvProverClientTestFixtures.ROLLUP_PROGRAM_ID,
-        provingSystemVersion = RiscvProverClientTestFixtures.PROVING_SYSTEM_VERSION,
+        guestProgramId = RiscvProverClientTestFixtures.ROLLUP_PROGRAM_ID,
+        provingSystem = RiscvProverClientTestFixtures.PROVING_SYSTEM_VERSION,
         proofRequest = RollupProofRequestParamsDto(
           chainId = chainId,
           conflations = listOf(
@@ -167,15 +174,26 @@ class RiscvProofRequestDtoMapperTest {
               proof = resolved.proof,
               startBlockNumber = resolved.startBlockNumber,
               publicInputs = resolved.publicInputs,
-              l2L1Messages = resolved.l2L1Messages,
-              txFroms = resolved.txFroms,
               filteredAddresses = resolved.filteredAddresses,
               programVk = resolved.programVk,
             )
           },
-          chunks = chunks.map { it.encodeHex() },
+          chunks = listOf(
+            RollupChunkDto(
+              chunkHash = ByteArray(32) { 0x1e }.encodeHex(),
+              isCalldata = false,
+              blobBytes = blobBytes.encodeHex(),
+              calldataBytes = "0x",
+            ),
+            RollupChunkDto(
+              chunkHash = ByteArray(32) { 0x2e }.encodeHex(),
+              isCalldata = true,
+              blobBytes = "0x",
+              calldataBytes = "0x010203",
+            ),
+          ),
           parentDataRollingHash = request.parentDataRollingHash.encodeHex(),
-          startOffset = 0,
+          parentDataTailTakeBytes = 0,
         ),
         metadata = MetaDataDto(
           startBlockNumber = 1000501,
@@ -187,14 +205,37 @@ class RiscvProofRequestDtoMapperTest {
   }
 
   @Test
+  fun `serialized rollup chunk uses the spec field names and omits an absent boundaryPrevDataRollingHash`() {
+    val mapper = JsonSerialization.proofResponseMapperV1
+    val chunk = RollupChunk.calldata(chunkHash = ByteArray(32) { 0x2e }, calldataBytes = byteArrayOf(0x01))
+    val params = RollupProofRequestParamsDto(
+      chainId = chainId,
+      conflations = emptyList(),
+      chunks = listOf(chunk.toDto()),
+      parentDataRollingHash = ByteArray(32).encodeHex(),
+      parentDataTailTakeBytes = 0,
+    )
+
+    val json = mapper.readTree(mapper.writeValueAsString(params))
+
+    assertThat(json.has("boundaryPrevDataRollingHash")).isFalse()
+    val chunkJson = json.get("chunks").single()
+    assertThat(chunkJson.fieldNames().asSequence().toList())
+      .containsExactlyInAnyOrder("chunkHash", "isCalldata", "blobBytes", "calldataBytes")
+    assertThat(chunkJson.get("isCalldata").booleanValue()).isTrue()
+    assertThat(chunkJson.get("blobBytes").textValue()).isEqualTo("0x")
+    assertThat(chunkJson.get("calldataBytes").textValue()).isEqualTo("0x01")
+  }
+
+  @Test
   fun `FileBasedRollupProofRequestDtoMapper reports a missing l2-execution proof`() {
     val proofIndex = blockIntervalProofIndex(1000501UL, 1000510UL)
     val request = RollupProofRequestV1(
       conflations = listOf(ConflationWitness(blockRlps = emptyList())),
       l2Executions = listOf(proofIndex),
-      chunks = listOf(ByteArray(32)),
+      chunks = listOf(RollupChunk.blob(chunkHash = ByteArray(32), blobBytes = ByteArray(Constants.Eip4844BlobSize))),
       parentDataRollingHash = ByteArray(32),
-      startOffset = 0,
+      parentDataTailTakeBytes = 0,
     )
     val transport = FakeL2ExecutionProofTransport(responseProvider = { null })
 
@@ -227,8 +268,8 @@ class RiscvProofRequestDtoMapperTest {
 
     assertThat(dto).isEqualTo(
       FileBasedRollupAggregationProofRequestDto(
-        programId = RiscvProverClientTestFixtures.ROLLUP_AGGREGATION_PROGRAM_ID,
-        provingSystemVersion = RiscvProverClientTestFixtures.PROVING_SYSTEM_VERSION,
+        guestProgramId = RiscvProverClientTestFixtures.ROLLUP_AGGREGATION_PROGRAM_ID,
+        provingSystem = RiscvProverClientTestFixtures.PROVING_SYSTEM_VERSION,
         proofRequest = FileBasedRollupAggregationProofRequestParamsDto(
           rollupProofs = rollupProofs.map { proofIndex ->
             val resolved = rollupProofTransport.findResponse(proofIndex).get()!!
@@ -236,8 +277,6 @@ class RiscvProofRequestDtoMapperTest {
               proof = resolved.proof,
               startBlockNumber = resolved.startBlockNumber,
               publicInputs = resolved.publicInputs,
-              l2L1Roots = resolved.l2L1Roots,
-              filteredAddresses = resolved.filteredAddresses,
               programVk = resolved.programVk,
             )
           },

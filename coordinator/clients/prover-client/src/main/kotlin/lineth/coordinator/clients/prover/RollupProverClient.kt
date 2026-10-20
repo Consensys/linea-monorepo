@@ -44,18 +44,16 @@ class RollupProofRequestDtoMapper(
     return SafeFuture.collectAll(l2ExecutionProofFutures.stream())
       .thenApply { l2ExecutionProofResponseDtos ->
         FileBasedRollupProofRequestDto(
-          programId = programId,
-          provingSystemVersion = provingSystemVersion,
+          guestProgramId = programId,
+          provingSystem = provingSystemVersion,
           proofRequest = RollupProofRequestParamsDto(
             chainId = chainId,
             conflations = request.conflations.map { it.toDto() },
             l2ExecutionProofs = l2ExecutionProofResponseDtos.ifEmpty { null },
             l2ExecutionProofIndexes = l2ExecutionProofIndexes,
-            chunks = request.chunks.map { it.encodeHex() },
+            chunks = request.chunks.map { it.toDto() },
             parentDataRollingHash = request.parentDataRollingHash.encodeHex(),
-            startOffset = request.startOffset,
-            opaquePrefixBytes = request.opaquePrefixBytes.takeIf { it.isNotEmpty() }?.encodeHex(),
-            opaqueSuffixBytes = request.opaqueSuffixBytes.takeIf { it.isNotEmpty() }?.encodeHex(),
+            parentDataTailTakeBytes = request.parentDataTailTakeBytes,
             boundaryPrevDataRollingHash = request.boundaryPrevDataRollingHash?.encodeHex(),
           ),
           metadata = MetaDataDto(
@@ -85,8 +83,6 @@ object RollupProofResponseDtoMapper : (
       endBlockNumber = responseDto.publicInputs.endBlockNumber.toULong(),
       proof = responseDto.proof.decodeHex(),
       publicInputs = responseDto.publicInputs.toDomainObject(),
-      l2L1Roots = responseDto.l2L1Roots.map { it.decodeHex() },
-      filteredAddresses = responseDto.filteredAddresses.map { it.decodeHex() },
       programVk = responseDto.programVk.decodeHex(),
     )
   }

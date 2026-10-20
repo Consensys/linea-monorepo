@@ -2,6 +2,7 @@ package lineth.coordination.riscv.rollup
 
 import io.vertx.core.Vertx
 import linea.clients.ConflationWitness
+import linea.clients.RollupChunk
 import linea.clients.RollupProofRequestV1
 import linea.clients.RollupProverClientV1
 import linea.domain.BlobData
@@ -9,7 +10,6 @@ import linea.domain.Block
 import linea.domain.BlockIntervalProofIndex
 import linea.domain.BlocksConflation
 import linea.domain.ConflationCalculationResult
-import linea.domain.Constants
 import linea.domain.DataRollingHashCalculator
 import linea.domain.StreamPosition
 import linea.timer.TimerSchedule
@@ -42,6 +42,7 @@ class RollupProofGeneratingCoordinator(
   private val conflationSegmentBuilder: ConflationSegmentBuilder,
   private val dataRollingHashCalculator: DataRollingHashCalculator,
   private val blockEncoder: BlockEncoder,
+  // maps a packed physical blob to its L1-anchored chunkHash (the blob's KZG versioned hash)
   private val chunkHasher: (ByteArray) -> ByteArray,
   private val proofCheckingInterval: Duration,
   private val vertx: Vertx,
@@ -56,17 +57,21 @@ class RollupProofGeneratingCoordinator(
     timerSchedule = TimerSchedule.FIXED_DELAY,
   ) {
 
+  /**
+   * A sealed blob chunk. [blobBytes] is the canonically packed physical blob; [payloadSize] is the number of
+   * unpacked payload bytes it holds (at most [BlobPayloadPacking.BLOB_PAYLOAD_CAPACITY]).
+   */
   private data class SealedChunk(
     val blobBytes: ByteArray,
     val chunkHash: ByteArray,
     val parentDataRollingHash: ByteArray,
-    val endOffset: Int,
+    val payloadSize: Int,
   ) {
     override fun equals(other: Any?): Boolean {
       if (this === other) return true
       if (javaClass != other?.javaClass) return false
       other as SealedChunk
-      if (endOffset != other.endOffset) return false
+      if (payloadSize != other.payloadSize) return false
       if (!blobBytes.contentEquals(other.blobBytes)) return false
       if (!chunkHash.contentEquals(other.chunkHash)) return false
       if (!parentDataRollingHash.contentEquals(other.parentDataRollingHash)) return false
@@ -74,7 +79,7 @@ class RollupProofGeneratingCoordinator(
     }
 
     override fun hashCode(): Int {
-      var result = endOffset
+      var result = payloadSize
       result = 31 * result + blobBytes.contentHashCode()
       result = 31 * result + chunkHash.contentHashCode()
       result = 31 * result + parentDataRollingHash.contentHashCode()
@@ -88,7 +93,7 @@ class RollupProofGeneratingCoordinator(
     val dataRollingHash: ByteArray,
   ) {
     val parentDataRollingHash: ByteArray get() = chunks.first().parentDataRollingHash
-    val endOffset: Int get() = chunks.last().endOffset
+    val lastChunkPayloadSize: Int get() = chunks.last().payloadSize
 
     override fun equals(other: Any?): Boolean {
       if (this === other) return true
@@ -225,36 +230,28 @@ class RollupProofGeneratingCoordinator(
       .thenApply { proofIndex -> trackProofInProgress(proofIndex, chunkedData, windowPending) }
   }
 
+  /**
+   * Splits the window's segment stream into blob payloads and packs each into a physical blob (rollup_spec §3.1).
+   * Every blob but the last holds a full payload, and the last blob holds exactly the remaining bytes, so the window
+   * starts and ends at a chunk boundary (parentDataTailTakeBytes = finalDataTailDiscardBytes = 0).
+   */
   private fun chunkSegments(windowPending: List<PendingConflation>): ChunkedData {
-    val buffer = ByteArrayOutputStream()
+    val stream = ByteArrayOutputStream()
+    windowPending.forEach { stream.write(it.segmentBytes) }
+    val streamBytes = stream.toByteArray()
+    check(streamBytes.isNotEmpty()) { "rollup proof window has no segment bytes" }
+
     val sealedChunks = mutableListOf<SealedChunk>()
     var currentDrh = parentDataRollingHash
-
-    for (pending in windowPending) {
-      buffer.write(pending.segmentBytes)
-      while (buffer.size() >= Constants.Eip4844BlobSize) {
-        val raw = buffer.toByteArray()
-        val blobBytes = raw.copyOfRange(0, Constants.Eip4844BlobSize)
-        buffer.reset()
-        buffer.write(raw, Constants.Eip4844BlobSize, raw.size - Constants.Eip4844BlobSize)
-        val chunkHash = chunkHasher(blobBytes)
-        sealedChunks += SealedChunk(blobBytes, chunkHash, currentDrh, Constants.Eip4844BlobSize)
-        currentDrh = dataRollingHashCalculator.fold(currentDrh, chunkHash)
-      }
-    }
-
-    val partialChunk: SealedChunk? = if (buffer.size() > 0) {
-      val endOffset = buffer.size()
-      val blobBytes = buffer.toByteArray().copyOf(Constants.Eip4844BlobSize)
+    for (payloadStart in streamBytes.indices step BlobPayloadPacking.BLOB_PAYLOAD_CAPACITY) {
+      val payloadEnd = minOf(payloadStart + BlobPayloadPacking.BLOB_PAYLOAD_CAPACITY, streamBytes.size)
+      val blobBytes = BlobPayloadPacking.pack(streamBytes.copyOfRange(payloadStart, payloadEnd))
       val chunkHash = chunkHasher(blobBytes)
-      val chunk = SealedChunk(blobBytes, chunkHash, currentDrh, endOffset)
+      sealedChunks += SealedChunk(blobBytes, chunkHash, currentDrh, payloadEnd - payloadStart)
       currentDrh = dataRollingHashCalculator.fold(currentDrh, chunkHash)
-      chunk
-    } else {
-      null
     }
 
-    return ChunkedData(sealedChunks + listOfNotNull(partialChunk), currentDrh)
+    return ChunkedData(sealedChunks, currentDrh)
   }
 
   private fun drainWindow(window: List<BlocksConflation>): List<PendingConflation> {
@@ -305,7 +302,7 @@ class RollupProofGeneratingCoordinator(
       },
       parentDataRollingHash = chunkedData.parentDataRollingHash,
       dataRollingHash = chunkedData.dataRollingHash,
-      endOffset = chunkedData.endOffset,
+      endOffset = chunkedData.lastChunkPayloadSize,
       startBlockTimestamp = windowPending.first().startBlockTimestamp,
       endBlockTimestamp = windowPending.last().endBlockTimestamp,
       totalBatchesCount = windowPending.size,
@@ -320,11 +317,9 @@ class RollupProofGeneratingCoordinator(
     return RollupProofRequestV1(
       conflations = conflations.map { ConflationWitness(it.blocks.map(blockEncoder::encode)) },
       l2Executions = l2Executions,
-      chunks = chunkedData.chunks.map { it.chunkHash },
+      chunks = chunkedData.chunks.map { RollupChunk.blob(chunkHash = it.chunkHash, blobBytes = it.blobBytes) },
       parentDataRollingHash = chunkedData.parentDataRollingHash,
-      startOffset = 0,
-      opaquePrefixBytes = ByteArray(0),
-      opaqueSuffixBytes = ByteArray(Constants.Eip4844BlobSize - chunkedData.endOffset),
+      parentDataTailTakeBytes = 0,
       boundaryPrevDataRollingHash = null,
     )
   }

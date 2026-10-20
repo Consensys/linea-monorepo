@@ -43,8 +43,8 @@ internal class L2ExecutionProofRequestDtoMapper(
     }
 
     val dto = L2ExecutionProofRequestDto(
-      programId = programId,
-      provingSystemVersion = provingSystemVersion,
+      guestProgramId = programId,
+      provingSystem = provingSystemVersion,
       proofRequest = L2ExecutionProofRequestParamsDto(
         parentFtxRollingHash = request.parentFtxRollingHash.encodeHex(),
         parentFtxNumber = request.parentFtxNumber.toLong(),
@@ -87,8 +87,6 @@ internal object L2ExecutionProofResponseDtoMapper : (
       endBlockNumber = responseDto.publicInputs.endBlockNumber.toULong(),
       proof = responseDto.proof.decodeHex(),
       publicInputs = responseDto.publicInputs.toDomainObject(),
-      l2L1Messages = responseDto.l2L1Messages.map { it.decodeHex() },
-      txFroms = responseDto.txFroms.map { it.decodeHex() },
       filteredAddresses = responseDto.filteredAddresses.map { it.decodeHex() },
       programVk = responseDto.programVk.decodeHex(),
     )

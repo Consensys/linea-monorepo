@@ -5,8 +5,10 @@ import linea.clients.ExecutionInfo
 import linea.clients.ForcedTransaction
 import linea.clients.L2ExecutionProofRequestV1
 import linea.clients.RollupAggregationProofRequestV1
+import linea.clients.RollupChunk
 import linea.clients.RollupProofRequestV1
 import linea.domain.BlockIntervalProofIndex
+import linea.domain.Constants
 import linea.domain.ExecutionPayload
 import linea.ethapi.ExecutionWitness
 import linea.forcedtx.ForcedTransactionInclusionResult
@@ -130,15 +132,17 @@ object RiscvProverClientTestFixtures {
   fun rollupProofRequestV1(
     conflations: List<ConflationWitness> = emptyList(),
     parentDataRollingHash: ByteArray = ByteArray(32) { 0x19 },
-    chunks: List<ByteArray> = listOf(ByteArray(32) { 0x20 }),
-    startOffset: Int = 0,
+    chunks: List<RollupChunk> = listOf(
+      RollupChunk.blob(chunkHash = ByteArray(32) { 0x20 }, blobBytes = ByteArray(Constants.Eip4844BlobSize)),
+    ),
+    parentDataTailTakeBytes: Int = 0,
     l2Executions: List<BlockIntervalProofIndex> = listOf(blockIntervalProofIndex(1000501UL, 1000520UL)),
   ): RollupProofRequestV1 = RollupProofRequestV1(
     conflations = conflations,
     l2Executions = l2Executions,
     chunks = chunks,
     parentDataRollingHash = parentDataRollingHash,
-    startOffset = startOffset,
+    parentDataTailTakeBytes = parentDataTailTakeBytes,
   )
 
   fun rollupAggregationProofRequestV1(
@@ -153,7 +157,7 @@ object RiscvProverClientTestFixtures {
       endBlockHash = "0x0b",
       endBlockNumber = endBlockNumber,
       endBlockTimestamp = 1763000123,
-      l2L1MessagesHash = "0x01",
+      l2L1Messages = listOf("0x01"),
       parentL1L2BridgeRollingHash = "0x02",
       parentL1L2BridgeRollingHashMessageNumber = 3,
       endL1L2BridgeRollingHash = "0x04",
@@ -165,6 +169,8 @@ object RiscvProverClientTestFixtures {
       endProcessedFtxNumber = 8,
       filteredAddressesHash = "0x09",
       txFromsHash = "0x0c",
+      blockCount = 3,
+      l2MessagingBlocksOffsets = listOf(1),
     )
 
   fun l2ExecutionProofResponseDto(
@@ -174,8 +180,6 @@ object RiscvProverClientTestFixtures {
     startBlockNumber = startBlockNumber,
     proof = "0xabcd",
     publicInputs = l2ExecutionProofPublicInputsDto(endBlockNumber),
-    l2L1Messages = listOf("0xaa"),
-    txFroms = listOf("0xbb"),
     filteredAddresses = emptyList(),
     programVk = L2_EXECUTION_PROGRAM_ID,
   )
@@ -185,7 +189,6 @@ object RiscvProverClientTestFixtures {
   ): RollupProofPublicInputsDto = RollupProofPublicInputsDto(
     endBlockNumber = endBlockNumber,
     endBlockTimestamp = 1763000457,
-    l2L1BridgeTransactionTree = "0x10",
     parentL1L2BridgeRollingHash = "0x11",
     parentL1L2BridgeRollingHashMessageNumber = 12,
     endL1L2BridgeRollingHash = "0x13",
@@ -195,14 +198,44 @@ object RiscvProverClientTestFixtures {
     parentFtxNumber = 16,
     endFtxRollingHash = "0x16",
     endProcessedFtxNumber = 17,
-    filteredAddressesHash = "0x18",
     parentDataRollingHash = "0x19",
     endDataRollingHash = "0x1a",
     parentBlockHash = "0x1b",
     endBlockHash = "0x1c",
-    startOffset = 0,
-    endOffset = 131072,
+    parentDataTailTakeBytes = 0,
+    finalDataTailDiscardBytes = 1024,
+    l2L1Messages = listOf("0xaa"),
+    filteredAddresses = emptyList(),
     programVks = emptyList(),
+    blockCount = 20,
+    l2MessagingBlocksOffsets = listOf(1),
+  )
+
+  fun rollupAggregationProofPublicInputsDto(
+    endBlockNumber: Long,
+  ): RollupAggregationProofPublicInputsDto = RollupAggregationProofPublicInputsDto(
+    endBlockNumber = endBlockNumber,
+    endBlockTimestamp = 1763002301,
+    parentL1L2BridgeRollingHash = "0x11",
+    parentL1L2BridgeRollingHashMessageNumber = 12,
+    endL1L2BridgeRollingHash = "0x13",
+    endL1L2BridgeRollingHashMessageNumber = 14,
+    dynamicChainConfigHash = "0xc0ffee",
+    parentFtxRollingHash = "0x15",
+    parentFtxNumber = 16,
+    endFtxRollingHash = "0x16",
+    endProcessedFtxNumber = 17,
+    parentDataRollingHash = "0x19",
+    endDataRollingHash = "0x1a",
+    parentBlockHash = "0x1b",
+    endBlockHash = "0x1c",
+    parentDataTailTakeBytes = 0,
+    finalDataTailDiscardBytes = 1024,
+    l2L1Roots = listOf("0xaa"),
+    l2L1TreeDepth = 5,
+    filteredAddresses = listOf("0xbb"),
+    programIds = listOf(ROLLUP_AGGREGATION_PROGRAM_ID),
+    l2MessagingBlocksOffsets = listOf(1, 20, 100),
   )
 
   fun rollupProofResponseDto(
@@ -212,8 +245,6 @@ object RiscvProverClientTestFixtures {
     startBlockNumber = startBlockNumber,
     proof = "0xabcd",
     publicInputs = rollupProofPublicInputsDto(endBlockNumber),
-    l2L1Roots = listOf("0xaa"),
-    filteredAddresses = emptyList(),
     programVk = ROLLUP_PROGRAM_ID,
   )
 
@@ -224,11 +255,6 @@ object RiscvProverClientTestFixtures {
     proverVersion = PROVER_VERSION,
     startBlockNumber = startBlockNumber,
     proof = "0xabcd",
-    publicInputs = rollupProofPublicInputsDto(
-      endBlockNumber,
-    ).copy(endBlockNumber = 1000567, endBlockTimestamp = 1763002301),
-    l2L1Roots = listOf("0xaa"),
-    filteredAddresses = listOf("0xbb"),
-    l2MessagingBlocksOffsets = listOf(1, 20, 100),
+    publicInputs = rollupAggregationProofPublicInputsDto(endBlockNumber),
   )
 }

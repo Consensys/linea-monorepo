@@ -8,7 +8,6 @@ import linea.domain.Batch
 import linea.domain.BlocksConflation
 import linea.domain.ConflationCalculationResult
 import linea.domain.ConflationTrigger
-import linea.domain.Constants
 import linea.domain.DataRollingHashCalculator
 import linea.domain.StreamPosition
 import linea.domain.createBlock
@@ -172,13 +171,16 @@ class RollupProofGeneratingCoordinatorTest {
     val request = rollupProverClient.requests.first()
     assertThat(request.startBlockNumber).isEqualTo(1UL)
     assertThat(request.endBlockNumber).isEqualTo(6UL)
-    assertThat(request.startOffset).isEqualTo(0)
+    assertThat(request.parentDataTailTakeBytes).isEqualTo(0)
     assertThat(request.chunks).hasSize(1)
-    assertThat(request.chunks.first()).isEqualTo(fakeChunkHash)
+    val chunk = request.chunks.first()
+    assertThat(chunk.chunkHash).isEqualTo(fakeChunkHash)
+    assertThat(chunk.isCalldata).isFalse()
+    assertThat(chunk.calldataBytes).isEmpty()
+    // the single blob packs exactly the two segments, with no padding inside the payload
+    assertThat(BlobPayloadPacking.unpack(chunk.blobBytes)).isEqualTo(fakeSegment + fakeSegment)
     assertThat(request.parentDataRollingHash).isEqualTo(genesisDataRollingHash)
-    assertThat(request.opaquePrefixBytes).isEmpty()
-    // partial chunk has segmentSize * 2 bytes used; suffix pads to BLOB_SIZE
-    assertThat(request.opaqueSuffixBytes).hasSize(Constants.Eip4844BlobSize - segmentSize * conflationsPerRollupProof)
+    assertThat(request.boundaryPrevDataRollingHash).isNull()
     assertThat(request.l2Executions).hasSize(2)
     assertThat(request.l2Executions[0].startBlockNumber).isEqualTo(1UL)
     assertThat(request.l2Executions[0].endBlockNumber).isEqualTo(3UL)
@@ -242,9 +244,8 @@ class RollupProofGeneratingCoordinatorTest {
 
   @Test
   fun `action submits proof when segment bytes exactly fill full chunks with no remainder`() {
-    // Each segment is exactly half of BLOB_SIZE so two conflations = one full chunk, no remainder
-    val halfBlobSize = Constants.Eip4844BlobSize / 2
-    val exactSegment = ByteArray(halfBlobSize) { it.toByte() }
+    // Each segment is exactly one blob payload so two conflations = two full chunks, no remainder
+    val exactSegment = ByteArray(BlobPayloadPacking.BLOB_PAYLOAD_CAPACITY) { it.toByte() }
     val exactCoordinator = createCoordinator(segmentBuilder = { _, _ -> exactSegment })
 
     exactCoordinator.handleConflatedBatch(makeConflation(1UL, 3UL)).get()
@@ -257,11 +258,36 @@ class RollupProofGeneratingCoordinatorTest {
 
     assertThat(rollupProverClient.requests).hasSize(1)
     val request = rollupProverClient.requests.first()
-    // One full chunk sealed, no partial — endOffset on the full chunk is BLOB_SIZE
-    assertThat(request.chunks).hasSize(1)
-    assertThat(request.opaqueSuffixBytes).isEmpty()
+    // Two full chunks sealed, no partial — endOffset on the last chunk is the full payload capacity
+    assertThat(request.chunks).hasSize(2)
+    assertThat(request.chunks.map { BlobPayloadPacking.unpack(it.blobBytes) })
+      .containsExactly(exactSegment, exactSegment)
     assertThat(handledProofs).hasSize(1)
-    assertThat(handledProofs.first().second.endOffset).isEqualTo(Constants.Eip4844BlobSize)
+    assertThat(handledProofs.first().second.endOffset).isEqualTo(BlobPayloadPacking.BLOB_PAYLOAD_CAPACITY)
+  }
+
+  @Test
+  fun `action splits segments crossing a blob boundary into a full blob followed by the remainder`() {
+    val segment = ByteArray(BlobPayloadPacking.BLOB_PAYLOAD_CAPACITY / 2 + 10) { (it * 31).toByte() }
+    val crossingCoordinator = createCoordinator(segmentBuilder = { _, _ -> segment })
+
+    crossingCoordinator.handleConflatedBatch(makeConflation(1UL, 3UL)).get()
+    crossingCoordinator.handleConflatedBatch(makeConflation(4UL, 6UL)).get()
+    markProven(1UL, 3UL, proofHash1)
+    markProven(4UL, 6UL, proofHash2)
+
+    crossingCoordinator.action().get()
+    rollupProofPoller.action().get()
+
+    val request = rollupProverClient.requests.single()
+    assertThat(request.parentDataTailTakeBytes).isEqualTo(0)
+    assertThat(request.chunks).hasSize(2)
+    val payloads = request.chunks.map { BlobPayloadPacking.unpack(it.blobBytes) }
+    // a blob followed by another blob must hold a full payload; the last blob holds exactly the remainder
+    assertThat(payloads[0]).hasSize(BlobPayloadPacking.BLOB_PAYLOAD_CAPACITY)
+    assertThat(payloads[1]).hasSize(2 * segment.size - BlobPayloadPacking.BLOB_PAYLOAD_CAPACITY)
+    assertThat(payloads[0] + payloads[1]).isEqualTo(segment + segment)
+    assertThat(handledProofs.single().second.endOffset).isEqualTo(payloads[1].size)
   }
 
   @Test
