@@ -24,14 +24,11 @@ import (
 // Merkle authentication and the algebraic identities, not by query sampling.
 const testFRINumQueries = 2
 
-func useSmallFRI(t *testing.T) {
-	t.Helper()
-	prev := pcs.FRINumQueries()
-	pcs.SetFRINumQueriesForTest(testFRINumQueries)
-	// Restore the global count when the calling test ends (unlike defer, which
-	// would fire on return from this helper), so other tests see the default.
-	// This guards any future wiop PCS test that does not call useSmallFRI.
-	t.Cleanup(func() { pcs.SetFRINumQueriesForTest(prev) })
+// testPCSOptions compiles a test system at the small test query count. Column
+// elision stays off (the default): the circuit supports only all-Present
+// manifests.
+func testPCSOptions() []pcs.Option {
+	return []pcs.Option{pcs.WithFRINumQueries(testFRINumQueries)}
 }
 
 type selfAssignLagrange struct{ le *wiop.LagrangeEval }
@@ -67,7 +64,7 @@ func newPCSOnlySystem() (*wiop.System, *wiop.Column, *wiop.LagrangeEval) {
 	zeta := r1.NewCoinField(sys.Context.Childf("zeta"))
 	le := sys.NewLagrangeEval(sys.Context.Childf("le"), []*wiop.ColumnView{col.View()}, zeta)
 	r1.RegisterAction(&selfAssignLagrange{le: le})
-	pcs.Compile(sys, pcs.CompileOptions{DisableColumnElision: true})
+	pcs.Compile(sys, testPCSOptions()...)
 	return sys, col, le
 }
 
@@ -112,7 +109,6 @@ func (cv *compiledVerifier) solve(t *testing.T, proof wiop.Proof, pub wiop.Publi
 }
 
 func TestVerifierCircuit_PCSOnly(t *testing.T) {
-	useSmallFRI(t)
 	sys, col, le := newPCSOnlySystem()
 	// Must be non-constant, or the deep quotient vanishes and the circuit's
 	// Fiat-Shamir derivation stops being constrained by anything. See
@@ -142,7 +138,6 @@ func TestVerifierCircuit_PCSOnly(t *testing.T) {
 }
 
 func TestVerifierCircuit_Vanishing(t *testing.T) {
-	useSmallFRI(t)
 	for _, build := range wioptest.VanishingScenarios() {
 		sc := build()
 		if hasDynamicModule(sc.Sys) {
@@ -150,7 +145,7 @@ func TestVerifierCircuit_Vanishing(t *testing.T) {
 		}
 		t.Run(sc.Name, func(t *testing.T) {
 			global.Compile(sc.Sys)
-			pcs.Compile(sc.Sys, pcs.CompileOptions{DisableColumnElision: true})
+			pcs.Compile(sc.Sys, testPCSOptions()...)
 			proof, pub := sc.Sys.Prove(sc.AssignHonest)
 			require.NoError(t, sc.Sys.Verify(proof, pub), "honest proof must verify natively")
 
@@ -158,7 +153,7 @@ func TestVerifierCircuit_Vanishing(t *testing.T) {
 			// native verifier rejects; the circuit must reject it too.
 			invalid := build()
 			global.Compile(invalid.Sys)
-			pcs.Compile(invalid.Sys, pcs.CompileOptions{DisableColumnElision: true})
+			pcs.Compile(invalid.Sys, testPCSOptions()...)
 			badProof, badPub := invalid.Sys.Prove(invalid.AssignInvalid)
 			require.Error(t, invalid.Sys.Verify(badProof, badPub), "invalid witness must fail natively")
 
@@ -174,7 +169,6 @@ func TestVerifierCircuit_Vanishing(t *testing.T) {
 // corrupts one value at a time: every cell, then every round commitment. Each
 // corrupted proof must be rejected both natively and by the circuit.
 func TestVerifierCircuit_Vanishing_TamperedProof(t *testing.T) {
-	useSmallFRI(t)
 	for _, build := range wioptest.VanishingScenarios() {
 		sc := build()
 		if hasDynamicModule(sc.Sys) {
@@ -182,7 +176,7 @@ func TestVerifierCircuit_Vanishing_TamperedProof(t *testing.T) {
 		}
 		t.Run(sc.Name, func(t *testing.T) {
 			global.Compile(sc.Sys)
-			pcs.Compile(sc.Sys, pcs.CompileOptions{DisableColumnElision: true})
+			pcs.Compile(sc.Sys, testPCSOptions()...)
 			proof, pub := sc.Sys.Prove(sc.AssignHonest)
 			require.NoError(t, sc.Sys.Verify(proof, pub), "honest proof must verify natively")
 
@@ -224,7 +218,6 @@ type unsupportedAction struct{}
 func (unsupportedAction) Check(*wiop.Runtime) error { return nil }
 
 func TestAllocateVerifierCircuit_RejectsUnsupportedAction(t *testing.T) {
-	useSmallFRI(t)
 	sys, col, _ := newPCSOnlySystem()
 	sys.Rounds[1].RegisterVerifierAction(unsupportedAction{})
 	proof, pub := sys.Prove(func(rt *wiop.Runtime) { rt.AssignColumn(col, wioptest.ConstVec(8, 3)) })
@@ -234,7 +227,6 @@ func TestAllocateVerifierCircuit_RejectsUnsupportedAction(t *testing.T) {
 }
 
 func TestAssignVerifierCircuit_RejectsShapeMismatch(t *testing.T) {
-	useSmallFRI(t)
 	sys, col, le := newPCSOnlySystem()
 	proof, pub := sys.Prove(func(rt *wiop.Runtime) { rt.AssignColumn(col, wioptest.ConstVec(8, 3)) })
 	circ := wiop.AllocateVerifierCircuit(sys, proof, pub)
