@@ -880,7 +880,7 @@ func authenticateInputCapGnark(
 	// index order, not in the query-dependent order of an opened aux row.
 	evenFirst := api.Frontend().FromBinary(0)
 
-	aux := make([]*circuit.Octuplet, len(treeCap.Nodes)-1)
+	injections := make([][]circuit.Octuplet, len(treeCap.Nodes)-1)
 	for i, sizeLog2 := range info.revealed {
 		table := treeCap.Tables[i]
 		if int(table.SizeLog2) != sizeLog2 {
@@ -899,14 +899,14 @@ func authenticateInputCapGnark(
 			}
 		}
 		levelStart := (1 << (encodedLog - 1)) - 1
+		groups := shapeAtSize.groups()
 		for pairIdx := range len(table.Rows) / 2 {
 			pair := GnarkRowPair{table.Rows[2*pairIdx], table.Rows[2*pairIdx+1]}
-			digest := hashAuxPairGnark(api, pair, evenFirst)
-			aux[levelStart+pairIdx] = &digest
+			injections[levelStart+pairIdx] = hashAuxPairGroupsGnark(api, pair, groups, evenFirst)
 		}
 	}
 
-	assertOctupletEqual(api, recoverCapRootGnark(api, treeCap.Nodes, aux), root)
+	assertOctupletEqual(api, recoverCapRootGnark(api, treeCap.Nodes, injections), root)
 	return treeCap.Nodes
 }
 
@@ -940,7 +940,7 @@ func authenticateInputQueryGnark(
 		}
 		// leafIndex = position / (codewordSize / numLeaves): drop the low bits.
 		idxBits := posBits[int(p.LogCodewordSize)-numLevels:]
-		authenticateInputToCapGnark(api, branch, idxBits, frontiers[i], depth)
+		authenticateInputToCapGnark(api, branch, idxBits, frontiers[i], depth, infos[i].levelGroups)
 	}
 }
 
@@ -951,22 +951,28 @@ func authenticateInputQueryGnark(
 // idxBits are the little-endian bits of the leaf index, one per level. The fold
 // consumes the low numLevels−depth of them; the top depth bits select the
 // frontier node, mirroring the native `ancestor == frontier[currPos]`.
+// levelGroups[level] lists the groups of the pair opened at that level, as in
+// the native method.
 func authenticateInputToCapGnark(
 	api *circuit.KoalaBearAPI, branch GnarkInputTreeOpening, idxBits []frontend.Variable,
-	frontier []circuit.Octuplet, depth int,
+	frontier []circuit.Octuplet, depth int, levelGroups [][]GroupShape,
 ) {
 	numLevels := len(branch.Leaves)
 	bottom := branch.Leaves[numLevels-1]
 	ancestor := hashRowOpeningGnark(api, bottom[0])
 	sibling := hashRowOpeningGnark(api, bottom[1])
-	ancestor = foldOneLevelGnark(api, ancestor, sibling, nil, idxBits[0])
+	ancestor = foldOneLevelGnark(api, ancestor, sibling, nil, nil, idxBits[0])
 
 	for level := numLevels - 2; level >= depth; level-- {
 		var aux *GnarkRowPair
 		if !branch.Leaves[level][0].isAbsent() {
 			aux = &branch.Leaves[level]
 		}
-		ancestor = foldOneLevelGnark(api, ancestor, branch.Siblings[level-depth], aux, idxBits[numLevels-1-level])
+		var groups []GroupShape
+		if level < len(levelGroups) {
+			groups = levelGroups[level]
+		}
+		ancestor = foldOneLevelGnark(api, ancestor, branch.Siblings[level-depth], aux, groups, idxBits[numLevels-1-level])
 	}
 	assertOctupletEqual(api, ancestor, selectFrontierNodeGnark(api, frontier, idxBits[numLevels-depth:numLevels]))
 }
@@ -974,7 +980,8 @@ func authenticateInputToCapGnark(
 // foldOneLevelGnark mirrors [foldOneLevel]. isOdd is the current position bit:
 // when set, the ancestor is the right child.
 func foldOneLevelGnark(
-	api *circuit.KoalaBearAPI, ancestor, sibling circuit.Octuplet, aux *GnarkRowPair, isOdd frontend.Variable,
+	api *circuit.KoalaBearAPI, ancestor, sibling circuit.Octuplet, aux *GnarkRowPair, groups []GroupShape,
+	isOdd frontend.Variable,
 ) circuit.Octuplet {
 	var left, right circuit.Octuplet
 	for i := range left {
@@ -983,8 +990,35 @@ func foldOneLevelGnark(
 	}
 	res := poseidon2.KoalagnarkCompress(api, left, right)
 	if aux != nil {
-		auxDigest := hashAuxPairGnark(api, *aux, isOdd)
-		res = poseidon2.KoalagnarkCompress(api, res, auxDigest)
+		for _, digest := range hashAuxPairGroupsGnark(api, *aux, groups, isOdd) {
+			res = poseidon2.KoalagnarkCompress(api, res, digest)
+		}
+	}
+	return res
+}
+
+// splitRowOpeningGnark mirrors [splitRowOpening].
+func splitRowOpeningGnark(row GnarkRowOpening, groups []GroupShape) []GnarkRowOpening {
+	res := make([]GnarkRowOpening, len(groups))
+	var base, ext int
+	for i, g := range groups {
+		res[i] = GnarkRowOpening{Base: row.Base[base : base+g.BaseWidth], Ext: row.Ext[ext : ext+g.ExtWidth]}
+		base += g.BaseWidth
+		ext += g.ExtWidth
+	}
+	return res
+}
+
+// hashAuxPairGroupsGnark mirrors [hashAuxPairGroups].
+func hashAuxPairGroupsGnark(
+	api *circuit.KoalaBearAPI, pair GnarkRowPair, groups []GroupShape, isOdd frontend.Variable,
+) []circuit.Octuplet {
+	groups = sizeGroups(len(pair[0].Base), len(pair[0].Ext), groups)
+	self := splitRowOpeningGnark(pair[0], groups)
+	sibling := splitRowOpeningGnark(pair[1], groups)
+	res := make([]circuit.Octuplet, len(groups))
+	for i := range groups {
+		res[i] = hashAuxPairGnark(api, GnarkRowPair{self[i], sibling[i]}, isOdd)
 	}
 	return res
 }

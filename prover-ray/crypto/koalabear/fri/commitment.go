@@ -74,6 +74,7 @@ func (table MultiSizeTable) Encode(encoders []*RSEncoder) MultiSizeTable {
 		N := int(encoders[i].Domain.Cardinality)
 		encoded[i].Base = slabColumns[field.Element](len(table[i].Base), N)
 		encoded[i].Ext = slabColumns[field.Ext](len(table[i].Ext), N)
+		encoded[i].Groups = table[i].Groups
 	}
 
 	// Each row's RS encode is an independent per-row FFT writing a disjoint
@@ -126,11 +127,19 @@ func slabColumns[T any](count, n int) [][]T {
 // Merkleize merkleizes the table using Poseidon2. Every table but the bottom
 // (largest) one is digested as conjugate pairs, one tree depth shallower than
 // its own size, so it folds the same way the bottom table's leaf pairs do.
+//
+// Each group of a size (see [SizedTable.Groups]) is digested on its own, with
+// its own leaf header, and the group digests are injected into their level in
+// group order. The bottom table must hold a single group: its digests are the
+// tree leaves.
 func (table MultiSizeTable) Merkleize() *Tree {
 
 	bottom := len(table) - 1
 	if table[bottom].NumRows() == 0 {
 		panic("the bottom level must be non-empty")
+	}
+	if len(table[bottom].Groups) > 1 {
+		panic("the bottom level must hold a single group")
 	}
 
 	// Leaf hashing dominates Commit; it is parallel over leaf index and
@@ -143,8 +152,8 @@ func (table MultiSizeTable) Merkleize() *Tree {
 	hashSizedLeaves(table[bottom], false, tree.Nodes[size-1:])
 
 	// Every table but the bottom is digested as conjugate pairs, one tree
-	// depth shallower than its own size: a table of encoded height s yields
-	// s/2 auxiliary leaves attached at the level holding s/2 nodes.
+	// depth shallower than its own size: a table of encoded height s yields,
+	// per group, s/2 auxiliary leaves attached at the level holding s/2 nodes.
 	injections := make([][][]field.Octuplet, utils.Log2Ceil(size))
 	for i := range bottom {
 		if table[i].NumRows() == 0 {
@@ -154,10 +163,12 @@ func (table MultiSizeTable) Merkleize() *Tree {
 		if s == 1 {
 			continue
 		}
-		digests := make([]field.Octuplet, s/2)
-		hashSizedLeaves(table[i], true, digests)
 		level := utils.Log2Ceil(s / 2)
-		injections[level] = append(injections[level], digests)
+		for _, group := range table[i].groupViews() {
+			digests := make([]field.Octuplet, s/2)
+			hashSizedLeaves(group, true, digests)
+			injections[level] = append(injections[level], digests)
+		}
 	}
 
 	tree.buildLevels(injections)
@@ -186,6 +197,7 @@ func (table MultiSizeTable) Shape() Shape {
 		shape[sizeLog2] = SizedShape{
 			BaseWidth: len(table[sizeLog2].Base),
 			ExtWidth:  len(table[sizeLog2].Ext),
+			Groups:    table[sizeLog2].Groups,
 		}
 	}
 	return shape
