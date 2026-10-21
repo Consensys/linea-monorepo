@@ -926,10 +926,11 @@ func buildCompiledFixtureCases() ([]fixtureCase, []codegen.CompiledSystem, error
 		cases[last].invalidVerifyError = "ResultMismatch"
 	}
 
-	// Message-bus + SharedRandomness end-to-end coverage: a real
-	// messagebus.Compile (seeded shared randomness by default) ->
-	// grandproduct.Compile -> global.Compile -> pcscompiler.Compile pipeline,
-	// run through BuildCompiledSystem and verifier.verify. The invalid fixture
+	// Message-bus + SharedRandomness end-to-end coverage: the full
+	// messagebus (seeded shared randomness by default) -> grandproduct ->
+	// localvanishing -> global -> pcscompiler pipeline, run through a single
+	// compilers.CompileFull call, BuildCompiledSystem and verifier.verify.
+	// The invalid fixture
 	// flips exactly one of the 328 shared-randomness contribution limbs in the
 	// public-input statement, which shared_randomness.zig's verify() must now
 	// reject.
@@ -971,12 +972,7 @@ func buildPermutationSystem() (*wiop.System, *wiop.Column, *wiop.Column, error) 
 		[]wiop.Table{wiop.NewTable(colB.View())},
 	)
 
-	// Shrink the FRI query count to 4 for fixtures: the production default
-	// (229) would balloon the generated vectors with ~229 Merkle branches per
-	// opening. Four queries still exercises the Merkle capping.
-	if err := compilers.CompileFull(sys,
-		compilers.ConfigurePCS(pcscompiler.WithFRINumQueries(4)),
-	); err != nil {
+	if err := compileFullPipeline(sys); err != nil {
 		return nil, nil, nil, err
 	}
 	return sys, colA, colB, nil
@@ -1013,12 +1009,7 @@ func buildMessageBusSharedRandomnessSystem() (*wiop.System, *wiop.Column, *wiop.
 	sys.NewMessageBusSend(sys.Context.Childf("send"), "shard", "route", wiop.NewTable(colA.View()))
 	sys.NewMessageBusReceive(sys.Context.Childf("recv"), "shard", "route", wiop.NewTable(colB.View()))
 
-	// Shrink the FRI query count to 4 for fixtures: the production default
-	// (229) would balloon the generated vectors with ~229 Merkle branches per
-	// opening. Four queries still exercises the Merkle capping.
-	if err := compilers.CompileFull(sys,
-		compilers.ConfigurePCS(pcscompiler.WithFRINumQueries(4)),
-	); err != nil {
+	if err := compileFullPipeline(sys); err != nil {
 		return nil, nil, nil, err
 	}
 	return sys, colA, colB, nil
