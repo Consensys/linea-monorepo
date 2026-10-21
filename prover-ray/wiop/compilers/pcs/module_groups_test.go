@@ -77,8 +77,8 @@ func (s moduleGroupsSystem) assign(sizeA, sizeB int) func(*wiop.Runtime) {
 // TestCommittedLayoutModuleGroups checks the commit order and the shape under
 // module groups: within a size, columns are ordered by module declaration
 // order, each module is one group, positions follow that order, and the
-// largest size stays a single group. Without the option, the layout is the
-// declaration-order one, with no groups.
+// largest size is grouped like the others. Without the option, the layout is
+// the declaration-order one, with no groups.
 func TestCommittedLayoutModuleGroups(t *testing.T) {
 	s := newModuleGroupsSystem(false)
 	round := s.sys.Rounds[0]
@@ -90,7 +90,8 @@ func TestCommittedLayoutModuleGroups(t *testing.T) {
 		{BaseWidth: 1, ExtWidth: 1}, // A: a0, a1
 		{BaseWidth: 2},              // B: b0, b1
 	}}, shape[2])
-	require.Equal(t, fri.SizedShape{BaseWidth: 1}, shape[4], "the largest size must stay a single group")
+	require.Equal(t, fri.SizedShape{BaseWidth: 1, Groups: []fri.GroupShape{{BaseWidth: 1}}}, shape[4],
+		"the largest size is grouped too")
 	require.Equal(t, 0, layout[s.a0.Context.ID].Position, "A's rows come first")
 	require.Equal(t, 1, layout[s.b0.Context.ID].Position)
 	require.Equal(t, 2, layout[s.b1.Context.ID].Position)
@@ -104,9 +105,10 @@ func TestCommittedLayoutModuleGroups(t *testing.T) {
 }
 
 // TestCompileModuleGroupsEndToEnd proves and verifies with module groups, with
-// dynamic modules A and B sharing a size or not, at the default and a larger
-// RS blowup, checks that a tampered claim is rejected, and that the grouping
-// changes the commitment.
+// dynamic modules A and B sharing a size or not, below Big's size or at the
+// largest size of the round (both, or one of them), at the default and a
+// larger RS blowup, checks that a tampered claim is rejected, and that the
+// grouping changes the commitment.
 func TestCompileModuleGroupsEndToEnd(t *testing.T) {
 	for _, blowup := range []int{defaultRSBlowup, 4} {
 		testCompileModuleGroupsEndToEnd(t, blowup)
@@ -115,7 +117,7 @@ func TestCompileModuleGroupsEndToEnd(t *testing.T) {
 
 func testCompileModuleGroupsEndToEnd(t *testing.T, blowup int) {
 	t.Helper()
-	for _, sizes := range [][2]int{{4, 4}, {4, 8}, {8, 4}} {
+	for _, sizes := range [][2]int{{4, 4}, {4, 8}, {8, 4}, {32, 32}, {32, 4}, {16, 16}} {
 		s := newModuleGroupsSystem(true)
 		Compile(s.sys, WithModuleGroups(), WithRSBlowup(blowup))
 		proof, pub := s.sys.Prove(s.assign(sizes[0], sizes[1]))

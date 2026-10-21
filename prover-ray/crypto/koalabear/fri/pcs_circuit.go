@@ -292,7 +292,7 @@ func (pcs *PCS) VerifyGnark(api frontend.API, in GnarkVerifyInputs, proof GnarkO
 	inputFrontiers := make([][]circuit.Octuplet, len(inputRoots))
 	inputCapInfos := make([]inputCapInfo, len(inputRoots))
 	for treeIdx := range inputRoots {
-		info, err := inputCapShapeInfo(pcs.Params, inputShapes[treeIdx])
+		info, err := inputCapShapeInfo(pcs.Params, inputShapes[treeIdx], pcs.PairLeaves)
 		if err != nil {
 			panic(fmt.Sprintf("fri: pcs.VerifyGnark: input cap %d: %v", treeIdx, err))
 		}
@@ -940,7 +940,7 @@ func authenticateInputQueryGnark(
 		}
 		// leafIndex = position / (codewordSize / numLeaves): drop the low bits.
 		idxBits := posBits[int(p.LogCodewordSize)-numLevels:]
-		authenticateInputToCapGnark(api, branch, idxBits, frontiers[i], depth, infos[i].levelGroups)
+		authenticateInputToCapGnark(api, branch, idxBits, frontiers[i], depth, infos[i].levelGroups, infos[i].pairLeaves)
 	}
 }
 
@@ -951,17 +951,30 @@ func authenticateInputQueryGnark(
 // idxBits are the little-endian bits of the leaf index, one per level. The fold
 // consumes the low numLevels−depth of them; the top depth bits select the
 // frontier node, mirroring the native `ancestor == frontier[currPos]`.
-// levelGroups[level] lists the groups of the pair opened at that level, as in
-// the native method.
+// levelGroups[level] lists the groups of the pair opened at that level, and
+// pairLeaves selects how the bottom pair is digested, as in the native method.
 func authenticateInputToCapGnark(
 	api *circuit.KoalaBearAPI, branch GnarkInputTreeOpening, idxBits []frontend.Variable,
-	frontier []circuit.Octuplet, depth int, levelGroups [][]GroupShape,
+	frontier []circuit.Octuplet, depth int, levelGroups [][]GroupShape, pairLeaves bool,
 ) {
 	numLevels := len(branch.Leaves)
 	bottom := branch.Leaves[numLevels-1]
-	ancestor := hashRowOpeningGnark(api, bottom[0])
-	sibling := hashRowOpeningGnark(api, bottom[1])
-	ancestor = foldOneLevelGnark(api, ancestor, sibling, nil, nil, idxBits[0])
+	var ancestor circuit.Octuplet
+	if pairLeaves {
+		var groups []GroupShape
+		if numLevels-1 < len(levelGroups) {
+			groups = levelGroups[numLevels-1]
+		}
+		digests := hashAuxPairGroupsGnark(api, bottom, groups, idxBits[0])
+		ancestor = digests[0]
+		for _, digest := range digests[1:] {
+			ancestor = poseidon2.KoalagnarkCompress(api, ancestor, digest)
+		}
+	} else {
+		ancestor = hashRowOpeningGnark(api, bottom[0])
+		sibling := hashRowOpeningGnark(api, bottom[1])
+		ancestor = foldOneLevelGnark(api, ancestor, sibling, nil, nil, idxBits[0])
+	}
 
 	for level := numLevels - 2; level >= depth; level-- {
 		var aux *GnarkRowPair

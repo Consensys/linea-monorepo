@@ -158,7 +158,7 @@ func TestMerkleizeInjectsEachGroup(t *testing.T) {
 func TestPCSVerifyGroupedCommitment(t *testing.T) {
 	fx := newGroupedPCSFixture(t, 2)
 
-	info, err := inputCapShapeInfo(fx.pcs.Params, fx.input.Shapes[0])
+	info, err := inputCapShapeInfo(fx.pcs.Params, fx.input.Shapes[0], false)
 	require.NoError(t, err)
 	require.Equal(t, []int{0, 1}, info.revealed, "sizes 0 and 1 must be revealed above the cap")
 	require.True(t, info.queryRows[2], "size 2 must be opened on the query path")
@@ -214,7 +214,7 @@ func TestGroupsAreValidated(t *testing.T) {
 		witness := groupedWitness(rand.New(utils.NewRandSource(6)))
 		corrupt(witness)
 		require.Panics(t, func() { Commit(encoders, witness) }, name)
-		_, err := inputCapShapeInfo(params, witness.Shape())
+		_, err := inputCapShapeInfo(params, witness.Shape(), false)
 		require.Error(t, err, name)
 	}
 }

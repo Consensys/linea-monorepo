@@ -72,7 +72,7 @@ func TestMultiSizeTableWellFormedness(t *testing.T) {
 				table[i] = tableOfSize(s, &ctr)
 			}
 
-			k, err := table.checkWellFormedness()
+			k, err := table.checkWellFormedness(false)
 			if c.wantErr {
 				if err == nil {
 					t.Fatalf("expected an error, got k=%d nil", k)

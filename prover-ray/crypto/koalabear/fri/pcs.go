@@ -146,8 +146,10 @@ import (
 type PCS struct {
 	Params   Params
 	Encoders []*RSEncoder
-	openings []pcsOpening
-	zeta     field.Ext
+	// PairLeaves commits and verifies every batch with [WithPairLeaves].
+	PairLeaves bool
+	openings   []pcsOpening
+	zeta       field.Ext
 }
 
 type pcsOpening struct {
@@ -647,7 +649,7 @@ func (source inputQuerySource) authenticate() error {
 			return fmt.Errorf("input tree %d: tree size %d incompatible with domain size %d", i, 1<<info.height, codewordSize)
 		}
 		leafIndex := source.queryPosition / (codewordSize / (1 << info.height))
-		if err := branch.AuthenticateToCap(leafIndex, source.frontiers[i], info.levelGroups); err != nil {
+		if err := branch.AuthenticateToCap(leafIndex, source.frontiers[i], info.levelGroups, info.pairLeaves); err != nil {
 			return fmt.Errorf("input tree %d: %w", i, err)
 		}
 	}
@@ -729,6 +731,9 @@ type Challenges struct {
 // register an opening; pass the returned state to AddOpening when this
 // commitment should contribute to the next opening proof.
 func (pcs *PCS) Commit(witness MultiSizeTable) CommitterState {
+	if pcs.PairLeaves {
+		return Commit(pcs.Encoders, witness, WithPairLeaves())
+	}
 	return Commit(pcs.Encoders, witness)
 }
 
@@ -756,6 +761,10 @@ func (pcs *PCS) AddOpening(
 	}
 	if committed.Tree == nil {
 		return fmt.Errorf("fri: AddOpening: commitment has nil tree")
+	}
+	if committed.PairLeaves != pcs.PairLeaves {
+		return fmt.Errorf("fri: AddOpening: commitment pair leaves %v, PCS pair leaves %v",
+			committed.PairLeaves, pcs.PairLeaves)
 	}
 	shape := committed.EncodedTable.Shape()
 	layout, err := canonicalLayout([]Shape{shape}, []BatchShifts{shifts})
@@ -887,10 +896,11 @@ func (pcs *PCS) restrictTo(topSizeLog2 uint8) (*PCS, error) {
 		return nil, err
 	}
 	return &PCS{
-		Params:   restrictedParams,
-		Encoders: pcs.Encoders,
-		openings: pcs.openings,
-		zeta:     pcs.zeta,
+		Params:     restrictedParams,
+		Encoders:   pcs.Encoders,
+		PairLeaves: pcs.PairLeaves,
+		openings:   pcs.openings,
+		zeta:       pcs.zeta,
 	}, nil
 }
 
@@ -1131,11 +1141,11 @@ func (pcs *PCS) openInputQueries(inputs []CommitterState, queryPositions []int) 
 func (pcs *PCS) openInputCaps(inputs []CommitterState) []InputCap {
 	caps := make([]InputCap, len(inputs))
 	for i, committed := range inputs {
-		info, err := inputCapShapeInfo(pcs.Params, committed.EncodedTable.Shape())
+		info, err := inputCapShapeInfo(pcs.Params, committed.EncodedTable.Shape(), committed.PairLeaves)
 		if err != nil {
 			panic(err)
 		}
-		if info.height != committed.Tree.NumLevel()-1 {
+		if info.treeHeight() != committed.Tree.NumLevel()-1 {
 			panic("fri: openInputCaps: table shape and tree height differ")
 		}
 		if info.depth == 0 {
@@ -1192,22 +1202,34 @@ func openInputTreeOpening(p Params, committed CommitterState, queryPosition int)
 
 func openInputTreeOpeningToDepth(p Params, committed CommitterState, queryPosition, capDepth int) InputTreeOpening {
 	tree := committed.Tree
+	// numLeaves counts the rows of the largest size: the tree leaves, or twice
+	// as many with pair leaves, where a leaf digests a row pair.
 	numLeaves := tree.NumLeaves()
+	if committed.PairLeaves {
+		numLeaves *= 2
+	}
 	codewordSize := 1 << p.LogCodewordSize
 	if numLeaves > codewordSize || codewordSize%numLeaves != 0 {
 		panic("fri: openInputTreeOpening: tree size incompatible with domain size")
 	}
 	leafIndex := queryPosition / (codewordSize / numLeaves)
-	branch := tree.OpenBranchToDepth(leafIndex, capDepth)
-	treeHeight := tree.NumLevel() - 1
-	input := InputTreeOpening{
+	var siblings []field.Octuplet
+	if committed.PairLeaves {
+		// The leaf digests the bottom pair, which is sent below.
+		siblings = tree.OpenBranchToDepth(leafIndex>>1, capDepth).Siblings
+	} else {
 		// The bottom level's own sibling digest is derived from its pair
 		// (below) rather than transmitted.
-		Siblings: branch.Siblings[:len(branch.Siblings)-1],
+		branch := tree.OpenBranchToDepth(leafIndex, capDepth)
+		siblings = branch.Siblings[:len(branch.Siblings)-1]
+	}
+	input := InputTreeOpening{
+		Siblings: siblings,
 		// The last slot is otherwise always vacant (see Merkleize: nothing
 		// shifts to the depth just above the bottom level), so it is
-		// repurposed for the bottom level's own mandatory pair.
-		Leaves: make([]*RowPair, treeHeight),
+		// repurposed for the bottom level's own mandatory pair. With pair
+		// leaves, that is exactly the level the bottom pair enters at.
+		Leaves: make([]*RowPair, bits.TrailingZeros(uint(numLeaves))),
 	}
 	input.Leaves[len(input.Leaves)-1] = &RowPair{
 		openEncodedRowAtSize(committed.EncodedTable, numLeaves, leafIndex),
@@ -1319,8 +1341,13 @@ func writeRowOpeningElements(hasher *poseidon2.MDHasher, row RowOpening) {
 // AuthenticateToCap checks the bottom pair and the retained lower path
 // against an already authenticated input-tree frontier. levelGroups[level]
 // lists the groups of the pair opened at that level, each hashed and injected
-// on its own; a missing or nil entry is the single group of every row.
-func (branch InputTreeOpening) AuthenticateToCap(idx int, frontier []field.Octuplet, levelGroups [][]GroupShape) error {
+// on its own; a missing or nil entry is the single group of every row. idx is
+// the queried row of the largest size. With pairLeaves (see [WithPairLeaves]),
+// the bottom pair is digested group by group into its leaf, like the other
+// pairs; otherwise each of its rows is a leaf.
+func (branch InputTreeOpening) AuthenticateToCap(
+	idx int, frontier []field.Octuplet, levelGroups [][]GroupShape, pairLeaves bool,
+) error {
 	if len(branch.Leaves) == 0 || branch.Leaves[len(branch.Leaves)-1] == nil {
 		return fmt.Errorf("missing bottom level")
 	}
@@ -1340,11 +1367,25 @@ func (branch InputTreeOpening) AuthenticateToCap(idx int, frontier []field.Octup
 	}
 
 	bottom := branch.Leaves[height-1]
-	ancestor := hashRowOpening(bottom[0])
-	sibling := hashRowOpening(bottom[1])
-	ancestor, currPos, err := foldOneLevel(ancestor, sibling, nil, nil, idx)
-	if err != nil {
-		return err
+	var (
+		ancestor field.Octuplet
+		currPos  int
+	)
+	if pairLeaves {
+		var groups []GroupShape
+		if height-1 < len(levelGroups) {
+			groups = levelGroups[height-1]
+		}
+		digests, err := hashAuxPairGroups(*bottom, groups, idx&1 == 0)
+		if err != nil {
+			return fmt.Errorf("bottom level: %w", err)
+		}
+		ancestor, currPos = chainDigests(digests), idx>>1
+	} else {
+		ancestor, currPos, err = foldOneLevel(hashRowOpening(bottom[0]), hashRowOpening(bottom[1]), nil, nil, idx)
+		if err != nil {
+			return err
+		}
 	}
 	for level := height - 2; level >= depth; level-- {
 		siblingIdx := level - depth
@@ -1565,7 +1606,7 @@ func (pcs *PCS) Verify(in VerifyInputs, proof OpeningProof) error {
 	inputFrontiers := make([][]field.Octuplet, len(inputRoots))
 	inputCapInfos := make([]inputCapInfo, len(inputRoots))
 	for treeIdx := range inputRoots {
-		info, err := inputCapShapeInfo(pcs.Params, inputShapes[treeIdx])
+		info, err := inputCapShapeInfo(pcs.Params, inputShapes[treeIdx], pcs.PairLeaves)
 		if err != nil {
 			return fmt.Errorf("fri: pcs.Verify: input cap %d: %w", treeIdx, err)
 		}
@@ -1835,8 +1876,21 @@ type inputCapInfo struct {
 	revealed  []int
 	queryRows []bool
 	// levelGroups[level] lists the groups of the table whose conjugate pairs
-	// are injected at that tree level, nil for a level without one.
+	// are injected at that tree level, nil for a level without one. With pair
+	// leaves, the last level holds the largest size's groups.
 	levelGroups [][]GroupShape
+	// pairLeaves records that the largest size is hashed as pairs (see
+	// [WithPairLeaves]); the tree is then one level shorter than height.
+	pairLeaves bool
+}
+
+// treeHeight is the height of the input tree: the number of row levels
+// (height), minus one with pair leaves, whose leaves digest row pairs.
+func (info inputCapInfo) treeHeight() int {
+	if info.pairLeaves {
+		return info.height - 1
+	}
+	return info.height
 }
 
 // inputAuxDepth maps a plaintext table size to the tree level carrying its
@@ -1861,7 +1915,7 @@ func capDepthFromFrontier(frontier []field.Octuplet) (int, error) {
 	return bits.TrailingZeros(uint(len(frontier))), nil
 }
 
-func inputCapShapeInfo(p Params, shape Shape) (inputCapInfo, error) {
+func inputCapShapeInfo(p Params, shape Shape, pairLeaves bool) (inputCapInfo, error) {
 	rateLog := int(p.LogCodewordSize) - int(p.LogPlainTextSize)
 	if rateLog < 0 {
 		return inputCapInfo{}, fmt.Errorf("negative inverse-rate log")
@@ -1878,22 +1932,26 @@ func inputCapShapeInfo(p Params, shape Shape) (inputCapInfo, error) {
 	if bottom < 0 {
 		return inputCapInfo{}, fmt.Errorf("shape has no committed size")
 	}
-	if len(shape[bottom].Groups) > 1 {
+	if !pairLeaves && len(shape[bottom].Groups) > 1 {
 		return inputCapInfo{}, fmt.Errorf("the largest size must hold a single group")
 	}
 	height := rateLog + bottom
 	if height <= 0 {
 		return inputCapInfo{}, fmt.Errorf("shape has invalid tree height %d", height)
 	}
-	depth := p.merkleCapDepth(height)
 	info := inputCapInfo{
 		height:      height,
-		depth:       depth,
 		rateLog:     rateLog,
 		queryRows:   make([]bool, height),
 		levelGroups: make([][]GroupShape, height),
+		pairLeaves:  pairLeaves,
 	}
+	depth := p.merkleCapDepth(info.treeHeight())
+	info.depth = depth
 	info.queryRows[height-1] = true
+	if pairLeaves {
+		info.levelGroups[height-1] = shape[bottom].groups()
+	}
 	for sizeLog2, sized := range shape[:bottom] {
 		if sized.BaseWidth+sized.ExtWidth == 0 {
 			continue

@@ -88,7 +88,10 @@ func (table *SizedTable) groupViews() []SizedTable {
 
 // checkWellFormedness checks if the multi-size table has valid dimensions. It
 // returns the value of K (corresponding to the size of the first sub-table).
-func (table MultiSizeTable) checkWellFormedness() (k int, err error) {
+//
+// With pairLeaves, the largest size may hold several groups (see
+// [WithPairLeaves]); otherwise it must be a single group.
+func (table MultiSizeTable) checkWellFormedness(pairLeaves bool) (k int, err error) {
 
 	k = -1 // sentinel value
 
@@ -101,7 +104,7 @@ func (table MultiSizeTable) checkWellFormedness() (k int, err error) {
 		if err := checkGroups(len(table[i].Base), len(table[i].Ext), table[i].Groups); err != nil {
 			return 0, fmt.Errorf("size %d: %w", i, err)
 		}
-		if i == len(table)-1 && len(table[i].Groups) > 1 {
+		if i == len(table)-1 && !pairLeaves && len(table[i].Groups) > 1 {
 			return 0, errors.New("the largest size must hold a single group")
 		}
 

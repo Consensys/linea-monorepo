@@ -34,13 +34,39 @@ type CommitterState struct {
 	EncodedTable MultiSizeTable
 	// Tree is the Merkle tree for the EncodeTable.
 	Tree *Tree
+	// PairLeaves records that the largest size is hashed as conjugate pairs,
+	// like every other size (see [WithPairLeaves]).
+	PairLeaves bool
+}
+
+// CommitOption configures [Commit].
+type CommitOption func(*commitConfig)
+
+type commitConfig struct {
+	pairLeaves bool
+}
+
+// WithPairLeaves hashes the largest size like every other one: each of its
+// groups as conjugate row pairs, one tree depth above its own size. That level
+// becomes the leaves, each one the first group's digest with the other groups'
+// digests chained after it, C(…C(h_1, h_2)…, h_m), so the largest size may
+// hold several groups. A group's digest is then H(header, row[2j] ‖ row[2j+1])
+// whether its size is the largest or not. The tree is one level shorter than
+// with row leaves, and the opening proof keeps its shape.
+func WithPairLeaves() CommitOption {
+	return func(c *commitConfig) { c.pairLeaves = true }
 }
 
 // Commit commits to a sorted list of tables. The table must satisfy the format
 // expected by [MultiSizeTable.checkWellFormedness] with a K of 1.
-func Commit(encoders []*RSEncoder, witness MultiSizeTable) CommitterState {
+func Commit(encoders []*RSEncoder, witness MultiSizeTable, opts ...CommitOption) CommitterState {
 
-	k, err := witness.checkWellFormedness()
+	var cfg commitConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	k, err := witness.checkWellFormedness(cfg.pairLeaves)
 	if err != nil {
 		panic(err)
 	}
@@ -50,11 +76,12 @@ func Commit(encoders []*RSEncoder, witness MultiSizeTable) CommitterState {
 	}
 
 	encoded := witness.Encode(encoders)
-	tree := encoded.Merkleize()
+	tree := encoded.merkleize(cfg.pairLeaves)
 
 	return CommitterState{
 		EncodedTable: encoded,
 		Tree:         tree,
+		PairLeaves:   cfg.pairLeaves,
 	}
 }
 
@@ -131,14 +158,19 @@ func slabColumns[T any](count, n int) [][]T {
 // Each group of a size (see [SizedTable.Groups]) is digested on its own, with
 // its own leaf header, and the group digests are injected into their level in
 // group order. The bottom table must hold a single group: its digests are the
-// tree leaves.
+// tree leaves. See [WithPairLeaves] for the variant that hashes the bottom
+// table as pairs too.
 func (table MultiSizeTable) Merkleize() *Tree {
+	return table.merkleize(false)
+}
+
+func (table MultiSizeTable) merkleize(pairLeaves bool) *Tree {
 
 	bottom := len(table) - 1
 	if table[bottom].NumRows() == 0 {
 		panic("the bottom level must be non-empty")
 	}
-	if len(table[bottom].Groups) > 1 {
+	if !pairLeaves && len(table[bottom].Groups) > 1 {
 		panic("the bottom level must hold a single group")
 	}
 
@@ -148,13 +180,25 @@ func (table MultiSizeTable) Merkleize() *Tree {
 	// which saves allocating and copying a leaf array as large as the encoded
 	// bottom table's height.
 	size := table[bottom].Size()
-	tree := allocTree(size)
-	hashSizedLeaves(table[bottom], false, tree.Nodes[size-1:])
+	numLeaves := size
+	if pairLeaves {
+		if size < 2 {
+			panic("fri: pair leaves need a largest size of at least two encoded rows")
+		}
+		numLeaves = size / 2
+	}
+	tree := allocTree(numLeaves)
+	leaves := tree.Nodes[numLeaves-1:]
+	if pairLeaves {
+		hashPairLeaves(table[bottom].groupViews(), leaves)
+	} else {
+		hashSizedLeaves(table[bottom], false, leaves)
+	}
 
 	// Every table but the bottom is digested as conjugate pairs, one tree
 	// depth shallower than its own size: a table of encoded height s yields,
 	// per group, s/2 auxiliary leaves attached at the level holding s/2 nodes.
-	injections := make([][][]field.Octuplet, utils.Log2Ceil(size))
+	injections := make([][][]field.Octuplet, utils.Log2Ceil(numLeaves))
 	for i := range bottom {
 		if table[i].NumRows() == 0 {
 			continue
@@ -173,6 +217,35 @@ func (table MultiSizeTable) Merkleize() *Tree {
 
 	tree.buildLevels(injections)
 	return tree
+}
+
+// hashPairLeaves writes the pair-leaf digests of the bottom groups into leaves:
+// leaf j is the first group's digest of rows (2j, 2j+1), with the next groups'
+// digests chained after it.
+func hashPairLeaves(groups []SizedTable, leaves []field.Octuplet) {
+	hashSizedLeaves(groups[0], true, leaves)
+	if len(groups) == 1 {
+		return
+	}
+	digests := make([]field.Octuplet, len(leaves))
+	for _, group := range groups[1:] {
+		hashSizedLeaves(group, true, digests)
+		parallel.Execute(len(leaves), func(start, end int) {
+			for j := start; j < end; j++ {
+				leaves[j] = poseidon2.Compress(leaves[j], digests[j])
+			}
+		})
+	}
+}
+
+// chainDigests is the pair-leaf node of one position: the first digest with
+// the others chained after it, C(…C(d_1, d_2)…, d_m).
+func chainDigests(digests []field.Octuplet) field.Octuplet {
+	res := digests[0]
+	for _, d := range digests[1:] {
+		res = poseidon2.Compress(res, d)
+	}
+	return res
 }
 
 // writeRowElements absorbs one row into hasher without resetting or summing,
