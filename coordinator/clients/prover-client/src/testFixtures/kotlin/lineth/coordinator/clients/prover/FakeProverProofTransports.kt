@@ -63,11 +63,10 @@ class FakeRollupProofTransport(
   private val responseProvider: ((BlockIntervalProofIndex) -> RollupProofResponseDto?)? = null,
 ) : RollupProofTransport {
   private val rollupProofResponseDto = RollupProofResponseDto(
+    proverVersion = RiscvProverClientTestFixtures.PROVER_VERSION,
     startBlockNumber = 1L,
     proof = byteArrayOf(0x4a).encodeHex(),
     publicInputs = RiscvProverClientTestFixtures.rollupProofPublicInputsDto(2L),
-    l2L1Roots = listOf(ByteArray(32) { 0x5a }.encodeHex()),
-    filteredAddresses = listOf(ByteArray(20) { 0x5b }.encodeHex()),
     programVk = ByteArray(32) { 0xbb.toByte() }.encodeHex(),
   )
   override fun isRequestAlreadySubmitted(proofIndex: BlockIntervalProofIndex): SafeFuture<Boolean> =

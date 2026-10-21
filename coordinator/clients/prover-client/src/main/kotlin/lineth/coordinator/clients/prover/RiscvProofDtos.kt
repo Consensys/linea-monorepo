@@ -1,6 +1,7 @@
 package lineth.coordinator.clients.prover
 
 import com.fasterxml.jackson.annotation.JsonInclude
+import linea.clients.ChunkWitness
 import linea.clients.ConflationWitness
 import linea.clients.ForcedTransaction
 import linea.clients.L2ExecutionProofPublicInputs
@@ -46,11 +47,10 @@ data class L2ExecutionProofPublicInputsDto(
   val l2MessagingBlocksOffsets: List<Long>,
 )
 
-/** The 20-field PI tuple emitted by a rollup / rollup-aggregation proof (rollup_spec §2.4). */
+/** The 22-field PI tuple emitted by a rollup proof (rollup_spec §2.4, `RollupPublicInput`). */
 data class RollupProofPublicInputsDto(
   val endBlockNumber: Long,
   val endBlockTimestamp: Long,
-  val l2L1BridgeTransactionTree: String,
   val parentL1L2BridgeRollingHash: String,
   val parentL1L2BridgeRollingHashMessageNumber: Long,
   val endL1L2BridgeRollingHash: String,
@@ -60,14 +60,18 @@ data class RollupProofPublicInputsDto(
   val parentFtxNumber: Long,
   val endFtxRollingHash: String,
   val endProcessedFtxNumber: Long,
-  val filteredAddressesHash: String,
   val parentDataRollingHash: String,
   val endDataRollingHash: String,
   val parentBlockHash: String,
   val endBlockHash: String,
-  val startOffset: Int,
-  val endOffset: Int,
+  val parentDataTailTakeBytes: Int,
+  val finalDataTailDiscardBytes: Int,
+  val l2L1Messages: List<String>,
+  val filteredAddresses: List<String>,
+  /** Distinct, sorted ascending by byte value. */
   val programVks: List<String>,
+  val blockCount: Long,
+  val l2MessagingBlocksOffsets: List<Long>,
 )
 
 data class MetaDataDto(
@@ -219,6 +223,21 @@ data class BlockIntervalDto(
   }
 }
 
+/** One touched DA chunk (rollup_spec §3.1). Blob chunks carry `calldataBytes = "0x"`, calldata chunks `blobBytes = "0x"`. */
+data class ChunkWitnessDto(
+  val chunkHash: String,
+  val isCalldata: Boolean,
+  val blobBytes: String,
+  val calldataBytes: String,
+)
+
+/**
+ * Exactly one of [l2ExecutionProofs] and [l2ExecutionProofIndexes] is set:
+ * - **Spec mode** ([l2ExecutionProofs]): the l2-execution proofs are inlined, as `getZkRollupProofV1.request` requires.
+ * - **Gateway mode** ([l2ExecutionProofIndexes]): only the proofs' block ranges are sent, for a prover gateway that
+ *   resolves the proofs itself and forwards a spec request to the prover. This shape is a coordinator <-> gateway
+ *   extension: it is NOT valid against the V1 schema, and the prover rejects it.
+ */
 data class RollupProofRequestParamsDto(
   val chainId: Long,
   val conflations: List<ConflationWitnessDto>,
@@ -226,13 +245,19 @@ data class RollupProofRequestParamsDto(
   val l2ExecutionProofs: List<L2ExecutionProofResponseDto>? = null,
   @get:JsonInclude(JsonInclude.Include.NON_NULL)
   val l2ExecutionProofIndexes: List<BlockIntervalDto>? = null,
-  val chunks: List<String>,
+  val chunks: List<ChunkWitnessDto>,
   val parentDataRollingHash: String,
-  val startOffset: Int,
-  val opaquePrefixBytes: String? = null,
-  val opaqueSuffixBytes: String? = null,
+  val parentDataTailTakeBytes: Int,
+  /** Required only when [parentDataTailTakeBytes] > 0 (§3.4). */
+  @get:JsonInclude(JsonInclude.Include.NON_NULL)
   val boundaryPrevDataRollingHash: String? = null,
-)
+) {
+  init {
+    require((l2ExecutionProofs == null) != (l2ExecutionProofIndexes == null)) {
+      "exactly one of l2ExecutionProofs (spec mode) or l2ExecutionProofIndexes (gateway mode) must be set"
+    }
+  }
+}
 
 data class FileBasedRollupProofRequestDto(
   val guestProgramId: String,
@@ -242,13 +267,17 @@ data class FileBasedRollupProofRequestDto(
 )
 
 data class RollupProofResponseDto(
-  // val proverVersion: String,
-  val startBlockNumber: Long,
-  val proof: String,
-  val publicInputs: RollupProofPublicInputsDto,
-  val l2L1Roots: List<String>,
-  val filteredAddresses: List<String>,
+  /**
+   * Required on the `getZkRollupProofV1` response, but not allowed on the rollup proof embedded in a
+   * `getZkRollupAggregationProofV1` request (`additionalProperties: false`). Nullable so the same DTO serves both:
+   * [RollupAggregationProofRequestDtoMapper] clears it when embedding, and `NON_NULL` keeps it off the wire.
+   */
+  @get:JsonInclude(JsonInclude.Include.NON_NULL)
+  val proverVersion: String? = null,
   val programVk: String,
+  val proof: String,
+  val startBlockNumber: Long,
+  val publicInputs: RollupProofPublicInputsDto,
 )
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -391,16 +420,11 @@ fun ForcedTransaction.toDto(): ForcedTransactionDto {
   )
 }
 
-/**
- * Maps the RISC-V 20-field PI tuple DTO onto its domain twin. Shared by the rollup and rollup-aggregation response
- * mappers since both emit the same tuple (rollup_spec §2.4). Field names and types are identical, so it is a straight
- * field copy.
- */
+/** Maps the rollup PI tuple DTO onto its domain twin (rollup_spec §2.4). */
 fun RollupProofPublicInputsDto.toDomainObject(): RollupProofPublicInputs {
   return RollupProofPublicInputs(
     endBlockNumber = endBlockNumber.toULong(),
     endBlockTimestamp = Instant.fromEpochSeconds(endBlockTimestamp),
-    l2L1BridgeTransactionTree = l2L1BridgeTransactionTree.decodeHex(),
     parentL1L2BridgeMessageRollingHash = parentL1L2BridgeRollingHash.decodeHex(),
     parentL1L2BridgeMessageNumber = parentL1L2BridgeRollingHashMessageNumber.toULong(),
     endL1L2BridgeMessageRollingHash = endL1L2BridgeRollingHash.decodeHex(),
@@ -410,19 +434,31 @@ fun RollupProofPublicInputsDto.toDomainObject(): RollupProofPublicInputs {
     parentFtxNumber = parentFtxNumber.toULong(),
     endFtxRollingHash = endFtxRollingHash.decodeHex(),
     endFtxNumber = endProcessedFtxNumber.toULong(),
-    filteredAddressesHash = filteredAddressesHash.decodeHex(),
     parentDataRollingHash = parentDataRollingHash.decodeHex(),
     endDataRollingHash = endDataRollingHash.decodeHex(),
     parentBlockHash = parentBlockHash.decodeHex(),
     endBlockHash = endBlockHash.decodeHex(),
-    startOffset = startOffset,
-    endOffset = endOffset,
+    parentDataTailTakeBytes = parentDataTailTakeBytes,
+    finalDataTailDiscardBytes = finalDataTailDiscardBytes,
+    l2L1Messages = l2L1Messages.map { it.decodeHex() },
+    filteredAddresses = filteredAddresses.map { it.decodeHex() },
     programVks = programVks.map { it.decodeHex() },
+    blockCount = blockCount.toULong(),
+    l2MessagingBlocksOffsets = l2MessagingBlocksOffsets.map { it.toULong() },
   )
 }
 
 fun ConflationWitness.toDto(): ConflationWitnessDto {
   return ConflationWitnessDto(
     blockRlps = blockRlps.map { it.encodeHex() },
+  )
+}
+
+fun ChunkWitness.toDto(): ChunkWitnessDto {
+  return ChunkWitnessDto(
+    chunkHash = chunkHash.encodeHex(),
+    isCalldata = isCalldata,
+    blobBytes = blobBytes.encodeHex(),
+    calldataBytes = calldataBytes.encodeHex(),
   )
 }
