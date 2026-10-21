@@ -49,7 +49,7 @@ type res struct {
 
 // Compares Lineth's classifyInstruction against x/arch riscv64asm (generated from riscv-opcodes) on all 2^32 words.
 // It only logs; it never fails the test, so read the -v output for mismatches.
-func TestDifferentialAgainstRiscvOpcodes(t *testing.T) {
+func TestDiffRefRVOP(t *testing.T) {
 	// Split the 2^32 input space into one contiguous chunk per CPU.
 	workers := runtime.NumCPU()
 	const total = uint64(1) << 32

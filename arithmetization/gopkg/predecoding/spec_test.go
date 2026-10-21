@@ -70,6 +70,9 @@ var spec = map[string]specEntry{
 	"FENCE": {"NO_OP", cFENCE, false},
 }
 
+// loadZkcConstants parses `const NAME:ComputeOp = N` lines from constants.zkc
+// into name -> compute_op number, so the expected numbering comes from the same
+// file the interpreter uses rather than from Go constants.
 func loadZkcConstants(t *testing.T) map[string]uint64 {
 	b, err := os.ReadFile("../../src/main/common/constants.zkc")
 	if err != nil {
@@ -84,8 +87,10 @@ func loadZkcConstants(t *testing.T) map[string]uint64 {
 	return m
 }
 
+// rec is one decoded instruction record, in the order decodeInstruction writes it.
 type rec struct{ op, imm, rs1, rs2, rd uint64 }
 
+// readRecord unpacks a bit-packed record, MSB first: op(8) imm(64) rs1(5) rs2(5) rd(5).
 func readRecord(buf []byte) rec {
 	pos := 0
 	get := func(w int) uint64 {
@@ -100,8 +105,16 @@ func readRecord(buf []byte) rec {
 	return rec{get(8), get(64), get(5), get(5), get(5)}
 }
 
+// regNum converts a reference-decoder register argument to its number 0..31.
 func regNum(a riscv64asm.Arg) uint64 { return uint64(a.(riscv64asm.Reg) - riscv64asm.X0) }
 
+// expected builds the record Lineth should produce for a word the reference
+// decoded as `inst`: compute_op from the spec table + constants.zkc, operands
+// from the reference's decoded args. ok=false means the mnemonic isn't RV64IM.
+// Rules encoded here:
+//   - FENCE, and any writeback op with rd==x0 (fold=true), becomes NO_OP (0)
+//   - JAL/JALR use the plain op when rd==x0 and the *_WB variant otherwise
+//   - immediates are sign-extended to 64 bits; LUI/AUIPC shift the 20-bit field left by 12
 func expected(inst riscv64asm.Inst, x uint32, c map[string]uint64) (rec, bool) {
 	e, ok := spec[inst.Op.String()]
 	if !ok {
@@ -165,9 +178,15 @@ func expectedCustom1(x uint32, c map[string]uint64) rec {
 	return rec{op: c[names[f3]], rs1: uint64((x >> 15) & 31), rs2: uint64((x >> 20) & 31), rd: uint64((x >> 7) & 31)}
 }
 
+// For all 2^32 words, runs Lineth's decodeInstruction and checks the full
+// output record (compute_op, imm, rs1, rs2, rd) against the independent spec
+// built by expected/expectedCustom1. Unlike the other tests it FAILS (t.Errorf)
+// if any mismatch category is found.
 func TestRecordsAgainstSpec(t *testing.T) {
+	// compute_op numbers as the interpreter sees them, parsed from constants.zkc.
 	c := loadZkcConstants(t)
 	if os.Getenv("MUTATE") == "1" { // negative control: swap ADD/SUB expectations
+		// Run with MUTATE=1: the test must now fail, proving it can detect a wrong mapping.
 		a, b := spec["ADD"], spec["SUB"]
 		a.name, b.name = b.name, a.name
 		spec["ADD"], spec["SUB"] = a, b
@@ -175,10 +194,14 @@ func TestRecordsAgainstSpec(t *testing.T) {
 	t.Logf("constants.zkc: %d ComputeOp constants", len(c))
 	workers := runtime.NumCPU()
 	const total = uint64(1) << 32
+	// res is one worker's partial result, merged after all workers finish.
 	type res struct {
-		checked, opMis, operandMis, custom uint64
-		cats                               map[string]uint64
-		samples                            map[string]string
+		checked    uint64            // RV64IM words compared against the spec
+		opMis      uint64            // words whose compute_op differs from the spec
+		operandMis uint64            // words with the right compute_op but wrong imm/rs1/rs2/rd
+		custom     uint64            // custom-1 words seen (checked separately)
+		cats       map[string]uint64 // mismatch counts per category (e.g. "op:ADD")
+		samples    map[string]string // first offending word per category, for reproduction
 	}
 	results := make([]res, workers)
 	var wg sync.WaitGroup
@@ -189,8 +212,10 @@ func TestRecordsAgainstSpec(t *testing.T) {
 			r := res{cats: map[string]uint64{}, samples: map[string]string{}}
 			var b [4]byte
 			var bw bitWriter
+			// This worker's half-open range [lo, hi); the last worker ends exactly at 2^32.
 			lo := total * uint64(w) / uint64(workers)
 			hi := total * uint64(w+1) / uint64(workers)
+			// note counts a mismatch under category k and keeps the first sample s.
 			note := func(k, s string) {
 				r.cats[k]++
 				if _, ok := r.samples[k]; !ok {
@@ -199,15 +224,21 @@ func TestRecordsAgainstSpec(t *testing.T) {
 			}
 			for i := lo; i < hi; i++ {
 				x := uint32(i)
+				// 16-bit compressed encodings are out of scope here (see differential_test.go).
 				if x&3 != 3 {
 					continue
 				}
+				// Lineth's output: decodeInstruction serializes the record into a bit
+				// buffer (reused across words); readRecord unpacks it.
 				bw = bitWriter{buf: bw.buf[:0]}
 				decodeInstruction(&bw, x)
 				got := readRecord(bw.buf)
+				// Lineth-specific custom-1 opcode: the reference decoder can't help,
+				// so compare against the hand-written expectedCustom1 spec.
 				if x&0x7f == opcodeCUSTOM1 {
 					r.custom++
 					want := expectedCustom1(x, c)
+					// want.op == 255 is the invalid marker, which carries no operand check.
 					if got.op != want.op {
 						note("custom1-op", fmt.Sprintf("%#08x got=%d want=%d", x, got.op, want.op))
 					} else if want.op != 255 && (got.imm != 0 || got.rs1 != want.rs1 || got.rs2 != want.rs2 || got.rd != want.rd) {
@@ -215,24 +246,31 @@ func TestRecordsAgainstSpec(t *testing.T) {
 					}
 					continue
 				}
+				// Standard opcodes: decode with the reference. Words it rejects, and
+				// mnemonics outside the spec table (not RV64IM), are skipped; their
+				// accept/reject verdict is covered by TestDifferentialAgainstRiscvOpcodes.
 				binary.LittleEndian.PutUint32(b[:], x)
 				inst, err := riscv64asm.Decode(b[:])
 				if err != nil {
 					continue
 				}
+				// Expected record built from the reference's decoded operands.
 				want, ok := expected(inst, x, c)
 				if !ok {
 					continue
 				}
 				r.checked++
+				// 1) compute_op must match (covers wrong mapping and wrong x0 folding).
 				if got.op != want.op {
 					r.opMis++
 					note("op:"+inst.Op.String(), fmt.Sprintf("%#08x %v got=%d want=%d", x, inst, got.op, want.op))
 					continue
 				}
+				// NO_OP (0) carries no meaningful operands, so don't compare them.
 				if want.op == 0 {
 					continue
 				}
+				// 2) The whole record (imm, rs1, rs2, rd) must match.
 				if got != want {
 					r.operandMis++
 					note("operands:"+inst.Op.String(), fmt.Sprintf("%#08x %v got=%+v want=%+v", x, inst, got, want))
@@ -242,6 +280,8 @@ func TestRecordsAgainstSpec(t *testing.T) {
 		}(w)
 	}
 	wg.Wait()
+
+	// Merge per-worker results.
 	var checked, opMis, operandMis, custom uint64
 	cats := map[string]uint64{}
 	samples := map[string]string{}
@@ -257,6 +297,7 @@ func TestRecordsAgainstSpec(t *testing.T) {
 			}
 		}
 	}
+	// Report each mismatch category in sorted order, then fail if there were any.
 	keys := make([]string, 0, len(cats))
 	for k := range cats {
 		keys = append(keys, k)
