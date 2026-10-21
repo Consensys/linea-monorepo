@@ -237,6 +237,47 @@ func TestVerifierCircuit_PCSOnly_MerkleCapMismatch(t *testing.T) {
 	require.Error(t, err, "a capped proof must not satisfy the uncapped System's circuit")
 }
 
+// TestVerifierCircuit_PCSModuleGroups checks the circuit verifier on a system
+// compiled with module groups: modules A and B share a size and have
+// interleaved columns, so their rows are reordered and committed as two
+// groups, next to a larger module whose size is the tree leaves.
+func TestVerifierCircuit_PCSModuleGroups(t *testing.T) {
+	sys := wiop.NewSystemf("gnark-pcs-groups")
+	r0 := sys.NewRound()
+	r1 := sys.NewRound()
+	a := sys.NewSizedModule(sys.Context.Childf("A"), 8, wiop.PaddingDirectionNone)
+	b := sys.NewSizedModule(sys.Context.Childf("B"), 8, wiop.PaddingDirectionNone)
+	big := sys.NewSizedModule(sys.Context.Childf("Big"), 32, wiop.PaddingDirectionNone)
+	cols := []*wiop.Column{
+		b.NewColumn(sys.Context.Childf("b0"), r0),
+		a.NewColumn(sys.Context.Childf("a0"), r0),
+		b.NewColumn(sys.Context.Childf("b1"), r0),
+		big.NewColumn(sys.Context.Childf("big"), r0),
+	}
+	views := make([]*wiop.ColumnView, len(cols))
+	for i, col := range cols {
+		views[i] = col.View()
+	}
+	zeta := r1.NewCoinField(sys.Context.Childf("zeta"))
+	le := sys.NewLagrangeEval(sys.Context.Childf("le"), views, zeta)
+	r1.RegisterAction(&selfAssignLagrange{le: le})
+	pcs.Compile(sys, append(testPCSOptions(), pcs.WithModuleGroups())...)
+
+	proof, pub := sys.Prove(func(rt *wiop.Runtime) {
+		for _, col := range cols[:3] {
+			rt.AssignColumn(col, nonConstVec(8))
+		}
+		rt.AssignColumn(cols[3], nonConstVec(32))
+	})
+	require.NoError(t, sys.Verify(proof, pub), "honest proof must verify natively")
+
+	cv := compileVerifierCircuit(t, sys, proof, pub)
+	require.NoError(t, cv.solve(t, proof, pub), "honest proof must satisfy the circuit")
+	bad := cloneProof(proof)
+	bad.Cells[le.EvaluationClaims[1].Context.ID] = field.ElemFromExt(field.Uint64ToExt(7))
+	require.Error(t, cv.solve(t, bad, pub), "tampered claim must not satisfy the circuit")
+}
+
 func TestVerifierCircuit_Vanishing(t *testing.T) {
 	for _, build := range wioptest.VanishingScenarios() {
 		sc := build()
