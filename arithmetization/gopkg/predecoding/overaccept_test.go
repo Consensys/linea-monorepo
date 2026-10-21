@@ -14,7 +14,6 @@ import (
 func TestOverAcceptBreakdown(t *testing.T) {
 	workers := runtime.NumCPU()
 	const total = uint64(1) << 32
-	chunk := total / uint64(workers)
 	type k struct{ op, f3, c uint32 }
 	parts := make([]map[k]uint64, workers)
 	smp := make([]map[k]uint32, workers)
@@ -26,7 +25,7 @@ func TestOverAcceptBreakdown(t *testing.T) {
 			m := map[k]uint64{}
 			s := map[k]uint32{}
 			var b [4]byte
-			for i := uint64(w) * chunk; i < uint64(w+1)*chunk; i++ {
+			for i := total * uint64(w) / uint64(workers); i < total*uint64(w+1)/uint64(workers); i++ {
 				x := uint32(i)
 				if x&3 != 3 || x&0x7f == opcodeCUSTOM1 {
 					continue

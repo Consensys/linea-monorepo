@@ -12,7 +12,6 @@ import (
 func TestExhaustiveDecodeTiming(t *testing.T) {
 	workers := runtime.NumCPU()
 	const total = uint64(1) << 32
-	chunk := total / uint64(workers)
 	sums := make([]uint64, workers)
 	start := time.Now()
 	var wg sync.WaitGroup
@@ -22,7 +21,7 @@ func TestExhaustiveDecodeTiming(t *testing.T) {
 			defer wg.Done()
 			h := fnv.New64a()
 			var bw bitWriter
-			for i := uint64(w) * chunk; i < uint64(w+1)*chunk; i++ {
+			for i := total * uint64(w) / uint64(workers); i < total*uint64(w+1)/uint64(workers); i++ {
 				bw.buf = bw.buf[:0]
 				bw = bitWriter{buf: bw.buf}
 				decodeInstruction(&bw, uint32(i))

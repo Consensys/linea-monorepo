@@ -9,7 +9,6 @@ import (
 func TestCountValidWords(t *testing.T) {
 	workers := runtime.NumCPU()
 	const total = uint64(1) << 32
-	chunk := total / uint64(workers)
 	invalid := make([]uint64, workers)
 	noop := make([]uint64, workers)
 	var wg sync.WaitGroup
@@ -17,7 +16,7 @@ func TestCountValidWords(t *testing.T) {
 		wg.Add(1)
 		go func(w int) {
 			defer wg.Done()
-			for i := uint64(w) * chunk; i < uint64(w+1)*chunk; i++ {
+			for i := total * uint64(w) / uint64(workers); i < total*uint64(w+1)/uint64(workers); i++ {
 				switch classifyInstruction(uint32(i)) {
 				case computeInvalid:
 					invalid[w]++
