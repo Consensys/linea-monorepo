@@ -19,8 +19,8 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
  * `rollup_spec/prover_io/schemas/getZkRollupProofV1.request.schema.json`.
  */
 class RollupProofRequestDtoMapper(
-  private val programId: String,
-  private val provingSystemVersion: String,
+  private val guestProgramId: String,
+  private val provingSystem: String,
   private val chainId: Long,
   private val l2ExecutionProofProvider: ProofProvider<L2ExecutionProofResponseDto>? = null,
 ) : (RollupProofRequestV1) -> SafeFuture<FileBasedRollupProofRequestDto> {
@@ -28,9 +28,10 @@ class RollupProofRequestDtoMapper(
     val l2ExecutionProofFutures = l2ExecutionProofProvider?.let {
       request.l2Executions.map { proofIndex ->
         l2ExecutionProofProvider.findProof(proofIndex).thenApply { response ->
+          // proverVersion is response-only; the embedded l2ExecutionProof schema does not allow it.
           requireNotNull(response) {
             "L2 execution proof response was not found for proofIndex=$proofIndex"
-          }
+          }.copy(proverVersion = null)
         }
       }
     } ?: emptyList()
@@ -44,8 +45,8 @@ class RollupProofRequestDtoMapper(
     return SafeFuture.collectAll(l2ExecutionProofFutures.stream())
       .thenApply { l2ExecutionProofResponseDtos ->
         FileBasedRollupProofRequestDto(
-          programId = programId,
-          provingSystemVersion = provingSystemVersion,
+          guestProgramId = guestProgramId,
+          provingSystem = provingSystem,
           proofRequest = RollupProofRequestParamsDto(
             chainId = chainId,
             conflations = request.conflations.map { it.toDto() },
@@ -105,13 +106,13 @@ typealias RollupProofTransport =
 class RollupProverClient(
   transport: RollupProofTransport,
   l2ExecutionProofProvider: ProofProvider<L2ExecutionProofResponseDto>?,
-  programId: String,
-  provingSystemVersion: String,
+  guestProgramId: String,
+  provingSystem: String,
   chainId: Long,
   proofRequestDtoMapper: (RollupProofRequestV1) -> SafeFuture<FileBasedRollupProofRequestDto> =
     RollupProofRequestDtoMapper(
-      programId,
-      provingSystemVersion,
+      guestProgramId,
+      provingSystem,
       chainId,
       l2ExecutionProofProvider,
     ),

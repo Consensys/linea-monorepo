@@ -17,20 +17,20 @@ import kotlin.time.Instant
 /**
  * Request/response DTOs for the RISC-V provers.
  *
- * These mirror the JSON request fixtures under `rollup_spec/prover_inputs/` one-to-one, EXCLUDING the documentation
- * helper fields whose names start with an underscore (`_comment`, `_comment_*`). Field names are kept identical to
- * the JSON keys so they serialize without custom naming.
+ * The wire contract is the set of V1 JSON Schemas under `rollup_spec/src/rollup_spec/prover_io/schemas/`, with golden
+ * fixtures under `rollup_spec/src/rollup_spec/prover_io/testdata/`. Field names are kept identical to the JSON keys so
+ * they serialize without custom naming.
  *
- * The DTO <-> domain mapping lives in `RiscvProofDtos.kt`.
+ * The DTO <-> domain mapping helpers live at the bottom of this file.
  */
 
-/** The 16-field PI tuple emitted by a l2-execution proof (rollup_spec §2.1). */
+/** The 18-field PI tuple emitted by an l2-execution proof (rollup_spec §2.1, `L2ExecutionProofPublicInput`). */
 data class L2ExecutionProofPublicInputsDto(
   val parentBlockHash: String,
   val endBlockHash: String,
   val endBlockNumber: Long,
   val endBlockTimestamp: Long,
-  val l2L1MessagesHash: String,
+  val l2L1Messages: List<String>,
   val parentL1L2BridgeRollingHash: String,
   val parentL1L2BridgeRollingHashMessageNumber: Long,
   val endL1L2BridgeRollingHash: String,
@@ -42,6 +42,8 @@ data class L2ExecutionProofPublicInputsDto(
   val endProcessedFtxNumber: Long,
   val filteredAddressesHash: String,
   val txFromsHash: String,
+  val blockCount: Long,
+  val l2MessagingBlocksOffsets: List<Long>,
 )
 
 /** The 20-field PI tuple emitted by a rollup / rollup-aggregation proof (rollup_spec §2.4). */
@@ -176,18 +178,23 @@ data class L2ExecutionProofRequestParamsDto(
 )
 
 data class L2ExecutionProofRequestDto(
-  val programId: String,
-  val provingSystemVersion: String,
+  val guestProgramId: String,
+  val provingSystem: String,
   val proofRequest: L2ExecutionProofRequestParamsDto,
   val metadata: MetaDataDto,
 )
 
 data class L2ExecutionProofResponseDto(
+  /**
+   * Required on the `getZkL2ExecutionProofV1` response, but not allowed on the l2-execution proof embedded in a
+   * `getZkRollupProofV1` request (`additionalProperties: false`). Nullable so the same DTO serves both:
+   * [RollupProofRequestDtoMapper] clears it when embedding, and `NON_NULL` keeps it off the wire.
+   */
+  @get:JsonInclude(JsonInclude.Include.NON_NULL)
+  val proverVersion: String? = null,
   val startBlockNumber: Long,
   val proof: String,
   val publicInputs: L2ExecutionProofPublicInputsDto,
-  val l2L1Messages: List<String>,
-  val txFroms: List<String>,
   val filteredAddresses: List<String>,
   val programVk: String,
 )
@@ -228,8 +235,8 @@ data class RollupProofRequestParamsDto(
 )
 
 data class FileBasedRollupProofRequestDto(
-  val programId: String,
-  val provingSystemVersion: String,
+  val guestProgramId: String,
+  val provingSystem: String,
   val proofRequest: RollupProofRequestParamsDto,
   val metadata: MetaDataDto,
 )
@@ -256,8 +263,8 @@ data class FileBasedRollupAggregationProofRequestParamsDto(
 )
 
 data class FileBasedRollupAggregationProofRequestDto(
-  val programId: String,
-  val provingSystemVersion: String,
+  val guestProgramId: String,
+  val provingSystem: String,
   val proofRequest: FileBasedRollupAggregationProofRequestParamsDto,
   val metadata: MetaDataDto,
 )
@@ -283,7 +290,7 @@ internal fun L2ExecutionProofPublicInputsDto.toDomainObject(): L2ExecutionProofP
     endBlockHash = endBlockHash.decodeHex(),
     endBlockNumber = endBlockNumber.toULong(),
     endBlockTimestamp = Instant.fromEpochSeconds(endBlockTimestamp),
-    l2L1MessagesHash = l2L1MessagesHash.decodeHex(),
+    l2L1Messages = l2L1Messages.map { it.decodeHex() },
     parentL1L2BridgeRollingHash = parentL1L2BridgeRollingHash.decodeHex(),
     parentL1L2BridgeRollingHashMessageNumber = parentL1L2BridgeRollingHashMessageNumber.toULong(),
     endL1L2BridgeRollingHash = endL1L2BridgeRollingHash.decodeHex(),
@@ -295,6 +302,8 @@ internal fun L2ExecutionProofPublicInputsDto.toDomainObject(): L2ExecutionProofP
     endFtxNumber = endProcessedFtxNumber.toULong(),
     filteredAddressesHash = filteredAddressesHash.decodeHex(),
     txFromsHash = txFromsHash.decodeHex(),
+    blockCount = blockCount.toULong(),
+    l2MessagingBlocksOffsets = l2MessagingBlocksOffsets.map { it.toULong() },
   )
 }
 
@@ -304,7 +313,7 @@ internal fun L2ExecutionProofPublicInputs.toDto(): L2ExecutionProofPublicInputsD
     endBlockHash = endBlockHash.encodeHex(),
     endBlockNumber = endBlockNumber.toLong(),
     endBlockTimestamp = endBlockTimestamp.epochSeconds,
-    l2L1MessagesHash = l2L1MessagesHash.encodeHex(),
+    l2L1Messages = l2L1Messages.map { it.encodeHex() },
     parentL1L2BridgeRollingHash = parentL1L2BridgeRollingHash.encodeHex(),
     parentL1L2BridgeRollingHashMessageNumber = parentL1L2BridgeRollingHashMessageNumber.toLong(),
     endL1L2BridgeRollingHash = endL1L2BridgeRollingHash.encodeHex(),
@@ -316,6 +325,8 @@ internal fun L2ExecutionProofPublicInputs.toDto(): L2ExecutionProofPublicInputsD
     endProcessedFtxNumber = endFtxNumber.toLong(),
     filteredAddressesHash = filteredAddressesHash.encodeHex(),
     txFromsHash = txFromsHash.encodeHex(),
+    blockCount = blockCount.toLong(),
+    l2MessagingBlocksOffsets = l2MessagingBlocksOffsets.map { it.toLong() },
   )
 }
 
