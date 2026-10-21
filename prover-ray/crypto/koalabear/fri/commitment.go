@@ -145,7 +145,7 @@ func (table MultiSizeTable) Merkleize() *Tree {
 	// Every table but the bottom is digested as conjugate pairs, one tree
 	// depth shallower than its own size: a table of encoded height s yields
 	// s/2 auxiliary leaves attached at the level holding s/2 nodes.
-	upperLeaves := make([][]field.Octuplet, utils.Log2Ceil(size))
+	injections := make([][][]field.Octuplet, utils.Log2Ceil(size))
 	for i := range bottom {
 		if table[i].NumRows() == 0 {
 			continue
@@ -156,10 +156,11 @@ func (table MultiSizeTable) Merkleize() *Tree {
 		}
 		digests := make([]field.Octuplet, s/2)
 		hashSizedLeaves(table[i], true, digests)
-		upperLeaves[utils.Log2Ceil(s/2)] = digests
+		level := utils.Log2Ceil(s / 2)
+		injections[level] = append(injections[level], digests)
 	}
 
-	tree.buildLevels(upperLeaves)
+	tree.buildLevels(injections)
 	return tree
 }
 
