@@ -18,6 +18,7 @@ const block_validation = executor.executor_block_validation;
 const block_rlp_size = @import("zesu_block_rlp_size");
 
 const block_hash = @import("block_hash.zig");
+const system_contracts = @import("system_contracts.zig");
 
 // Error classification (zesu-error re-namespacing and the exit-code taxonomy) lives in
 // guest_errors; this file only wraps zesu calls with it.
@@ -199,6 +200,7 @@ fn computeBlockStatelessWithLogs(
         txs,
         spec,
         chain_id,
+        system_contracts.forChainId(chain_id),
         hardfork.blockReward(spec),
     ) catch |e| return zesuErr(e);
     // A witness miss surfaced through zesu's WitnessDatabase during live execution — the

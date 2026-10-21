@@ -538,4 +538,6 @@ pub const test_api = if (@import("builtin").is_test) struct {
     /// can re-derive the hash the engine will expect.
     pub const block_hash = @import("block_hash.zig");
     pub const isBlobTransactionFn = isBlobTransaction;
+    /// Per-chain system-contract addresses the execution seam hands to zesu's transition.
+    pub const system_contracts = @import("system_contracts.zig");
 } else struct {};

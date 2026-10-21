@@ -767,22 +767,25 @@ test "readL1L2BridgeState reads the number and rolling hash from real L2MessageS
     const number: u64 = 7;
     const hash_value: [32]u8 = repeat(32, 0x77);
 
-    var index = try mpt.buildNodeIndex(alloc, &.{});
-    defer index.deinit();
+    // Every trie node the chained updates create accumulates here; the read-side index is built from it.
+    var nodes: std.ArrayListUnmanaged([]const u8) = .empty;
 
     // The message number.
     var storage_root = EMPTY_TRIE_HASH;
     const number_slot = api.u64ToSlot32Fn(280);
-    try mpt.updateStorageChainedIndexed(alloc, &storage_root, number_slot, @as(u256, number), &index);
+    try mpt.updateStorageChained(alloc, &storage_root, number_slot, @as(u256, number), &.{}, &nodes);
 
     // The rolling hash keyed by that same number.
     const rolling_hash_slot = api.mappingSlotFn(api.u64ToSlot32Fn(281), api.u64ToSlot32Fn(number));
     const hash_as_u256 = std.mem.readInt(u256, &hash_value, .big);
-    try mpt.updateStorageChainedIndexed(alloc, &storage_root, rolling_hash_slot, hash_as_u256, &index);
+    try mpt.updateStorageChained(alloc, &storage_root, rolling_hash_slot, hash_as_u256, &.{}, &nodes);
 
     const account_rlp = try accountLeafValue(alloc, 0, 0, storage_root, KECCAK_EMPTY);
     var state_root = EMPTY_TRIE_HASH;
-    try mpt.updateAccountChainedIndexed(alloc, &state_root, mpt.keccak256(&l2_ms_address), account_rlp, &index);
+    try mpt.updateAccountChained(alloc, &state_root, mpt.keccak256(&l2_ms_address), account_rlp, &.{}, &nodes);
+
+    var index = try mpt.buildNodeIndex(alloc, nodes.items);
+    defer index.deinit();
 
     const bridge_state = try api.readL1L2BridgeStateFn(state_root, l2_ms_address, &index);
     try testing.expectEqualSlices(u8, &hash_value, &bridge_state.hash);
@@ -797,19 +800,65 @@ test "readL1L2BridgeState rejects a message number that overflows u64" {
     const l2_ms_address = repeat(20, 0x22);
     const overflowing_number: u256 = @as(u256, 1) << 64;
 
-    var index = try mpt.buildNodeIndex(alloc, &.{});
-    defer index.deinit();
+    var nodes: std.ArrayListUnmanaged([]const u8) = .empty;
 
     var storage_root = EMPTY_TRIE_HASH;
     const number_slot = api.u64ToSlot32Fn(280);
-    try mpt.updateStorageChainedIndexed(alloc, &storage_root, number_slot, overflowing_number, &index);
+    try mpt.updateStorageChained(alloc, &storage_root, number_slot, overflowing_number, &.{}, &nodes);
 
     const account_rlp = try accountLeafValue(alloc, 0, 0, storage_root, KECCAK_EMPTY);
     var state_root = EMPTY_TRIE_HASH;
-    try mpt.updateAccountChainedIndexed(alloc, &state_root, mpt.keccak256(&l2_ms_address), account_rlp, &index);
+    try mpt.updateAccountChained(alloc, &state_root, mpt.keccak256(&l2_ms_address), account_rlp, &.{}, &nodes);
+
+    var index = try mpt.buildNodeIndex(alloc, nodes.items);
+    defer index.deinit();
 
     try testing.expectError(
         error.RollingHashNumberOverflow,
         api.readL1L2BridgeStateFn(state_root, l2_ms_address, &index),
     );
+}
+
+// ─── Per-chain system-contract addresses ─────────────────────────────────────────────────────────
+
+fn hexAddr(hex: []const u8) [20]u8 {
+    var out: [20]u8 = undefined;
+    _ = std.fmt.hexToBytes(&out, hex) catch unreachable;
+    return out;
+}
+
+test "system contracts: Linea mainnet uses its genesis deposit/withdrawal/consolidation contracts" {
+    const sc = api.system_contracts;
+    const c = sc.forChainId(59144);
+    try testing.expectEqual(hexAddr("94d4a7449B968b839dcbc64A61F195CA300986ae"), c.deposit);
+    try testing.expectEqual(hexAddr("66355689a9f067eeb9dc9d899E4192676988279C"), c.withdrawal_request);
+    try testing.expectEqual(hexAddr("F0e003F0dE2d583Ae28FA8cBF66aa096CdAce3ff"), c.consolidation_request);
+    // Beacon roots, history storage and the EIP-8282 builder contracts stay canonical.
+    const defaults: sc.SystemContracts = .{};
+    try testing.expectEqual(defaults.beacon_roots, c.beacon_roots);
+    try testing.expectEqual(defaults.history_storage, c.history_storage);
+    try testing.expectEqual(defaults.builder_deposit_request, c.builder_deposit_request);
+    try testing.expectEqual(defaults.builder_exit_request, c.builder_exit_request);
+}
+
+test "system contracts: Linea Sepolia and the local stack use their genesis contracts" {
+    const sc = api.system_contracts;
+    const sepolia = sc.forChainId(59141);
+    try testing.expectEqual(hexAddr("0bdae9550159eb73559e74d27fbc989641b24c8e"), sepolia.deposit);
+    try testing.expectEqual(hexAddr("0e97F666F1d99A60590F7Ce7fA5A5a7C754Ff714"), sepolia.withdrawal_request);
+    try testing.expectEqual(hexAddr("94d94fac95855ed81294ed76f6b3da899e7063a8"), sepolia.consolidation_request);
+
+    const local = sc.forChainId(1337);
+    try testing.expectEqual(hexAddr("3a69eD7FA6f6CA1dB2649327c4A2E666130823bE"), local.deposit);
+    try testing.expectEqual(hexAddr("3a69eD7FA6f6CA1dB2649327c4A2E666130823bE"), local.withdrawal_request);
+    try testing.expectEqual(hexAddr("9AFC00F4CEaadb97A3822FCA2225FaD78839FBde"), local.consolidation_request);
+    try testing.expectEqual(hexAddr("0000000000000000000000000000000000009999"), local.builder_deposit_request);
+    try testing.expectEqual(hexAddr("0000000000000000000000000000000000009999"), local.builder_exit_request);
+}
+
+test "system contracts: other chains fall back to zesu's defaults" {
+    const sc = api.system_contracts;
+    for ([_]u64{ 1, 11155111, 424242 }) |chain_id| {
+        try testing.expectEqual(sc.SystemContracts.forChainId(chain_id), sc.forChainId(chain_id));
+    }
 }

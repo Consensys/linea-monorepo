@@ -280,30 +280,32 @@ fn buildWorld(alloc: std.mem.Allocator, l2ms_address: ?[20]u8, bridge: BridgeVal
         return .{ .root = mpt.builder.EMPTY_TRIE_HASH, .nodes = &.{} };
     }
 
-    var index = try mpt.buildNodeIndex(alloc, &.{});
+    // Every trie node the chained updates create accumulates here; deduplicated by hash below.
+    var nodes: std.ArrayListUnmanaged([]const u8) = .empty;
     var state_root = mpt.builder.EMPTY_TRIE_HASH;
 
     if (l2ms_address) |address| {
         var storage_root = mpt.builder.EMPTY_TRIE_HASH;
         const number_slot = l2_execution.test_api.u64ToSlot32Fn(LAST_ANCHORED_L1_MESSAGE_NUMBER_SLOT);
-        try mpt.updateStorageChainedIndexed(alloc, &storage_root, number_slot, @as(u256, bridge.number), &index);
+        try mpt.updateStorageChained(alloc, &storage_root, number_slot, @as(u256, bridge.number), &.{}, &nodes);
 
         const rolling_hash_slot = l2_execution.test_api.mappingSlotFn(
             l2_execution.test_api.u64ToSlot32Fn(L1_ROLLING_HASHES_MAPPING_BASE_SLOT),
             l2_execution.test_api.u64ToSlot32Fn(bridge.number),
         );
         const hash_value = std.mem.readInt(u256, &bridge.hash, .big);
-        try mpt.updateStorageChainedIndexed(alloc, &storage_root, rolling_hash_slot, hash_value, &index);
+        try mpt.updateStorageChained(alloc, &storage_root, rolling_hash_slot, hash_value, &.{}, &nodes);
 
         const account_rlp = try buildAccountRlp(alloc, 0, 0, storage_root, primitives.KECCAK_EMPTY);
-        try mpt.updateAccountChainedIndexed(alloc, &state_root, mpt.keccak256(&address), account_rlp, &index);
+        try mpt.updateAccountChained(alloc, &state_root, mpt.keccak256(&address), account_rlp, &.{}, &nodes);
     }
 
     for (accounts) |account| {
         const account_rlp = try buildAccountRlp(alloc, account.nonce, account.balance, mpt.builder.EMPTY_TRIE_HASH, primitives.KECCAK_EMPTY);
-        try mpt.updateAccountChainedIndexed(alloc, &state_root, mpt.keccak256(&account.address), account_rlp, &index);
+        try mpt.updateAccountChained(alloc, &state_root, mpt.keccak256(&account.address), account_rlp, &.{}, &nodes);
     }
 
+    var index = try mpt.buildNodeIndex(alloc, nodes.items);
     return .{ .root = state_root, .nodes = try collectNodeRlps(alloc, &index) };
 }
 
