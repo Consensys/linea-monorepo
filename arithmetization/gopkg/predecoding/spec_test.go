@@ -5,19 +5,21 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"runtime"
 	"sort"
 	"strconv"
-	"sync"
 	"testing"
 
 	"golang.org/x/arch/riscv64/riscv64asm"
 )
 
-// Checks every 32-bit word's full record (compute_op, imm, rs1, rs2, rd)
-// against an independent spec: compute_op numbering from constants.zkc (what
-// the interpreter executes), instruction identity and operands from
-// riscv64asm (generated from riscv-opcodes), and the documented x0 folding.
+// Question 2 — is the Go decoder right? Two tests against an independent
+// reference (riscv64asm, generated from riscv-opcodes):
+//   - TestDiffRefRVOP: does Lineth accept exactly the RV64IM instructions, and
+//     which non-instructions does it accept (grouped by opcode and funct3)?
+//   - TestRecordsAgainstSpec: is every word's full record (compute_op, imm,
+//     rs1, rs2, rd) right — numbering from constants.zkc (what the interpreter
+//     executes), operands from the reference, and the documented x0 folding?
+// The spec table below doubles as the definition of "valid RV64IM".
 
 type class int
 
@@ -192,8 +194,6 @@ func TestRecordsAgainstSpec(t *testing.T) {
 		spec["ADD"], spec["SUB"] = a, b
 	}
 	t.Logf("constants.zkc: %d ComputeOp constants", len(c))
-	workers := runtime.NumCPU()
-	const total = uint64(1) << 32
 	// res is one worker's partial result, merged after all workers finish.
 	type res struct {
 		checked    uint64            // RV64IM words compared against the spec
@@ -203,18 +203,10 @@ func TestRecordsAgainstSpec(t *testing.T) {
 		cats       map[string]uint64 // mismatch counts per category (e.g. "op:ADD")
 		samples    map[string]string // first offending word per category, for reproduction
 	}
-	results := make([]res, workers)
-	var wg sync.WaitGroup
-	for w := 0; w < workers; w++ {
-		wg.Add(1)
-		go func(w int) {
-			defer wg.Done()
+	results := forEachWord(func(lo, hi uint64) res {
 			r := res{cats: map[string]uint64{}, samples: map[string]string{}}
 			var b [4]byte
 			var bw bitWriter
-			// This worker's half-open range [lo, hi); the last worker ends exactly at 2^32.
-			lo := total * uint64(w) / uint64(workers)
-			hi := total * uint64(w+1) / uint64(workers)
 			// note counts a mismatch under category k and keeps the first sample s.
 			note := func(k, s string) {
 				r.cats[k]++
@@ -224,7 +216,7 @@ func TestRecordsAgainstSpec(t *testing.T) {
 			}
 			for i := lo; i < hi; i++ {
 				x := uint32(i)
-				// 16-bit compressed encodings are out of scope here (see differential_test.go).
+				// 16-bit compressed encodings are out of scope here (see TestDiffRefRVOP).
 				if x&3 != 3 {
 					continue
 				}
@@ -248,7 +240,7 @@ func TestRecordsAgainstSpec(t *testing.T) {
 				}
 				// Standard opcodes: decode with the reference. Words it rejects, and
 				// mnemonics outside the spec table (not RV64IM), are skipped; their
-				// accept/reject verdict is covered by TestDifferentialAgainstRiscvOpcodes.
+				// accept/reject verdict is covered by TestDiffRefRVOP.
 				binary.LittleEndian.PutUint32(b[:], x)
 				inst, err := riscv64asm.Decode(b[:])
 				if err != nil {
@@ -276,10 +268,8 @@ func TestRecordsAgainstSpec(t *testing.T) {
 					note("operands:"+inst.Op.String(), fmt.Sprintf("%#08x %v got=%+v want=%+v", x, inst, got, want))
 				}
 			}
-			results[w] = r
-		}(w)
-	}
-	wg.Wait()
+			return r
+	})
 
 	// Merge per-worker results.
 	var checked, opMis, operandMis, custom uint64
@@ -310,4 +300,143 @@ func TestRecordsAgainstSpec(t *testing.T) {
 	if len(cats) > 0 {
 		t.Errorf("%d mismatch categories", len(cats))
 	}
+}
+
+// diffRes is one worker's partial result for TestDiffRefRVOP; results are
+// merged after all workers finish, so no locking is needed while scanning.
+type diffRes struct {
+	// mismatch counts words per mismatch category (see the key names below).
+	mismatch map[string]uint64
+	// samples keeps the first word seen per mismatch category, for reproduction.
+	samples map[string]uint32
+	// opMap records, for words both sides accept, which reference mnemonics
+	// were seen for each Lineth compute_op.
+	opMap map[uint32]map[string]bool
+}
+
+// Compares Lineth's accept/reject verdict (classifyInstruction) with the
+// reference on all 2^32 words. "Valid RV64IM" on the reference side means the
+// reference decodes the word AND its mnemonic is in the spec table above — the
+// reference understands far more (A, F, D, C, Zicsr, ...). Words Lineth accepts
+// but the reference rejects are grouped by (opcode, funct3, compute_op).
+// It only logs; it never fails the test, so read the -v output for mismatches.
+func TestDiffRefRVOP(t *testing.T) {
+	results := forEachWord(func(lo, hi uint64) diffRes {
+		r := diffRes{map[string]uint64{}, map[string]uint32{}, map[uint32]map[string]bool{}}
+		var b [4]byte
+		for i := lo; i < hi; i++ {
+			x := uint32(i)
+			// Lineth's verdict: anything other than computeInvalid is "accepted".
+			l := classifyInstruction(x)
+			lv := l != computeInvalid
+			// key names the mismatch category for this word; empty means no mismatch.
+			key := ""
+			if x&3 != 3 {
+				// Low two bits != 0b11 means a 16-bit compressed (RVC) encoding.
+				// Lineth has no C extension, so it must reject all of these.
+				if lv {
+					key = "lineth-valid-on-16bit-encoding"
+				}
+			} else if x&0x7f == opcodeCUSTOM1 {
+				// Lineth-specific custom opcode; the reference decoder knows nothing
+				// about it (TestRecordsAgainstSpec checks it against its own spec).
+				continue
+			} else {
+				// Decode with the reference (riscv64asm expects little-endian bytes).
+				binary.LittleEndian.PutUint32(b[:], x)
+				inst, err := riscv64asm.Decode(b[:])
+				name := ""
+				if err == nil {
+					name = inst.Op.String()
+				}
+				// Reference verdict: decodes successfully AND is an RV64IM mnemonic.
+				_, inSpec := spec[name]
+				rv := err == nil && inSpec
+				switch {
+				case lv && !rv:
+					// Lineth accepts a word the spec says is not RV64IM. Grouped by
+					// opcode/funct3/compute_op so the extras can be told apart.
+					if name == "" {
+						name = "(not an instruction)"
+					}
+					key = fmt.Sprintf("lineth-valid/ref-not-RV64IM: %s opcode=%07b funct3=%03b compute_op=%d", name, x&0x7f, (x>>12)&7, l)
+				case !lv && rv:
+					// Lineth rejects a real RV64IM instruction (completeness gap).
+					key = "lineth-invalid/ref-RV64IM: " + name
+				case lv && rv && l != computeNoOp:
+					// Both accept: record which reference mnemonic landed in which
+					// compute_op, to check the mapping is consistent below.
+					// computeNoOp is excluded because it intentionally groups many ops.
+					m := r.opMap[l]
+					if m == nil {
+						m = map[string]bool{}
+						r.opMap[l] = m
+					}
+					m[name] = true
+				}
+			}
+			if key != "" {
+				r.mismatch[key]++
+				if _, ok := r.samples[key]; !ok {
+					r.samples[key] = x
+				}
+			}
+		}
+		return r
+	})
+
+	// Merge per-worker results.
+	mis := map[string]uint64{}
+	smp := map[string]uint32{}
+	ops := map[uint32]map[string]bool{}
+	for _, r := range results {
+		for k, v := range r.mismatch {
+			mis[k] += v
+			if _, ok := smp[k]; !ok {
+				smp[k] = r.samples[k]
+			}
+		}
+		for k, m := range r.opMap {
+			if ops[k] == nil {
+				ops[k] = map[string]bool{}
+			}
+			for n := range m {
+				ops[k][n] = true
+			}
+		}
+	}
+	// Report mismatch categories in sorted order, with count and one sample word.
+	keys := make([]string, 0, len(mis))
+	for k := range mis {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var overAccepted uint64
+	for _, k := range keys {
+		t.Logf("MISMATCH %-90s count=%d sample=%#08x", k, mis[k], smp[k])
+		if len(k) > 27 && k[:27] == "lineth-valid/ref-not-RV64IM" {
+			overAccepted += mis[k]
+		}
+	}
+	// Mapping consistency, forward: one compute_op covering several reference ops.
+	// Also builds the reverse index (reference op -> compute_ops) for the check below.
+	multi := 0
+	rev := map[string][]uint32{}
+	for op, names := range ops {
+		if len(names) > 1 {
+			multi++
+			t.Logf("compute_op %d maps to several ref ops: %v", op, names)
+		}
+		for n := range names {
+			rev[n] = append(rev[n], op)
+		}
+	}
+	// Mapping consistency, reverse: one reference op split across several compute_ops.
+	// Expected only for JAL/JALR (plain vs _WB, chosen by rd == x0).
+	for n, l := range rev {
+		if len(l) > 1 {
+			t.Logf("ref op %s maps to several compute_ops: %v", n, l)
+		}
+	}
+	t.Logf("summary: mismatch-categories=%d over-accepted=%d compute_ops-seen=%d ambiguous=%d", len(mis), overAccepted, len(ops), multi)
 }
