@@ -34,39 +34,13 @@ type CommitterState struct {
 	EncodedTable MultiSizeTable
 	// Tree is the Merkle tree for the EncodeTable.
 	Tree *Tree
-	// PairLeaves records that the largest size is hashed as conjugate pairs,
-	// like every other size (see [WithPairLeaves]).
-	PairLeaves bool
-}
-
-// CommitOption configures [Commit].
-type CommitOption func(*commitConfig)
-
-type commitConfig struct {
-	pairLeaves bool
-}
-
-// WithPairLeaves hashes the largest size like every other one: each of its
-// groups as conjugate row pairs, one tree depth above its own size. That level
-// becomes the leaves, each one the first group's digest with the other groups'
-// digests chained after it, C(…C(h_1, h_2)…, h_m), so the largest size may
-// hold several groups. A group's digest is then H(header, row[2j] ‖ row[2j+1])
-// whether its size is the largest or not. The tree is one level shorter than
-// with row leaves, and the opening proof keeps its shape.
-func WithPairLeaves() CommitOption {
-	return func(c *commitConfig) { c.pairLeaves = true }
 }
 
 // Commit commits to a sorted list of tables. The table must satisfy the format
 // expected by [MultiSizeTable.checkWellFormedness] with a K of 1.
-func Commit(encoders []*RSEncoder, witness MultiSizeTable, opts ...CommitOption) CommitterState {
+func Commit(encoders []*RSEncoder, witness MultiSizeTable) CommitterState {
 
-	var cfg commitConfig
-	for _, opt := range opts {
-		opt(&cfg)
-	}
-
-	k, err := witness.checkWellFormedness(cfg.pairLeaves)
+	k, err := witness.checkWellFormedness()
 	if err != nil {
 		panic(err)
 	}
@@ -76,12 +50,11 @@ func Commit(encoders []*RSEncoder, witness MultiSizeTable, opts ...CommitOption)
 	}
 
 	encoded := witness.Encode(encoders)
-	tree := encoded.merkleize(cfg.pairLeaves)
+	tree := encoded.Merkleize()
 
 	return CommitterState{
 		EncodedTable: encoded,
 		Tree:         tree,
-		PairLeaves:   cfg.pairLeaves,
 	}
 }
 
@@ -155,24 +128,24 @@ func slabColumns[T any](count, n int) [][]T {
 // (largest) one is digested as conjugate pairs, one tree depth shallower than
 // its own size, so it folds the same way the bottom table's leaf pairs do.
 //
-// Each group of a size (see [SizedTable.Groups]) is digested on its own, with
-// its own leaf header, and the group digests are injected into their level in
-// group order. The bottom table must hold a single group: its digests are the
-// tree leaves. See [WithPairLeaves] for the variant that hashes the bottom
-// table as pairs too.
+// An ungrouped table (no size declares [SizedTable.Groups]) hashes its bottom
+// table one row per leaf.
+//
+// A grouped table digests every group of every size on its own, with its own
+// leaf header, as conjugate row pairs, the bottom table included: a group's
+// digest is H(header, row[2j] ‖ row[2j+1]) whether its size is the largest or
+// not. The group digests of a size are injected into their level in group
+// order, and the bottom table's level becomes the leaves, each one the first
+// group's digest with the other groups' digests chained after it,
+// C(…C(h_1, h_2)…, h_m). The tree is then one level shorter, and the opening
+// proof keeps its shape.
 func (table MultiSizeTable) Merkleize() *Tree {
-	return table.merkleize(false)
-}
-
-func (table MultiSizeTable) merkleize(pairLeaves bool) *Tree {
 
 	bottom := len(table) - 1
 	if table[bottom].NumRows() == 0 {
 		panic("the bottom level must be non-empty")
 	}
-	if !pairLeaves && len(table[bottom].Groups) > 1 {
-		panic("the bottom level must hold a single group")
-	}
+	pairLeaves := table.grouped()
 
 	// Leaf hashing dominates Commit; it is parallel over leaf index and
 	// vectorizes 16-wide with AVX-512, so hashSizedLeaves handles each size.

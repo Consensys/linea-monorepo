@@ -147,7 +147,7 @@ func TestOpenInputTreeOpeningAlignsMultiSizeRows(t *testing.T) {
 		t.Helper()
 
 		root := tree.Root()
-		require.NoError(t, branch.AuthenticateToCap(query, []field.Octuplet{root}, nil, false), name)
+		require.NoError(t, branch.AuthenticateToCap(query, []field.Octuplet{root}, nil), name)
 
 		leaf, err := branch.rowAtLevel(len(levelEvals))
 		require.NoError(t, err, name)
@@ -179,7 +179,7 @@ func TestInputCapsAuthenticateRevealedTablesAndQueryBoundary(t *testing.T) {
 	}
 	committed := pcs.Commit(witness)
 	shape := committed.EncodedTable.Shape()
-	info, err := inputCapShapeInfo(params, shape, false)
+	info, err := inputCapShapeInfo(params, shape)
 	require.NoError(t, err)
 	require.Equal(t, 2, info.depth)
 	capNodes := committed.Tree.OpenCap(info.depth).Nodes
@@ -195,7 +195,7 @@ func TestInputCapsAuthenticateRevealedTablesAndQueryBoundary(t *testing.T) {
 	require.NotNil(t, branch.Leaves[2], "auxiliary pair below the cap must stay on the query path")
 	numLeaves := 1 << len(branch.Leaves)
 	leafIndex := queryPosition / ((1 << params.LogCodewordSize) / numLeaves)
-	require.NoError(t, branch.AuthenticateToCap(leafIndex, frontier, nil, false))
+	require.NoError(t, branch.AuthenticateToCap(leafIndex, frontier, nil))
 	base := leafIndex / (numLeaves / len(treeCap.Tables[0].Rows))
 	require.Equal(t, openEncodedRow(committed.EncodedTable[0], base), treeCap.Tables[0].Rows[base])
 	require.Equal(t, openEncodedRow(committed.EncodedTable[0], base^1), treeCap.Tables[0].Rows[base^1])

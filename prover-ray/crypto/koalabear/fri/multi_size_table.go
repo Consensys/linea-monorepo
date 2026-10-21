@@ -70,6 +70,18 @@ func checkGroups(baseWidth, extWidth int, groups []GroupShape) error {
 	return nil
 }
 
+// grouped reports whether the table declares groups at any size. A grouped
+// table is committed group by group at every size, the largest one included
+// (see [MultiSizeTable.Merkleize]).
+func (table MultiSizeTable) grouped() bool {
+	for i := range table {
+		if table[i].Groups != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // groupViews returns one view of table per group, sharing its rows.
 func (table *SizedTable) groupViews() []SizedTable {
 	groups := sizeGroups(len(table.Base), len(table.Ext), table.Groups)
@@ -88,10 +100,7 @@ func (table *SizedTable) groupViews() []SizedTable {
 
 // checkWellFormedness checks if the multi-size table has valid dimensions. It
 // returns the value of K (corresponding to the size of the first sub-table).
-//
-// With pairLeaves, the largest size may hold several groups (see
-// [WithPairLeaves]); otherwise it must be a single group.
-func (table MultiSizeTable) checkWellFormedness(pairLeaves bool) (k int, err error) {
+func (table MultiSizeTable) checkWellFormedness() (k int, err error) {
 
 	k = -1 // sentinel value
 
@@ -103,9 +112,6 @@ func (table MultiSizeTable) checkWellFormedness(pairLeaves bool) (k int, err err
 		}
 		if err := checkGroups(len(table[i].Base), len(table[i].Ext), table[i].Groups); err != nil {
 			return 0, fmt.Errorf("size %d: %w", i, err)
-		}
-		if i == len(table)-1 && !pairLeaves && len(table[i].Groups) > 1 {
-			return 0, errors.New("the largest size must hold a single group")
 		}
 
 		if size < 0 {

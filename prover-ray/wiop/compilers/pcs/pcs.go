@@ -238,14 +238,14 @@ func withMerkleCap(choice merkleCapChoice) Option {
 // WithModuleGroups commits every module as its own group (see
 // [fri.SizedTable.Groups]): within each size, a round's columns are ordered by
 // module, in module declaration order, and each module is hashed with its own
-// leaf header and injected separately into the size's tree level. The largest
-// size is hashed as row pairs like the others ([fri.WithPairLeaves]), so it is
-// split into modules too. A module's digest is then H(header, row[2j] ‖
+// leaf header and injected separately into the size's tree level. A grouped
+// commitment hashes the largest size as row pairs like the others (see
+// [fri.MultiSizeTable.Merkleize]), so it is split into modules too. A module's digest is then H(header, row[2j] ‖
 // row[2j+1]) whatever the sizes of the other modules, which a size-oblivious
 // recursive verifier needs (#4246).
 //
-// Off by default: the module ordering and the pair leaves change the committed
-// layout, so proofs differ from the default layout.
+// Off by default: the module ordering and the row-pair leaves change the
+// committed layout, so proofs differ from the default layout.
 func WithModuleGroups() Option {
 	return func(o *compileOptions) { o.moduleGroups = true }
 }
@@ -454,7 +454,6 @@ func (c *compiled) newPCS() *fri.PCS {
 	if err != nil {
 		utils.Panic("pcs: newPCS: %v", err)
 	}
-	pcs.PairLeaves = c.moduleGroups
 	return pcs
 }
 
@@ -903,9 +902,10 @@ func (c *compiled) commitToRound(round *wiop.Round, rt *wiop.Runtime, manifest C
 // padded size, appending them in the commit order of [committedLayout] (base
 // and extension rows kept apart within each size), and FRI-commits it with a
 // freshly-built per-round encoder schedule (a prefix of the global schedule).
-// The table takes the shape's groups, and the commitment uses pair leaves with
-// module groups. Elided columns are absent from the committed rows. It panics
-// when a Present column exceeds the committable size at c's blowup.
+// The table takes the shape's groups, so with module groups it is a grouped
+// commitment (see [fri.MultiSizeTable.Merkleize]). Elided columns are absent
+// from the committed rows. It panics when a Present column exceeds the
+// committable size at c's blowup.
 func (c *compiled) commitVectors(
 	round *wiop.Round, sizeOf moduleSizeFunc, vectors []paddedColumn, manifest ColumnManifest,
 ) *fri.CommitterState {
@@ -929,12 +929,7 @@ func (c *compiled) commitVectors(
 		utils.Panic("pcs: round %d commits a column of size 2^%d, above the 2^%d committable at RS blowup %d",
 			round.ID, maxSizeIndex, c.maxSizeLog2, 1<<c.logRSBlowup)
 	}
-	var opts []fri.CommitOption
-	if c.moduleGroups {
-		opts = append(opts, fri.WithPairLeaves())
-	}
-	encoders := buildEncoders(c.logRSBlowup, uint8(maxSizeIndex))
-	committerState := fri.Commit(encoders, sortedColumns[:maxSizeIndex+1], opts...)
+	committerState := fri.Commit(buildEncoders(c.logRSBlowup, uint8(maxSizeIndex)), sortedColumns[:maxSizeIndex+1])
 	return &committerState
 }
 
@@ -943,8 +938,8 @@ func (c *compiled) commitVectors(
 // or, with moduleGroups, declaration order stably sorted by module (module
 // declaration order), so every module's rows are consecutive within its size.
 // With moduleGroups, every size is split into one group per module, in that
-// order; the commitment then uses pair leaves (see [commitVectors]), so the
-// largest size can be grouped too. The shape has maxSizeIndex+1 entries over
+// order; a grouped commitment hashes the largest size as row pairs too (see
+// [fri.MultiSizeTable.Merkleize]), so it can be grouped like the others. The shape has maxSizeIndex+1 entries over
 // the Present columns.
 //
 // [commitVectors] and [getLayoutWith] both derive from it, so the committed

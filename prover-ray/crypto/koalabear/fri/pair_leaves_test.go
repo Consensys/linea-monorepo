@@ -25,19 +25,18 @@ func pairLeavesWitness(prng *rand.Rand) Batch {
 	return witness
 }
 
-// newPairLeavesPCSFixture commits pairLeavesWitness with pair leaves, opens it
-// as numBatches batches sharing one input tree at four queries, and checks the
-// native verifier accepts.
+// newPairLeavesPCSFixture commits pairLeavesWitness, a grouped table and so
+// one with pair leaves, opens it as numBatches batches sharing one input tree
+// at four queries, and checks the native verifier accepts.
 func newPairLeavesPCSFixture(t *testing.T, numBatches int) pcsOpenVerifyFixture {
 	t.Helper()
 	params, err := NewParams(4, 3, 4)
 	require.NoError(t, err)
 	pcs, err := NewPCS(params, makeEncoders(4, 2))
 	require.NoError(t, err)
-	pcs.PairLeaves = true
 	witness := pairLeavesWitness(rand.New(utils.NewRandSource(20261022)))
 	committed := pcs.Commit(witness)
-	require.True(t, committed.PairLeaves)
+	require.True(t, committed.EncodedTable.grouped())
 
 	shifts := BatchShifts{
 		{Base: [][]int{{0}, {0}}},
@@ -87,7 +86,7 @@ func newPairLeavesPCSFixture(t *testing.T, numBatches int) pcsOpenVerifyFixture 
 func TestPairLeavesTree(t *testing.T) {
 	witness := pairLeavesWitness(rand.New(utils.NewRandSource(8)))
 	encoded := witness.Encode(makeEncoders(4, 2))
-	tree := encoded.merkleize(true)
+	tree := encoded.Merkleize()
 
 	groupsOf := func(table SizedTable) []SizedTable {
 		groups := sizeGroups(len(table.Base), len(table.Ext), table.Groups)
@@ -129,37 +128,46 @@ func TestPairLeavesTree(t *testing.T) {
 
 	// A single-group largest size: the leaf is that group's digest, unchained.
 	single := make(Batch, 3)
-	single[2] = SizedTable{Ext: [][]field.Ext{field.VecPseudoRandExt(rand.New(utils.NewRandSource(9)), 4)}}
+	single[2] = SizedTable{
+		Ext:    [][]field.Ext{field.VecPseudoRandExt(rand.New(utils.NewRandSource(9)), 4)},
+		Groups: []GroupShape{{ExtWidth: 1}},
+	}
 	enc := single.Encode(makeEncoders(3, 2))
-	singleTree := enc.merkleize(true)
+	singleTree := enc.Merkleize()
 	for j := range singleTree.NumLeaves() {
 		require.Equal(t, referenceGroupDigest(enc[2], j), singleTree.Nodes[singleTree.NumLeaves()-1+j])
 	}
 
 	// The smallest largest size, two encoded rows, makes a one-leaf tree.
-	tiny := Batch{{Base: [][]field.Element{field.VecPseudoRandBase(rand.New(utils.NewRandSource(10)), 1)}}}
+	tiny := Batch{{
+		Base:   [][]field.Element{field.VecPseudoRandBase(rand.New(utils.NewRandSource(10)), 1)},
+		Groups: []GroupShape{{BaseWidth: 1}},
+	}}
 	tinyEnc := tiny.Encode(makeEncoders(1, 2))
-	tinyTree := tinyEnc.merkleize(true)
+	tinyTree := tinyEnc.Merkleize()
 	require.Equal(t, 1, tinyTree.NumLevel())
 	require.Equal(t, referenceGroupDigest(tinyEnc[0], 0), tinyTree.Root())
 }
 
 // TestPCSVerifyPairLeaves opens a pair-leaf commitment whose largest size holds
-// two groups, and checks that the verifier rejects it under row leaves, without
-// the largest size's groups, or with a malformed bottom pair.
+// two groups, and checks that the verifier rejects it under an ungrouped shape
+// (row leaves), without the largest size's groups, or with a malformed bottom
+// pair.
 func TestPCSVerifyPairLeaves(t *testing.T) {
 	fx := newPairLeavesPCSFixture(t, 2)
 
-	info, err := inputCapShapeInfo(fx.pcs.Params, fx.input.Shapes[0], true)
+	info, err := inputCapShapeInfo(fx.pcs.Params, fx.input.Shapes[0])
 	require.NoError(t, err)
-	require.Equal(t, info.height-1, info.treeHeight())
+	require.Equal(t, info.height-1, info.treeHeight(), "a grouped tree is one level shorter")
 	require.Len(t, info.levelGroups[info.height-1], 2, "the largest size must hold several groups")
-	_, err = inputCapShapeInfo(fx.pcs.Params, fx.input.Shapes[0], false)
-	require.Error(t, err, "row leaves must refuse a grouped largest size")
+	flat := ungrouped(fx.input.Shapes[0])
+	flatInfo, err := inputCapShapeInfo(fx.pcs.Params, flat)
+	require.NoError(t, err)
+	require.Equal(t, flatInfo.height, flatInfo.treeHeight(), "an ungrouped shape keeps row leaves")
 
-	rowLeaves := *fx.pcs
-	rowLeaves.PairLeaves = false
-	require.Error(t, rowLeaves.Verify(fx.input, fx.proof), "row-leaf verification must reject a pair-leaf proof")
+	rowLeaves := fx.input
+	rowLeaves.Shapes = []Shape{flat, flat}
+	require.Error(t, fx.pcs.Verify(rowLeaves, fx.proof), "an ungrouped shape must reject a pair-leaf proof")
 
 	flatBottom := append(Shape(nil), fx.input.Shapes[0]...)
 	flatBottom[3].Groups = nil
@@ -181,19 +189,9 @@ func TestPCSVerifyPairLeaves(t *testing.T) {
 	})
 }
 
-// TestPCSAddOpeningRejectsLeafModeMismatch checks that a commitment can only be
-// opened by a PCS of the same leaf mode.
-func TestPCSAddOpeningRejectsLeafModeMismatch(t *testing.T) {
-	fx := newPairLeavesPCSFixture(t, 1)
-	rowLeaves, err := NewPCS(fx.pcs.Params, fx.pcs.Encoders)
-	require.NoError(t, err)
-	err = rowLeaves.AddOpening(fx.committed[0], fx.input.Zeta, fx.input.Shifts[0], fx.input.ClaimedValues[0])
-	require.ErrorContains(t, err, "pair leaves")
-}
-
 // TestPCSVerifyGnarkPairLeaves is the circuit counterpart: the circuit accepts
-// the pair-leaf proof, rejects a tampered bottom row, and cannot even be built
-// under row leaves, which refuse a grouped largest size.
+// the pair-leaf proof, and rejects a tampered bottom row and an ungrouped shape
+// (row leaves).
 func TestPCSVerifyGnarkPairLeaves(t *testing.T) {
 	fx := newPairLeavesPCSFixture(t, 1)
 	template, assignment := circuitFor(fx, fx.proof)
@@ -212,10 +210,24 @@ func TestPCSVerifyGnarkPairLeaves(t *testing.T) {
 	template, assignment = circuitFor(fx, tampered)
 	require.Error(t, solvePCSCircuit(t, template, assignment), "a tampered bottom row must not satisfy the circuit")
 
-	rowLeaves := *fx.pcs
-	rowLeaves.PairLeaves = false
-	fx.pcs = &rowLeaves
-	template, _ = circuitFor(fx, fx.proof)
-	_, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, template)
-	require.ErrorContains(t, err, "the largest size must hold a single group")
+	fx.input.Shapes = []Shape{ungrouped(fx.input.Shapes[0])}
+	template, assignment = circuitFor(fx, fx.proof)
+	require.Error(t, buildAndSolvePCSCircuit(template, assignment), "an ungrouped shape must reject a pair-leaf proof")
+}
+
+// buildAndSolvePCSCircuit is solvePCSCircuit for circuits that may already be
+// rejected while they are built: it returns the build error, or else the
+// solver's.
+func buildAndSolvePCSCircuit(template, assignment *pcsVerifyCircuit) error {
+	modulus := ecc.BN254.ScalarField()
+	ccs, err := frontend.Compile(modulus, scs.NewBuilder, template)
+	if err != nil {
+		return err
+	}
+	w, err := frontend.NewWitness(assignment, modulus)
+	if err != nil {
+		return err
+	}
+	_, err = ccs.Solve(w)
+	return err
 }
