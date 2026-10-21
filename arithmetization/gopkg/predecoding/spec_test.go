@@ -46,13 +46,13 @@ type specEntry struct {
 var spec = map[string]specEntry{
 	"LB": {"READ8_SGN_WB", cLOAD, true}, "LH": {"READ16_SGN_WB", cLOAD, true}, "LW": {"READ32_SGN_WB", cLOAD, true},
 	"LD": {"READ64_WB", cLOAD, true}, "LBU": {"READ8_ZEXT_WB", cLOAD, true}, "LHU": {"READ16_ZEXT_WB", cLOAD, true},
-	"LWU": {"READ32_ZEXT_WB", cLOAD, true},
+	"LWU":  {"READ32_ZEXT_WB", cLOAD, true},
 	"ADDI": {"OP_ADDI_WB", cI, true}, "SLTI": {"OP_SLTI_WB", cI, true}, "SLTIU": {"OP_SLTIU_WB", cI, true},
 	"XORI": {"OP_XORI_WB", cI, true}, "ORI": {"OP_ORI_WB", cI, true}, "ANDI": {"OP_ANDI_WB", cI, true},
 	"SLLI": {"OP_SLLI_WB", cSH, true}, "SRLI": {"OP_SRLI_WB", cSH, true}, "SRAI": {"OP_SRAI_WB", cSH, true},
 	"ADDIW": {"OP_ADDIW_WB", cI, true}, "SLLIW": {"OP_SLLIW_WB", cSH, true}, "SRLIW": {"OP_SRLIW_WB", cSH, true},
 	"SRAIW": {"OP_SRAIW_WB", cSH, true},
-	"JALR": {"ITYPE_JALR", cJALR, false}, "ECALL": {"ITYPE_ECALL", cSYS, false}, "EBREAK": {"ITYPE_EBREAK", cSYS, false},
+	"JALR":  {"ITYPE_JALR", cJALR, false}, "ECALL": {"ITYPE_ECALL", cSYS, false}, "EBREAK": {"ITYPE_EBREAK", cSYS, false},
 	"ADD": {"RTYPE_ADD_WB", cR, true}, "SUB": {"RTYPE_SUB_WB", cR, true}, "SLL": {"RTYPE_SLL_WB", cR, true},
 	"SLT": {"RTYPE_SLT_WB", cR, true}, "SLTU": {"RTYPE_SLTU_WB", cR, true}, "XOR": {"RTYPE_XOR_WB", cR, true},
 	"SRL": {"RTYPE_SRL_WB", cR, true}, "SRA": {"RTYPE_SRA_WB", cR, true}, "OR": {"RTYPE_OR_WB", cR, true},
@@ -63,8 +63,8 @@ var spec = map[string]specEntry{
 	"SRLW": {"RTYPE_SRLW_WB", cR, true}, "SRAW": {"RTYPE_SRAW_WB", cR, true}, "MULW": {"RTYPE_MULW_WB", cR, true},
 	"DIVW": {"RTYPE_DIVW_WB", cR, true}, "DIVUW": {"RTYPE_DIVUW_WB", cR, true}, "REMW": {"RTYPE_REMW_WB", cR, true},
 	"REMUW": {"RTYPE_REMUW_WB", cR, true},
-	"SB": {"STYPE_STORE8", cSTORE, false}, "SH": {"STYPE_STORE16", cSTORE, false}, "SW": {"STYPE_STORE32", cSTORE, false},
-	"SD": {"STYPE_STORE64", cSTORE, false},
+	"SB":    {"STYPE_STORE8", cSTORE, false}, "SH": {"STYPE_STORE16", cSTORE, false}, "SW": {"STYPE_STORE32", cSTORE, false},
+	"SD":  {"STYPE_STORE64", cSTORE, false},
 	"BEQ": {"BRANCH_BEQ", cBR, false}, "BNE": {"BRANCH_BNE", cBR, false}, "BLT": {"BRANCH_BLT", cBR, false},
 	"BGE": {"BRANCH_BGE", cBR, false}, "BLTU": {"BRANCH_BLTU", cBR, false}, "BGEU": {"BRANCH_BGEU", cBR, false},
 	"JAL": {"JTYPE_JAL", cJAL, false},
@@ -204,71 +204,71 @@ func TestRecordsAgainstSpec(t *testing.T) {
 		samples    map[string]string // first offending word per category, for reproduction
 	}
 	results := forEachWord(func(lo, hi uint64) res {
-			r := res{cats: map[string]uint64{}, samples: map[string]string{}}
-			var b [4]byte
-			var bw bitWriter
-			// note counts a mismatch under category k and keeps the first sample s.
-			note := func(k, s string) {
-				r.cats[k]++
-				if _, ok := r.samples[k]; !ok {
-					r.samples[k] = s
-				}
+		r := res{cats: map[string]uint64{}, samples: map[string]string{}}
+		var b [4]byte
+		var bw bitWriter
+		// note counts a mismatch under category k and keeps the first sample s.
+		note := func(k, s string) {
+			r.cats[k]++
+			if _, ok := r.samples[k]; !ok {
+				r.samples[k] = s
 			}
-			for i := lo; i < hi; i++ {
-				x := uint32(i)
-				// 16-bit compressed encodings are out of scope here (see TestDiffRefRVOP).
-				if x&3 != 3 {
-					continue
-				}
-				// Lineth's output: decodeInstruction serializes the record into a bit
-				// buffer (reused across words); readRecord unpacks it.
-				bw = bitWriter{buf: bw.buf[:0]}
-				decodeInstruction(&bw, x)
-				got := readRecord(bw.buf)
-				// Lineth-specific custom-1 opcode: the reference decoder can't help,
-				// so compare against the hand-written expectedCustom1 spec.
-				if x&0x7f == opcodeCUSTOM1 {
-					r.custom++
-					want := expectedCustom1(x, c)
-					// want.op == 255 is the invalid marker, which carries no operand check.
-					if got.op != want.op {
-						note("custom1-op", fmt.Sprintf("%#08x got=%d want=%d", x, got.op, want.op))
-					} else if want.op != 255 && (got.imm != 0 || got.rs1 != want.rs1 || got.rs2 != want.rs2 || got.rd != want.rd) {
-						note("custom1-operands", fmt.Sprintf("%#08x got=%+v want=%+v", x, got, want))
-					}
-					continue
-				}
-				// Standard opcodes: decode with the reference. Words it rejects, and
-				// mnemonics outside the spec table (not RV64IM), are skipped; their
-				// accept/reject verdict is covered by TestDiffRefRVOP.
-				binary.LittleEndian.PutUint32(b[:], x)
-				inst, err := riscv64asm.Decode(b[:])
-				if err != nil {
-					continue
-				}
-				// Expected record built from the reference's decoded operands.
-				want, ok := expected(inst, x, c)
-				if !ok {
-					continue
-				}
-				r.checked++
-				// 1) compute_op must match (covers wrong mapping and wrong x0 folding).
+		}
+		for i := lo; i < hi; i++ {
+			x := uint32(i)
+			// 16-bit compressed encodings are out of scope here (see TestDiffRefRVOP).
+			if x&3 != 3 {
+				continue
+			}
+			// Lineth's output: decodeInstruction serializes the record into a bit
+			// buffer (reused across words); readRecord unpacks it.
+			bw = bitWriter{buf: bw.buf[:0]}
+			decodeInstruction(&bw, x)
+			got := readRecord(bw.buf)
+			// Lineth-specific custom-1 opcode: the reference decoder can't help,
+			// so compare against the hand-written expectedCustom1 spec.
+			if x&0x7f == opcodeCUSTOM1 {
+				r.custom++
+				want := expectedCustom1(x, c)
+				// want.op == 255 is the invalid marker, which carries no operand check.
 				if got.op != want.op {
-					r.opMis++
-					note("op:"+inst.Op.String(), fmt.Sprintf("%#08x %v got=%d want=%d", x, inst, got.op, want.op))
-					continue
+					note("custom1-op", fmt.Sprintf("%#08x got=%d want=%d", x, got.op, want.op))
+				} else if want.op != 255 && (got.imm != 0 || got.rs1 != want.rs1 || got.rs2 != want.rs2 || got.rd != want.rd) {
+					note("custom1-operands", fmt.Sprintf("%#08x got=%+v want=%+v", x, got, want))
 				}
-				// NO_OP (0) carries no meaningful operands, so don't compare them.
-				if want.op == 0 {
-					continue
-				}
-				// 2) The whole record (imm, rs1, rs2, rd) must match.
-				if got != want {
-					r.operandMis++
-					note("operands:"+inst.Op.String(), fmt.Sprintf("%#08x %v got=%+v want=%+v", x, inst, got, want))
-				}
+				continue
 			}
-			return r
+			// Standard opcodes: decode with the reference. Words it rejects, and
+			// mnemonics outside the spec table (not RV64IM), are skipped; their
+			// accept/reject verdict is covered by TestDiffRefRVOP.
+			binary.LittleEndian.PutUint32(b[:], x)
+			inst, err := riscv64asm.Decode(b[:])
+			if err != nil {
+				continue
+			}
+			// Expected record built from the reference's decoded operands.
+			want, ok := expected(inst, x, c)
+			if !ok {
+				continue
+			}
+			r.checked++
+			// 1) compute_op must match (covers wrong mapping and wrong x0 folding).
+			if got.op != want.op {
+				r.opMis++
+				note("op:"+inst.Op.String(), fmt.Sprintf("%#08x %v got=%d want=%d", x, inst, got.op, want.op))
+				continue
+			}
+			// NO_OP (0) carries no meaningful operands, so don't compare them.
+			if want.op == 0 {
+				continue
+			}
+			// 2) The whole record (imm, rs1, rs2, rd) must match.
+			if got != want {
+				r.operandMis++
+				note("operands:"+inst.Op.String(), fmt.Sprintf("%#08x %v got=%+v want=%+v", x, inst, got, want))
+			}
+		}
+		return r
 	})
 
 	// Merge per-worker results.
