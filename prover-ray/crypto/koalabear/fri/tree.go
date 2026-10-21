@@ -81,18 +81,28 @@ type MerkleCap struct {
 	Aux   []*field.Octuplet
 }
 
-// merkleCapDepth returns the depth of the frontier shared by all query
-// branches. The cap holds the 2^depth frontier nodes; every branch meets that
-// frontier in exactly one node, so each branch is opened only below the
-// frontier and drops its top `depth` siblings. Descending one more level
-// doubles the cap and saves one sibling on each of the numQueries branches, so
-// the cost balances at 2^depth = numQueries. The height-1 bound keeps at least
-// one branch step per query, so value extraction stays uniform.
-func merkleCapDepth(numQueries uint, height int) int {
-	if numQueries <= 1 || height <= 1 {
+// OptimalMerkleCapHeight returns the cap height that minimises the proof's
+// digest count for numQueries queries. The cap holds the 2^height frontier
+// nodes; every branch meets that frontier in exactly one node, so each branch
+// is opened only below the frontier and drops its top `height` siblings.
+// Descending one more level doubles the cap and saves one sibling on each of
+// the numQueries branches, so the cost balances at 2^height = numQueries.
+func OptimalMerkleCapHeight(numQueries uint) uint8 {
+	if numQueries <= 1 {
 		return 0
 	}
-	return min(bits.Len(numQueries-1), height-1)
+	return uint8(bits.Len(numQueries - 1))
+}
+
+// merkleCapDepth returns the depth of the frontier shared by all query
+// branches of a tree of the given height: [Params.MerkleCapHeight], clamped to
+// height-1 so that every query keeps at least one branch step and value
+// extraction stays uniform.
+func (p Params) merkleCapDepth(height int) int {
+	if height <= 1 {
+		return 0
+	}
+	return min(int(p.MerkleCapHeight), height-1)
 }
 
 // NewTree builds a new Tree from the given leaves. The leaves must be  provided
