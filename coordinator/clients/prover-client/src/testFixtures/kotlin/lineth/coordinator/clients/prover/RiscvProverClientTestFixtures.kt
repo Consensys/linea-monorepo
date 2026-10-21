@@ -227,18 +227,40 @@ object RiscvProverClientTestFixtures {
     publicInputs = rollupProofPublicInputsDto(endBlockNumber),
   )
 
+  fun finalizationPublicInputsDto(
+    endBlockNumber: Long,
+  ): FinalizationPublicInputsDto = FinalizationPublicInputsDto(
+    endBlockNumber = endBlockNumber,
+    endBlockTimestamp = 1763002301,
+    parentL1L2BridgeRollingHash = "0x11",
+    parentL1L2BridgeRollingHashMessageNumber = 12,
+    endL1L2BridgeRollingHash = "0x13",
+    endL1L2BridgeRollingHashMessageNumber = 14,
+    dynamicChainConfigHash = "0xc0ffee",
+    parentFtxRollingHash = "0x15",
+    parentFtxNumber = 16,
+    endFtxRollingHash = "0x16",
+    endProcessedFtxNumber = 17,
+    parentDataRollingHash = "0x19",
+    endDataRollingHash = "0x1a",
+    parentBlockHash = "0x1b",
+    endBlockHash = "0x1c",
+    parentDataTailTakeBytes = 0,
+    finalDataTailDiscardBytes = 1000,
+    l2L1Roots = listOf("0xaa"),
+    l2L1TreeDepth = 5,
+    filteredAddresses = listOf("0xbb"),
+    programIds = listOf(L2_EXECUTION_PROGRAM_ID, ROLLUP_PROGRAM_ID),
+    l2MessagingBlocksOffsets = listOf(1, 20, 100),
+  )
+
   fun rollupAggregationProofResponseDto(
     startBlockNumber: Long,
     endBlockNumber: Long,
   ): RollupAggregationProofResponseDto = RollupAggregationProofResponseDto(
     proverVersion = PROVER_VERSION,
-    startBlockNumber = startBlockNumber,
     proof = "0xabcd",
-    publicInputs = rollupProofPublicInputsDto(
-      endBlockNumber,
-    ).copy(endBlockNumber = 1000567, endBlockTimestamp = 1763002301),
-    l2L1Roots = listOf("0xaa"),
-    filteredAddresses = listOf("0xbb"),
-    l2MessagingBlocksOffsets = listOf(1, 20, 100),
+    startBlockNumber = startBlockNumber,
+    publicInputs = finalizationPublicInputsDto(endBlockNumber),
   )
 }
