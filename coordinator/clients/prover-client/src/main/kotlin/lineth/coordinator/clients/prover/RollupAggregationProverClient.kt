@@ -20,8 +20,8 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
  * When rollupProofProvider is null, it will provide only rollup indexes and prover gateway will fill in the proof
  */
 class RollupAggregationProofRequestDtoMapper(
-  private val programId: String,
-  private val provingSystemVersion: String,
+  private val guestProgramId: String,
+  private val provingSystem: String,
   private val rollupProofProvider: ProofProvider<RollupProofResponseDto>?,
 ) : (RollupAggregationProofRequestV1) -> SafeFuture<FileBasedRollupAggregationProofRequestDto> {
 
@@ -46,8 +46,8 @@ class RollupAggregationProofRequestDtoMapper(
       .collectAll(rollupProofFutures.stream())
       .thenApply { rollupResponseDtos ->
         FileBasedRollupAggregationProofRequestDto(
-          programId = programId,
-          provingSystemVersion = provingSystemVersion,
+          guestProgramId = guestProgramId,
+          provingSystem = provingSystem,
           proofRequest = FileBasedRollupAggregationProofRequestParamsDto(
             rollupProofs = rollupResponseDtos.ifEmpty { null },
             rollupProofsIndexes = rollupProofsIndexes,
@@ -102,12 +102,12 @@ typealias RollupAggregationProofTransport =
 class RollupAggregationProverClient(
   transport: RollupAggregationProofTransport,
   rollupProofProvider: ProofProvider<RollupProofResponseDto>?,
-  programId: String,
-  provingSystemVersion: String,
+  guestProgramId: String,
+  provingSystem: String,
   proofRequestDtoMapper: (RollupAggregationProofRequestV1)
   -> SafeFuture<FileBasedRollupAggregationProofRequestDto> = RollupAggregationProofRequestDtoMapper(
-    programId,
-    provingSystemVersion,
+    guestProgramId,
+    provingSystem,
     rollupProofProvider,
   ),
   proofResponseDtoMapper: (RollupAggregationProofResponseDto)

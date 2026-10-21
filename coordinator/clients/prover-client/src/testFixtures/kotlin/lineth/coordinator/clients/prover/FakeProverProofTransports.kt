@@ -13,11 +13,10 @@ class FakeL2ExecutionProofTransport(
   private val responseProvider: ((BlockIntervalProofIndex) -> L2ExecutionProofResponseDto?)? = null,
 ) : L2ExecutionProofTransport {
   private val l2ExecutionProofResponseDto = L2ExecutionProofResponseDto(
+    proverVersion = RiscvProverClientTestFixtures.PROVER_VERSION,
     startBlockNumber = 1L,
     proof = byteArrayOf(0x02).encodeHex(),
     publicInputs = RiscvProverClientTestFixtures.l2ExecutionProofPublicInputsDto(2L),
-    l2L1Messages = listOf(ByteArray(32) { 0x4a }.encodeHex()),
-    txFroms = listOf(ByteArray(20) { 0x4b }.encodeHex()),
     filteredAddresses = listOf(ByteArray(20) { 0x4c }.encodeHex()),
     programVk = ByteArray(32) { 0xaa.toByte() }.encodeHex(),
   )

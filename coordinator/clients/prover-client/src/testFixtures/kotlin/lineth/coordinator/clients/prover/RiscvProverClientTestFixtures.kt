@@ -153,7 +153,7 @@ object RiscvProverClientTestFixtures {
       endBlockHash = "0x0b",
       endBlockNumber = endBlockNumber,
       endBlockTimestamp = 1763000123,
-      l2L1MessagesHash = "0x01",
+      l2L1Messages = listOf("0xaa"),
       parentL1L2BridgeRollingHash = "0x02",
       parentL1L2BridgeRollingHashMessageNumber = 3,
       endL1L2BridgeRollingHash = "0x04",
@@ -165,17 +165,18 @@ object RiscvProverClientTestFixtures {
       endProcessedFtxNumber = 8,
       filteredAddressesHash = "0x09",
       txFromsHash = "0x0c",
+      blockCount = 1,
+      l2MessagingBlocksOffsets = emptyList(),
     )
 
   fun l2ExecutionProofResponseDto(
     startBlockNumber: Long,
     endBlockNumber: Long,
   ): L2ExecutionProofResponseDto = L2ExecutionProofResponseDto(
+    proverVersion = PROVER_VERSION,
     startBlockNumber = startBlockNumber,
     proof = "0xabcd",
     publicInputs = l2ExecutionProofPublicInputsDto(endBlockNumber),
-    l2L1Messages = listOf("0xaa"),
-    txFroms = listOf("0xbb"),
     filteredAddresses = emptyList(),
     programVk = L2_EXECUTION_PROGRAM_ID,
   )
