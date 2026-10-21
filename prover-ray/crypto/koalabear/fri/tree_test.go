@@ -181,23 +181,42 @@ func TestMerkleCapAuthenticatesDepthZero(t *testing.T) {
 	}
 }
 
-func TestMerkleCapDepth(t *testing.T) {
+func TestOptimalMerkleCapHeight(t *testing.T) {
 	tests := []struct {
 		queries uint
-		height  int
-		want    int
+		want    uint8
 	}{
-		{queries: 1, height: 8, want: 0},
-		{queries: 2, height: 1, want: 0},
-		{queries: 2, height: 8, want: 1},
-		{queries: 3, height: 8, want: 2},
-		{queries: 4, height: 8, want: 2},
-		{queries: 229, height: 12, want: 8},
-		{queries: 229, height: 4, want: 3},
+		{queries: 1, want: 0},
+		{queries: 2, want: 1},
+		{queries: 3, want: 2},
+		{queries: 4, want: 2},
+		{queries: 5, want: 3},
+		{queries: 229, want: 8},
 	}
 	for _, test := range tests {
-		if got := merkleCapDepth(test.queries, test.height); got != test.want {
-			t.Errorf("queries=%d height=%d: got %d, want %d", test.queries, test.height, got, test.want)
+		if got := OptimalMerkleCapHeight(test.queries); got != test.want {
+			t.Errorf("queries=%d: got %d, want %d", test.queries, got, test.want)
+		}
+	}
+}
+
+func TestMerkleCapDepthClampsToHeight(t *testing.T) {
+	tests := []struct {
+		capHeight uint8
+		height    int
+		want      int
+	}{
+		{capHeight: 0, height: 8, want: 0},
+		{capHeight: 3, height: 1, want: 0},
+		{capHeight: 3, height: 8, want: 3},
+		{capHeight: 7, height: 8, want: 7},
+		{capHeight: 8, height: 8, want: 7},
+		{capHeight: 255, height: 4, want: 3},
+	}
+	for _, test := range tests {
+		p := Params{MerkleCapHeight: test.capHeight}
+		if got := p.merkleCapDepth(test.height); got != test.want {
+			t.Errorf("capHeight=%d height=%d: got %d, want %d", test.capHeight, test.height, got, test.want)
 		}
 	}
 }

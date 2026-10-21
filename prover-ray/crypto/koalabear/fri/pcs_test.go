@@ -168,6 +168,7 @@ func TestInputCapsAuthenticateRevealedTablesAndQueryBoundary(t *testing.T) {
 	prng := rand.New(utils.NewRandSource(20260819))
 	params, err := NewParams(4, 3, 4)
 	require.NoError(t, err)
+	params.MerkleCapHeight = 2
 	pcs, err := NewPCS(params, makeEncoders(4, 2))
 	require.NoError(t, err)
 	witness := MultiSizeTable{
