@@ -20,9 +20,11 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
+	golang.org/x/arch v0.28.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/term v0.28.0 // indirect
 )
 
 tool github.com/LFDT-Lineth/zkc/cmd/zkc
+
 tool github.com/LFDT-Lineth/lineth-monorepo/arithmetization/cmd/elf_to_json
