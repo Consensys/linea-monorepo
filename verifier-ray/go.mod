@@ -3,7 +3,7 @@ module github.com/consensys/linea-monorepo/verifier-ray
 go 1.27.1
 
 require (
-	github.com/LFDT-Lineth/lineth-monorepo/arithmetization v0.0.0-20261016152302-9e71674301a8
+	github.com/LFDT-Lineth/lineth-monorepo/arithmetization v0.0.0-20261021134731-3829cba91ebc
 	github.com/LFDT-Lineth/lineth-monorepo/prover-ray v0.0.0-20261020132549-9ff51bc01040
 	github.com/stretchr/testify v1.12.1
 )
