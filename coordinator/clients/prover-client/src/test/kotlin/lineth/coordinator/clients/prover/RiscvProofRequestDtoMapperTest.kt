@@ -23,7 +23,7 @@ import kotlin.time.Instant
 /**
  * Verifies that the RISC-V proof-request mappers encode every field of a domain request into its request DTO
  * (domain `ByteArray` -> DTO `String` (hex), domain `ULong` -> DTO `Long`) and assemble the request envelope
- * (`programVk`, `metadata` block range, params) correctly. Covers the transport-free mappers; the file-based
+ * (`guestProgramId`, `provingSystem`, `metadata` block range, params) correctly. Covers the transport-free mappers; the file-based
  * mappers (which resolve inlined proofs through a transport) are exercised by the file-based client tests.
  */
 class RiscvProofRequestDtoMapperTest {
@@ -57,8 +57,8 @@ class RiscvProofRequestDtoMapperTest {
 
     assertThat(dto).isEqualTo(
       L2ExecutionProofRequestDto(
-        programId = RiscvProverClientTestFixtures.L2_EXECUTION_PROGRAM_ID,
-        provingSystemVersion = RiscvProverClientTestFixtures.PROVING_SYSTEM_VERSION,
+        guestProgramId = RiscvProverClientTestFixtures.L2_EXECUTION_PROGRAM_ID,
+        provingSystem = RiscvProverClientTestFixtures.PROVING_SYSTEM_VERSION,
         proofRequest = L2ExecutionProofRequestParamsDto(
           parentFtxRollingHash = request.parentFtxRollingHash.encodeHex(),
           parentFtxNumber = request.parentFtxNumber.toLong(),
@@ -152,8 +152,8 @@ class RiscvProofRequestDtoMapperTest {
 
     assertThat(dto).isEqualTo(
       FileBasedRollupProofRequestDto(
-        programId = RiscvProverClientTestFixtures.ROLLUP_PROGRAM_ID,
-        provingSystemVersion = RiscvProverClientTestFixtures.PROVING_SYSTEM_VERSION,
+        guestProgramId = RiscvProverClientTestFixtures.ROLLUP_PROGRAM_ID,
+        provingSystem = RiscvProverClientTestFixtures.PROVING_SYSTEM_VERSION,
         proofRequest = RollupProofRequestParamsDto(
           chainId = chainId,
           conflations = listOf(
@@ -167,8 +167,6 @@ class RiscvProofRequestDtoMapperTest {
               proof = resolved.proof,
               startBlockNumber = resolved.startBlockNumber,
               publicInputs = resolved.publicInputs,
-              l2L1Messages = resolved.l2L1Messages,
-              txFroms = resolved.txFroms,
               filteredAddresses = resolved.filteredAddresses,
               programVk = resolved.programVk,
             )
@@ -227,8 +225,8 @@ class RiscvProofRequestDtoMapperTest {
 
     assertThat(dto).isEqualTo(
       FileBasedRollupAggregationProofRequestDto(
-        programId = RiscvProverClientTestFixtures.ROLLUP_AGGREGATION_PROGRAM_ID,
-        provingSystemVersion = RiscvProverClientTestFixtures.PROVING_SYSTEM_VERSION,
+        guestProgramId = RiscvProverClientTestFixtures.ROLLUP_AGGREGATION_PROGRAM_ID,
+        provingSystem = RiscvProverClientTestFixtures.PROVING_SYSTEM_VERSION,
         proofRequest = FileBasedRollupAggregationProofRequestParamsDto(
           rollupProofs = rollupProofs.map { proofIndex ->
             val resolved = rollupProofTransport.findResponse(proofIndex).get()!!
