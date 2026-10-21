@@ -671,16 +671,28 @@ func splitRowOpening(row RowOpening, groups []GroupShape) []RowOpening {
 
 // hashAuxPairGroups digests a level's conjugate pair one group at a time, in
 // group order: these are the digests injected into that level's node. A nil
-// groups is the single group of every row.
-func hashAuxPairGroups(pair RowPair, groups []GroupShape, selfIsEven bool) []field.Octuplet {
+// groups is the single group of every row. Both rows must have the groups'
+// widths; the pair comes from the proof, so a mismatch is an error.
+func hashAuxPairGroups(pair RowPair, groups []GroupShape, selfIsEven bool) ([]field.Octuplet, error) {
 	groups = sizeGroups(len(pair[0].Base), len(pair[0].Ext), groups)
+	var baseWidth, extWidth int
+	for _, g := range groups {
+		baseWidth += g.BaseWidth
+		extWidth += g.ExtWidth
+	}
+	for i, row := range pair {
+		if len(row.Base) != baseWidth || len(row.Ext) != extWidth {
+			return nil, fmt.Errorf("row %d of the pair has widths (%d, %d), want (%d, %d)",
+				i, len(row.Base), len(row.Ext), baseWidth, extWidth)
+		}
+	}
 	self := splitRowOpening(pair[0], groups)
 	sibling := splitRowOpening(pair[1], groups)
 	res := make([]field.Octuplet, len(groups))
 	for i := range groups {
 		res[i] = hashAuxPair(RowPair{self[i], sibling[i]}, selfIsEven)
 	}
-	return res
+	return res, nil
 }
 
 // RowOpening is one MultiSizeTable.Merkleize row preimage.
@@ -1330,14 +1342,20 @@ func (branch InputTreeOpening) AuthenticateToCap(idx int, frontier []field.Octup
 	bottom := branch.Leaves[height-1]
 	ancestor := hashRowOpening(bottom[0])
 	sibling := hashRowOpening(bottom[1])
-	ancestor, currPos := foldOneLevel(ancestor, sibling, nil, nil, idx)
+	ancestor, currPos, err := foldOneLevel(ancestor, sibling, nil, nil, idx)
+	if err != nil {
+		return err
+	}
 	for level := height - 2; level >= depth; level-- {
 		siblingIdx := level - depth
 		var groups []GroupShape
 		if level < len(levelGroups) {
 			groups = levelGroups[level]
 		}
-		ancestor, currPos = foldOneLevel(ancestor, branch.Siblings[siblingIdx], branch.Leaves[level], groups, currPos)
+		ancestor, currPos, err = foldOneLevel(ancestor, branch.Siblings[siblingIdx], branch.Leaves[level], groups, currPos)
+		if err != nil {
+			return fmt.Errorf("level %d: %w", level, err)
+		}
 	}
 	if ancestor != frontier[currPos] {
 		return fmt.Errorf("invalid Merkle proof")
@@ -1347,16 +1365,22 @@ func (branch InputTreeOpening) AuthenticateToCap(idx int, frontier []field.Octup
 
 // foldOneLevel hashes the ancestor with its sibling, then injects the digest
 // of each group of the level's conjugate pair, if any.
-func foldOneLevel(ancestor, sibling field.Octuplet, aux *RowPair, groups []GroupShape, currPos int) (field.Octuplet, int) {
+func foldOneLevel(
+	ancestor, sibling field.Octuplet, aux *RowPair, groups []GroupShape, currPos int,
+) (field.Octuplet, int, error) {
 	selfIsEven := currPos&1 == 0
 	left, right := ancestor, sibling
 	if !selfIsEven {
 		left, right = right, left
 	}
 	if aux == nil {
-		return hashNode(left, right), currPos >> 1
+		return hashNode(left, right), currPos >> 1, nil
 	}
-	return hashNode(left, right, hashAuxPairGroups(*aux, groups, selfIsEven)...), currPos >> 1
+	injected, err := hashAuxPairGroups(*aux, groups, selfIsEven)
+	if err != nil {
+		return field.Octuplet{}, 0, err
+	}
+	return hashNode(left, right, injected...), currPos >> 1, nil
 }
 
 // levelIndex resolves levelSize to its index into branch.Leaves. The bottom
@@ -1925,7 +1949,11 @@ func authenticateInputCap(
 		groups := shapeAtSize.groups()
 		for pairIdx := range len(table.Rows) / 2 {
 			pair := RowPair{table.Rows[2*pairIdx], table.Rows[2*pairIdx+1]}
-			injections[levelStart+pairIdx] = hashAuxPairGroups(pair, groups, true)
+			injected, err := hashAuxPairGroups(pair, groups, true)
+			if err != nil {
+				return nil, fmt.Errorf("revealed table %d pair %d: %w", i, pairIdx, err)
+			}
+			injections[levelStart+pairIdx] = injected
 		}
 	}
 	if capRoot(treeCap.Nodes, injections) != root {

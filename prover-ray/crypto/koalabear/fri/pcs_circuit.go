@@ -1009,11 +1009,23 @@ func splitRowOpeningGnark(row GnarkRowOpening, groups []GroupShape) []GnarkRowOp
 	return res
 }
 
-// hashAuxPairGroupsGnark mirrors [hashAuxPairGroups].
+// hashAuxPairGroupsGnark mirrors [hashAuxPairGroups]. Row widths are
+// structural in the circuit, so a mismatch panics while the circuit is built.
 func hashAuxPairGroupsGnark(
 	api *circuit.KoalaBearAPI, pair GnarkRowPair, groups []GroupShape, isOdd frontend.Variable,
 ) []circuit.Octuplet {
 	groups = sizeGroups(len(pair[0].Base), len(pair[0].Ext), groups)
+	var baseWidth, extWidth int
+	for _, g := range groups {
+		baseWidth += g.BaseWidth
+		extWidth += g.ExtWidth
+	}
+	for i, row := range pair {
+		if len(row.Base) != baseWidth || len(row.Ext) != extWidth {
+			panic(fmt.Sprintf("fri: pcs.VerifyGnark: row %d of the pair has widths (%d, %d), want (%d, %d)",
+				i, len(row.Base), len(row.Ext), baseWidth, extWidth))
+		}
+	}
 	self := splitRowOpeningGnark(pair[0], groups)
 	sibling := splitRowOpeningGnark(pair[1], groups)
 	res := make([]circuit.Octuplet, len(groups))

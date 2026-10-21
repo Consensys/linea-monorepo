@@ -217,3 +217,34 @@ func TestGroupsAreValidated(t *testing.T) {
 		require.Error(t, err, name)
 	}
 }
+
+// TestPCSVerifyRejectsMalformedRowPair checks that an opened pair whose rows do
+// not have the widths of their groups is rejected with an error, not a panic,
+// on the query path, which authenticates the pair before checking its shape.
+func TestPCSVerifyRejectsMalformedRowPair(t *testing.T) {
+	fx := newGroupedPCSFixture(t, 1)
+	level := 2 // the query-path size, split into two groups
+
+	malformed := map[string]func(*RowPair){
+		"short self row":    func(p *RowPair) { p[0].Base = p[0].Base[:1] },
+		"short sibling row": func(p *RowPair) { p[1].Ext = nil },
+		"long sibling row":  func(p *RowPair) { p[1].Base = append(p[1].Base, p[1].Base[0]) },
+	}
+	for name, corrupt := range malformed {
+		proof := fx.proof
+		proof.InputQueries = append([]InputQuery(nil), fx.proof.InputQueries...)
+		proof.InputQueries[0] = append(InputQuery(nil), fx.proof.InputQueries[0]...)
+		opening := proof.InputQueries[0][0]
+		opening.Leaves = append([]*RowPair(nil), opening.Leaves...)
+		pair := *opening.Leaves[level]
+		pair[0].Base = append([]field.Element(nil), pair[0].Base...)
+		pair[1].Base = append([]field.Element(nil), pair[1].Base...)
+		corrupt(&pair)
+		opening.Leaves[level] = &pair
+		proof.InputQueries[0][0] = opening
+
+		require.NotPanics(t, func() {
+			require.Error(t, fx.pcs.Verify(fx.input, proof), name)
+		}, name)
+	}
+}
