@@ -1558,7 +1558,8 @@ func (pcs *PCS) Verify(in VerifyInputs, proof OpeningProof) error {
 		if inputShapes[treeIdx] == nil {
 			inputShapes[treeIdx] = in.Shapes[batchIdx]
 		} else if !sameGrouping(inputShapes[treeIdx], in.Shapes[batchIdx]) {
-			return fmt.Errorf("fri: pcs.Verify: batch %d shares input tree %d but groups its rows differently", batchIdx, treeIdx)
+			return fmt.Errorf("fri: pcs.Verify: batch %d shares input tree %d but groups its rows differently",
+				batchIdx, treeIdx)
 		}
 	}
 	inputFrontiers := make([][]field.Octuplet, len(inputRoots))
