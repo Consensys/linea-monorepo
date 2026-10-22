@@ -956,7 +956,7 @@ func committedLayout(
 	}
 	if moduleGroups {
 		slices.SortStableFunc(order, func(a, b int) int {
-			return cmp.Compare(round.Columns[a].Context.ID.Slot(), round.Columns[b].Context.ID.Slot())
+			return cmp.Compare(moduleIndex(round.Columns[a]), moduleIndex(round.Columns[b]))
 		})
 	}
 
@@ -970,7 +970,7 @@ func committedLayout(
 		}
 		sized := &shape[sizeIndex]
 		if moduleGroups {
-			module := col.Context.ID.Slot()
+			module := moduleIndex(col)
 			if last, ok := lastModule[sizeIndex]; !ok || last != module {
 				sized.Groups = append(sized.Groups, fri.GroupShape{})
 				lastModule[sizeIndex] = module
@@ -993,6 +993,10 @@ func committedLayout(
 	}
 	return order, shape
 }
+
+// moduleIndex returns the index in [wiop.System.Modules] of the module owning
+// col, which a column's ID encodes as its slot.
+func moduleIndex(col *wiop.Column) int { return col.Context.ID.Slot() }
 
 // GetLayout maps each of a round's Present columns to its [ColumnLocation] and
 // returns the round's [fri.Shape] (per-size base/extension widths and groups).
