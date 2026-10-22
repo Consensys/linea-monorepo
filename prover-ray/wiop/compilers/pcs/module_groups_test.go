@@ -149,3 +149,65 @@ func TestModuleGroupsConflictsWithConsumedCompile(t *testing.T) {
 	Compile(grouped.sys)
 	require.True(t, configOf(grouped.sys).moduleGroups, "a preconfigured selection must reach Compile")
 }
+
+// TestModuleGroupsRejectsSizeDependentOptions checks that module groups cannot
+// be combined with column elision or a Merkle cap, whether the options come in
+// one call or across a preconfigured selection, while an explicit cap height
+// of 0 (no cap) stays accepted.
+func TestModuleGroupsRejectsSizeDependentOptions(t *testing.T) {
+	const elisionConflict = "conflicts with WithColumnElision"
+	for _, tc := range []struct {
+		name string
+		pre  []Option
+		opts []Option
+		want string
+	}{
+		{
+			name: "elision",
+			opts: []Option{WithModuleGroups(), WithColumnElision()},
+			want: elisionConflict,
+		},
+		{
+			name: "preconfigured elision",
+			pre:  []Option{WithColumnElision()},
+			opts: []Option{WithModuleGroups()},
+			want: elisionConflict,
+		},
+		{
+			name: "preconfigured groups",
+			pre:  []Option{WithModuleGroups()},
+			opts: []Option{WithColumnElision()},
+			want: elisionConflict,
+		},
+		{
+			name: "optimal cap",
+			opts: []Option{WithModuleGroups(), WithOptimalMerkleCap()},
+			want: "Merkle cap optimal",
+		},
+		{
+			name: "cap height",
+			opts: []Option{WithModuleGroups(), WithMerkleCapHeight(3)},
+			want: "Merkle cap height 3",
+		},
+		{
+			name: "preconfigured cap",
+			pre:  []Option{WithMerkleCapHeight(3)},
+			opts: []Option{WithModuleGroups()},
+			want: "Merkle cap height 3",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := newModuleGroupsSystem(true)
+			if tc.pre != nil {
+				require.NoError(t, Configure(s.sys, tc.pre...))
+			}
+			require.ErrorContains(t, Configure(s.sys, tc.opts...), tc.want)
+			require.Panics(t, func() { Compile(s.sys, tc.opts...) }, "Compile must reject the combination")
+		})
+	}
+
+	s := newModuleGroupsSystem(true)
+	Compile(s.sys, WithModuleGroups(), WithMerkleCapHeight(0))
+	proof, pub := s.sys.Prove(s.assign(4, 8))
+	require.NoError(t, s.sys.Verify(proof, pub), "module groups without a cap must prove and verify")
+}
