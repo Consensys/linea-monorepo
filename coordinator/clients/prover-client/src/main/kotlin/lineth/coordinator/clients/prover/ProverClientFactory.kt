@@ -309,7 +309,7 @@ class DefaultProverClientFactory(
       ResponseDto,
       BlockIntervalProofIndex,
       >(
-      config = proverConfig.fileBased,
+      config = proverConfig.requireFileBased(),
       vertx = vertx,
       fileWriter = FileWriter(vertx, JsonSerialization.proofResponseMapperV1),
       fileReader = FileReader(
@@ -350,8 +350,8 @@ class DefaultProverClientFactory(
   private fun buildFileBasedL2ExecutionProverClient(proverConfig: FileBasedRiscvProverConfig): L2ExecutionProverClient {
     return L2ExecutionProverClient(
       transport = buildL2ExecutionProofTransport(proverConfig),
-      programId = proverConfig.programId,
-      provingSystemVersion = proverConfig.provingSystemVersion,
+      guestProgramId = proverConfig.programId,
+      provingSystem = proverConfig.provingSystemVersion,
       l2MessageServiceAddress = l2MessageServiceAddress,
       forkName = proverConfig.forkName,
     )
@@ -364,8 +364,8 @@ class DefaultProverClientFactory(
     return RollupProverClient(
       transport = buildRollupProofTransport(proverConfig),
       l2ExecutionProofProvider = buildL2ExecutionProofTransport(l2ExecutionProverConfig)::findResponse,
-      programId = proverConfig.programId,
-      provingSystemVersion = proverConfig.provingSystemVersion,
+      guestProgramId = proverConfig.programId,
+      provingSystem = proverConfig.provingSystemVersion,
       chainId = chainId.toLong(),
     )
   }
@@ -377,8 +377,8 @@ class DefaultProverClientFactory(
     return RollupAggregationProverClient(
       transport = buildRollupAggregationProofTransport(proverConfig),
       rollupProofProvider = buildRollupProofTransport<FileBasedRollupProofRequestDto>(rollupProverConfig)::findResponse,
-      programId = proverConfig.programId,
-      provingSystemVersion = proverConfig.provingSystemVersion,
+      guestProgramId = proverConfig.programId,
+      provingSystem = proverConfig.provingSystemVersion,
     )
   }
 }

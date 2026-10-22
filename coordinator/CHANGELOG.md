@@ -1,3 +1,29 @@
+## [unreleased]
+
+### 🚀 Features
+
+- *(coordinator)* RISC-V rollup proof coordinator — chunk assembly + proof submission (#3967)
+- *(coordinator)* Added BlobSubmitterV2 interface and implementation (#3673)
+
+### 🐛 Bug Fixes
+
+- *(coordinator)* Align RISC-V l2-execution DTOs and request envelope with rollup_spec (#4260)
+## [2.2.0] - 2026-10-12
+
+### 🚀 Features
+
+- *(coordinator)* Extension config sections and deprecated key aliases (#4162)
+- *(coordinator)* Inline pluggable signer types and per-proof-type prover transport (#4164)
+
+### 🚜 Refactor
+
+- *(coordinator)* Move prover transport from per-proof-type to RiscvProverConfig (#4172)
+- *(coordinator)* Remove TracingModuleV2 and TracingModuleV4 support (#4180)
+## [2.1.0] - 2026-10-09
+
+### 🚀 Features
+
+- *(coordinator)* Bundle smart-contract errors in jar and make --smart-contract-errors optional (#4161)
 ## [2.0.2] - 2026-10-07
 
 ### 🚜 Refactor
