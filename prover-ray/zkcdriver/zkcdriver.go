@@ -65,6 +65,9 @@ type ZkCDriver struct {
 	// Metadata embedded in the zkevm.bin file, as needed to check
 	// compatibility.  Guaranteed non-nil.
 	Metadata typed.Map `serde:"omit"`
+	// system is the System the driver defined its columns in, whose dynamic
+	// modules' minimum sizes the tracing pads to (see [PadToMinSizes]).
+	system *wiop.System
 }
 
 // NewZkCDriver is the function that declares all the columns and the constraints of
@@ -86,7 +89,30 @@ func NewZkCDriver(sys *wiop.System, settings Settings, bin io.Reader) *ZkCDriver
 		TracingConfig: vm.DEFAULT_TRACE_CONFIG,
 		Settings:      &settings,
 		Metadata:      metadata,
+		system:        sys,
 	}
+}
+
+// PadToMinSizes returns cfg with zkc padding every module to at least the
+// largest [wiop.Module.MinRuntimeSize] of sys's dynamic modules, on top of
+// cfg's own padding strategy. Proving rejects a dynamic module below its
+// minimum, and only zkc can grow a module with valid rows: it pads with rows
+// that satisfy the module's constraints, which constant padding need not.
+// zkc's padding strategy sees a module's height, not the module, so every
+// module gets the largest minimum. sys must be compiled, since the minimums
+// follow from the compiled openings; before compilation, cfg is returned.
+func PadToMinSizes(cfg vm.TraceConfig, sys *wiop.System) vm.TraceConfig {
+	minRows := uint(1)
+	for _, n := range sys.MinRuntimeSizes() {
+		minRows = max(minRows, uint(n))
+	}
+	if minRows == 1 {
+		return cfg
+	}
+	pad := cfg.PaddingStrategy()
+	return cfg.WithPadding(func(height, multiplier uint) uint {
+		return max(pad(height, multiplier), minRows*multiplier)
+	})
 }
 
 // PreReadInputs holds the result of pre-reading a trace file.
@@ -143,7 +169,7 @@ func (a *ZkCDriver) TraceZkcInputs(preRead *PreReadInputs) trace.LazyTrace[koala
 	// Attempt to trace the ZkC program using the provided inputs, generating a
 	// fully expanded AIR-compatible trace.
 	tracingStart := time.Now()
-	_, expandedTrace, errs := a.BinaryFile.Trace(inputs, a.TracingConfig)
+	_, expandedTrace, errs := a.BinaryFile.Trace(inputs, PadToMinSizes(a.TracingConfig, a.system))
 
 	if len(errs) > 0 {
 		logrus.Panicf("tracing failed: %v", errors.Join(errs...).Error())
