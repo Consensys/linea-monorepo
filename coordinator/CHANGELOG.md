@@ -8,6 +8,7 @@
 ### 🐛 Bug Fixes
 
 - *(coordinator)* Align RISC-V l2-execution DTOs and request envelope with rollup_spec (#4260)
+- *(coordinator)* Align RISC-V rollup DTOs with rollup_spec (#4262)
 ## [2.2.0] - 2026-10-12
 
 ### 🚀 Features
