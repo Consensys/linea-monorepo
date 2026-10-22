@@ -25,7 +25,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
-import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
@@ -63,7 +62,7 @@ class MultiValidatorNetwork {
     Cluster(
       ClusterConfigurationBuilder().build(),
       NetConditions(NetTransactions()),
-      ThreadBesuNodeRunner(),
+      BesuFactory.buildTestNodeRunner(),
     )
 
   val stacks: List<PeeringNodeNetworkStack> =
