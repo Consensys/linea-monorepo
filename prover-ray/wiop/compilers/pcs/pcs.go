@@ -27,10 +27,13 @@
 // time; the interactive rounds are witness-dependent, so their commitments are
 // computed at prove time and transported in the [wiop.Proof].
 //
-// The FRI query count and Reed-Solomon blowup are per-System options
-// ([WithFRINumQueries], [WithRSBlowup]). The blowup also bounds the largest
-// committable column: blowup times column size must fit the field's 2-adic
-// subgroup (see [FRIMaxCommittableSizeLog2]).
+// The FRI query count, Reed-Solomon blowup and Merkle cap height are
+// per-System options ([WithFRINumQueries], [WithRSBlowup],
+// [WithOptimalMerkleCap] / [WithMerkleCapHeight]). The blowup also bounds the
+// largest committable column: blowup times column size must fit the field's
+// 2-adic subgroup (see [FRIMaxCommittableSizeLog2]). The cap height is a
+// compile-time constant of the System, so recursive verifiers read it with
+// [MerkleCapHeight] and size the proof statically.
 //
 // Batches are enumerated canonically as: every interactive round that owns
 // columns, in round order, followed by the precomputed round if it owns columns.
@@ -39,7 +42,9 @@
 package pcs
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/crypto/koalabear/fri"
@@ -63,6 +68,11 @@ const maxRSBlowup = 1 << field.MaxOrderRoot
 // [defaultRSBlowup].
 const defaultFRINumQueries = 229
 
+// maxMerkleCapHeight bounds [WithMerkleCapHeight]: no committed tree is taller
+// than the field's 2-adic subgroup allows, and each tree clamps the cap height
+// to its own height-1, so larger values change nothing.
+const maxMerkleCapHeight = int(field.MaxOrderRoot)
+
 // configAnnotationKey is the [wiop.System.Annotations] key of the System's PCS
 // [config]. Only this package writes it.
 const configAnnotationKey = "compiler.pcs.config"
@@ -70,7 +80,51 @@ const configAnnotationKey = "compiler.pcs.config"
 type compileOptions struct {
 	friNumQueries  int
 	rsBlowup       int
+	merkleCap      merkleCapChoice
 	elisionEnabled bool
+	moduleGroups   bool
+}
+
+// merkleCapMode tells how a System chose its Merkle cap height. The zero value
+// is unset; [Compile] resolves it to an explicit height of 0 (no cap).
+type merkleCapMode uint8
+
+const (
+	merkleCapUnset merkleCapMode = iota
+	merkleCapExplicit
+	merkleCapOptimal
+)
+
+// merkleCapChoice is the Merkle cap selection; height is meaningful only for
+// merkleCapExplicit.
+type merkleCapChoice struct {
+	mode   merkleCapMode
+	height int
+}
+
+func (m merkleCapChoice) String() string {
+	switch m.mode {
+	case merkleCapExplicit:
+		return fmt.Sprintf("height %d", m.height)
+	case merkleCapOptimal:
+		return "optimal"
+	default:
+		return "unset"
+	}
+}
+
+// resolve returns the cap height for a System opening numQueries queries.
+func (m merkleCapChoice) resolve(numQueries int) uint8 {
+	if m.mode == merkleCapOptimal {
+		return fri.OptimalMerkleCapHeight(uint(numQueries))
+	}
+	return uint8(m.height)
+}
+
+// capped reports whether the selection may cap a tree: an optimal cap, or an
+// explicit height above 0.
+func (m merkleCapChoice) capped() bool {
+	return m.mode == merkleCapOptimal || (m.mode == merkleCapExplicit && m.height > 0)
 }
 
 // config is the PCS configuration recorded on a System. Zero option fields
@@ -153,6 +207,62 @@ func WithRSBlowup(blowup int) Option {
 	}
 }
 
+// WithOptimalMerkleCap caps every committed Merkle tree at the height that
+// minimises the proof's digest count for the System's query count
+// ([fri.OptimalMerkleCapHeight], 8 at the production 229 queries): each tree's
+// frontier is sent once and every query branch stops there. Without a cap
+// option the System uses no cap.
+//
+// Panics when a cap option was already given.
+func WithOptimalMerkleCap() Option {
+	return withMerkleCap(merkleCapChoice{mode: merkleCapOptimal})
+}
+
+// WithMerkleCapHeight caps every committed Merkle tree at the given height:
+// the proof carries each tree's 2^height frontier nodes once, and every query
+// branch stops at that frontier, shortening it by height siblings. Each tree
+// clamps the height to its own height-1. height must be in
+// [0, maxMerkleCapHeight]; 0 means no cap, which is also the default.
+//
+// Panics when a cap option was already given.
+func WithMerkleCapHeight(height int) Option {
+	if height < 0 || height > maxMerkleCapHeight {
+		utils.Panic("Merkle cap height %d must be in [0, %d]", height, maxMerkleCapHeight)
+	}
+	return withMerkleCap(merkleCapChoice{mode: merkleCapExplicit, height: height})
+}
+
+func withMerkleCap(choice merkleCapChoice) Option {
+	return func(o *compileOptions) {
+		if o.merkleCap.mode != merkleCapUnset {
+			utils.Panic("Merkle cap %v requested but already set to %v", choice, o.merkleCap)
+		}
+		o.merkleCap = choice
+	}
+}
+
+// WithModuleGroups commits every module as its own group (see
+// [fri.SizedTable.Groups]): within each size, a round's columns are ordered by
+// module, in module declaration order, and each module is hashed with its own
+// leaf header and injected separately into the size's tree level. A grouped
+// commitment hashes the largest size as row pairs like the others (see
+// [fri.MultiSizeTable.Merkleize]), so it is split into modules too. A module's
+// digest is then H(header, row[2j] ‖ row[2j+1]) whatever the sizes of the
+// other modules, which a size-oblivious recursive verifier needs (#4246).
+//
+// Off by default: the module ordering and the row-pair leaves change the
+// committed layout, so proofs differ from the default layout.
+//
+// Module groups exclude the options that make the committed layout depend on
+// the module sizes or on the witness again: [WithColumnElision] (the group
+// widths and leaf headers would follow each proof's Zero/Alias columns), and a
+// Merkle cap from [WithOptimalMerkleCap] or [WithMerkleCapHeight] above 0 (an
+// input tree would reveal in full the tables above its cap, chosen by size).
+// Combining them is a configuration error.
+func WithModuleGroups() Option {
+	return func(o *compileOptions) { o.moduleGroups = true }
+}
+
 // merge resolves opts against sys's recorded PCS configuration without
 // mutating anything. A local value that conflicts with an explicit
 // preconfigured (or consumed) value is an error, while a matching value is
@@ -175,8 +285,14 @@ func merge(sys *wiop.System, opts []Option) (compileOptions, error) {
 	if cfg.rsBlowup != 0 && pre.rsBlowup != 0 && cfg.rsBlowup != pre.rsBlowup {
 		return cfg, fmt.Errorf("pcs: RS blowup %d conflicts with preconfigured %d", cfg.rsBlowup, pre.rsBlowup)
 	}
+	if cfg.merkleCap.mode != merkleCapUnset && pre.merkleCap.mode != merkleCapUnset && cfg.merkleCap != pre.merkleCap {
+		return cfg, fmt.Errorf("pcs: Merkle cap %v conflicts with preconfigured %v", cfg.merkleCap, pre.merkleCap)
+	}
 	if cfg.elisionEnabled && state.consumed && !pre.elisionEnabled {
 		return cfg, fmt.Errorf("pcs: WithColumnElision conflicts with the consumed compile without column elision")
+	}
+	if cfg.moduleGroups && state.consumed && !pre.moduleGroups {
+		return cfg, fmt.Errorf("pcs: WithModuleGroups conflicts with the consumed compile without module groups")
 	}
 	if cfg.friNumQueries == 0 {
 		cfg.friNumQueries = pre.friNumQueries
@@ -184,7 +300,17 @@ func merge(sys *wiop.System, opts []Option) (compileOptions, error) {
 	if cfg.rsBlowup == 0 {
 		cfg.rsBlowup = pre.rsBlowup
 	}
+	if cfg.merkleCap.mode == merkleCapUnset {
+		cfg.merkleCap = pre.merkleCap
+	}
 	cfg.elisionEnabled = cfg.elisionEnabled || pre.elisionEnabled
+	cfg.moduleGroups = cfg.moduleGroups || pre.moduleGroups
+	if cfg.moduleGroups && cfg.elisionEnabled {
+		return cfg, fmt.Errorf("pcs: WithModuleGroups conflicts with WithColumnElision")
+	}
+	if cfg.moduleGroups && cfg.merkleCap.capped() {
+		return cfg, fmt.Errorf("pcs: WithModuleGroups conflicts with Merkle cap %v", cfg.merkleCap)
+	}
 	return cfg, nil
 }
 
@@ -293,6 +419,19 @@ func RSBlowup(sys *wiop.System) int {
 	return state.rsBlowup
 }
 
+// MerkleCapHeight returns the Merkle cap height [Compile] configured for sys
+// (before each tree clamps it to its own height-1), or 0 when sys has no PCS
+// opening (PCS pass not run, or no committed columns). 0 also means the
+// System uses no cap. It is fixed at compile time, so a recursive verifier
+// derives every cap and branch length of sys's proofs from it.
+func MerkleCapHeight(sys *wiop.System) int {
+	state := configOf(sys)
+	if !state.consumed {
+		return 0
+	}
+	return int(state.merkleCap.resolve(state.friNumQueries))
+}
+
 // compiledLogRSBlowup returns log2 of sys's compiled blowup. It panics when sys
 // has no PCS opening.
 func compiledLogRSBlowup(sys *wiop.System) uint8 {
@@ -320,14 +459,16 @@ func FRIStaticParams(sys *wiop.System) fri.Params {
 }
 
 // newPCS wraps the shared static parameters in a fresh, per-proof [fri.PCS]
-// (which carries the mutable opening state) at this compilation's query count.
-// Wrapping is cheap — no domains are rebuilt — and each proof restricts the fold
-// schedule to its own witness size. The cached params are copied by value and
-// only the copy's NumQueries is set; the shared domain slices are never
-// mutated, so concurrently compiled Systems stay independent.
+// (which carries the mutable opening state) at this compilation's query count
+// and Merkle cap height. Wrapping is cheap — no domains are rebuilt — and each
+// proof restricts the fold schedule to its own witness size. The cached params
+// are copied by value and only the copy's NumQueries and MerkleCapHeight are
+// set; the shared domain slices are never mutated, so concurrently compiled
+// Systems stay independent.
 func (c *compiled) newPCS() *fri.PCS {
 	params, encoders := staticFRI(c.logRSBlowup)
 	params.NumQueries = uint(c.friNumQueries)
+	params.MerkleCapHeight = c.merkleCapHeight
 	pcs, err := fri.NewPCS(params, encoders)
 	if err != nil {
 		utils.Panic("pcs: newPCS: %v", err)
@@ -398,8 +539,13 @@ type compiled struct {
 	// elisionEnabled lets the commit actions classify all-zero and duplicate
 	// columns as Zero/Alias instead of committing them as Present.
 	elisionEnabled bool
-	friNumQueries  int
-	logRSBlowup    uint8
+	// moduleGroups commits every module as its own group (see
+	// [WithModuleGroups]).
+	moduleGroups  bool
+	friNumQueries int
+	// merkleCapHeight is the resolved [fri.Params.MerkleCapHeight].
+	merkleCapHeight uint8
+	logRSBlowup     uint8
 	// maxSizeLog2 is the largest committable padded column size (log2) at
 	// logRSBlowup; see [maxCommittableSizeLog2].
 	maxSizeLog2 uint8
@@ -433,6 +579,9 @@ func Compile(sys *wiop.System, opts ...Option) {
 	if cfg.rsBlowup == 0 {
 		cfg.rsBlowup = defaultRSBlowup
 	}
+	if cfg.merkleCap.mode == merkleCapUnset {
+		cfg.merkleCap = merkleCapChoice{mode: merkleCapExplicit}
+	}
 
 	batches := CommittedBatches(sys)
 	if len(batches) == 0 {
@@ -440,12 +589,14 @@ func Compile(sys *wiop.System, opts ...Option) {
 	}
 	logBlowup := uint8(utils.Log2Floor(cfg.rsBlowup))
 	c := &compiled{
-		manifestCells:  make(map[int][]*wiop.Cell),
-		colShifts:      collectColumnShifts(sys),
-		elisionEnabled: cfg.elisionEnabled,
-		friNumQueries:  cfg.friNumQueries,
-		logRSBlowup:    logBlowup,
-		maxSizeLog2:    maxCommittableSizeLog2(logBlowup),
+		manifestCells:   make(map[int][]*wiop.Cell),
+		colShifts:       collectColumnShifts(sys),
+		elisionEnabled:  cfg.elisionEnabled,
+		moduleGroups:    cfg.moduleGroups,
+		friNumQueries:   cfg.friNumQueries,
+		merkleCapHeight: cfg.merkleCap.resolve(cfg.friNumQueries),
+		logRSBlowup:     logBlowup,
+		maxSizeLog2:     maxCommittableSizeLog2(logBlowup),
 	}
 	c.checkStaticSizes(batches)
 	// Freeze the effective configuration before mutating sys; merge
@@ -564,7 +715,7 @@ func (a *commitRoundAction) Run(rt *wiop.Runtime) {
 		panic(fmt.Errorf("pcs: commit: %w", err))
 	}
 	a.c.assignManifest(a.round, rt, manifest)
-	st := a.c.commitVectors(a.round.ID, vectors, manifest)
+	st := a.c.commitVectors(a.round, runtimeSizeOf(rt), vectors, manifest)
 	rt.Commitments[a.round.ID] = st.Tree.Root()
 	rt.SetState(committedStateKey(a.round.ID), st)
 }
@@ -763,86 +914,143 @@ func roundMaxSizeIndexWith(round *wiop.Round, sizeOf moduleSizeFunc, manifest Co
 // commitToRound materializes a round's columns and commits the Present ones
 // (see [compiled.commitVectors]).
 func (c *compiled) commitToRound(round *wiop.Round, rt *wiop.Runtime, manifest ColumnManifest) *fri.CommitterState {
-	return c.commitVectors(round.ID, materializeColumns(round, rt), manifest)
+	return c.commitVectors(round, runtimeSizeOf(rt), materializeColumns(round, rt), manifest)
 }
 
 // commitVectors sorts a round's Present columns into a [fri.MultiSizeTable] by
-// padded size (base then extension within each size, in column-declaration
-// order) and FRI-commits it with a freshly-built per-round encoder schedule (a
-// prefix of the global schedule). The column ordering matches [GetLayout]
-// exactly; elided columns are absent from the committed rows. It panics when a
-// Present column exceeds the committable size at c's blowup.
-func (c *compiled) commitVectors(roundID int, vectors []paddedColumn, manifest ColumnManifest) *fri.CommitterState {
+// padded size, appending them in the commit order of [committedLayout] (base
+// and extension rows kept apart within each size), and FRI-commits it with a
+// freshly-built per-round encoder schedule (a prefix of the global schedule).
+// The table takes the shape's groups, so with module groups it is a grouped
+// commitment (see [fri.MultiSizeTable.Merkleize]). Elided columns are absent
+// from the committed rows. It panics when a Present column exceeds the
+// committable size at c's blowup.
+func (c *compiled) commitVectors(
+	round *wiop.Round, sizeOf moduleSizeFunc, vectors []paddedColumn, manifest ColumnManifest,
+) *fri.CommitterState {
 
-	var (
-		sortedColumns = make(fri.MultiSizeTable, 64)
-		maxSizeIndex  = 0
-	)
+	order, shape := committedLayout(round, sizeOf, manifest, c.moduleGroups)
 
-	for i := range vectors {
-		if manifest[i] != ManifestPresent {
-			continue
-		}
+	sortedColumns := make(fri.MultiSizeTable, len(shape))
+	for _, i := range order {
 		v := &vectors[i]
-		maxSizeIndex = max(maxSizeIndex, v.sizeIndex)
-
 		if v.isExt {
 			sortedColumns[v.sizeIndex].Ext = append(sortedColumns[v.sizeIndex].Ext, v.ext)
 		} else {
 			sortedColumns[v.sizeIndex].Base = append(sortedColumns[v.sizeIndex].Base, v.base)
 		}
 	}
+	for sizeIndex := range sortedColumns {
+		sortedColumns[sizeIndex].Groups = shape[sizeIndex].Groups
+	}
+	maxSizeIndex := max(len(shape)-1, 0)
 	if maxSizeIndex > int(c.maxSizeLog2) {
 		utils.Panic("pcs: round %d commits a column of size 2^%d, above the 2^%d committable at RS blowup %d",
-			roundID, maxSizeIndex, c.maxSizeLog2, 1<<c.logRSBlowup)
+			round.ID, maxSizeIndex, c.maxSizeLog2, 1<<c.logRSBlowup)
 	}
 	committerState := fri.Commit(buildEncoders(c.logRSBlowup, uint8(maxSizeIndex)), sortedColumns[:maxSizeIndex+1])
 	return &committerState
 }
 
+// committedLayout returns the indices of a round's Present columns in commit
+// order, and the round's [fri.Shape]. The commit order is declaration order,
+// or, with moduleGroups, declaration order stably sorted by module (module
+// declaration order), so every module's rows are consecutive within its size.
+// With moduleGroups, every size is split into one group per module, in that
+// order; a grouped commitment hashes the largest size as row pairs too (see
+// [fri.MultiSizeTable.Merkleize]), so it can be grouped like the others. The
+// shape has maxSizeIndex+1 entries over the Present columns.
+//
+// [commitVectors] and [getLayoutWith] both derive from it, so the committed
+// rows and the column locations always agree.
+func committedLayout(
+	round *wiop.Round,
+	sizeOf moduleSizeFunc,
+	manifest ColumnManifest,
+	moduleGroups bool,
+) ([]int, fri.Shape) {
+	var order []int
+	for i := range round.Columns {
+		if manifest[i] == ManifestPresent {
+			order = append(order, i)
+		}
+	}
+	if moduleGroups {
+		slices.SortStableFunc(order, func(a, b int) int {
+			return cmp.Compare(moduleIndex(round.Columns[a]), moduleIndex(round.Columns[b]))
+		})
+	}
+
+	shape := make(fri.Shape, 0, 8)
+	lastModule := make(map[int]int) // size index -> module of its last group
+	for _, i := range order {
+		col := round.Columns[i]
+		sizeIndex := columnSizeIndexWith(col, sizeOf)
+		for len(shape) <= sizeIndex {
+			shape = append(shape, fri.SizedShape{})
+		}
+		sized := &shape[sizeIndex]
+		if moduleGroups {
+			module := moduleIndex(col)
+			if last, ok := lastModule[sizeIndex]; !ok || last != module {
+				sized.Groups = append(sized.Groups, fri.GroupShape{})
+				lastModule[sizeIndex] = module
+			}
+			group := &sized.Groups[len(sized.Groups)-1]
+			if col.IsExtension {
+				group.ExtWidth++
+			} else {
+				group.BaseWidth++
+			}
+		}
+		if col.IsExtension {
+			sized.ExtWidth++
+		} else {
+			sized.BaseWidth++
+		}
+	}
+	return order, shape
+}
+
+// moduleIndex returns the index in [wiop.System.Modules] of the module owning
+// col, which a column's ID encodes as its slot.
+func moduleIndex(col *wiop.Column) int { return col.Context.ID.Slot() }
+
 // GetLayout maps each of a round's Present columns to its [ColumnLocation] and
-// returns the round's [fri.Shape] (per-size base/extension widths). The shape
-// length is maxSizeIndex+1 over the Present columns, matching the committed
-// table produced by [commitVectors], and positions are assigned in
-// column-declaration order so both agree. Elided columns have no location.
+// returns the round's [fri.Shape] (per-size base/extension widths and groups).
+// Positions follow the commit order of [committedLayout], under the module
+// grouping recorded in the System's PCS configuration, so they match the
+// committed table produced by [commitVectors]. Elided columns have no location.
 func GetLayout(
 	round *wiop.Round,
 	rt *wiop.Runtime,
 	manifest ColumnManifest,
 ) (map[wiop.ObjectID]ColumnLocation, fri.Shape) {
-	return getLayoutWith(round, runtimeSizeOf(rt), manifest)
+	return getLayoutWith(round, runtimeSizeOf(rt), manifest, configOf(rt.System).moduleGroups)
 }
 
 func getLayoutWith(
 	round *wiop.Round,
 	sizeOf moduleSizeFunc,
 	manifest ColumnManifest,
+	moduleGroups bool,
 ) (map[wiop.ObjectID]ColumnLocation, fri.Shape) {
 
-	var (
-		cols   = round.Columns
-		layout = make(map[wiop.ObjectID]ColumnLocation, len(cols))
-		shape  = make(fri.Shape, 0, 8)
-	)
+	order, shape := committedLayout(round, sizeOf, manifest, moduleGroups)
+	layout := make(map[wiop.ObjectID]ColumnLocation, len(order))
+	next := make([]fri.SizedShape, len(shape)) // rows placed so far, per size
 
-	for i, col := range cols {
-		if manifest[i] != ManifestPresent {
-			continue
-		}
-
+	for _, i := range order {
+		col := round.Columns[i]
 		sizeIndex := columnSizeIndexWith(col, sizeOf)
-
-		for len(shape) <= sizeIndex {
-			shape = append(shape, fri.SizedShape{})
-		}
 
 		var position int
 		if col.IsExtension {
-			position = shape[sizeIndex].ExtWidth
-			shape[sizeIndex].ExtWidth++
+			position = next[sizeIndex].ExtWidth
+			next[sizeIndex].ExtWidth++
 		} else {
-			position = shape[sizeIndex].BaseWidth
-			shape[sizeIndex].BaseWidth++
+			position = next[sizeIndex].BaseWidth
+			next[sizeIndex].BaseWidth++
 		}
 
 		layout[col.Context.ID] = ColumnLocation{
