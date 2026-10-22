@@ -42,7 +42,9 @@
 package pcs
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/crypto/koalabear/fri"
@@ -80,6 +82,7 @@ type compileOptions struct {
 	rsBlowup       int
 	merkleCap      merkleCapChoice
 	elisionEnabled bool
+	moduleGroups   bool
 }
 
 // merkleCapMode tells how a System chose its Merkle cap height. The zero value
@@ -232,6 +235,20 @@ func withMerkleCap(choice merkleCapChoice) Option {
 	}
 }
 
+// WithModuleGroups commits every module as its own group (see
+// [fri.SizedTable.Groups]): within each size, a round's columns are ordered by
+// module, in module declaration order, and each module is hashed with its own
+// leaf header and injected separately into the size's tree level. The hash
+// inputs of a module then do not depend on which other modules share its size,
+// which a size-oblivious recursive verifier needs (#4246).
+//
+// The largest size of a round still forms a single group, since its digests
+// are the tree leaves. Off by default: the module ordering changes the
+// committed layout, so proofs differ from the default layout.
+func WithModuleGroups() Option {
+	return func(o *compileOptions) { o.moduleGroups = true }
+}
+
 // merge resolves opts against sys's recorded PCS configuration without
 // mutating anything. A local value that conflicts with an explicit
 // preconfigured (or consumed) value is an error, while a matching value is
@@ -260,6 +277,9 @@ func merge(sys *wiop.System, opts []Option) (compileOptions, error) {
 	if cfg.elisionEnabled && state.consumed && !pre.elisionEnabled {
 		return cfg, fmt.Errorf("pcs: WithColumnElision conflicts with the consumed compile without column elision")
 	}
+	if cfg.moduleGroups && state.consumed && !pre.moduleGroups {
+		return cfg, fmt.Errorf("pcs: WithModuleGroups conflicts with the consumed compile without module groups")
+	}
 	if cfg.friNumQueries == 0 {
 		cfg.friNumQueries = pre.friNumQueries
 	}
@@ -270,6 +290,7 @@ func merge(sys *wiop.System, opts []Option) (compileOptions, error) {
 		cfg.merkleCap = pre.merkleCap
 	}
 	cfg.elisionEnabled = cfg.elisionEnabled || pre.elisionEnabled
+	cfg.moduleGroups = cfg.moduleGroups || pre.moduleGroups
 	return cfg, nil
 }
 
@@ -498,7 +519,10 @@ type compiled struct {
 	// elisionEnabled lets the commit actions classify all-zero and duplicate
 	// columns as Zero/Alias instead of committing them as Present.
 	elisionEnabled bool
-	friNumQueries  int
+	// moduleGroups commits every module as its own group (see
+	// [WithModuleGroups]).
+	moduleGroups  bool
+	friNumQueries int
 	// merkleCapHeight is the resolved [fri.Params.MerkleCapHeight].
 	merkleCapHeight uint8
 	logRSBlowup     uint8
@@ -548,6 +572,7 @@ func Compile(sys *wiop.System, opts ...Option) {
 		manifestCells:   make(map[int][]*wiop.Cell),
 		colShifts:       collectColumnShifts(sys),
 		elisionEnabled:  cfg.elisionEnabled,
+		moduleGroups:    cfg.moduleGroups,
 		friNumQueries:   cfg.friNumQueries,
 		merkleCapHeight: cfg.merkleCap.resolve(cfg.friNumQueries),
 		logRSBlowup:     logBlowup,
@@ -670,7 +695,7 @@ func (a *commitRoundAction) Run(rt *wiop.Runtime) {
 		panic(fmt.Errorf("pcs: commit: %w", err))
 	}
 	a.c.assignManifest(a.round, rt, manifest)
-	st := a.c.commitVectors(a.round.ID, vectors, manifest)
+	st := a.c.commitVectors(a.round, runtimeSizeOf(rt), vectors, manifest)
 	rt.Commitments[a.round.ID] = st.Tree.Root()
 	rt.SetState(committedStateKey(a.round.ID), st)
 }
@@ -869,86 +894,145 @@ func roundMaxSizeIndexWith(round *wiop.Round, sizeOf moduleSizeFunc, manifest Co
 // commitToRound materializes a round's columns and commits the Present ones
 // (see [compiled.commitVectors]).
 func (c *compiled) commitToRound(round *wiop.Round, rt *wiop.Runtime, manifest ColumnManifest) *fri.CommitterState {
-	return c.commitVectors(round.ID, materializeColumns(round, rt), manifest)
+	return c.commitVectors(round, runtimeSizeOf(rt), materializeColumns(round, rt), manifest)
 }
 
 // commitVectors sorts a round's Present columns into a [fri.MultiSizeTable] by
-// padded size (base then extension within each size, in column-declaration
-// order) and FRI-commits it with a freshly-built per-round encoder schedule (a
-// prefix of the global schedule). The column ordering matches [GetLayout]
-// exactly; elided columns are absent from the committed rows. It panics when a
-// Present column exceeds the committable size at c's blowup.
-func (c *compiled) commitVectors(roundID int, vectors []paddedColumn, manifest ColumnManifest) *fri.CommitterState {
+// padded size, appending them in the commit order of [committedLayout] (base
+// and extension rows kept apart within each size), and FRI-commits it with a
+// freshly-built per-round encoder schedule (a prefix of the global schedule).
+// The table takes the shape's groups. Elided columns are absent from the
+// committed rows. It panics when a Present column exceeds the committable size
+// at c's blowup.
+func (c *compiled) commitVectors(
+	round *wiop.Round, sizeOf moduleSizeFunc, vectors []paddedColumn, manifest ColumnManifest,
+) *fri.CommitterState {
 
-	var (
-		sortedColumns = make(fri.MultiSizeTable, 64)
-		maxSizeIndex  = 0
-	)
+	order, shape := committedLayout(round, sizeOf, manifest, c.moduleGroups)
 
-	for i := range vectors {
-		if manifest[i] != ManifestPresent {
-			continue
-		}
+	sortedColumns := make(fri.MultiSizeTable, len(shape))
+	for _, i := range order {
 		v := &vectors[i]
-		maxSizeIndex = max(maxSizeIndex, v.sizeIndex)
-
 		if v.isExt {
 			sortedColumns[v.sizeIndex].Ext = append(sortedColumns[v.sizeIndex].Ext, v.ext)
 		} else {
 			sortedColumns[v.sizeIndex].Base = append(sortedColumns[v.sizeIndex].Base, v.base)
 		}
 	}
+	for sizeIndex := range sortedColumns {
+		sortedColumns[sizeIndex].Groups = shape[sizeIndex].Groups
+	}
+	maxSizeIndex := max(len(shape)-1, 0)
 	if maxSizeIndex > int(c.maxSizeLog2) {
 		utils.Panic("pcs: round %d commits a column of size 2^%d, above the 2^%d committable at RS blowup %d",
-			roundID, maxSizeIndex, c.maxSizeLog2, 1<<c.logRSBlowup)
+			round.ID, maxSizeIndex, c.maxSizeLog2, 1<<c.logRSBlowup)
 	}
 	committerState := fri.Commit(buildEncoders(c.logRSBlowup, uint8(maxSizeIndex)), sortedColumns[:maxSizeIndex+1])
 	return &committerState
 }
 
+// committedLayout returns the indices of a round's Present columns in commit
+// order, and the round's [fri.Shape]. The commit order is declaration order,
+// or, with moduleGroups, declaration order stably sorted by module (module
+// declaration order), so every module's rows are consecutive within its size.
+// With moduleGroups, every size but the largest is split into one group per
+// module, in that order; the largest size stays a single group, since its
+// digests are the tree leaves. The shape has maxSizeIndex+1 entries over the
+// Present columns.
+//
+// [commitVectors] and [getLayoutWith] both derive from it, so the committed
+// rows and the column locations always agree.
+func committedLayout(
+	round *wiop.Round,
+	sizeOf moduleSizeFunc,
+	manifest ColumnManifest,
+	moduleGroups bool,
+) ([]int, fri.Shape) {
+	var order []int
+	for i := range round.Columns {
+		if manifest[i] == ManifestPresent {
+			order = append(order, i)
+		}
+	}
+	if moduleGroups {
+		slices.SortStableFunc(order, func(a, b int) int {
+			return cmp.Compare(moduleIndex(round.Columns[a]), moduleIndex(round.Columns[b]))
+		})
+	}
+
+	shape := make(fri.Shape, 0, 8)
+	lastModule := make(map[int]int) // size index -> module of its last group
+	for _, i := range order {
+		col := round.Columns[i]
+		sizeIndex := columnSizeIndexWith(col, sizeOf)
+		for len(shape) <= sizeIndex {
+			shape = append(shape, fri.SizedShape{})
+		}
+		sized := &shape[sizeIndex]
+		if moduleGroups {
+			module := moduleIndex(col)
+			if last, ok := lastModule[sizeIndex]; !ok || last != module {
+				sized.Groups = append(sized.Groups, fri.GroupShape{})
+				lastModule[sizeIndex] = module
+			}
+			group := &sized.Groups[len(sized.Groups)-1]
+			if col.IsExtension {
+				group.ExtWidth++
+			} else {
+				group.BaseWidth++
+			}
+		}
+		if col.IsExtension {
+			sized.ExtWidth++
+		} else {
+			sized.BaseWidth++
+		}
+	}
+	if len(shape) > 0 {
+		shape[len(shape)-1].Groups = nil
+	}
+	return order, shape
+}
+
+// moduleIndex returns the index in [wiop.System.Modules] of the module owning
+// col, which a column's ID encodes as its slot.
+func moduleIndex(col *wiop.Column) int { return col.Context.ID.Slot() }
+
 // GetLayout maps each of a round's Present columns to its [ColumnLocation] and
-// returns the round's [fri.Shape] (per-size base/extension widths). The shape
-// length is maxSizeIndex+1 over the Present columns, matching the committed
-// table produced by [commitVectors], and positions are assigned in
-// column-declaration order so both agree. Elided columns have no location.
+// returns the round's [fri.Shape] (per-size base/extension widths and groups).
+// Positions follow the commit order of [committedLayout], under the module
+// grouping recorded in the System's PCS configuration, so they match the
+// committed table produced by [commitVectors]. Elided columns have no location.
 func GetLayout(
 	round *wiop.Round,
 	rt *wiop.Runtime,
 	manifest ColumnManifest,
 ) (map[wiop.ObjectID]ColumnLocation, fri.Shape) {
-	return getLayoutWith(round, runtimeSizeOf(rt), manifest)
+	return getLayoutWith(round, runtimeSizeOf(rt), manifest, configOf(rt.System).moduleGroups)
 }
 
 func getLayoutWith(
 	round *wiop.Round,
 	sizeOf moduleSizeFunc,
 	manifest ColumnManifest,
+	moduleGroups bool,
 ) (map[wiop.ObjectID]ColumnLocation, fri.Shape) {
 
-	var (
-		cols   = round.Columns
-		layout = make(map[wiop.ObjectID]ColumnLocation, len(cols))
-		shape  = make(fri.Shape, 0, 8)
-	)
+	order, shape := committedLayout(round, sizeOf, manifest, moduleGroups)
+	layout := make(map[wiop.ObjectID]ColumnLocation, len(order))
+	next := make([]fri.SizedShape, len(shape)) // rows placed so far, per size
 
-	for i, col := range cols {
-		if manifest[i] != ManifestPresent {
-			continue
-		}
-
+	for _, i := range order {
+		col := round.Columns[i]
 		sizeIndex := columnSizeIndexWith(col, sizeOf)
-
-		for len(shape) <= sizeIndex {
-			shape = append(shape, fri.SizedShape{})
-		}
 
 		var position int
 		if col.IsExtension {
-			position = shape[sizeIndex].ExtWidth
-			shape[sizeIndex].ExtWidth++
+			position = next[sizeIndex].ExtWidth
+			next[sizeIndex].ExtWidth++
 		} else {
-			position = shape[sizeIndex].BaseWidth
-			shape[sizeIndex].BaseWidth++
+			position = next[sizeIndex].BaseWidth
+			next[sizeIndex].BaseWidth++
 		}
 
 		layout[col.Context.ID] = ColumnLocation{
