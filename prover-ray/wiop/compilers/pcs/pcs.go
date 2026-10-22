@@ -240,9 +240,9 @@ func withMerkleCap(choice merkleCapChoice) Option {
 // module, in module declaration order, and each module is hashed with its own
 // leaf header and injected separately into the size's tree level. A grouped
 // commitment hashes the largest size as row pairs like the others (see
-// [fri.MultiSizeTable.Merkleize]), so it is split into modules too. A module's digest is then H(header, row[2j] ‖
-// row[2j+1]) whatever the sizes of the other modules, which a size-oblivious
-// recursive verifier needs (#4246).
+// [fri.MultiSizeTable.Merkleize]), so it is split into modules too. A module's
+// digest is then H(header, row[2j] ‖ row[2j+1]) whatever the sizes of the
+// other modules, which a size-oblivious recursive verifier needs (#4246).
 //
 // Off by default: the module ordering and the row-pair leaves change the
 // committed layout, so proofs differ from the default layout.
@@ -939,8 +939,8 @@ func (c *compiled) commitVectors(
 // declaration order), so every module's rows are consecutive within its size.
 // With moduleGroups, every size is split into one group per module, in that
 // order; a grouped commitment hashes the largest size as row pairs too (see
-// [fri.MultiSizeTable.Merkleize]), so it can be grouped like the others. The shape has maxSizeIndex+1 entries over
-// the Present columns.
+// [fri.MultiSizeTable.Merkleize]), so it can be grouped like the others. The
+// shape has maxSizeIndex+1 entries over the Present columns.
 //
 // [commitVectors] and [getLayoutWith] both derive from it, so the committed
 // rows and the column locations always agree.
