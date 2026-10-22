@@ -98,6 +98,7 @@
 - *(misc)* Make timer stop() await in-flight task execution (#4042)
 - *(linea-besu)* Limit large MODEXP calls to 1 per block (#4128)
 - *(prover)* Segment MODEXP_LARGE by whole instances in limitless (#4127)
+- *(coordinator)* Align RISC-V l2-execution DTOs and request envelope with rollup_spec (#4260)
 
 ### 🚜 Refactor
 
@@ -162,6 +163,7 @@
 - *(coordinator)* Rename LineaRollup to LinethRollup in JVM components (#3421)
 - *(coordinator)* Rename Linea to Lineth in app and config (#3707)
 - *(prover)* Rename Linea to Lineth in prover (#3709)
+- *(coordinator)* Rename Linea to Lineth in JVM components (#3708)
 - *(misc)* Rename gradle plugins (#3729)
 - *(coordinator)* Apply review cleanups (#3717)
 - *(coordinator)* Update to vertx 5.1.5 (#3744)

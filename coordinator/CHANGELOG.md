@@ -4,6 +4,10 @@
 
 - *(coordinator)* RISC-V rollup proof coordinator — chunk assembly + proof submission (#3967)
 - *(coordinator)* Added BlobSubmitterV2 interface and implementation (#3673)
+
+### 🐛 Bug Fixes
+
+- *(coordinator)* Align RISC-V l2-execution DTOs and request envelope with rollup_spec (#4260)
 ## [2.2.0] - 2026-10-12
 
 ### 🚀 Features
