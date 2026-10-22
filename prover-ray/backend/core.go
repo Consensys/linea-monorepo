@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"slices"
 
 	"github.com/LFDT-Lineth/lineth-monorepo/arithmetization/gopkg/elfmapping"
 	"github.com/LFDT-Lineth/lineth-monorepo/arithmetization/gopkg/embedded"
@@ -49,6 +50,10 @@ type Core struct {
 	program elfmapping.Program
 	decoded predecoding.DecodedProgram
 
+	// shardIndexes are the shards [Core.Prove] proves, sorted; empty proves
+	// them all. See [Config.ShardIndexes].
+	shardIndexes []uint
+
 	// binaryFile is the compiled R5 arithmetization, used by dev-zkvm to run the
 	// guest under ZkC Execute (the no-trace path). nil outside dev-zkvm.
 	binaryFile *zkcdriver.BinaryFile
@@ -67,6 +72,10 @@ func New(cfg Config) (*Core, error) {
 	}
 	if !mode.Valid() {
 		return nil, fmt.Errorf("invalid prover mode %q", cfg.Mode)
+	}
+	shardIndexes, err := checkShardIndexes(cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	// dev-mock runs no guest, so it loads no circuit bin or guest ELF.
@@ -106,7 +115,7 @@ func New(cfg Config) (*Core, error) {
 	sys.NewRound()
 
 	// round 0 is reserved for the idential data, variable data per shard goes to round 1
-	driver := zkcdriver.NewZkCDriver(sys, zkcdriver.Settings{TraceRound: 1}, binFile)
+	driver := zkcdriver.NewZkCDriver(sys, zkcdriver.Settings{TraceRound: 1, ShardSize: cfg.ShardSize}, binFile)
 
 	// Must run after the arithmetization is defined, so the guest_output columns
 	// exist, and before the compiler passes, which discharge the openings it
@@ -122,13 +131,29 @@ func New(cfg Config) (*Core, error) {
 	//   wiop.Materialize(sys)
 
 	return &Core{
-		cfg:     cfg,
-		mode:    mode,
-		sys:     sys,
-		driver:  driver,
-		program: program,
-		decoded: decoded,
+		cfg:          cfg,
+		mode:         mode,
+		sys:          sys,
+		driver:       driver,
+		program:      program,
+		decoded:      decoded,
+		shardIndexes: shardIndexes,
 	}, nil
+}
+
+// checkShardIndexes returns a sorted copy of cfg.ShardIndexes, rejecting
+// duplicates and, without sharding, any shard other than 0.
+func checkShardIndexes(cfg Config) ([]uint, error) {
+	indexes := slices.Sorted(slices.Values(cfg.ShardIndexes))
+	for k, i := range indexes {
+		if k > 0 && indexes[k-1] == i {
+			return nil, fmt.Errorf("duplicate shard index %d", i)
+		}
+		if cfg.ShardSize == 0 && i != 0 {
+			return nil, fmt.Errorf("shard index %d requires a non-zero shard size", i)
+		}
+	}
+	return indexes, nil
 }
 
 // newDevZkVM builds an Execute-only Core: the compiled R5 arithmetization plus
@@ -361,33 +386,90 @@ func sanityCheckJobs(job Job) error {
 	return nil
 }
 
-// runProve traces the inputs, assigns the shard, then runs sys.Prove and sys.Verify.
+// shardProof is the verified proof of a single trace shard.
+type shardProof struct {
+	Index uint
+	Proof wiop.Proof
+	Pub   wiop.PublicInput
+}
+
+// runProve lazily traces the inputs, proves and verifies the shards of
+// [Core.shardIndexes] one at a time, so that a single shard is materialised at
+// any moment rather than the whole trace, and conglomerates the shard proofs
+// into a single proof.
 func (c *Core) runProve(
 	ctx context.Context,
 	preRead *zkcdriver.PreReadInputs,
 ) (wiop.Proof, wiop.PublicInput, error) {
 	_ = ctx // cancellation not yet propagated into the prover internals
 
+	// With sharding, this only runs the fast-mode pass recording one checkpoint
+	// per shard.
 	lazyTrace := c.driver.TraceZkcInputs(preRead)
-	// Assert exactly one shard (for now)
-	if lazyTrace.Len() != 1 {
-		logrus.Fatalf("expected a single public input")
+	indexes := c.shardIndexes
+	if len(indexes) == 0 {
+		indexes = make([]uint, lazyTrace.Len())
+		for i := range indexes {
+			indexes[i] = uint(i)
+		}
 	}
-	// Materalise first shard
-	shard, errs := lazyTrace.Get(0)
-	// Sanity check for tracing errors
+	if len(indexes) == 0 {
+		return wiop.Proof{}, nil, errors.New("the trace has no shards")
+	}
+	if last := indexes[len(indexes)-1]; last >= lazyTrace.Len() {
+		return wiop.Proof{}, nil, fmt.Errorf("shard index %d out of range, the trace has %d shards", last, lazyTrace.Len())
+	}
+
+	shardProofs := make([]shardProof, 0, len(indexes))
+	for k, i := range indexes {
+		shard, err := traceShard(lazyTrace, i)
+		if err != nil {
+			return wiop.Proof{}, nil, err
+		}
+		// Once the last shard is traced, drop the lazy trace so that its
+		// checkpoints can be garbage collected before that shard is proved.
+		if k == len(indexes)-1 {
+			lazyTrace = zkcdriver.LazyTrace{}
+		}
+		proof, pub, err := c.proveShard(shard)
+		if err != nil {
+			return wiop.Proof{}, nil, fmt.Errorf("shard %d: %w", i, err)
+		}
+		shardProofs = append(shardProofs, shardProof{Index: i, Proof: proof, Pub: pub})
+	}
+	return conglomerate(shardProofs)
+}
+
+// conglomerate combines the shard proofs into a single proof and public input.
+//
+// Mock: the conglomeration pipeline is not implemented yet, so it returns the
+// first shard proof as is.
+func conglomerate(shardProofs []shardProof) (wiop.Proof, wiop.PublicInput, error) {
+	logrus.Warnf("Running dummy Conglomeration, benchmarks reflect only one shard")
+	return shardProofs[0].Proof, shardProofs[0].Pub, nil
+}
+
+// traceShard traces and expands the ith shard of the lazy trace.
+func traceShard(lazyTrace zkcdriver.LazyTrace, i uint) (zkcdriver.Shard, error) {
+	shard, errs := lazyTrace.Get(i)
 	if len(errs) > 0 {
-		logrus.Fatalf("tracing failure: %v", errors.Join(errs...))
+		return zkcdriver.Shard{}, fmt.Errorf("tracing shard %d: %w", i, errors.Join(errs...))
 	}
-	// Generate proof
+	if shard.IsEmpty() {
+		return zkcdriver.Shard{}, fmt.Errorf("tracing shard %d: no shard produced", i)
+	}
+	return shard.Unwrap(), nil
+}
+
+// proveShard proves the given shard, then verifies the proof.
+func (c *Core) proveShard(shard zkcdriver.Shard) (wiop.Proof, wiop.PublicInput, error) {
 	proof, pub := c.sys.Prove(func(rt *wiop.Runtime) {
-		c.driver.AssignTraceShard(rt, shard.Unwrap(), field.Octuplet{})
+		c.driver.AssignTraceShard(rt, shard, field.Octuplet{})
 	})
 	// Verify proof
 	if err := c.sys.Verify(proof, pub); err != nil {
 		return wiop.Proof{}, nil, fmt.Errorf("proof verification: %w", err)
 	}
-	// Done
 	return proof, pub, nil
 }
 
