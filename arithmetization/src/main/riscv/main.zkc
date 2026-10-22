@@ -74,12 +74,12 @@ fn main<registers, ram>() {
     // ==========================
 
     // -- Interpreting the riscV proved-transpiled program -- START
-    // parameters: clock_cycle, base, pc, exec_end, output_write_address
+    // parameters: base, pc, exec_end, output_write_address
     // interpreter!(0, base, entry_point, exec_end, 0)
     // -- Interpreting the riscV proved-transpiled program -- END
 
     // -- Interpreting the riscV unproved-transpiled program -- START
-    // parameters: clock_cycle, base, pc, output_write_address
-    interpreter!(0, base, entry_point)
+    // parameters: base, pc, output_write_address
+    interpreter!(base, entry_point)
     // -- Interpreting the riscV unproved-transpiled program -- END
 }

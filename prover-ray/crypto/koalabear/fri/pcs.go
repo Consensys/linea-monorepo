@@ -1290,12 +1290,10 @@ func foldOneLevel(ancestor, sibling field.Octuplet, aux *RowPair, currPos int) (
 	if !selfIsEven {
 		left, right = right, left
 	}
-	var auxDigest *field.Octuplet
-	if aux != nil {
-		hashed := hashAuxPair(*aux, selfIsEven)
-		auxDigest = &hashed
+	if aux == nil {
+		return hashNode(left, right), currPos >> 1
 	}
-	return hashNode(left, right, auxDigest), currPos >> 1
+	return hashNode(left, right, hashAuxPair(*aux, selfIsEven)), currPos >> 1
 }
 
 // levelIndex resolves levelSize to its index into branch.Leaves. The bottom

@@ -189,12 +189,12 @@ include "../lib/io/write_output.zkc"
 // `interpreter_c` default and behaves as a no-op.
 
 // -- PREDECODING PROOF SECTION --
-// fn interpreter<registers, ram>(clock_cycle:u32, base:Address, pc:Address, exec_end:Address) -> ! {
+// fn interpreter<registers, ram>(base:Address, pc:Address, exec_end:Address) -> ! {
 // -- PREDECODING PROOF SECTION END--
 
 // -- NO PREDECODING PROOF SECTION --
 #[global]
-fn interpreter<registers, ram>(clock_cycle:u32, base:Address, pc:Address) -> ! {
+fn interpreter<registers, ram>(base:Address, pc:Address) -> ! {
     // -- NO PREDECODING PROOF SECTION END--
     var new_pc:Address
     var index:u62
@@ -211,7 +211,7 @@ fn interpreter<registers, ram>(clock_cycle:u32, base:Address, pc:Address) -> ! {
     // }
     // -- Interpreting the riscV proved-transpiled program -- END
 
-    printf "\n----------------------------------------------------------------- PC=%d, clock cycle: %d\n", pc, clock_cycle
+    printf "\n----------------------------------------------------------------- PC=%d\n", pc
     // Execute current instruction
     new_pc = interpreter_a(index as u64, pc)
 
@@ -220,11 +220,11 @@ fn interpreter<registers, ram>(clock_cycle:u32, base:Address, pc:Address) -> ! {
         // Execute next instruction
 
         // -- Interpreting the riscV proved-transpiled program -- START
-        // interpreter!(clock_cycle + 1, base, new_pc, exec_end, new_output_write_address)
+        // interpreter!(base, new_pc, exec_end, new_output_write_address)
         // -- Interpreting the riscV proved-transpiled program -- END
 
         // -- Interpreting the riscV unproved-transpiled program -- START
-        interpreter!(clock_cycle + 1, base, new_pc)
+        interpreter!(base, new_pc)
         // -- Interpreting the riscV unproved-transpiled program -- END
     }
     // Termination
