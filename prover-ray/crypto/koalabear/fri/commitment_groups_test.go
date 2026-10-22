@@ -49,6 +49,7 @@ func newGroupedPCSFixture(t *testing.T, numBatches int) pcsOpenVerifyFixture {
 	t.Helper()
 	params, err := NewParams(4, 3, 4)
 	require.NoError(t, err)
+	params.MerkleCapHeight = 2
 	pcs, err := NewPCS(params, makeEncoders(4, 2))
 	require.NoError(t, err)
 	witness := groupedWitness(rand.New(utils.NewRandSource(20261021)))
