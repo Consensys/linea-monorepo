@@ -186,12 +186,7 @@ data class AggregationV2(
   override val endBlockNumber: ULong,
   override val batchCount: ULong,
   override val aggregationProof: RollupAggregationProofResponseV1?,
-) : AggregationG<RollupAggregationProofResponseV1> {
-  enum class Status {
-    Proven,
-    Proving,
-  }
-}
+) : AggregationG<RollupAggregationProofResponseV1>
 
 data class FinalizationSubmittedEvent(
   val endBlockNumber: ULong,
