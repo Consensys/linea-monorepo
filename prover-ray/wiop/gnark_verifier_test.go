@@ -162,6 +162,81 @@ func TestVerifierCircuit_PCSOnly_RSBlowup(t *testing.T) {
 	}
 }
 
+// newPCSOnlyCapSystem is a [newPCSOnlySystem] over a 16-row column, so its
+// Merkle trees are tall enough (input tree of height 5, running layers of
+// height 4, 3 and 2) for distinct cap heights to clamp differently.
+func newPCSOnlyCapSystem(capOpt pcs.Option) (*wiop.System, *wiop.Column) {
+	sys := wiop.NewSystemf("gnark-pcs-cap")
+	r0 := sys.NewRound()
+	r1 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 16, wiop.PaddingDirectionNone)
+	col := mod.NewColumn(sys.Context.Childf("col"), r0)
+	zeta := r1.NewCoinField(sys.Context.Childf("zeta"))
+	le := sys.NewLagrangeEval(sys.Context.Childf("le"), []*wiop.ColumnView{col.View()}, zeta)
+	r1.RegisterAction(&selfAssignLagrange{le: le})
+	pcs.Compile(sys, append(testPCSOptions(), capOpt)...)
+	return sys, col
+}
+
+// TestVerifierCircuit_PCSOnly_MerkleCap checks that the circuit verifies
+// honest proofs at every cap height the System can be compiled with: no cap,
+// the query-count optimum, a height below every tree's height-1, and one
+// clamped to height-1 on every tree.
+func TestVerifierCircuit_PCSOnly_MerkleCap(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		opt  pcs.Option
+		want int
+	}{
+		{name: "none", opt: pcs.WithMerkleCapHeight(0), want: 0},
+		{name: "optimal", opt: pcs.WithOptimalMerkleCap(), want: 1},
+		{name: "height=3", opt: pcs.WithMerkleCapHeight(3), want: 3},
+		{name: "height=24", opt: pcs.WithMerkleCapHeight(24), want: 24},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sys, col := newPCSOnlyCapSystem(tc.opt)
+			require.Equal(t, tc.want, pcs.MerkleCapHeight(sys), "System must record its cap height")
+
+			proof, pub := sys.Prove(func(rt *wiop.Runtime) { rt.AssignColumn(col, nonConstVec(16)) })
+			require.NoError(t, sys.Verify(proof, pub), "honest proof must verify natively")
+			cv := compileVerifierCircuit(t, sys, proof, pub)
+			require.NoError(t, cv.solve(t, proof, pub), "honest proof must satisfy the circuit")
+		})
+	}
+}
+
+// TestVerifierCircuit_PCSOnly_MerkleCapMismatch checks that the circuit takes
+// the cap height from the System, not from the proof: a verifier circuit
+// allocated from a proof made at another cap height must not be satisfiable.
+func TestVerifierCircuit_PCSOnly_MerkleCapMismatch(t *testing.T) {
+	verifierSys, _ := newPCSOnlyCapSystem(pcs.WithMerkleCapHeight(0))
+	proverSys, col := newPCSOnlyCapSystem(pcs.WithMerkleCapHeight(3))
+	proof, pub := proverSys.Prove(func(rt *wiop.Runtime) { rt.AssignColumn(col, nonConstVec(16)) })
+	require.NoError(t, proverSys.Verify(proof, pub), "honest proof must verify at its own cap height")
+	require.Error(t, verifierSys.Verify(proof, pub), "a capped proof must fail natively without the cap")
+
+	err := func() (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("circuit definition panicked: %v", r)
+			}
+		}()
+		modulus := ecc.BN254.ScalarField()
+		ccs, err := frontend.Compile(modulus, scs.NewBuilder, wiop.AllocateVerifierCircuit(verifierSys, proof, pub))
+		if err != nil {
+			return err
+		}
+		assignment := wiop.AllocateVerifierCircuit(verifierSys, proof, pub).AssignVerifierCircuit(proof, pub)
+		w, err := frontend.NewWitness(assignment, modulus)
+		if err != nil {
+			return err
+		}
+		_, err = ccs.Solve(w)
+		return err
+	}()
+	require.Error(t, err, "a capped proof must not satisfy the uncapped System's circuit")
+}
+
 func TestVerifierCircuit_Vanishing(t *testing.T) {
 	for _, build := range wioptest.VanishingScenarios() {
 		sc := build()

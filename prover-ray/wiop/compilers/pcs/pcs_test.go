@@ -448,3 +448,159 @@ func TestVerify_Regression_ForgedDynamicSizeAboveRowLimit(t *testing.T) {
 	require.NotPanics(t, func() { err = sys.Verify(proof, pub) }, "a forged size must not panic the verifier")
 	require.ErrorContains(t, err, "exceeds the 2^1 committable", "a forged size above the row limit must be rejected")
 }
+
+// newCapTestSystem is [newPCSTestSystem] over a 16-row column, compiled at two
+// queries with the given cap option. At the default blowup its input tree has
+// height 5 and its running layers heights 4, 3 and 2, so cap heights clamp
+// differently per tree.
+func newCapTestSystem(capOpts ...Option) (*wiop.System, *wiop.Column) {
+	sys := wiop.NewSystemf("pcs-cap")
+	r0 := sys.NewRound()
+	r1 := sys.NewRound()
+	mod := sys.NewSizedModule(sys.Context.Childf("mod"), 16, wiop.PaddingDirectionNone)
+	col := mod.NewColumn(sys.Context.Childf("col"), r0)
+	zeta := r1.NewCoinField(sys.Context.Childf("zeta"))
+	le := sys.NewLagrangeEval(sys.Context.Childf("le"), []*wiop.ColumnView{col.View()}, zeta)
+	r1.RegisterAction(&selfAssignLagrange{le: le})
+	Compile(sys, append([]Option{WithFRINumQueries(2)}, capOpts...)...)
+	return sys, col
+}
+
+func proveCapTestSystem(sys *wiop.System, col *wiop.Column) (wiop.Proof, wiop.PublicInput) {
+	elems := make([]field.Element, 16)
+	for i := range elems {
+		elems[i].SetUint64(uint64(i*i + 1))
+	}
+	return sys.Prove(func(rt *wiop.Runtime) {
+		rt.AssignColumn(col, &wiop.ConcreteVector{Plain: field.VecFromBase(elems)})
+	})
+}
+
+// TestCompile_MerkleCapHeight checks that the cap option sets the shape of
+// every cap and branch in the proof: no cap by default, the query-count
+// optimum, explicit heights, and heights clamped to each tree's height-1.
+func TestCompile_MerkleCapHeight(t *testing.T) {
+	const inputTreeHeight = 5
+	runningHeights := []int{4, 3, 2}
+	cases := []struct {
+		name string
+		opts []Option
+		want int
+	}{
+		{name: "no-option", want: 0},
+		{name: "explicit-zero", opts: []Option{WithMerkleCapHeight(0)}, want: 0},
+		{name: "optimal", opts: []Option{WithOptimalMerkleCap()}, want: 1},
+		{name: "two", opts: []Option{WithMerkleCapHeight(2)}, want: 2},
+		{name: "input-height-1", opts: []Option{WithMerkleCapHeight(inputTreeHeight - 1)}, want: inputTreeHeight - 1},
+		{name: "max", opts: []Option{WithMerkleCapHeight(maxMerkleCapHeight)}, want: maxMerkleCapHeight},
+	}
+	capNodes := func(depth int) int {
+		if depth == 0 {
+			return 0
+		}
+		return 1 << depth
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sys, col := newCapTestSystem(tc.opts...)
+			require.Equal(t, tc.want, MerkleCapHeight(sys), "compiled System must record its cap height")
+
+			proof, pub := proveCapTestSystem(sys, col)
+			require.NoError(t, sys.Verify(proof, pub), "honest witness must verify")
+
+			op := proof.PCSOpeningProof
+			depth := min(tc.want, inputTreeHeight-1)
+			require.Len(t, op.InputCaps, 1)
+			require.Len(t, op.InputCaps[0].Nodes, capNodes(depth), "input cap")
+			for q, query := range op.InputQueries {
+				require.Len(t, query[0].Siblings, inputTreeHeight-1-depth, "query %d input branch", q)
+			}
+			require.Len(t, op.FRIProof.RoundCaps, len(runningHeights))
+			for j, height := range runningHeights {
+				depth := min(tc.want, height-1)
+				require.Len(t, op.FRIProof.RoundCaps[j].Nodes, capNodes(depth), "round %d cap", j+1)
+				for q, query := range op.FRIProof.RunningQueries {
+					require.Len(t, query[j].Siblings, height-depth, "query %d round %d branch", q, j+1)
+				}
+			}
+		})
+	}
+}
+
+// TestCompile_MerkleCapBindsProof checks that the cap height is a property of
+// the System, not of the proof: a proof made at one height is rejected by an
+// otherwise identical System at another, including heights that differ only
+// on the taller trees.
+func TestCompile_MerkleCapBindsProof(t *testing.T) {
+	for _, tc := range []struct{ prover, verifier Option }{
+		{prover: WithMerkleCapHeight(0), verifier: WithMerkleCapHeight(2)},
+		{prover: WithMerkleCapHeight(2), verifier: WithMerkleCapHeight(0)},
+		{prover: WithMerkleCapHeight(3), verifier: WithMerkleCapHeight(4)},
+		{prover: WithOptimalMerkleCap(), verifier: WithMerkleCapHeight(2)},
+	} {
+		proverSys, col := newCapTestSystem(tc.prover)
+		verifierSys, _ := newCapTestSystem(tc.verifier)
+		proof, pub := proveCapTestSystem(proverSys, col)
+		require.NoError(t, proverSys.Verify(proof, pub), "honest proof must verify at its own cap height")
+		require.Error(t, verifierSys.Verify(proof, pub),
+			"cap height %d proof must not verify at cap height %d",
+			MerkleCapHeight(proverSys), MerkleCapHeight(verifierSys))
+	}
+}
+
+// TestWithMerkleCapHeight_RejectsInvalid checks that cap heights outside
+// [0, maxMerkleCapHeight] are rejected when the option is built.
+func TestWithMerkleCapHeight_RejectsInvalid(t *testing.T) {
+	for _, height := range []int{-1, maxMerkleCapHeight + 1} {
+		require.Panics(t, func() { WithMerkleCapHeight(height) }, "cap height %d must be rejected", height)
+	}
+}
+
+// TestCompile_RejectsRepeatedMerkleCap checks that giving two cap options is
+// rejected before Compile touches the System, even when they agree.
+func TestCompile_RejectsRepeatedMerkleCap(t *testing.T) {
+	for _, opts := range [][]Option{
+		{WithMerkleCapHeight(2), WithMerkleCapHeight(2)},
+		{WithOptimalMerkleCap(), WithMerkleCapHeight(1)},
+		{WithMerkleCapHeight(0), WithOptimalMerkleCap()},
+	} {
+		sys, _, _ := newPCSTestSystem()
+		numRounds := len(sys.Rounds)
+		require.Panics(t, func() { Compile(sys, opts...) }, "a second cap option must be rejected")
+		require.Len(t, sys.Rounds, numRounds, "rejected options must not add an opening round")
+		require.Zero(t, MerkleCapHeight(sys), "rejected options must not record a cap height")
+	}
+}
+
+// TestConfigure_MerkleCap checks that a preconfigured cap reaches an
+// option-less Compile, that a matching local option is accepted, that a
+// divergent one panics before Compile touches the System, and that the
+// consumed default (no cap) is frozen.
+func TestConfigure_MerkleCap(t *testing.T) {
+	t.Run("consumed", func(t *testing.T) {
+		sys, _, _ := newPCSTestSystem()
+		require.NoError(t, Configure(sys, WithOptimalMerkleCap()))
+		Compile(sys, WithFRINumQueries(4))
+		require.Equal(t, 2, MerkleCapHeight(sys), "the optimal height must follow the compiled query count")
+	})
+	t.Run("matching", func(t *testing.T) {
+		sys, _, _ := newPCSTestSystem()
+		require.NoError(t, Configure(sys, WithMerkleCapHeight(1)))
+		Compile(sys, WithFRINumQueries(2), WithMerkleCapHeight(1))
+		require.Equal(t, 1, MerkleCapHeight(sys))
+	})
+	t.Run("conflict", func(t *testing.T) {
+		sys, _, _ := newPCSTestSystem()
+		numRounds := len(sys.Rounds)
+		require.NoError(t, Configure(sys, WithOptimalMerkleCap()))
+		require.PanicsWithValue(t, "pcs: Merkle cap height 1 conflicts with preconfigured optimal",
+			func() { Compile(sys, WithMerkleCapHeight(1)) }, "a local cap must not override the preconfigured one")
+		require.Len(t, sys.Rounds, numRounds, "no opening round may be added")
+	})
+	t.Run("consumed default", func(t *testing.T) {
+		sys, _, _ := newPCSTestSystem()
+		Compile(sys, WithFRINumQueries(2))
+		require.ErrorContains(t, Configure(sys, WithOptimalMerkleCap()),
+			"Merkle cap optimal conflicts with preconfigured height 0", "the consumed default cap must be frozen")
+	})
+}

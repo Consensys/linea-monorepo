@@ -1054,7 +1054,7 @@ func (pcs *PCS) openInputQueries(inputs []CommitterState, queryPositions []int) 
 		res[queryIdx] = make(InputQuery, len(inputs))
 		for inputIdx, committed := range inputs {
 			height := committed.Tree.NumLevel() - 1
-			depth := merkleCapDepth(pcs.Params.NumQueries, height)
+			depth := pcs.Params.merkleCapDepth(height)
 			res[queryIdx][inputIdx] = openInputTreeOpeningToDepth(pcs.Params, committed, queryPosition, depth)
 		}
 	}
@@ -1493,7 +1493,7 @@ func (pcs *PCS) Verify(in VerifyInputs, proof OpeningProof) error {
 	runningFrontiers := make([][]field.Octuplet, pcs.Params.numRounds())
 	for j := uint8(1); j < pcs.Params.numRounds(); j++ {
 		root := proof.FRIProof.RoundRoots[j-1]
-		depth := merkleCapDepth(pcs.Params.NumQueries, int(pcs.Params.LogCodewordSize-j))
+		depth := pcs.Params.merkleCapDepth(int(pcs.Params.LogCodewordSize - j))
 		treeCap := proof.FRIProof.RoundCaps[j-1]
 		if depth == 0 {
 			runningFrontiers[j] = []field.Octuplet{root}
@@ -1624,7 +1624,7 @@ func (vq verifyQueryCtx) resolve(queryIdx, queryPosition int) (resolvedQuery, er
 	// round 0 needs no special case).
 	for j := uint8(1); j < pcs.Params.numRounds(); j++ {
 		opening := vq.proof.FRIProof.RunningQueries[queryIdx][j-1]
-		depth := merkleCapDepth(pcs.Params.NumQueries, int(pcs.Params.LogCodewordSize-j))
+		depth := pcs.Params.merkleCapDepth(int(pcs.Params.LogCodewordSize - j))
 		if err := checkQueryLayerShape(
 			opening, vq.runningFrontiers[j], 1<<(pcs.Params.LogCodewordSize-j), depth); err != nil {
 			return resolvedQuery{}, fmt.Errorf("fri: pcs.Verify: query %d round %d: %w", queryIdx, j, err)
@@ -1786,7 +1786,7 @@ func inputCapShapeInfo(p Params, shape Shape) (inputCapInfo, error) {
 	if height <= 0 {
 		return inputCapInfo{}, fmt.Errorf("shape has invalid tree height %d", height)
 	}
-	depth := merkleCapDepth(p.NumQueries, height)
+	depth := p.merkleCapDepth(height)
 	info := inputCapInfo{
 		height:    height,
 		depth:     depth,

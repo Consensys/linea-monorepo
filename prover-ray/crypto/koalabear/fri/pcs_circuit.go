@@ -307,7 +307,7 @@ func (pcs *PCS) VerifyGnark(api frontend.API, in GnarkVerifyInputs, proof GnarkO
 	// what capping buys. Mirrors the runningFrontiers loop in [PCS.Verify].
 	runningFrontiers := make([][]circuit.Octuplet, pcs.Params.numRounds())
 	for j := uint8(1); j < pcs.Params.numRounds(); j++ {
-		depth := merkleCapDepth(pcs.Params.NumQueries, int(pcs.Params.LogCodewordSize-j))
+		depth := pcs.Params.merkleCapDepth(int(pcs.Params.LogCodewordSize - j))
 		runningFrontiers[j] = authenticateCapGnark(
 			kapi, proof.FRIProof.RoundCaps[j-1], depth, proof.FRIProof.RoundRoots[j-1],
 		)
@@ -543,7 +543,7 @@ func (vq gnarkVerifyQueryCtx) resolve(queryIdx int, posBits []frontend.Variable)
 		// Capping shortens the branch: it stops at the frontier instead of
 		// climbing to the root, so it carries height−depth siblings.
 		height := int(pcs.Params.LogCodewordSize - j)
-		depth := merkleCapDepth(pcs.Params.NumQueries, height)
+		depth := pcs.Params.merkleCapDepth(height)
 		if want := height - depth; len(branch.Siblings) != want {
 			panic(fmt.Sprintf("fri: pcs.VerifyGnark: query %d round %d: branch has %d siblings, want %d",
 				queryIdx, j, len(branch.Siblings), want))
