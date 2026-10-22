@@ -753,7 +753,7 @@ type DecodedProgram struct {
 
 // EncodeInputs returns fresh raw input bytes suitable for ZkC input loading.
 func (program DecodedProgram) EncodeInputs() map[string][]byte {
-	base := binary.BigEndian.AppendUint64(nil, program.InstructionBase)
+	base := binary.BigEndian.AppendUint32(nil, uint32(program.InstructionBase))
 	decoded := append([]byte(nil), program.Decoded...)
 	return map[string][]byte{
 		InstructionBaseInput: base,
@@ -834,8 +834,8 @@ func executableImage(
 			maxEnd = end
 		}
 	}
-	if maxEnd > math.MaxUint64-3 {
-		return 0, nil, 0, fmt.Errorf("aligning executable span end %#x overflows address space", maxEnd)
+	if maxEnd > math.MaxUint32-3 {
+		return 0, nil, 0, fmt.Errorf("executable span end %#x is outside the 32-bit address space", maxEnd)
 	}
 	alignedEnd := (maxEnd + 3) &^ uint64(3)
 	records := (alignedEnd - base) / 4
