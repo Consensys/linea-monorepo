@@ -1,0 +1,130 @@
+include "transcript.zkc"
+
+// ===================================================================================
+// The arithmetic of the rounds of the GKR verifier's sumchecks, and of eq.
+//
+// A round polynomial of degree d is given by its values on {0, …, d}. The proof holds
+// g(1), …, g(d) at consecutive addresses of e6, and the verifier derives g(0) from the
+// running claim.
+//
+// Evaluating at r uses the Lagrange basis,
+//
+//     Lᵢ(r) = ∏_{k≠i}(r − k) / ∏_{k≠i}(i − k),
+//
+// whose denominators' inverses are in the static table lagrange_inv_denominator, which
+// gopkg/gkrverifier generates for the circuit: see its WriteLagrangeTables. The table is
+// indexed by the degree d and by i.
+//
+// The functions that take a scratch address use e6[scratch], …, as scratch space, as many
+// addresses as their documentation says, and the caller must not use these addresses.
+// ===================================================================================
+
+// e6_sub_small sets e6[dst] = e6[a] − k, for a small integer k.
+fn e6_sub_small<e6>(dst:u16, a:u16, k:u16) {
+    var a0:𝔽, a1:𝔽, a2:𝔽, a3:𝔽, a4:𝔽, a5:𝔽
+    a0, a1, a2, a3, a4, a5 = e6[a]
+    e6[dst] = (a0 - (k as 𝔽), a1, a2, a3, a4, a5)
+}
+
+// lagrange_eval sets e6[dst] to the value at e6[r] of the polynomial of degree d whose values on
+// {0, …, d} are e6[vals], …, e6[vals + d]. It uses 2d + 5 scratch addresses.
+fn lagrange_eval<e6>(vals:u16, d:u16, r:u16, dst:u16, scratch:u16) {
+    // t_k = r − k, and p_i = t₀⋯t_{i−1}; the product of the t_k with k > i is accumulated in s
+    var t:u16 = scratch
+    var p:u16 = scratch + (d + 1)
+    var s:u16 = p + (d + 1)
+    var w:u16 = s + 1
+    var acc:u16 = s + 2
+    var i:u16
+
+    e6_one(p)
+    for k:u16 = 0; k<d; k = k + 1 {
+        e6_sub_small(t + k, r, k)
+        e6_mul_at(p + (k + 1), p + k, t + k)
+    }
+    e6_sub_small(t + d, r, d)
+
+    e6_one(s)
+    e6_zero(acc)
+    for z:u16 = 0; z<(d + 1); z = z + 1 {
+        i = d - z
+        e6_mul_at(w, p + i, s)
+        e6_mul_at(w, w, vals + i)
+        e6_scale(w, w, lagrange_inv_denominator[d as u4, i as u4])
+        e6_add(acc, acc, w)
+        e6_mul_at(s, s, t + i)
+    }
+    e6_copy(dst, acc)
+}
+
+// sumcheck_round performs a round of a sumcheck on the running claim e6[claim]: it absorbs the d
+// values g(1), …, g(d) at e6[g], …, squeezes the challenge e6[rj], recovers g(0) = claim − g(1), and
+// sets the claim to g(rj). It uses 3d + 6 scratch addresses.
+fn sumcheck_round<e6, transcript_state, transcript_meta>(g:u16, d:u16, claim:u16, rj:u16, scratch:u16) {
+    absorb(g, d)
+    squeeze(rj)
+
+    e6_sub(scratch, claim, g)
+    for i:u16 = 0; i<d; i = i + 1 {
+        e6_copy(scratch + (i + 1), g + i)
+    }
+    lagrange_eval(scratch, d, rj, claim, scratch + (d + 1))
+}
+
+// single_source_round performs a round of a sumcheck at a single-source level, on the running claim
+// e6[num]/e6[den] and the coordinate e6[q] of the claim's point, where the proof's polynomial g' is
+// the round polynomial divided by eq(q, ·). It absorbs the d values g'(1), …, g'(d) at e6[g], …,
+// squeezes the challenge e6[rj], and sets the claim to g'(rj), without dividing: with
+// g'(0) = (num/den − q g'(1)) / (1 − q) and m = den (1 − q), it sets
+//
+//     den ← m,    num ← m g'(rj),    where m g'(0) = num − den q g'(1).
+//
+// It uses 3d + 8 scratch addresses.
+fn single_source_round<e6, transcript_state, transcript_meta>(g:u16, d:u16, num:u16, den:u16, q:u16, rj:u16, scratch:u16) {
+    var m:u16 = scratch + (d + 1)
+    var t:u16 = m + 1
+
+    absorb(g, d)
+    squeeze(rj)
+
+    e6_one(m)
+    e6_sub(m, m, q)
+    e6_mul_at(m, m, den)
+
+    e6_mul_at(t, den, q)
+    e6_mul_at(t, t, g)
+    e6_sub(scratch, num, t)
+    for i:u16 = 0; i<d; i = i + 1 {
+        e6_mul_at(scratch + (i + 1), m, g + i)
+    }
+    lagrange_eval(scratch, d, rj, num, t + 1)
+    e6_copy(den, m)
+}
+
+// eq_step returns a · (p r + (1 − p)(1 − r)) for elements given by their coordinates.
+fn eq_step(a0:𝔽, a1:𝔽, a2:𝔽, a3:𝔽, a4:𝔽, a5:𝔽, p0:𝔽, p1:𝔽, p2:𝔽, p3:𝔽, p4:𝔽, p5:𝔽, r0:𝔽, r1:𝔽, r2:𝔽, r3:𝔽, r4:𝔽, r5:𝔽) -> (c0:𝔽, c1:𝔽, c2:𝔽, c3:𝔽, c4:𝔽, c5:𝔽) {
+    var t0:𝔽, t1:𝔽, t2:𝔽, t3:𝔽, t4:𝔽, t5:𝔽
+
+    t0, t1, t2, t3, t4, t5 = e6_mul(p0, p1, p2, p3, p4, p5, r0, r1, r2, r3, r4, r5)
+
+    // p r + (1 − p)(1 − r) = 1 − p − r + 2 p r
+    c0, c1, c2, c3, c4, c5 = e6_mul(a0, a1, a2, a3, a4, a5, ((1 - p0) - r0) + (t0 + t0), ((0 - p1) - r1) + (t1 + t1), ((0 - p2) - r2) + (t2 + t2), ((0 - p3) - r3) + (t3 + t3), ((0 - p4) - r4) + (t4 + t4), ((0 - p5) - r5) + (t5 + t5))
+}
+
+// eq_point sets e6[dst] = eq(p, r) = ∏_j (p_j r_j + (1 − p_j)(1 − r_j)), for the points of n elements
+// at e6[p], … and e6[r], ….
+fn eq_point<e6>(p:u16, r:u16, n:u16, dst:u16) {
+    var a0:𝔽, a1:𝔽, a2:𝔽, a3:𝔽, a4:𝔽, a5:𝔽
+    var p0:𝔽, p1:𝔽, p2:𝔽, p3:𝔽, p4:𝔽, p5:𝔽
+    var r0:𝔽, r1:𝔽, r2:𝔽, r3:𝔽, r4:𝔽, r5:𝔽
+    var c0:𝔽, c1:𝔽, c2:𝔽, c3:𝔽, c4:𝔽, c5:𝔽
+
+    e6_one(dst)
+    for j:u16 = 0; j<n; j = j + 1 {
+        a0, a1, a2, a3, a4, a5 = e6[dst]
+        p0, p1, p2, p3, p4, p5 = e6[p + j]
+        r0, r1, r2, r3, r4, r5 = e6[r + j]
+        c0, c1, c2, c3, c4, c5 = eq_step(a0, a1, a2, a3, a4, a5, p0, p1, p2, p3, p4, p5, r0, r1, r2, r3, r4, r5)
+        e6[dst] = (c0, c1, c2, c3, c4, c5)
+    }
+}

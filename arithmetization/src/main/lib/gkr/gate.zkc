@@ -1,0 +1,95 @@
+include "e6.zkc"
+
+// ===================================================================================
+// The interpreter of the gates of a GKR circuit: gnark's gkr.GateBytecode over E₆.
+//
+// The gates are read from the static tables gate_info, gate_const, gate_inst and
+// gate_arg, which gopkg/gkrverifier generates for the circuit: see its WriteGateTables.
+//
+// A gate is evaluated in a frame of E₆ values at e6[frame], …, e6[frame + 127]. Slot k of
+// the frame is the k-th value of the bytecode's value space: the nb_consts constants, then
+// the nb_in inputs, then the result of each instruction. The caller writes the inputs at
+// slots nb_consts, …, nb_consts + nb_in − 1, and eval_gate leaves the result in the slot
+// GATE_RESULT. Slot GATE_TEMP is scratch.
+// ===================================================================================
+
+const GATE_RESULT:u16 = 127
+const GATE_TEMP:u16 = 126
+
+// The operations of gkr.GateOp.
+const GATE_OP_ADD:u16 = 0
+const GATE_OP_SUB:u16 = 1
+const GATE_OP_MUL:u16 = 2
+const GATE_OP_NEG:u16 = 3
+const GATE_OP_SUM_EXP_17:u16 = 5
+const GATE_OP_MUL_ACC:u16 = 6
+
+// gate_slot returns the address of the argument arg of the current gate's instruction,
+// given by its row in gate_arg.
+#[inline]
+fn gate_slot(frame:u16, row:u16) -> (address:u16) {
+    address = frame + gate_arg[row]
+}
+
+// eval_gate evaluates the gate with the index gate on the frame at e6[frame].
+fn eval_gate<e6>(gate:u16, frame:u16) {
+    var nb_consts:u16, nb_in:u16, nb_inst:u16, first_inst:u16, first_const:u16
+    var op:u16, nb_args:u16, first_arg:u16
+    var dst:u16
+    nb_consts, nb_in, nb_inst, first_inst, first_const = gate_info[gate]
+
+    for k:u16 = 0; k<nb_consts; k = k + 1 {
+        e6[frame + k] = (gate_const[first_const + k], 0, 0, 0, 0, 0)
+    }
+
+    dst = (frame + nb_consts) + nb_in
+    for i:u16 = 0; i<nb_inst; i = i + 1 {
+        op, nb_args, first_arg = gate_inst[first_inst + i]
+        eval_instruction(op, nb_args, first_arg, frame, dst)
+        dst = dst + 1
+    }
+
+    // The result is the last value of the space, which for a gate without instructions is its
+    // sole input.
+    e6_copy(frame + GATE_RESULT, dst - 1)
+}
+
+// eval_instruction executes an instruction of the operation op on the nb_args arguments given by
+// the rows first_arg, … of gate_arg, and writes the result to e6[dst].
+fn eval_instruction<e6>(op:u16, nb_args:u16, first_arg:u16, frame:u16, dst:u16) {
+    var temp:u16 = frame + GATE_TEMP
+
+    if op == GATE_OP_ADD {
+        e6_copy(dst, gate_slot(frame, first_arg))
+        for j:u16 = 1; j<nb_args; j = j + 1 {
+            e6_add(dst, dst, gate_slot(frame, first_arg + j))
+        }
+    } else if op == GATE_OP_SUB {
+        e6_copy(dst, gate_slot(frame, first_arg))
+        for j:u16 = 1; j<nb_args; j = j + 1 {
+            e6_sub(dst, dst, gate_slot(frame, first_arg + j))
+        }
+    } else if op == GATE_OP_MUL {
+        e6_copy(dst, gate_slot(frame, first_arg))
+        for j:u16 = 1; j<nb_args; j = j + 1 {
+            e6_mul_at(dst, dst, gate_slot(frame, first_arg + j))
+        }
+    } else if op == GATE_OP_NEG {
+        e6_zero(dst)
+        e6_sub(dst, dst, gate_slot(frame, first_arg))
+    } else if op == GATE_OP_MUL_ACC {
+        e6_mul_at(dst, gate_slot(frame, first_arg), gate_slot(frame, first_arg + 1))
+        e6_add(dst, dst, gate_slot(frame, first_arg + 2))
+    } else if op == GATE_OP_SUM_EXP_17 {
+        // (a + b + c)^17 = ((((s²)²)²)²)·s
+        e6_add(temp, gate_slot(frame, first_arg), gate_slot(frame, first_arg + 1))
+        e6_add(temp, temp, gate_slot(frame, first_arg + 2))
+        e6_mul_at(dst, temp, temp)
+        for j:u16 = 0; j<3; j = j + 1 {
+            e6_mul_at(dst, dst, dst)
+        }
+        e6_mul_at(dst, dst, temp)
+    } else {
+        fail
+    }
+}

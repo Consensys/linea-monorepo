@@ -1,0 +1,59 @@
+// ===================================================================
+// Unit test for the Poseidon2 compression function
+// (arithmetization/src/main/lib/poseidon2/compress.zkc).
+//
+// The driver loads ℓ and ρ from `left` and `right`, compresses them with
+// compress and with poseidon2_compress, and checks both results against
+// `expected`, failing on any mismatch.
+//
+// Run it with --field KOALABEAR_16.
+// ===================================================================
+
+include "../../../main/lib/poseidon2/compress.zkc"
+include "../../../main/lib/poseidon2/compress_native.zkc"
+
+pub input left(address:u5) -> (word:u32)
+pub input right(address:u5) -> (word:u32)
+pub input expected(address:u5) -> (word:u32)
+
+fn main<poseidon2_state, compress_rho>() {
+    for i:u5 = 0; i<COMPRESS_BLOCK; i = i + 1 {
+        write_to_state(i, left[i] as 𝔽)
+        write_to_state(i + COMPRESS_BLOCK, right[i] as 𝔽)
+    }
+
+    compress()
+
+    for i:u5 = 0; i<COMPRESS_BLOCK; i = i + 1 {
+        if read_from_state(i) != (expected[i] as 𝔽) {
+            fail
+        }
+    }
+
+    var y0:𝔽, y1:𝔽, y2:𝔽, y3:𝔽, y4:𝔽, y5:𝔽, y6:𝔽, y7:𝔽
+    y0, y1, y2, y3, y4, y5, y6, y7 = poseidon2_compress(left[0] as 𝔽, left[1] as 𝔽, left[2] as 𝔽, left[3] as 𝔽, left[4] as 𝔽, left[5] as 𝔽, left[6] as 𝔽, left[7] as 𝔽, right[0] as 𝔽, right[1] as 𝔽, right[2] as 𝔽, right[3] as 𝔽, right[4] as 𝔽, right[5] as 𝔽, right[6] as 𝔽, right[7] as 𝔽)
+    if y0 != (expected[0] as 𝔽) {
+        fail
+    }
+    if y1 != (expected[1] as 𝔽) {
+        fail
+    }
+    if y2 != (expected[2] as 𝔽) {
+        fail
+    }
+    if y3 != (expected[3] as 𝔽) {
+        fail
+    }
+    if y4 != (expected[4] as 𝔽) {
+        fail
+    }
+    if y5 != (expected[5] as 𝔽) {
+        fail
+    }
+    if y6 != (expected[6] as 𝔽) {
+        fail
+    }
+    if y7 != (expected[7] as 𝔽) {
+        fail
+    }
+}
