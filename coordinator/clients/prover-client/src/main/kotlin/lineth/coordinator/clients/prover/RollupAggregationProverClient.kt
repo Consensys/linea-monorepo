@@ -30,9 +30,10 @@ class RollupAggregationProofRequestDtoMapper(
       request.rollupProofs.map { proofIndex ->
         rollupProofProvider.findProof(proofIndex)
           .thenApply { response ->
+            // proverVersion is response-only; the embedded rollupProof schema does not allow it.
             requireNotNull(response) {
               "Rollup proof response was not found for proofIndex=$proofIndex"
-            }
+            }.copy(proverVersion = null)
           }
       }
     } ?: emptyList()
