@@ -99,6 +99,7 @@
 - *(linea-besu)* Limit large MODEXP calls to 1 per block (#4128)
 - *(prover)* Segment MODEXP_LARGE by whole instances in limitless (#4127)
 - *(coordinator)* Align RISC-V l2-execution DTOs and request envelope with rollup_spec (#4260)
+- *(coordinator)* Align RISC-V rollup DTOs with rollup_spec (#4262)
 
 ### 🚜 Refactor
 
@@ -199,3 +200,4 @@
 - *(coordinator)* Simplify Risc5 prover DTO mappers (#4121)
 - *(coordinator)* Make RISC-V rollup prover clients transport-agnostic (#4140)
 - *(maru)* Refactor MaruClForkUpgradeTest to use new MaruCluster test (#4214)
+- *(deps)* Bump Node.js to 24.22.1 (#4284)
