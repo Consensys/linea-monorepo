@@ -94,6 +94,18 @@ type schemaScanner struct {
 	// is the designated removal point once zkc interns natively (see
 	// LFDT-Lineth/lineth-monorepo#4038). The map is used for lookup only and
 	// is never iterated, so it does not affect output ordering.
+	//
+	// Removing this structural fallback alone does not complete the native-zkc
+	// migration. ExprCache dedupes the *output*, but every traversal of the
+	// *input* still descends into each occurrence of a term, so a shared
+	// [air.Term] DAG would be expanded as a tree, which is exponential in DAG
+	// depth (a chain of 19 nested Add(t, t) costs ~786K allocations per
+	// conversion). Before relying on native sharing:
+	//   - [castExpression] must keep a per-module map[air.Term]wiop.Expression,
+	//     keyed on the original n-ary term and checked before descending;
+	//   - [collectFromTerm] must memoise visited terms in the same way;
+	//   - the Lisp rendering used to order constraints in [scanConstraints]
+	//     must not expand shared subterms (or must use another ordering key).
 	ExprCache map[schema.ModuleId]map[exprKey]wiop.Expression
 }
 
@@ -359,6 +371,10 @@ func (s *schemaScanner) collectReferencedColumns() map[string]struct{} {
 
 // collectFromTerm recursively walks a constraint term and adds every column
 // access it finds to out. It mirrors the structure of castExpression.
+//
+// It does not memoise visited terms, so a shared [air.Term] is re-walked at
+// every occurrence. That is fine for the tree-shaped terms zkc emits today;
+// see [schemaScanner.ExprCache] for what native zkc interning requires.
 func (s *schemaScanner) collectFromTerm(
 	modID schema.ModuleId,
 	term air.Term[koalabear.Element],
@@ -426,6 +442,8 @@ func (s *schemaScanner) scanConstraints() {
 	}
 
 	// Pre-compute Lisp names to avoid O(n²) serialisation inside the comparator.
+	// The rendering expands shared subterms, so it would blow up on a native
+	// zkc DAG; see [schemaScanner.ExprCache].
 	names := make([]string, len(corsetCSS))
 	for i, cs := range corsetCSS {
 		names[i] = cs.Lisp(s.Schema).String(false)
@@ -589,6 +607,12 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 // are interned too, and necessarily so: [wiop.Column.View] and
 // [wiop.ColumnView.Shift] allocate a new pointer on every call, so without
 // leaf interning no compound key could ever match.
+//
+// Interning dedupes the output only: the recursion still descends into every
+// occurrence of an input term before the lookup. This is linear for today's
+// tree-shaped input but exponential in depth for a shared [air.Term] DAG, so
+// native zkc interning needs an input-term memo here (see
+// [schemaScanner.ExprCache]).
 func (s *schemaScanner) castExpression(context schema.ModuleId, expr air.Term[koalabear.Element]) wiop.Expression {
 
 	switch e := expr.(type) {
