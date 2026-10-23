@@ -78,11 +78,9 @@ fn sameResult(path: []const u8, host: execution_machine.Result, candidate: execu
     switch (host) {
         .accepted => |expected| switch (candidate) {
             .accepted => |actual| {
-                if (!std.mem.eql(u8, &expected, &actual)) {
-                    const actual_hex = std.fmt.bytesToHex(actual, .lower);
-                    const expected_hex = std.fmt.bytesToHex(expected, .lower);
-                    std.debug.print("FAIL {s}: accepted output mismatch\n  got:      0x{s}\n  expected: 0x{s}\n", .{
-                        path, &actual_hex, &expected_hex,
+                if (!std.mem.eql(u8, expected, actual)) {
+                    std.debug.print("FAIL {s}: accepted output mismatch\n  got:      0x{x}\n  expected: 0x{x}\n", .{
+                        path, actual, expected,
                     });
                     return false;
                 }
