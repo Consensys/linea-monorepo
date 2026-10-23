@@ -174,6 +174,10 @@ class MaruFactory(
                 fork = ChainFork(ClFork.QBFT_PHASE0, ElFork.Paris),
               ),
               terminalTotalDifficulty = ttd!!,
+              // Besu >= 26.9.0 no longer returns totalDifficulty in eth_getBlockBy* responses, so switch on block
+              // number instead. With the QBFT EL genesis used in tests (genesis difficulty 0x1, each block adds 1),
+              // cumulative totalDifficulty reaches ttd exactly at block (ttd - 1).
+              terminalBlockNumber = ttd - 1UL,
             ),
           ),
           ForkSpec(
