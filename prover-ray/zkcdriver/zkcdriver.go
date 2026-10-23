@@ -99,8 +99,12 @@ func NewZkCDriver(sys *wiop.System, settings Settings, bin io.Reader) *ZkCDriver
 // minimum, and only zkc can grow a module with valid rows: it pads with rows
 // that satisfy the module's constraints, which constant padding need not.
 // zkc's padding strategy sees a module's height, not the module, so every
-// module gets the largest minimum. sys must be compiled, since the minimums
-// follow from the compiled openings; before compilation, cfg is returned.
+// module gets the largest minimum.
+//
+// sys must be compiled: the minimums come from its compiled openings, so a
+// call before compilation under-pads (a module the guest does not use stays at
+// one row, while compilation may give it a logup column of minimum 4), and
+// Prove rejects the trace.
 func PadToMinSizes(cfg vm.TraceConfig, sys *wiop.System) vm.TraceConfig {
 	minRows := uint(1)
 	for _, n := range sys.MinRuntimeSizes() {
@@ -141,7 +145,9 @@ func PreReadZkcInputs(inputsFile string) *PreReadInputs {
 }
 
 // TraceZkcInputs reads and expands a trace file, returning the pre-read trace
-// data laid out on multiple shards. The function panics on errors.
+// data laid out on multiple shards. The function panics on errors. The
+// driver's System must be compiled before tracing: the trace is padded to its
+// dynamic modules' minimum sizes (see [PadToMinSizes]).
 func (a *ZkCDriver) TraceZkcInputs(preRead *PreReadInputs) trace.LazyTrace[koalabear.Element] {
 
 	assignStart := time.Now()

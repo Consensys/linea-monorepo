@@ -2,10 +2,12 @@ package wiop
 
 import "fmt"
 
-// MinRuntimeSize returns the smallest size the module may take at runtime:
-// the smallest power of two N with N > 2·max|s|, the maximum being over the
-// shifts s at which the system's [LagrangeEval] queries open the module's
-// columns (1 when there is no shift).
+// MinRuntimeSize returns the smallest power of two N with N > 2·max|s|, the
+// maximum being over the shifts s at which the system's [LagrangeEval] queries
+// open the module's columns (1 when there is no shift). For a dynamic module,
+// it is the smallest size the module may take at runtime. It is only enforced
+// on dynamic modules: a sized module's size is fixed by the program, so its
+// proof shape does not vary.
 //
 // Above that size, no two shifts of a column coincide modulo N, and their
 // order modulo N (non-negative shifts ascending, then negative ones) is the
@@ -15,7 +17,9 @@ import "fmt"
 // module below its minimum.
 //
 // The shifts are read from the Lagrange evaluations, the openings left after
-// compilation, so the minimum is final once the system is compiled.
+// compilation, so the minimum is final once the system is compiled. Each call
+// scans every Lagrange evaluation of the system: to get the minimums of many
+// modules, use [System.MinRuntimeSizes], which computes them in one pass.
 func (m *Module) MinRuntimeSize() int {
 	return minSizeForShift(m.system.maxShifts()[m.index])
 }
@@ -58,6 +62,14 @@ func minSizeForShift(maxShift int) int {
 		n *= 2
 	}
 	return n
+}
+
+// CheckMinRuntimeSizes returns an error naming the first dynamic module (in
+// module order) whose size in run is below its [Module.MinRuntimeSize]. A prover
+// calls it once the dynamic sizes are final, after the actions of round
+// [System.DynamicSizeRound], as [System.Prove] does.
+func (run *Runtime) CheckMinRuntimeSizes() error {
+	return run.System.checkMinRuntimeSizes(run.dynamicSizes)
 }
 
 // checkMinRuntimeSizes returns an error naming the first dynamic module (in

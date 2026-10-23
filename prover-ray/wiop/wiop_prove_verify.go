@@ -90,7 +90,7 @@ func (sys *System) Prove(assign func(rt *Runtime), proveOpts ...ProveOptions) (P
 		// The dynamic sizes are final once this round's actions have run:
 		// none may be below its module's minimum (see Module.MinRuntimeSize).
 		if rt.currentRound.ID == sys.DynamicSizeRound {
-			if err := sys.checkMinRuntimeSizes(rt.dynamicSizes); err != nil {
+			if err := rt.CheckMinRuntimeSizes(); err != nil {
 				panic(err)
 			}
 		}

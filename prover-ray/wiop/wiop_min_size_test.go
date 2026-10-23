@@ -44,7 +44,7 @@ func TestMinRuntimeSize(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.want, mod.MinRuntimeSize())
-			assert.Equal(t, 1, other.MinRuntimeSize(), "a module without openings has no minimum")
+			assert.Equal(t, 1, other.MinRuntimeSize(), "a module without openings has minimum 1")
 			assert.Equal(t, map[int]int{0: tc.want, 1: 1}, sys.MinRuntimeSizes())
 		})
 	}
