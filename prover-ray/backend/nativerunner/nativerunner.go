@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/backend"
@@ -18,10 +19,9 @@ import (
 
 // Output is the parsed native-runner result for one l2-execution request.
 type Output struct {
-	StartBlockNumber  uint64
-	PublicInputs      backend.PublicInputs
-	TxFroms           [][20]byte
-	FilteredAddresses [][20]byte
+	StartBlockNumber uint64
+	PublicInputs     backend.PublicInputs
+	TxFroms          [][20]byte
 }
 
 // Run writes the extended input to a temp file, runs `<binPath> <file> --json`,
@@ -34,8 +34,7 @@ func Run(ctx context.Context, binPath string, extendedInput []byte) (Output, err
 	return Parse(out)
 }
 
-// RunSSZ runs `<binPath> <file> --ssz` and returns the raw 0x0003 wire output
-// (the 2-byte schema id followed by keccak256(SSZ(public inputs))). It is
+// RunSSZ runs `<binPath> <file> --ssz` and returns the raw 0x0003 output. It is
 // byte-identical to what the guest writes to guest_output, so dev-zkvm compares
 // it against the ZkC Execute output to cross-check the native runner.
 func RunSSZ(ctx context.Context, binPath string, extendedInput []byte) ([]byte, error) {
@@ -93,15 +92,15 @@ type jsonPublicInputs struct {
 	ParentFtxNumber                          uint64 `json:"parentFtxNumber"`
 	EndFtxRollingHash                        string `json:"endFtxRollingHash"`
 	EndProcessedFtxNumber                    uint64 `json:"endProcessedFtxNumber"`
-	FilteredAddressesHash                    string `json:"filteredAddressesHash"`
 	TxFromsHash                              string `json:"txFromsHash"`
 
 	// Emitted by the current runner but not used by the backend. Listed here
 	// only so the strict decoding in Parse() accepts today's output, because
-	// strict decoding rejects any field not listed in this struct. Remove this
-	// field (and re-capture the test data) once the runner is updated to the
-	// spec shape and no longer emits it.
-	L2L1MessagesHash string `json:"l2L1MessagesHash"`
+	// strict decoding rejects any field not listed in this struct. Remove these
+	// fields (and re-capture the test data) once the runner is updated to the
+	// spec shape and no longer emits them.
+	L2L1MessagesHash      string `json:"l2L1MessagesHash"`
+	FilteredAddressesHash string `json:"filteredAddressesHash"`
 }
 
 // Parse converts the runner's --json output into an Output.
@@ -135,7 +134,6 @@ func Parse(data []byte) (Output, error) {
 		{pi.DynamicChainConfigHash, &out.PublicInputs.DynamicChainConfigHash, "dynamicChainConfigHash"},
 		{pi.ParentFtxRollingHash, &out.PublicInputs.ParentFtxRollingHash, "parentFtxRollingHash"},
 		{pi.EndFtxRollingHash, &out.PublicInputs.EndFtxRollingHash, "endFtxRollingHash"},
-		{pi.FilteredAddressesHash, &out.PublicInputs.FilteredAddressesHash, "filteredAddressesHash"},
 		{pi.TxFromsHash, &out.PublicInputs.TxFromsHash, "txFromsHash"},
 	}
 	for _, h := range hashes {
@@ -152,6 +150,10 @@ func Parse(data []byte) (Output, error) {
 		return Output{}, err
 	}
 
+	if _, err := decodeFixed(pi.FilteredAddressesHash, 32, "publicInputs.filteredAddressesHash"); err != nil {
+		return Output{}, err
+	}
+
 	var err error
 	// blockCount and l2MessagingBlocksOffsets are not in the runner output.
 	if out.PublicInputs.L2L1Messages, err = decodeHash32List(j.L2L1Messages, "l2L1Messages"); err != nil {
@@ -160,10 +162,19 @@ func Parse(data []byte) (Output, error) {
 	if out.TxFroms, err = decodeAddressList(j.TxFroms, "txFroms"); err != nil {
 		return Output{}, err
 	}
-	if out.FilteredAddresses, err = decodeAddressList(j.FilteredAddresses, "filteredAddresses"); err != nil {
+	if out.PublicInputs.FilteredAddresses, err = decodeAddressList(j.FilteredAddresses, "filteredAddresses"); err != nil {
 		return Output{}, err
 	}
+	out.PublicInputs.FilteredAddresses = sortedDistinct(out.PublicInputs.FilteredAddresses)
 	return out, nil
+}
+
+// sortedDistinct returns the addresses ascending by byte value without
+// duplicates, the canonical encoding of the filteredAddresses set.
+func sortedDistinct(as [][20]byte) [][20]byte {
+	out := slices.Clone(as)
+	slices.SortFunc(out, func(a, b [20]byte) int { return bytes.Compare(a[:], b[:]) })
+	return slices.CompactFunc(out, func(a, b [20]byte) bool { return a == b })
 }
 
 func decodeFixed(s string, n int, ctx string) ([]byte, error) {
