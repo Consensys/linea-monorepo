@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/LFDT-Lineth/lineth-monorepo/prover-ray/backend"
@@ -31,7 +32,7 @@ func TestNewExecutionResponse_MapsV1Fields(t *testing.T) {
 			ParentFtxNumber:                          13,
 			EndFtxRollingHash:                        filledHash(0x08),
 			EndProcessedFtxNumber:                    14,
-			FilteredAddressesHash:                    filledHash(0x09),
+			FilteredAddresses:                        [][20]byte{{0x09}},
 			TxFromsHash:                              filledHash(0x0a),
 		},
 	}
@@ -44,7 +45,6 @@ func TestNewExecutionResponse_MapsV1Fields(t *testing.T) {
 	assert.Equal(t, "0xcafe", resp.ProofHex)
 	assert.Equal(t, uint64(1000501), resp.StartBlockNumber)
 	assert.Equal(t, repeatHex(0xbb), resp.ProgramVk)
-	assert.Empty(t, resp.FilteredAddresses)
 
 	pi := resp.PublicInputs
 	assert.Equal(t, repeatHex(0x01), pi.ParentBlockHash)
@@ -61,7 +61,7 @@ func TestNewExecutionResponse_MapsV1Fields(t *testing.T) {
 	assert.Equal(t, uint64(13), pi.ParentFtxNumber)
 	assert.Equal(t, repeatHex(0x08), pi.EndFtxRollingHash)
 	assert.Equal(t, uint64(14), pi.EndProcessedFtxNumber)
-	assert.Equal(t, repeatHex(0x09), pi.FilteredAddressesHash)
+	assert.Equal(t, []string{"0x09" + strings.Repeat("00", 19)}, pi.FilteredAddresses)
 	assert.Equal(t, repeatHex(0x0a), pi.TxFromsHash)
 }
 

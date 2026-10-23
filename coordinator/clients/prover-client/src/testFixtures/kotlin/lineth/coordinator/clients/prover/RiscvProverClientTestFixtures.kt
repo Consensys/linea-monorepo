@@ -171,7 +171,7 @@ object RiscvProverClientTestFixtures {
       parentFtxNumber = 7,
       endFtxRollingHash = "0x07",
       endProcessedFtxNumber = 8,
-      filteredAddressesHash = "0x09",
+      filteredAddresses = emptyList(),
       txFromsHash = "0x0c",
       blockCount = 1,
       l2MessagingBlocksOffsets = emptyList(),
@@ -185,7 +185,6 @@ object RiscvProverClientTestFixtures {
     startBlockNumber = startBlockNumber,
     proof = "0xabcd",
     publicInputs = l2ExecutionProofPublicInputsDto(endBlockNumber),
-    filteredAddresses = emptyList(),
     programVk = L2_EXECUTION_PROGRAM_ID,
   )
 
