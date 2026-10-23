@@ -40,6 +40,8 @@ const tx_signing = executor.executor_tx_signing;
 /// l2-execution guest binary — one conflation = one fork = one exec programVk — so it is NEVER read
 /// from the (prover-controlled) input; see the fork check in `runL2Execution`.
 const GUEST_FORK: []const u8 = "Amsterdam";
+/// `GUEST_FORK` as a zesu spec, for the signature rules of forced-transaction sender recovery.
+const GUEST_SPEC: primitives.SpecId = .amsterdam;
 
 /// L2MessageService's `MessageSent` event topic0 (the L2->L1 bridge message signature).
 const BRIDGE_L2L1_MESSAGE_SENT_TOPIC_0: [32]u8 = .{
@@ -264,7 +266,7 @@ fn validateForcedTransactions(
 
         const decoded = try tx_decode.decodeTxs(alloc, &.{ftx.signed_tx_rlp});
         const tx = &decoded[0];
-        const from_address = try tx_signing.recoverSender(alloc, tx, chain_id) orelse return error.ForcedTxSenderRecoveryFailed;
+        const from_address = try tx_signing.recoverSender(alloc, tx, chain_id, GUEST_SPEC) orelse return error.ForcedTxSenderRecoveryFailed;
         const tx_hash = mpt.keccak256(ftx.signed_tx_rlp);
 
         // Rolling hash update for EVERY FTX in the range, regardless of outcome.

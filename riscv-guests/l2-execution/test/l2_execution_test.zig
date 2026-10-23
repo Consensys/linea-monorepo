@@ -290,7 +290,7 @@ fn decodeFixtureTx(alloc: std.mem.Allocator) !types.TxInput {
 fn recoverTxSender(alloc: std.mem.Allocator, signed_tx_rlp: []const u8) ![20]u8 {
     const decoded = try executor.executor_tx_decode.decodeTxs(alloc, &.{signed_tx_rlp});
     var tx = decoded[0];
-    return (try api.recoverSenderFn(alloc, &tx, CHAIN_ID)).?;
+    return (try api.recoverSenderFn(alloc, &tx, CHAIN_ID, .amsterdam)).?;
 }
 
 test "recoverSender recovers the known signer of the signed-tx fixture" {
@@ -299,7 +299,7 @@ test "recoverSender recovers the known signer of the signed-tx fixture" {
     const alloc = arena.allocator();
 
     var tx = try decodeFixtureTx(alloc);
-    const sender = (try api.recoverSenderFn(alloc, &tx, CHAIN_ID)).?;
+    const sender = (try api.recoverSenderFn(alloc, &tx, CHAIN_ID, .amsterdam)).?;
     try testing.expectEqualSlices(u8, &EXPECTED_SENDER, &sender);
 }
 

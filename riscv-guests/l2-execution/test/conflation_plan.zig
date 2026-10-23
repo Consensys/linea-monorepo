@@ -206,7 +206,7 @@ pub const StubEngine = struct {
             const block_logs: []const []const types.Log = if (call_index < built.tx_logs.len) built.tx_logs[call_index] else &.{};
 
             for (decoded_txs, 0..) |*tx, tx_idx| {
-                const from = try tx_signing.recoverSender(alloc, tx, si.chain_config.chain_id) orelse
+                const from = try tx_signing.recoverSender(alloc, tx, si.chain_config.chain_id, .amsterdam) orelse
                     return error.StubEngineSenderRecoveryFailed;
                 const logs: []const types.Log = if (tx_idx < block_logs.len) block_logs[tx_idx] else &.{};
                 try receipts.append(alloc, .{

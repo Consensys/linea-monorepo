@@ -39,7 +39,7 @@ const api = l2_execution.test_api;
 fn recoverSender(alloc: std.mem.Allocator, signed_tx_rlp: []const u8, chain_id: u64) ![20]u8 {
     const decoded = try executor.executor_tx_decode.decodeTxs(alloc, &.{signed_tx_rlp});
     var tx = decoded[0];
-    return (try api.recoverSenderFn(alloc, &tx, chain_id)).?;
+    return (try api.recoverSenderFn(alloc, &tx, chain_id, .amsterdam)).?;
 }
 
 test "a real multi-block EF-corpus range runs through the full guest pipeline (not StubEngine)" {

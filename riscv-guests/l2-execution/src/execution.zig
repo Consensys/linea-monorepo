@@ -65,6 +65,8 @@ pub const ComputedBlock = struct {
     bal_hash: ?[32]u8,
     /// EIP-7685 requests hash as executed.
     requests_hash: [32]u8,
+    /// Block logs bloom as executed.
+    logs_bloom: types.Bloom,
 };
 
 // ─── Private helpers (adapted from Zesu executor/main.zig) ───────────────────────────────────────
@@ -218,6 +220,7 @@ fn computeBlockStatelessWithLogs(
         .blob_gas_used = result.blob_gas_used,
         .bal_hash = result.bal_hash,
         .requests_hash = result.requests_hash,
+        .logs_bloom = result.block_bloom,
     };
 }
 
@@ -316,6 +319,8 @@ pub fn executeStatelessInputWithLogs(
         .expected_state_root = ep.state_root,
         .computed_receipts_root = computed.proof.receipts_root,
         .expected_receipts_root = ep.receipts_root,
+        .computed_logs_bloom = computed.logs_bloom,
+        .expected_logs_bloom = ep.logs_bloom,
     }) catch |e| return zesuErr(e);
     if (primitives.isEnabledIn(spec, .prague) and !std.mem.eql(u8, &declared.requests_hash, &computed.requests_hash)) {
         return zesuErr(error.InvalidRequests);

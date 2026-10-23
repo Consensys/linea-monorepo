@@ -76,7 +76,7 @@ fn buildSignedFixtureTx(alloc: std.mem.Allocator, comptime label: []const u8, no
 fn recoverFixtureSender(alloc: std.mem.Allocator, signed_tx_rlp: []const u8, chain_id: u64) ![20]u8 {
     const decoded = try executor.executor_tx_decode.decodeTxs(alloc, &.{signed_tx_rlp});
     var tx = decoded[0];
-    return (try api.recoverSenderFn(alloc, &tx, chain_id)).?;
+    return (try api.recoverSenderFn(alloc, &tx, chain_id, .amsterdam)).?;
 }
 
 /// L2MessageService's `MessageSent` event topic0, copied from the guest's own constant of the
