@@ -183,8 +183,10 @@ pub const StubEngine = struct {
         alloc: std.mem.Allocator,
         si: input.StatelessInput,
         fork_name: []const u8,
+        system_contracts: input.SystemContracts,
         node_index: *mpt.NodeIndex,
     ) !StubProofOutput {
+        _ = system_contracts;
         const ep = &si.new_payload_request.execution_payload;
         const call_index = next_index;
         next_index += 1;
@@ -364,6 +366,8 @@ pub const ConflationPlan = struct {
 
     chain_id: u64 = 59144,
     coinbase: [20]u8 = DEFAULT_COINBASE,
+    /// Range-level system contracts; zesu's mainnet defaults unless a scenario overrides them.
+    system_contracts: l2_execution_ssz.SystemContracts = l2_execution_ssz.SystemContracts.from(input.SystemContracts{}),
     /// Zero means bridge-suppressed mode: the L1<->L2 bridge rolling-hash reads and the L2->L1
     /// message scan are both skipped.
     l2_message_service_address: [20]u8 = ZERO_ADDRESS,
@@ -419,6 +423,7 @@ pub const ConflationPlan = struct {
             .l2_message_service_address = self.l2_message_service_address,
             .coinbase = self.coinbase,
             .chain_id = self.chain_id,
+            .system_contracts = self.system_contracts,
         };
 
         if (n == 0) {

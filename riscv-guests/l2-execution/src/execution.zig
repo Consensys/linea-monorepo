@@ -18,7 +18,6 @@ const block_validation = executor.executor_block_validation;
 const block_rlp_size = @import("zesu_block_rlp_size");
 
 const block_hash = @import("block_hash.zig");
-const system_contracts = @import("system_contracts.zig");
 
 // Error classification (zesu-error re-namespacing and the exit-code taxonomy) lives in
 // guest_errors; this file only wraps zesu calls with it.
@@ -178,6 +177,7 @@ fn computeBlockStatelessWithLogs(
     parent_header: ?rlp_decode.ParentHeader,
     spec: primitives.SpecId,
     chain_id: u64,
+    system_contracts: input.SystemContracts,
 ) !ComputedBlock {
     const env = buildEnv(req, block_hashes, &.{}, parent_header, spec);
     block_validation.validateBlock(env, spec) catch |e| return zesuErr(e);
@@ -200,7 +200,7 @@ fn computeBlockStatelessWithLogs(
         txs,
         spec,
         chain_id,
-        system_contracts.forChainId(chain_id),
+        system_contracts,
         hardfork.blockReward(spec),
     ) catch |e| return zesuErr(e);
     // A witness miss surfaced through zesu's WitnessDatabase during live execution — the
@@ -264,6 +264,9 @@ fn decodeTransactions(alloc: std.mem.Allocator, ep: *input.ExecutionPayload) ![]
 /// Blob transactions and versioned hashes are rejected by `l2_execution.zig` before this runs, so
 /// zesu's versioned-hash check is not repeated here.
 ///
+/// `system_contracts` are the range-level addresses from the guest input (committed through
+/// `dynamicChainConfigHash`), used for the pre-/post-block system calls and deposit-log collection.
+///
 /// `node_index` is caller-built and caller-owned (NOT built here, unlike zesu's own
 /// `executeStatelessInput`): `l2_execution.runL2Execution` already builds ONE `NodeIndex` combining
 /// every payload's witness nodes (it needs that same combined index for its own Linea-specific
@@ -278,6 +281,7 @@ pub fn executeStatelessInputWithLogs(
     alloc: std.mem.Allocator,
     si_in: input.StatelessInput,
     fork_name: []const u8,
+    system_contracts: input.SystemContracts,
     node_index: *mpt.NodeIndex,
 ) !ProofOutputWithLogs {
     zesu_allocator.set(alloc);
@@ -303,6 +307,7 @@ pub fn executeStatelessInputWithLogs(
         preamble.parent_header,
         spec,
         si.chain_config.chain_id,
+        system_contracts,
     );
 
     const bal: ?block_validation.BalHashes = if (computed.bal_hash) |h| .{ .computed = h, .expected = declared.block_access_list_hash } else null;
@@ -327,6 +332,7 @@ pub fn computeStatelessInputWithLogs(
     alloc: std.mem.Allocator,
     si_in: input.StatelessInput,
     fork_name: []const u8,
+    system_contracts: input.SystemContracts,
     node_index: *mpt.NodeIndex,
 ) !ComputedBlock {
     zesu_allocator.set(alloc);
@@ -347,5 +353,6 @@ pub fn computeStatelessInputWithLogs(
         preamble.parent_header,
         spec,
         si.chain_config.chain_id,
+        system_contracts,
     );
 }

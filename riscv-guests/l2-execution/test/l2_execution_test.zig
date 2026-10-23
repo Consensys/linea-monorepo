@@ -31,15 +31,53 @@ fn repeat(comptime n: usize, byte: u8) [n]u8 {
 // Expected bytes computed with `rollup_spec/.venv/bin/python` against the same formulas in
 // `rollup_spec/src/rollup_spec/l2_execution.py` / `block.py`.
 
-test "chainConfigHash matches Readme.md's §2.1 dynamicChainConfigHash formula" {
-    const chain_config = l2_execution_ssz.ChainConfig{
+fn sampleSystemContracts() l2_execution_ssz.SystemContracts {
+    return .{
+        .beacon_roots = repeat(20, 0xa1),
+        .history_storage = repeat(20, 0xa2),
+        .deposit = repeat(20, 0xa3),
+        .withdrawal_request = repeat(20, 0xa4),
+        .consolidation_request = repeat(20, 0xa5),
+        .builder_deposit_request = repeat(20, 0xa6),
+        .builder_exit_request = repeat(20, 0xa7),
+    };
+}
+
+fn sampleChainConfig() l2_execution_ssz.ChainConfig {
+    return .{
         .l2_message_service_address = repeat(20, 0x11),
         .coinbase = repeat(20, 0x00),
         .chain_id = 59144,
+        .system_contracts = sampleSystemContracts(),
     };
-    const got = api.chainConfigHashFn(chain_config, 1_000_000_000);
-    const want = [_]u8{ 0xeb, 0x9a, 0xbc, 0xa2, 0x92, 0x7e, 0x7d, 0x36, 0x99, 0x9c, 0x8d, 0x0a, 0xe3, 0xf4, 0x94, 0xf7, 0xb0, 0x12, 0x0a, 0xde, 0xc4, 0x1f, 0x5c, 0xe1, 0x3a, 0x2b, 0x98, 0xdd, 0xa4, 0x38, 0x50, 0x06 };
+}
+
+test "chainConfigHash matches Readme.md's §2.1 dynamicChainConfigHash formula" {
+    const got = api.chainConfigHashFn(sampleChainConfig(), 1_000_000_000);
+    const want = [_]u8{ 0xdf, 0x70, 0x4e, 0x16, 0xd3, 0x8a, 0xa8, 0xbd, 0x28, 0x7f, 0x3c, 0x5b, 0x4d, 0xba, 0xb6, 0xe6, 0xc6, 0xaa, 0xa7, 0x25, 0x45, 0x52, 0xcb, 0x99, 0x2b, 0x09, 0x32, 0xcc, 0xf7, 0x0a, 0x7e, 0xd5 };
     try testing.expectEqualSlices(u8, &want, &got);
+}
+
+test "chainConfigHash commits to every system-contract address" {
+    const baseline = api.chainConfigHashFn(sampleChainConfig(), 7);
+    inline for (std.meta.fields(l2_execution_ssz.SystemContracts)) |field| {
+        var tampered = sampleChainConfig();
+        @field(tampered.system_contracts, field.name) = repeat(20, 0x00);
+        const got = api.chainConfigHashFn(tampered, 7);
+        try testing.expect(!std.mem.eql(u8, &baseline, &got));
+    }
+}
+
+test "zesuSystemContracts copies every address into zesu's type" {
+    const sc = sampleSystemContracts();
+    const z = api.zesuSystemContractsFn(sc);
+    try testing.expectEqual(sc.beacon_roots, z.beacon_roots);
+    try testing.expectEqual(sc.history_storage, z.history_storage);
+    try testing.expectEqual(sc.deposit, z.deposit);
+    try testing.expectEqual(sc.withdrawal_request, z.withdrawal_request);
+    try testing.expectEqual(sc.consolidation_request, z.consolidation_request);
+    try testing.expectEqual(sc.builder_deposit_request, z.builder_deposit_request);
+    try testing.expectEqual(sc.builder_exit_request, z.builder_exit_request);
 }
 
 test "addToForcedTxRollingHash matches Readme.md's §6.3 forced-tx rolling-hash formula" {
@@ -817,48 +855,4 @@ test "readL1L2BridgeState rejects a message number that overflows u64" {
         error.RollingHashNumberOverflow,
         api.readL1L2BridgeStateFn(state_root, l2_ms_address, &index),
     );
-}
-
-// ─── Per-chain system-contract addresses ─────────────────────────────────────────────────────────
-
-fn hexAddr(hex: []const u8) [20]u8 {
-    var out: [20]u8 = undefined;
-    _ = std.fmt.hexToBytes(&out, hex) catch unreachable;
-    return out;
-}
-
-test "system contracts: Linea mainnet uses its genesis deposit/withdrawal/consolidation contracts" {
-    const sc = api.system_contracts;
-    const c = sc.forChainId(59144);
-    try testing.expectEqual(hexAddr("94d4a7449B968b839dcbc64A61F195CA300986ae"), c.deposit);
-    try testing.expectEqual(hexAddr("66355689a9f067eeb9dc9d899E4192676988279C"), c.withdrawal_request);
-    try testing.expectEqual(hexAddr("F0e003F0dE2d583Ae28FA8cBF66aa096CdAce3ff"), c.consolidation_request);
-    // Beacon roots, history storage and the EIP-8282 builder contracts stay canonical.
-    const defaults: sc.SystemContracts = .{};
-    try testing.expectEqual(defaults.beacon_roots, c.beacon_roots);
-    try testing.expectEqual(defaults.history_storage, c.history_storage);
-    try testing.expectEqual(defaults.builder_deposit_request, c.builder_deposit_request);
-    try testing.expectEqual(defaults.builder_exit_request, c.builder_exit_request);
-}
-
-test "system contracts: Linea Sepolia and the local stack use their genesis contracts" {
-    const sc = api.system_contracts;
-    const sepolia = sc.forChainId(59141);
-    try testing.expectEqual(hexAddr("0bdae9550159eb73559e74d27fbc989641b24c8e"), sepolia.deposit);
-    try testing.expectEqual(hexAddr("0e97F666F1d99A60590F7Ce7fA5A5a7C754Ff714"), sepolia.withdrawal_request);
-    try testing.expectEqual(hexAddr("94d94fac95855ed81294ed76f6b3da899e7063a8"), sepolia.consolidation_request);
-
-    const local = sc.forChainId(1337);
-    try testing.expectEqual(hexAddr("3a69eD7FA6f6CA1dB2649327c4A2E666130823bE"), local.deposit);
-    try testing.expectEqual(hexAddr("3a69eD7FA6f6CA1dB2649327c4A2E666130823bE"), local.withdrawal_request);
-    try testing.expectEqual(hexAddr("9AFC00F4CEaadb97A3822FCA2225FaD78839FBde"), local.consolidation_request);
-    try testing.expectEqual(hexAddr("0000000000000000000000000000000000009999"), local.builder_deposit_request);
-    try testing.expectEqual(hexAddr("0000000000000000000000000000000000009999"), local.builder_exit_request);
-}
-
-test "system contracts: other chains fall back to zesu's defaults" {
-    const sc = api.system_contracts;
-    for ([_]u64{ 1, 11155111, 424242 }) |chain_id| {
-        try testing.expectEqual(sc.SystemContracts.forChainId(chain_id), sc.forChainId(chain_id));
-    }
 }

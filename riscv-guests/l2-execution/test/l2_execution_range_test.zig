@@ -219,6 +219,7 @@ test "a realistic 2-block range produces every public-input field exactly" {
         .l2_message_service_address = plan.l2_message_service_address,
         .coinbase = plan.coinbase,
         .chain_id = plan.chain_id,
+        .system_contracts = plan.system_contracts,
     };
     const expected_chain_config_hash = api.chainConfigHashFn(chain_config, RANGE_BASE_FEE);
     try testing.expectEqualSlices(u8, &expected_chain_config_hash, &output.public_inputs.dynamic_chain_config_hash);

@@ -92,14 +92,26 @@ fn mappingSlot(base_slot: [32]u8, key: [32]u8) [32]u8 {
 }
 
 /// `ChainConfig.hash(base_fee)`: keccak256(chainID_be32 || coinbase || l2MessageServiceAddress ||
-/// baseFee_be32).
+/// baseFee_be32 || systemContracts), the seven system-contract addresses as 20 bytes each in field
+/// order. Committing the addresses here is what stops a prover from picking them: they are
+/// otherwise plain private inputs that steer the engine's system calls and deposit-log collection.
 fn chainConfigHash(chain_config: l2_execution_ssz.ChainConfig, base_fee: u64) [32]u8 {
-    var buf: [104]u8 = undefined;
+    var buf: [104 + l2_execution_ssz.SystemContracts.ENCODED_SIZE]u8 = undefined;
     @memcpy(buf[0..32], &u64ToSlot32(chain_config.chain_id));
     @memcpy(buf[32..52], &chain_config.coinbase);
     @memcpy(buf[52..72], &chain_config.l2_message_service_address);
     @memcpy(buf[72..104], &u64ToSlot32(base_fee));
+    @memcpy(buf[104..], &chain_config.system_contracts.encode());
     return mpt.keccak256(&buf);
+}
+
+/// The range-level system contracts in zesu's own type (same fields, same order).
+fn zesuSystemContracts(sc: l2_execution_ssz.SystemContracts) input.SystemContracts {
+    var out: input.SystemContracts = .{};
+    inline for (std.meta.fields(l2_execution_ssz.SystemContracts)) |field| {
+        @field(out, field.name) = @field(sc, field.name);
+    }
+    return out;
 }
 
 /// keccak256(prev || txHash || deadline_be32 || from) — §6.3's forced-tx rolling-hash update.
@@ -355,6 +367,9 @@ pub fn runL2ExecutionWithEngine(comptime Engine: type, alloc: std.mem.Allocator,
     // a vanilla EF stateless input (which has no L2MessageService account, and whose witness only
     // covers nodes execution touched) be dummy-wrapped and run through this guest unchanged.
     const bridge_suppressed = isZeroAddress(l2_ms_address);
+    // Committed via `dynamicChainConfigHash` below; the engine uses these instead of any per-chain
+    // defaults for every block's system calls.
+    const system_contracts = zesuSystemContracts(in.chain_config.system_contracts);
 
     var current_parent_hash = parent_block_hash;
     var current_ftx_rolling_hash = in.parent_ftx_rolling_hash;
@@ -437,7 +452,7 @@ pub fn runL2ExecutionWithEngine(comptime Engine: type, alloc: std.mem.Allocator,
         // Reuses the SAME combined `node_index` built above (not a fresh per-payload one — see
         // `executeStatelessInputWithLogs`'s doc comment): it's a superset of `si.witness.nodes`
         // alone, so every proof this payload's execution needs is already indexed.
-        const result = try Engine.executeStatelessInputWithLogs(alloc, si, GUEST_FORK, &node_index);
+        const result = try Engine.executeStatelessInputWithLogs(alloc, si, GUEST_FORK, system_contracts, &node_index);
         if (idx == 0) range_pre_state_root = result.pre_state_root;
         range_post_state_root = result.post_state_root;
         last_payload = payload;
@@ -515,6 +530,7 @@ pub const test_api = if (@import("builtin").is_test) struct {
     pub const u64ToSlot32Fn = u64ToSlot32;
     pub const mappingSlotFn = mappingSlot;
     pub const chainConfigHashFn = chainConfigHash;
+    pub const zesuSystemContractsFn = zesuSystemContracts;
     pub const addToForcedTxRollingHashFn = addToForcedTxRollingHash;
     pub const hashDigestListFn = hashDigestList;
     pub const hashAddressListFn = hashAddressList;
@@ -538,6 +554,4 @@ pub const test_api = if (@import("builtin").is_test) struct {
     /// can re-derive the hash the engine will expect.
     pub const block_hash = @import("block_hash.zig");
     pub const isBlobTransactionFn = isBlobTransaction;
-    /// Per-chain system-contract addresses the execution seam hands to zesu's transition.
-    pub const system_contracts = @import("system_contracts.zig");
 } else struct {};
