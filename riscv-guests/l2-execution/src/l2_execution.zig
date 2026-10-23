@@ -182,15 +182,16 @@ fn lessThanAddress(_: void, a: [20]u8, b: [20]u8) bool {
 }
 
 /// Distinct addresses, sorted ascending by byte value (mirrors `merge_filtered_addresses`).
-fn mergeFilteredAddresses(addresses: [][20]u8) [][20]u8 {
-    std.mem.sort([20]u8, addresses, {}, lessThanAddress);
+fn mergeFilteredAddresses(alloc: std.mem.Allocator, list: *std.ArrayListUnmanaged([20]u8)) ![][20]u8 {
+    std.mem.sort([20]u8, list.items, {}, lessThanAddress);
     var n: usize = 0;
-    for (addresses) |a| {
-        if (n > 0 and std.mem.eql(u8, &addresses[n - 1], &a)) continue;
-        addresses[n] = a;
+    for (list.items) |a| {
+        if (n > 0 and std.mem.eql(u8, &list.items[n - 1], &a)) continue;
+        list.items[n] = a;
         n += 1;
     }
-    return addresses[0..n];
+    list.items.len = n;
+    return list.toOwnedSlice(alloc);
 }
 
 const BridgeState = struct { hash: [32]u8, number: u64 };
@@ -519,7 +520,7 @@ pub fn runL2ExecutionWithEngine(comptime Engine: type, alloc: std.mem.Allocator,
         .parent_ftx_number = in.parent_last_processed_ftx_number,
         .end_ftx_rolling_hash = current_ftx_rolling_hash,
         .end_processed_ftx_number = current_last_processed_ftx_number,
-        .filtered_addresses = mergeFilteredAddresses(filtered_addresses.items),
+        .filtered_addresses = try mergeFilteredAddresses(alloc, &filtered_addresses),
         .tx_froms_hash = try hashAddressList(alloc, tx_froms.items),
         .block_count = in.payloads.len,
         .l2_messaging_blocks_offsets = try messaging_offsets.toOwnedSlice(alloc),
