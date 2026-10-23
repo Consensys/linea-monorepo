@@ -15,7 +15,8 @@ pub const guest_errors = @import("guest_errors.zig");
 
 // Heap starts at the address defined by the linker script (canonical Lineth layout: `_heap_start` = 0x48800000, grows up).
 extern var _heap_start: u8;
-// Linker script does not actually constraint the heap to 256 MiB, but this is a reasonable upper bound
+// Must match `HEAP_LENGTH` in build_common/Makefile, which reserves this size and asserts that the
+// heap ends below the 4 GiB guest address space.
 const GUEST_HEAP_SIZE: usize = 256 * 1024 * 1024;
 
 // Expose the guest allocator as ABI-compatible pointer and vtable words for the C shim.
