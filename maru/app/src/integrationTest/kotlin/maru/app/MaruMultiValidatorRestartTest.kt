@@ -28,7 +28,6 @@ class MaruMultiValidatorRestartTest {
   @BeforeEach
   fun setUp() {
     network = MultiValidatorNetwork()
-    network.startBesuNodes()
   }
 
   @AfterEach
@@ -51,7 +50,7 @@ class MaruMultiValidatorRestartTest {
     Thread.sleep(2000)
 
     log.info("Restarting all 4 validators")
-    network.startAllValidators()
+    network.restartAllValidators()
 
     // Wait for ALL 4 validators to reach the target before reading their blocks.
     network.waitForBlockHeight(
