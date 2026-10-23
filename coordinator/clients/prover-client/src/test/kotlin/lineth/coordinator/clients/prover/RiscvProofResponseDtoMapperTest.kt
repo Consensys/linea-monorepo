@@ -1,5 +1,6 @@
 package lineth.coordinator.clients.prover
 
+import linea.clients.FinalizationPublicInputs
 import linea.clients.L2ExecutionProofPublicInputs
 import linea.clients.L2ExecutionProofResponseV1
 import linea.clients.RollupAggregationProofResponseV1
@@ -166,10 +167,30 @@ class RiscvProofResponseDtoMapperTest {
       proverVersion = "4.0.0-riscv",
       proof = "0xabcd",
       startBlockNumber = 1000500L,
-      publicInputs = rollupPublicInputsDto,
-      l2L1Roots = listOf("0xaa", "0xcc"),
-      filteredAddresses = listOf("0xbb", "0xdd"),
-      l2MessagingBlocksOffsets = listOf(1, 20, 100),
+      publicInputs = FinalizationPublicInputsDto(
+        endBlockNumber = 1000520,
+        endBlockTimestamp = 1763000457,
+        parentL1L2BridgeRollingHash = "0x11",
+        parentL1L2BridgeRollingHashMessageNumber = 12,
+        endL1L2BridgeRollingHash = "0x13",
+        endL1L2BridgeRollingHashMessageNumber = 14,
+        dynamicChainConfigHash = "0xc0ffee",
+        parentFtxRollingHash = "0x15",
+        parentFtxNumber = 16,
+        endFtxRollingHash = "0x16",
+        endProcessedFtxNumber = 17,
+        parentDataRollingHash = "0x19",
+        endDataRollingHash = "0x1a",
+        parentBlockHash = "0x1b",
+        endBlockHash = "0x1c",
+        parentDataTailTakeBytes = 3,
+        finalDataTailDiscardBytes = 1000,
+        l2L1Roots = listOf("0xaa", "0xcc"),
+        l2L1TreeDepth = 5,
+        filteredAddresses = listOf("0xbb", "0xdd"),
+        programIds = listOf("0xee"),
+        l2MessagingBlocksOffsets = listOf(1, 20, 100),
+      ),
     )
 
     assertThat(
@@ -179,10 +200,30 @@ class RiscvProofResponseDtoMapperTest {
         startBlockNumber = 1000500UL,
         endBlockNumber = 1000520UL,
         proof = "0xabcd".decodeHex(),
-        publicInputs = expectedRollupPublicInputs,
-        l2L1Roots = listOf("0xaa".decodeHex(), "0xcc".decodeHex()),
-        filteredAddresses = listOf("0xbb".decodeHex(), "0xdd".decodeHex()),
-        l2MessagingBlocksOffsets = listOf(1UL, 20UL, 100UL),
+        publicInputs = FinalizationPublicInputs(
+          endBlockNumber = 1000520UL,
+          endBlockTimestamp = Instant.fromEpochSeconds(1763000457L),
+          parentL1L2BridgeMessageRollingHash = "0x11".decodeHex(),
+          parentL1L2BridgeMessageNumber = 12UL,
+          endL1L2BridgeMessageRollingHash = "0x13".decodeHex(),
+          endL1L2BridgeMessageNumber = 14UL,
+          dynamicChainConfigHash = "0xc0ffee".decodeHex(),
+          parentFtxRollingHash = "0x15".decodeHex(),
+          parentFtxNumber = 16UL,
+          endFtxRollingHash = "0x16".decodeHex(),
+          endFtxNumber = 17UL,
+          parentDataRollingHash = "0x19".decodeHex(),
+          endDataRollingHash = "0x1a".decodeHex(),
+          parentBlockHash = "0x1b".decodeHex(),
+          endBlockHash = "0x1c".decodeHex(),
+          parentDataTailTakeBytes = 3,
+          finalDataTailDiscardBytes = 1000,
+          l2L1Roots = listOf("0xaa".decodeHex(), "0xcc".decodeHex()),
+          l2L1TreeDepth = 5UL,
+          filteredAddresses = listOf("0xbb".decodeHex(), "0xdd".decodeHex()),
+          programIds = listOf("0xee".decodeHex()),
+          l2MessagingBlocksOffsets = listOf(1UL, 20UL, 100UL),
+        ),
       ),
     )
   }
