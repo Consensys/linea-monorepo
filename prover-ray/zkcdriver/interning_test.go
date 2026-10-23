@@ -19,8 +19,8 @@ import (
 // buildRiscvSystem defines the real RISC-V arithmetization into a fresh
 // [wiop.System], without running any compiler pass. It is the measurement
 // point "after Define" of issue #4034.
-func buildRiscvSystem(t testing.TB, serialized []byte) *wiop.System {
-	t.Helper()
+func buildRiscvSystem(tb testing.TB, serialized []byte) *wiop.System {
+	tb.Helper()
 	sys := wiop.NewSystemf("zkc-riscv-interning")
 	sys.NewRound()
 	zkcdriver.NewZkCDriver(sys, zkcdriver.Settings{}, bytes.NewReader(serialized))
@@ -30,14 +30,14 @@ func buildRiscvSystem(t testing.TB, serialized []byte) *wiop.System {
 // riscvConstraints compiles the embedded RISC-V arithmetization once and
 // returns its serialised constraints, or skips the test when the toolchain
 // cannot produce them.
-func riscvConstraints(t testing.TB) []byte {
-	t.Helper()
+func riscvConstraints(tb testing.TB) []byte {
+	tb.Helper()
 	binF, err := embedded.CompiledBinaryFile()
 	if err != nil {
-		t.Skipf("skipping: cannot compile the embedded R5 arithmetization: %v", err)
+		tb.Skipf("skipping: cannot compile the embedded R5 arithmetization: %v", err)
 	}
 	serialized, err := binF.MarshalBinary()
-	require.NoError(t, err)
+	require.NoError(tb, err)
 	return serialized
 }
 
@@ -129,19 +129,24 @@ func TestInterningSharesCompoundSubexpressions(t *testing.T) {
 	// that was only Defined: the full prover pipeline needs a shard set up
 	// around it (messagebus' shared randomness requires every bus column on
 	// the coin round), which has nothing to do with what is being measured.
+	//
+	// global marks every vanishing it folds as reduced, so the set it binds is
+	// snapshotted between the two passes: whatever localvanishing left
+	// unreduced.
 	localvanishing.Compile(sys)
+	bound := make([][]wiop.Expression, len(sys.Modules))
+	for i, module := range sys.Modules {
+		for _, v := range module.Vanishings {
+			if !v.IsReduced() {
+				bound[i] = append(bound[i], v.Expression)
+			}
+		}
+	}
 	global.Compile(sys)
 
 	var afterTotal nodeCensus
-	for _, module := range sys.Modules {
-		exprs := make([]wiop.Expression, 0, len(module.Vanishings))
-		for _, v := range module.Vanishings {
-			if v.IsReduced() {
-				continue
-			}
-			exprs = append(exprs, v.Expression)
-		}
-		c := censusOf(exprs)
+	for i, module := range sys.Modules {
+		c := censusOf(bound[i])
 		if c.occurrences == 0 {
 			continue
 		}
@@ -387,7 +392,7 @@ func TestInterningIsDeterministicAcrossProcesses(t *testing.T) {
 func runNodeSequenceSubprocess(t *testing.T) string {
 	t.Helper()
 
-	cmd := exec.Command(os.Args[0],
+	cmd := exec.Command(os.Args[0], //nolint:gosec // G204: re-executes this test binary
 		"-test.run", "^TestInterningIsDeterministicAcrossProcesses$",
 		"-test.v")
 	cmd.Env = append(os.Environ(), interningDeterminismEnvVar+"=1")
