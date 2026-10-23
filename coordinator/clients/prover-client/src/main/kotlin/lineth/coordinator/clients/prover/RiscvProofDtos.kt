@@ -41,7 +41,8 @@ data class L2ExecutionProofPublicInputsDto(
   val parentFtxNumber: Long,
   val endFtxRollingHash: String,
   val endProcessedFtxNumber: Long,
-  val filteredAddressesHash: String,
+  /** Distinct, sorted ascending by byte value. */
+  val filteredAddresses: List<String>,
   val txFromsHash: String,
   val blockCount: Long,
   val l2MessagingBlocksOffsets: List<Long>,
@@ -199,7 +200,6 @@ data class L2ExecutionProofResponseDto(
   val startBlockNumber: Long,
   val proof: String,
   val publicInputs: L2ExecutionProofPublicInputsDto,
-  val filteredAddresses: List<String>,
   val programVk: String,
 )
 
@@ -329,7 +329,7 @@ internal fun L2ExecutionProofPublicInputsDto.toDomainObject(): L2ExecutionProofP
     parentFtxNumber = parentFtxNumber.toULong(),
     endFtxRollingHash = endFtxRollingHash.decodeHex(),
     endFtxNumber = endProcessedFtxNumber.toULong(),
-    filteredAddressesHash = filteredAddressesHash.decodeHex(),
+    filteredAddresses = filteredAddresses.map { it.decodeHex() },
     txFromsHash = txFromsHash.decodeHex(),
     blockCount = blockCount.toULong(),
     l2MessagingBlocksOffsets = l2MessagingBlocksOffsets.map { it.toULong() },
@@ -352,7 +352,7 @@ internal fun L2ExecutionProofPublicInputs.toDto(): L2ExecutionProofPublicInputsD
     parentFtxNumber = parentFtxNumber.toLong(),
     endFtxRollingHash = endFtxRollingHash.encodeHex(),
     endProcessedFtxNumber = endFtxNumber.toLong(),
-    filteredAddressesHash = filteredAddressesHash.encodeHex(),
+    filteredAddresses = filteredAddresses.map { it.encodeHex() },
     txFromsHash = txFromsHash.encodeHex(),
     blockCount = blockCount.toLong(),
     l2MessagingBlocksOffsets = l2MessagingBlocksOffsets.map { it.toLong() },

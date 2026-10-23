@@ -35,7 +35,7 @@ class RiscvProofResponseDtoMapperTest {
     parentFtxNumber = 7,
     endFtxRollingHash = "0x07",
     endProcessedFtxNumber = 8,
-    filteredAddressesHash = "0x09",
+    filteredAddresses = listOf("0x09"),
     txFromsHash = "0x0c",
     blockCount = 4,
     l2MessagingBlocksOffsets = listOf(1, 3),
@@ -56,7 +56,7 @@ class RiscvProofResponseDtoMapperTest {
     parentFtxNumber = 7UL,
     endFtxRollingHash = "0x07".decodeHex(),
     endFtxNumber = 8UL,
-    filteredAddressesHash = "0x09".decodeHex(),
+    filteredAddresses = listOf("0x09".decodeHex()),
     txFromsHash = "0x0c".decodeHex(),
     blockCount = 4UL,
     l2MessagingBlocksOffsets = listOf(1UL, 3UL),
@@ -120,7 +120,6 @@ class RiscvProofResponseDtoMapperTest {
       startBlockNumber = 1000500L,
       proof = "0xabcd",
       publicInputs = executionPublicInputsDto,
-      filteredAddresses = listOf("0xcc"),
       programVk = programVkHex,
     )
 
@@ -132,7 +131,6 @@ class RiscvProofResponseDtoMapperTest {
         endBlockNumber = 1000503UL,
         proof = "0xabcd".decodeHex(),
         publicInputs = expectedExecutionPublicInputs,
-        filteredAddresses = listOf("0xcc".decodeHex()),
         programVk = programVkHex.decodeHex(),
       ),
     )
@@ -211,12 +209,11 @@ class RiscvProofResponseDtoMapperTest {
           "parentFtxNumber": 7,
           "endFtxRollingHash": "0x07",
           "endProcessedFtxNumber": 8,
-          "filteredAddressesHash": "0x09",
+          "filteredAddresses": ["0x09"],
           "txFromsHash": "0x0c",
           "blockCount": 4,
           "l2MessagingBlocksOffsets": [1, 3]
         },
-        "filteredAddresses": [],
         "programVk": "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
       }
     """.trimIndent()
@@ -231,7 +228,6 @@ class RiscvProofResponseDtoMapperTest {
         endBlockNumber = 1000503UL,
         proof = "0xabcd".decodeHex(),
         publicInputs = expectedExecutionPublicInputs,
-        filteredAddresses = emptyList(),
         programVk = ByteArray(32) { 0xdd.toByte() },
       ),
     )
