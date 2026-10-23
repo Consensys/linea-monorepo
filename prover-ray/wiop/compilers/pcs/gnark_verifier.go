@@ -101,7 +101,7 @@ func recoverBatchClaimsGnark(run *wiop.GnarkRuntime, batches []BatchRef, manifes
 	)
 
 	for i, b := range batches {
-		layouts[i], shapes[i] = getLayoutWith(b.Round, staticSizeOf, manifests[i])
+		layouts[i], shapes[i] = getLayoutWith(b.Round, staticSizeOf, manifests[i], configOf(sys).moduleGroups)
 		shifts[i] = initializeBatchShift(shapes[i])
 		claims[i] = initializeGnarkBatchClaims(shapes[i])
 		batchOf[b.Round] = i
