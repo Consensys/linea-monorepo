@@ -267,9 +267,6 @@ fn decodeTransactions(alloc: std.mem.Allocator, ep: *input.ExecutionPayload) ![]
 /// Blob transactions and versioned hashes are rejected by `l2_execution.zig` before this runs, so
 /// zesu's versioned-hash check is not repeated here.
 ///
-/// `system_contracts` are the range-level addresses from the guest input (committed through
-/// `dynamicChainConfigHash`), used for the pre-/post-block system calls and deposit-log collection.
-///
 /// `node_index` is caller-built and caller-owned (NOT built here, unlike zesu's own
 /// `executeStatelessInput`): `l2_execution.runL2Execution` already builds ONE `NodeIndex` combining
 /// every payload's witness nodes (it needs that same combined index for its own Linea-specific

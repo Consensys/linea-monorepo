@@ -124,8 +124,6 @@ class ConflationAppV2(
       executionPayloadClient = executionPayloadClient,
       forcedTransactionsDao = forcedTransactionsDao,
       chainId = chainId,
-      // Read once at startup, like chainId: the addresses come from the chain's genesis and are committed by
-      // every l2-execution proof (dynamicChainConfigHash).
       systemContracts = Web3jEthConfigClient(web3jService).ethConfig().get().systemContracts(expectedChainId = chainId),
     )
 

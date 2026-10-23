@@ -56,7 +56,6 @@ pub const SystemContracts = struct {
 
     pub const ENCODED_SIZE: usize = 7 * 20;
 
-    /// The seven addresses concatenated in field order.
     pub fn encode(self: SystemContracts) [ENCODED_SIZE]u8 {
         var out: [ENCODED_SIZE]u8 = undefined;
         inline for (std.meta.fields(SystemContracts), 0..) |field, i| {

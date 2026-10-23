@@ -131,7 +131,6 @@ def test_run_l2_execution_guest_zero_address_suppresses_bridge_and_messages(monk
     )
 
     def _fake_execute(stateless_input, system_contracts):  # noqa: ANN001, ANN202
-        # The engine receives the range-level system contracts, not per-chain defaults.
         assert system_contracts == _SYSTEM_CONTRACTS
         return StatelessExecutionResult(
             pre_state_root=Hash32(bytes([0x11]) * 32),

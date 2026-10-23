@@ -369,8 +369,6 @@ pub fn runL2ExecutionWithEngine(comptime Engine: type, alloc: std.mem.Allocator,
     // a vanilla EF stateless input (which has no L2MessageService account, and whose witness only
     // covers nodes execution touched) be dummy-wrapped and run through this guest unchanged.
     const bridge_suppressed = isZeroAddress(l2_ms_address);
-    // Committed via `dynamicChainConfigHash` below; the engine uses these instead of any per-chain
-    // defaults for every block's system calls.
     const system_contracts = zesuSystemContracts(in.chain_config.system_contracts);
 
     var current_parent_hash = parent_block_hash;
