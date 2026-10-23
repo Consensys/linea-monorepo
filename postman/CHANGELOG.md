@@ -1,4 +1,4 @@
-## [unreleased]
+## [1.0.2] - 2026-10-23
 
 ### 🐛 Bug Fixes
 
@@ -8,6 +8,7 @@
 
 - *(misc)* Docker image build streamlining (#3790)
 - *(deps)* Refresh dependencies and GitHub Actions (#4088)
+- *(deps)* Bump Node.js to 24.22.1 (#4284)
 ## [1.0.1] - 2026-06-29
 
 ### ⚙️ Miscellaneous Tasks

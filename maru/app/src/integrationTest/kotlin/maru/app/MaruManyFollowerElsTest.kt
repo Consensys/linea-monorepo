@@ -6,6 +6,8 @@
  *
  * SPDX-License-Identifier: MIT OR Apache-2.0
  */
+@file:Suppress("DEPRECATION") // TODO: migrate to maru.test.cluster.MaruCluster
+
 package maru.app
 
 import linea.testing.besu.BesuFactory
@@ -19,7 +21,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
-import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
@@ -71,7 +72,7 @@ class MaruManyFollowerElsTest {
     cluster = Cluster(
       ClusterConfigurationBuilder().build(),
       NetConditions(NetTransactions()),
-      ThreadBesuNodeRunner(),
+      BesuFactory.buildTestNodeRunner(),
     )
 
     validatorStack = PeeringNodeNetworkStack()

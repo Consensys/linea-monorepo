@@ -42,6 +42,8 @@
 - *(coordinator)* Bundle smart-contract errors in jar and make --smart-contract-errors optional (#4161)
 - *(coordinator)* Extension config sections and deprecated key aliases (#4162)
 - *(coordinator)* Inline pluggable signer types and per-proof-type prover transport (#4164)
+- *(coordinator)* RISC-V rollup proof coordinator — chunk assembly + proof submission (#3967)
+- *(coordinator)* Added BlobSubmitterV2 interface and implementation (#3673)
 
 ### 🐛 Bug Fixes
 
@@ -96,6 +98,8 @@
 - *(misc)* Make timer stop() await in-flight task execution (#4042)
 - *(linea-besu)* Limit large MODEXP calls to 1 per block (#4128)
 - *(prover)* Segment MODEXP_LARGE by whole instances in limitless (#4127)
+- *(coordinator)* Align RISC-V l2-execution DTOs and request envelope with rollup_spec (#4260)
+- *(coordinator)* Align RISC-V rollup DTOs with rollup_spec (#4262)
 
 ### 🚜 Refactor
 
@@ -109,6 +113,7 @@
 - *(coordinator)* Extract ForcedTransactionsApp from ConflationAppV1, make invalidity proof service injectable (#3856)
 - *(coordinator)* Select batches insert query by DB schema version (#4145)
 - *(coordinator)* Move prover transport from per-proof-type to RiscvProverConfig (#4172)
+- *(coordinator)* Remove TracingModuleV2 and TracingModuleV4 support (#4180)
 
 ### ⚡ Performance
 
@@ -159,6 +164,7 @@
 - *(coordinator)* Rename LineaRollup to LinethRollup in JVM components (#3421)
 - *(coordinator)* Rename Linea to Lineth in app and config (#3707)
 - *(prover)* Rename Linea to Lineth in prover (#3709)
+- *(coordinator)* Rename Linea to Lineth in JVM components (#3708)
 - *(misc)* Rename gradle plugins (#3729)
 - *(coordinator)* Apply review cleanups (#3717)
 - *(coordinator)* Update to vertx 5.1.5 (#3744)
@@ -193,3 +199,5 @@
 - *(coordinator)* Remove unsupported invalidity proof client (#4101)
 - *(coordinator)* Simplify Risc5 prover DTO mappers (#4121)
 - *(coordinator)* Make RISC-V rollup prover clients transport-agnostic (#4140)
+- *(maru)* Refactor MaruClForkUpgradeTest to use new MaruCluster test (#4214)
+- *(deps)* Bump Node.js to 24.22.1 (#4284)
