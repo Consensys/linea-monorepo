@@ -288,7 +288,8 @@ func EncodeInputs(
 		}
 	}
 
-	if err := validateAddressSpace(program.EntryPoint, blobs); err != nil {
+	entryPoint, addresses, err := addressSpace32(program.EntryPoint, blobs)
+	if err != nil {
 		return nil, err
 	}
 
@@ -303,12 +304,12 @@ func EncodeInputs(
 		)
 	}
 
-	entryAndCount := binary.BigEndian.AppendUint32(nil, uint32(program.EntryPoint))
+	entryAndCount := binary.BigEndian.AppendUint32(nil, entryPoint)
 	entryAndCount = binary.BigEndian.AppendUint32(entryAndCount, uint32(len(blobs)))
 	offsetsAndSizes := make([]byte, 0, 8*len(blobs))
 	data := make([]byte, 0, dataSize)
-	for _, blob := range blobs {
-		offsetsAndSizes = binary.BigEndian.AppendUint32(offsetsAndSizes, uint32(blob.Address))
+	for i, blob := range blobs {
+		offsetsAndSizes = binary.BigEndian.AppendUint32(offsetsAndSizes, addresses[i])
 		offsetsAndSizes = binary.BigEndian.AppendUint32(
 			offsetsAndSizes,
 			uint32(len(blob.Data)),
@@ -354,25 +355,25 @@ func writeSections(writer io.Writer, blobs []Blob) error {
 	return nil
 }
 
-// validateAddressSpace rejects an entry point or a non-empty blob outside the
-// 32-bit guest address space of the arithmetization.
-func validateAddressSpace(entryPoint uint64, blobs []Blob) error {
+// addressSpace32 returns the entry point and blob addresses as u32. It rejects
+// an entry point or blob address above the 32-bit guest address space of the
+// arithmetization, and a non-empty blob that runs past it.
+func addressSpace32(entryPoint uint64, blobs []Blob) (uint32, []uint32, error) {
 	if entryPoint > math.MaxUint32 {
-		return fmt.Errorf("entry point %#x is outside the 32-bit address space", entryPoint)
+		return 0, nil, fmt.Errorf("entry point %#x is outside the 32-bit address space", entryPoint)
 	}
-	for _, blob := range blobs {
-		if len(blob.Data) == 0 {
-			continue
-		}
+	addresses := make([]uint32, len(blobs))
+	for i, blob := range blobs {
 		if blob.Address > math.MaxUint32 || uint64(len(blob.Data)) > math.MaxUint32+1-blob.Address {
-			return fmt.Errorf(
+			return 0, nil, fmt.Errorf(
 				"memory blob at %#x with %d bytes is outside the 32-bit address space",
 				blob.Address,
 				len(blob.Data),
 			)
 		}
+		addresses[i] = uint32(blob.Address)
 	}
-	return nil
+	return uint32(entryPoint), addresses, nil
 }
 
 func blobDataSize(blobs []Blob) int {

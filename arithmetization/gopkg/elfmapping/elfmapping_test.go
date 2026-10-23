@@ -395,6 +395,11 @@ func TestEncodeInputsRejectsInvalidRanges(t *testing.T) {
 			wantErr: "outside the 32-bit address space",
 		},
 		{
+			name:    "empty above 4 GiB",
+			blobs:   []elfmapping.Blob{{Address: 1 << 32}},
+			wantErr: "outside the 32-bit address space",
+		},
+		{
 			name:    "crosses 4 GiB",
 			blobs:   []elfmapping.Blob{{Address: math.MaxUint32, Data: []byte{1, 2}}},
 			wantErr: "outside the 32-bit address space",
