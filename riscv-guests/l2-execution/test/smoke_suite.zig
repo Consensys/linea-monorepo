@@ -39,6 +39,10 @@ pub fn Suite(comptime Host: type, comptime Candidate: type) type {
             };
             thread.join();
             joined = true;
+            defer switch (host_run.result) {
+                .accepted => |bytes| if (host_run.err == null) std.heap.page_allocator.free(bytes),
+                .rejected => {},
+            };
             if (host_run.err) |err| {
                 std.debug.print("FAIL {s}: host adapter error: {s}\n", .{ path, @errorName(err) });
                 return .{ .recognized = .{ .files = 1, .cases = 1, .failed = 1 } };
@@ -58,9 +62,17 @@ pub fn Suite(comptime Host: type, comptime Candidate: type) type {
         fn runHost(host: *Host, init: std.process.Init, input: []const u8, output: *ThreadResult) void {
             var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
             defer arena.deinit();
-            output.result = host.run(init, arena.allocator(), input) catch |err| {
+            const result = host.run(init, arena.allocator(), input) catch |err| {
                 output.err = err;
                 return;
+            };
+            // The arena dies with this thread, so the accepted output is copied out of it.
+            output.result = switch (result) {
+                .accepted => |bytes| .{ .accepted = std.heap.page_allocator.dupe(u8, bytes) catch |err| {
+                    output.err = err;
+                    return;
+                } },
+                .rejected => result,
             };
         }
     };

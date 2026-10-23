@@ -18,7 +18,7 @@
 //!   SszL2ExecutionProofPrivateInput:  92 bytes
 //!   SszLineaPayloadInput:              8 bytes
 //!   SszForcedTransactionWitness:      21 bytes
-//!   SszL2ExecutionProofPublicInput:  324 bytes  (18 fields; 3 variable-size lists behind 4-byte offsets)
+//!   SszL2ExecutionProofPublicInput:  324 bytes  (variable-size lists sit behind 4-byte offsets)
 
 const std = @import("std");
 const guest_common = @import("guest_common");
@@ -72,7 +72,7 @@ pub const L2ExecutionProofPrivateInput = struct {
     payloads: []const LineaPayloadInput,
 };
 
-/// The 18-field l2-execution public input tuple, in wire order.
+/// The l2-execution public input tuple, in wire order.
 pub const L2ExecutionProofPublicInput = struct {
     parent_block_hash: [32]u8,
     end_block_hash: [32]u8,
@@ -256,7 +256,7 @@ pub fn encodeInput(alloc: std.mem.Allocator, v: L2ExecutionProofPrivateInput) ![
 }
 
 // ── L2ExecutionProofOutput (the extended guest OUTPUT) ────────────────────────
-// Fixed head: the 15 fixed-size fields inline plus a 4-byte offset per list = 324.
+// Fixed head: the fixed-size fields inline plus a 4-byte offset per list = 324.
 const PI_FIXED_SIZE: usize = 324;
 const HASH_SIZE: usize = 32;
 

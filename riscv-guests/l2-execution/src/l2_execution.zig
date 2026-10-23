@@ -326,7 +326,7 @@ fn validateForcedTransactions(
 
 // ─── Top-level guest logic (mirrors run_l2_execution_guest) ───────────────────────────────────────
 
-/// l2-execution: emits the 16-field l2-execution PI for a contiguous block range, translating
+/// l2-execution: emits the l2-execution PI for a contiguous block range, translating
 /// `rollup_spec.l2_execution.run_l2_execution_guest` step by step. Per-block execution is delegated
 /// to `execution.executeStatelessInputWithLogs`; this function adds only the Linea logic on top —
 /// conflation-level linking, the empty-`executionRequests` policy, forced transactions, L2->L1
