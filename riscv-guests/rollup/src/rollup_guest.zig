@@ -8,8 +8,8 @@ const rollup = @import("rollup.zig");
 pub const guest_errors = @import("guest_errors.zig");
 
 // Heap starts at the address defined by the linker script (canonical Lineth layout: `_heap_start`
-// = 0x48800000, grows up). The linker script does not actually cap the heap at this size; it is a
-// reasonable upper bound for this guest's small, bounded inputs.
+// = 0x48800000, grows up). Must match `HEAP_LENGTH` in build_common/Makefile, which reserves this
+// size and asserts that the heap ends below the 4 GiB guest address space.
 extern var _heap_start: u8;
 const GUEST_HEAP_SIZE: usize = 256 * 1024 * 1024;
 

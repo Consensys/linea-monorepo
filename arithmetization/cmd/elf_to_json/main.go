@@ -233,10 +233,10 @@ func writeJSON(output io.Writer, inputs map[string][]byte) error {
 	entry := inputs[elfmapping.EntryPointAndBlobsCountInput]
 	metadata := inputs[elfmapping.BlobsOffsetAndSizeInput]
 	data := inputs[elfmapping.BlobsDataInput]
-	if len(entry) != 12 || len(metadata)%12 != 0 {
+	if len(entry) != 8 || len(metadata)%8 != 0 {
 		return fmt.Errorf("invalid encoded ELF input lengths")
 	}
-	metadataRecords := splitHexRecords(metadata, 12, "_")
+	metadataRecords := splitHexRecords(metadata, 8, "_")
 	dataRecords, err := splitBlobData(data, metadata)
 	if err != nil {
 		return err
@@ -244,7 +244,7 @@ func writeJSON(output io.Writer, inputs map[string][]byte) error {
 	if _, err := fmt.Fprintln(output, "{"); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(output, "\t%q: \"0x%s_%s\",\n", elfmapping.EntryPointAndBlobsCountInput, hex.EncodeToString(entry[:8]), hex.EncodeToString(entry[8:])); err != nil {
+	if _, err := fmt.Fprintf(output, "\t%q: \"0x%s_%s\",\n", elfmapping.EntryPointAndBlobsCountInput, hex.EncodeToString(entry[:4]), hex.EncodeToString(entry[4:])); err != nil {
 		return err
 	}
 	if _, err := fmt.Fprintf(output, "\t%q: \"0x%s\",\n", elfmapping.BlobsOffsetAndSizeInput, strings.Join(metadataRecords, "____")); err != nil {
@@ -273,7 +273,7 @@ func splitHexRecords(data []byte, size int, fieldSeparator string) []string {
 	for len(data) != 0 {
 		record := data[:size]
 		if fieldSeparator == "_" {
-			records = append(records, hex.EncodeToString(record[:8])+"_"+hex.EncodeToString(record[8:]))
+			records = append(records, hex.EncodeToString(record[:4])+"_"+hex.EncodeToString(record[4:]))
 		} else {
 			records = append(records, hex.EncodeToString(record))
 		}
@@ -285,8 +285,8 @@ func splitHexRecords(data []byte, size int, fieldSeparator string) []string {
 func splitBlobData(data, metadata []byte) ([]string, error) {
 	var records []string
 	for len(metadata) != 0 {
-		size := uint64(binary.BigEndian.Uint32(metadata[8:12]))
-		metadata = metadata[12:]
+		size := uint64(binary.BigEndian.Uint32(metadata[4:8]))
+		metadata = metadata[8:]
 		if size > uint64(len(data)) {
 			return nil, fmt.Errorf("blob metadata exceeds encoded data")
 		}
